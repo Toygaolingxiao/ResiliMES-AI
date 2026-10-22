@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-10-22T00:00:00Z",
+  "plant_id": "FAB-A",
+  "equipment": [
+    {
+      "equipment_id": "LITHO-01",
+      "name": "Lithography Scanner 01",
+      "area": "Lithography",
+      "status": "RUNNING",
+      "capability": ["litho_193nm"],
+      "setup_time_min": 45,
+      "operators_required": 1,
+      "max_wip": 2,
+      "mtbf_hours": 120,
+      "last_pm_at": "2026-10-18T08:00:00Z"
+    },
+    {
+      "equipment_id": "LITHO-02",
+      "name": "Lithography Scanner 02",
+      "area": "Lithography",
+      "status": "DOWN",
+      "capability": ["litho_193nm"],
+      "setup_time_min": 45,
+      "operators_required": 1,
+      "max_wip": 2,
+      "mtbf_hours": 110,
+      "last_pm_at": "2026-10-10T08:00:00Z",
+      "fault_code": "LASER_FAULT",
+      "down_since": "2026-10-22T06:12:00Z"
+    },
+    {
+      "equipment_id": "ETCH-01",
+      "name": "Plasma Etcher 01",
+      "area": "Etch",
+      "status": "RUNNING",
+      "capability": ["etch_dielectric"],
+      "setup_time_min": 30,
+      "operators_required": 1,
+      "max_wip": 3,
+      "mtbf_hours": 200,
+      "last_pm_at": "2026-10-20T06:00:00Z"
+    },
+    {
+      "equipment_id": "ETCH-02",
+      "name": "Plasma Etcher 02",
+      "area": "Etch",
+      "status": "IDLE",
+      "capability": ["etch_dielectric", "etch_metal"],
+      "setup_time_min": 35,
+      "operators_required": 1,
+      "max_wip": 3,
+      "mtbf_hours": 180,
+      "last_pm_at": "2026-10-19T14:00:00Z"
+    },
+    {
+      "equipment_id": "CMP-01",
+      "name": "CMP Polisher 01",
+      "area": "CMP",
+      "status": "RUNNING",
+      "capability": ["cmp_oxide"],
+      "setup_time_min": 20,
+      "operators_required": 1,
+      "max_wip": 4,
+      "mtbf_hours": 160,
+      "last_pm_at": "2026-10-21T02:00:00Z"
+    },
+    {
+      "equipment_id": "DEP-01",
+      "name": "CVD Deposition 01",
+      "area": "Deposition",
+      "status": "MAINTENANCE",
+      "capability": ["cvd_oxide"],
+      "setup_time_min": 40,
+      "operators_required": 2,
+      "max_wip": 2,
+      "mtbf_hours": 150,
+      "last_pm_at": "2026-10-22T04:00:00Z"
+    }
+  ]
+}

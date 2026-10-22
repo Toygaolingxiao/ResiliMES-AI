@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-10-22T06:30:00Z",
+  "plant_id": "FAB-A",
+  "jobs": [
+    {
+      "job_id": "LOT-1001",
+      "product_id": "PROD-A28",
+      "priority": 1,
+      "qty": 25,
+      "current_step": "LITHO",
+      "assigned_equipment": "LITHO-02",
+      "status": "BLOCKED",
+      "due_at": "2026-10-22T18:00:00Z",
+      "started_at": "2026-10-22T05:40:00Z",
+      "process_time_min": 90,
+      "remaining_steps": ["ETCH", "CMP"]
+    },
+    {
+      "job_id": "LOT-1002",
+      "product_id": "PROD-A28",
+      "priority": 2,
+      "qty": 25,
+      "current_step": "LITHO",
+      "assigned_equipment": "LITHO-01",
+      "status": "RUNNING",
+      "due_at": "2026-10-23T02:00:00Z",
+      "started_at": "2026-10-22T05:55:00Z",
+      "process_time_min": 90,
+      "remaining_steps": ["ETCH", "CMP"]
+    },
+    {
+      "job_id": "LOT-1003",
+      "product_id": "PROD-B14",
+      "priority": 3,
+      "qty": 50,
+      "current_step": "ETCH",
+      "assigned_equipment": "ETCH-01",
+      "status": "RUNNING",
+      "due_at": "2026-10-23T12:00:00Z",
+      "started_at": "2026-10-22T04:10:00Z",
+      "process_time_min": 60,
+      "remaining_steps": ["CMP"]
+    },
+    {
+      "job_id": "LOT-1004",
+      "product_id": "PROD-A28",
+      "priority": 2,
+      "qty": 25,
+      "current_step": "QUEUED",
+      "assigned_equipment": null,
+      "status": "QUEUED",
+      "due_at": "2026-10-23T08:00:00Z",
+      "started_at": null,
+      "process_time_min": 90,
+      "remaining_steps": ["LITHO", "ETCH", "CMP"],
+      "preferred_equipment": ["LITHO-01", "LITHO-02"]
+    },
+    {
+      "job_id": "LOT-1005",
+      "product_id": "PROD-C07",
+      "priority": 4,
+      "qty": 12,
+      "current_step": "CMP",
+      "assigned_equipment": "CMP-01",
+      "status": "RUNNING",
+      "due_at": "2026-10-22T22:00:00Z",
+      "started_at": "2026-10-22T06:00:00Z",
+      "process_time_min": 45,
+      "remaining_steps": []
+    },
+    {
+      "job_id": "LOT-1006",
+      "product_id": "PROD-B14",
+      "priority": 3,
+      "qty": 50,
+      "current_step": "QUEUED",
+      "assigned_equipment": null,
+      "status": "QUEUED",
+      "due_at": "2026-10-24T00:00:00Z",
+      "started_at": null,
+      "process_time_min": 60,
+      "remaining_steps": ["ETCH", "CMP"],
+      "preferred_equipment": ["ETCH-01", "ETCH-02"]
+    }
+  ]
+}
