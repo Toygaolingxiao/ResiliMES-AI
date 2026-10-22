@@ -1,0 +1,72 @@
+{
+  "generated_at": "2026-10-01T00:00:00Z",
+  "plant_id": "FAB-A",
+  "products": [
+    {
+      "product_id": "PROD-A28",
+      "name": "Logic Node A28",
+      "route": [
+        {
+          "step": "LITHO",
+          "capability": "litho_193nm",
+          "process_time_min": 90,
+          "setup_family": "LITHO_A"
+        },
+        {
+          "step": "ETCH",
+          "capability": "etch_dielectric",
+          "process_time_min": 60,
+          "setup_family": "ETCH_D"
+        },
+        {
+          "step": "CMP",
+          "capability": "cmp_oxide",
+          "process_time_min": 45,
+          "setup_family": "CMP_OX"
+        }
+      ],
+      "materials": [
+        { "material_id": "WAFER-300", "qty_per_lot": 25 },
+        { "material_id": "RESIST-UV", "qty_per_lot": 1 }
+      ]
+    },
+    {
+      "product_id": "PROD-B14",
+      "name": "Analog Node B14",
+      "route": [
+        {
+          "step": "ETCH",
+          "capability": "etch_metal",
+          "process_time_min": 60,
+          "setup_family": "ETCH_M"
+        },
+        {
+          "step": "CMP",
+          "capability": "cmp_oxide",
+          "process_time_min": 40,
+          "setup_family": "CMP_OX"
+        }
+      ],
+      "materials": [
+        { "material_id": "WAFER-300", "qty_per_lot": 50 },
+        { "material_id": "GAS-CF4", "qty_per_lot": 2 }
+      ]
+    },
+    {
+      "product_id": "PROD-C07",
+      "name": "Sensor Node C07",
+      "route": [
+        {
+          "step": "CMP",
+          "capability": "cmp_oxide",
+          "process_time_min": 45,
+          "setup_family": "CMP_OX"
+        }
+      ],
+      "materials": [
+        { "material_id": "WAFER-200", "qty_per_lot": 12 },
+        { "material_id": "SLURRY-OX", "qty_per_lot": 1 }
+      ]
+    }
+  ]
+}
