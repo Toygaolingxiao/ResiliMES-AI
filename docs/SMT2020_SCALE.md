@@ -6,7 +6,7 @@ Fab: 106 station families, 1313 tools, 102 `Litho_*` tools (82 expose scanners p
 
 ## The trade
 
-X-factor dues, 48 hours, 87 lots. On-time is the same at a 180, 300, 600, or 705.59 minute repair. ResiliMES 87/87, 83/87, 86/87, 87/87, 81/87 (424/435 pooled), mean 97.47%. EDD 87/87, 86/87, 86/87, 87/87, 87/87 (433/435 pooled), mean 99.54%. FIFO mean 20.688%. CR mean 71.722%. ResiliMES beats FIFO and CR by a wide margin. Versus EDD it gives up about 2 of 87 lots, with fewer re-cleans (38 vs 56; means 38 and 55.6) and fewer Q-time violations (430 vs 451.6). Seed 2 misses are three lots at `Diffusion_BE_123`. Seed 5 misses are five lots at `Dielectric_BE_28` (`Init_Lot_2_7`, `Init_Lot_2_8`, `Init_Lot_2_13`, `Init_Lot_2_23`, `Init_Lot_8_20`) plus `Init_Lot_1_10` at `WE_BE_14`. `Init_Lot_2_23` is on time under EDD and late under ResiliMES on seeds 5 and 6 (2.67 h and 4.26 h). Seed 6 is outside the five-seed means.
+X-factor dues, 48 hours, 87 lots. On-time is the same at a 180, 300, 600, or 705.59 minute repair. ResiliMES 87/87, 83/87, 86/87, 87/87, 81/87 (424/435 pooled), mean 97.47%. EDD 87/87, 86/87, 86/87, 87/87, 87/87 (433/435 pooled), mean 99.54%. FIFO mean 20.688%. CR mean 71.722%. ResiliMES beats FIFO and CR by a wide margin. Versus EDD it gives up about 2 of 87 lots, with fewer re-cleans (38.0 vs 56; means 38.0 and 55.6) and fewer Q-time violations (430.0 vs 451.6). Seed 2 misses are three lots at `Diffusion_BE_123`. Seed 5 misses are five lots at `Dielectric_BE_28` (`Init_Lot_2_7`, `Init_Lot_2_8`, `Init_Lot_2_13`, `Init_Lot_2_23`, `Init_Lot_8_20`) plus `Init_Lot_1_10` at `WE_BE_14`. `Init_Lot_2_23` is on time under EDD and late under ResiliMES on seeds 5 and 6 (2.67 h and 4.26 h). Seed 6 is outside the five-seed means.
 
 Published dues, 48 hours, 56 lots. ResiliMES 31/56, 31/56, 32/56, 32/56, 32/56 (158/280 pooled), mean 56.428%. EDD 31/56, 32/56, 32/56, 32/56, 32/56 (159/280 pooled), mean 56.784%. EDD is slightly ahead. Seed 1 ties at 31/56.
 
@@ -14,13 +14,13 @@ Tight VIP dues rewrites the dues for the stress test. It is not the published or
 
 The tight VIP table is 24 hours. The appendix is 48 hours from 2018-01-01 00:00 UTC. Seeds: 1, 2, 3, 4, 5. Each seed draws exponential MTTF/MTTR from `downcal.txt`, one clock per tool. The same draw is shared across policies.
 
-Macro APS places 30625 scanner steps. That step count is the stable spec. The timer is about 0.3 s on the CI VM (this run recorded 286.0 ms).
+Macro APS places 30625 scanner steps. That step count is the stable spec. The timer is about 0.3 s on the CI VM (this run recorded 319.6 ms).
 
 Dispatch latency is the time to choose the next lot for one idle tool, look-ahead 24 (8 when that family's queue exceeds two lots per tool). The headline p50/p95 includes empty wakes. Nonempty-queue decisions on the X-factor ResiliMES runs, seeds 1-5, are p50 0.0090-0.0107 ms and p95 about 0.25-0.26 ms (recorded 0.244-0.250 ms). It is not the full simulation time. Simulation time is the whole 48-hour run.
 
 The WIP column is a candidate cap, not a replan. `choose()` keeps 8 lots instead of 24 after a family exceeds max(8, two lots per tool), and also keeps a lot whose slack is at or under 7200 seconds. The adjacent Wet_Etch look-ahead fired 0 times on these books. `macro_aps_ms` does not feed `dpi()`. `rank()` calls `dispatch_score`. A down tool queues the end of every covering window, so a forced outage that overlaps an MTTF draw still releases at the later end. Seeds 1-5 on-time on the books below match the figures in this file.
 
-On-time percent uses lots whose due is at or before the horizon. A lot is on time only if its route finishes at or before the due. Lots already due at the snapshot stay in the denominator. Weighted tardiness is lot value times minutes late. An open lot is censored at the horizon. Cycle time is the mean completion time of lots that finish the route. X-factor is that completion time divided by the lot's remaining raw process time at the snapshot. Litho utilization is busy time on the 102 `Litho_*` tools divided by tools times horizon. Scanner utilization uses the 82 expose tools. Q-time violations are published CQT misses. PM avoided is a ResiliMES decision that refused at least one lot because the process would cross a PM. PM overlaps are baseline starts that run across a PM.
+On-time percent uses lots whose due is at or before the horizon. A lot is on time only if its route finishes at or before the due. Lots already due at the snapshot stay in the denominator. Weighted tardiness is lot value times minutes late. An open lot is censored at the horizon. Cycle time is the mean completion time of lots that finish the route. X-factor is that completion time divided by the lot's remaining raw process time at the snapshot. Litho utilization is busy time on the 102 `Litho_*` tools divided by tools times horizon. Scanner utilization uses the 82 expose tools. Q-time violations are published CQT misses. PM avoided counts decisions, on every policy, that refused at least one lot because the process would cross a PM. PM overlaps are starts that still run across a PM.
 
 The weekly PM FOA on the focus family is outside a 48-hour window (about 7 days). The steady and litho studies therefore show zero PM events. The PM study subtracts one offset from every day-based calendar so `Litho_FE_92_WK` opens at 2 hours. Duration and interval stay published. One FOA is stored per family, so every tool in the family shares that window.
 
@@ -34,10 +34,10 @@ The published dues do not make earliest-due lose on on-time delivery. This book 
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | Candidate cap | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| resilimes | 19.05 | 4329.38 | 9.738 | 77.69 | 72.514 | 176 | 0 | 0 | 134.8 | 0.0002 | 0.006 | 1.467 |
-| edd | 12.382 | 7985.74 | 11.654 | 82.008 | 77.862 | 413.8 | 0 | 0 | 0 | 0.0002 | 0.0028 | 0.754 |
-| fifo | 0.0 | 19042.4 | 14.614 | 82.166 | 78.058 | 421.4 | 0 | 0 | 0 | 0.0002 | 0.0027 | 0.685 |
-| cr | 9.52 | 10372.78 | 10.87 | 79.464 | 74.708 | 223.2 | 0 | 0 | 0 | 0.0002 | 0.0029 | 0.859 |
+| resilimes | 19.05 | 4329.38 | 9.738 | 77.69 | 72.514 | 176.0 | 0.0 | 0.0 | 134.8 | 0.0002 | 0.0067 | 1.6 |
+| edd | 12.382 | 7985.74 | 11.654 | 82.008 | 77.862 | 413.8 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.003 | 0.807 |
+| fifo | 0.0 | 19042.4 | 14.614 | 82.166 | 78.058 | 421.4 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.0029 | 0.736 |
+| cr | 9.52 | 10372.78 | 10.87 | 79.464 | 74.708 | 223.2 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.0031 | 0.914 |
 
 Per seed, on time / lots due. Re-cleans, Q-time, and weighted tardiness are that seed.
 
@@ -72,16 +72,20 @@ This book keeps the published routes, priorities, and CQT limits. Each due is th
 
 | ETA min | Policy | OTD % | OTD std | Q-time | Q std | X-factor | X std | Cycle h | Cycle std | Litho util % | Litho std | Re-cleans | Gates |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 180.0 | resilimes | 97.47 | 2.76 | 435.6 | 13.245 | 1.694 | 0.057 | 23.67 | 0.409 | 78.032 | 0.785 | 49.8 | 0 |
-| 180.0 | edd | 99.54 | 0.563 | 457.6 | 19.704 | 1.694 | 0.043 | 23.402 | 0.619 | 79.12 | 0.482 | 53.2 | 0 |
-| 300.0 | resilimes | 97.47 | 2.76 | 432.2 | 9.239 | 1.695 | 0.06 | 23.498 | 0.428 | 78.212 | 0.709 | 44.4 | 0 |
-| 300.0 | edd | 99.54 | 0.563 | 460.2 | 35.21 | 1.699 | 0.041 | 23.854 | 0.574 | 79.214 | 0.48 | 57.2 | 0 |
-| 600.0 | resilimes | 97.47 | 2.76 | 430 | 13.638 | 1.692 | 0.061 | 23.582 | 0.435 | 78.076 | 0.528 | 38 | 0 |
-| 600.0 | edd | 99.54 | 0.563 | 451.6 | 21.951 | 1.7 | 0.038 | 23.874 | 0.418 | 79.294 | 0.192 | 55.6 | 0 |
-| 600.0 | fifo | 20.688 | 5.19 | 765.2 | 48.425 | 3.406 | 0.265 | 24.91 | 1.025 | 76.344 | 0.294 | 99.6 | 0 |
-| 600.0 | cr | 71.722 | 4.02 | 718.8 | 16.017 | 2.536 | 0.048 | 26.154 | 0.349 | 75.488 | 0.59 | 126.6 | 0 |
-| 705.59 | resilimes | 97.47 | 2.76 | 429 | 13.206 | 1.695 | 0.061 | 23.596 | 0.4 | 78.128 | 0.565 | 46.6 | 0 |
-| 705.59 | edd | 99.54 | 0.563 | 454.2 | 18.915 | 1.701 | 0.038 | 24.004 | 0.525 | 79.208 | 0.427 | 60.4 | 0 |
+| 180.0 | resilimes | 97.47 | 2.76 | 435.6 | 13.245 | 1.694 | 0.057 | 23.67 | 0.409 | 78.032 | 0.785 | 49.8 | 0.0 |
+| 180.0 | edd | 99.54 | 0.563 | 457.6 | 19.704 | 1.694 | 0.043 | 23.402 | 0.619 | 79.12 | 0.482 | 53.2 | 0.0 |
+| 180.0 | smt_rule | 70.804 | 12.852 | 671.0 | 17.378 | 2.564 | 0.101 | 26.554 | 0.774 | 76.176 | 0.313 | 84.8 | 0.0 |
+| 300.0 | resilimes | 97.47 | 2.76 | 432.2 | 9.239 | 1.695 | 0.06 | 23.498 | 0.428 | 78.212 | 0.709 | 44.4 | 0.0 |
+| 300.0 | edd | 99.54 | 0.563 | 460.2 | 35.21 | 1.699 | 0.041 | 23.854 | 0.574 | 79.214 | 0.48 | 57.2 | 0.0 |
+| 300.0 | smt_rule | 70.574 | 10.965 | 682.0 | 19.718 | 2.575 | 0.103 | 26.33 | 0.731 | 76.24 | 0.403 | 78.2 | 0.0 |
+| 600.0 | resilimes | 97.47 | 2.76 | 430.0 | 13.638 | 1.692 | 0.061 | 23.582 | 0.435 | 78.076 | 0.528 | 38.0 | 0.0 |
+| 600.0 | edd | 99.54 | 0.563 | 451.6 | 21.951 | 1.7 | 0.038 | 23.874 | 0.418 | 79.294 | 0.192 | 55.6 | 0.0 |
+| 600.0 | fifo | 20.688 | 5.19 | 765.2 | 48.425 | 3.406 | 0.265 | 24.91 | 1.025 | 76.344 | 0.294 | 99.6 | 0.0 |
+| 600.0 | cr | 71.722 | 4.02 | 718.8 | 16.017 | 2.536 | 0.048 | 26.154 | 0.349 | 75.488 | 0.59 | 126.6 | 0.0 |
+| 600.0 | smt_rule | 70.116 | 11.629 | 670.4 | 20.762 | 2.569 | 0.097 | 26.418 | 0.839 | 76.414 | 0.102 | 70.2 | 0.0 |
+| 705.59 | resilimes | 97.47 | 2.76 | 429.0 | 13.206 | 1.695 | 0.061 | 23.596 | 0.4 | 78.128 | 0.565 | 46.6 | 0.0 |
+| 705.59 | edd | 99.54 | 0.563 | 454.2 | 18.915 | 1.701 | 0.038 | 24.004 | 0.525 | 79.208 | 0.427 | 60.4 | 0.0 |
+| 705.59 | smt_rule | 71.034 | 10.369 | 670.4 | 21.648 | 2.573 | 0.108 | 26.426 | 0.493 | 76.232 | 0.231 | 75.8 | 0.0 |
 
 Per seed, on time / lots due. Re-cleans, Q-time, and weighted tardiness are that seed.
 
@@ -107,6 +111,11 @@ Per seed, on time / lots due. Re-cleans, Q-time, and weighted tardiness are that
 | cr | 3 | 68/87 | 705 | 116 | 1276.5 |
 | cr | 4 | 62/87 | 718 | 122 | 977.6 |
 | cr | 5 | 62/87 | 745 | 169 | 930.3 |
+| smt_rule | 1 | 42/87 | 653 | 99 | 6773.8 |
+| smt_rule | 2 | 60/87 | 694 | 68 | 1252.5 |
+| smt_rule | 3 | 71/87 | 641 | 58 | 856.9 |
+| smt_rule | 4 | 66/87 | 673 | 68 | 847.5 |
+| smt_rule | 5 | 66/87 | 691 | 58 | 893.5 |
 
 On-time at 180, 300, 600, and 705.59 minutes is the same row for ResiliMES and for EDD. Seed 2 misses are three lots at `Diffusion_BE_123`. Seed 5 misses are `Init_Lot_2_7`, `Init_Lot_2_8`, `Init_Lot_2_13`, `Init_Lot_2_23`, and `Init_Lot_8_20` at `Dielectric_BE_28`, plus `Init_Lot_1_10` at `WE_BE_14`. `Init_Lot_2_23` is on time under EDD and late under ResiliMES on seeds 5 and 6 (2.67 h and 4.26 h). Seed 6 is outside the five-seed means.
 
@@ -140,46 +149,71 @@ Per seed, on time / lots due. Re-cleans, Q-time, and weighted tardiness are that
 | cr | 3 | 20/56 | 336 | 22 | 21987.7 |
 | cr | 4 | 20/56 | 310 | 11 | 21553.7 |
 | cr | 5 | 15/56 | 314 | 16 | 24588.6 |
+| smt_rule | 1 | 19/56 | 350 | 9 | 24334.6 |
+| smt_rule | 2 | 14/56 | 340 | 6 | 22881.8 |
+| smt_rule | 3 | 13/56 | 370 | 20 | 26007.3 |
+| smt_rule | 4 | 16/56 | 352 | 36 | 25008.4 |
+| smt_rule | 5 | 17/56 | 332 | 54 | 22931.2 |
 
 ### Steady fab (seeded breakdowns, published PM calendar unshifted)
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | Candidate cap | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| resilimes | 56.428 | 21988.14 | 25.876 | 76.208 | 71.63 | 386 | 0 | 0 | 156.2 | 0.0002 | 0.0058 | 2.296 |
-| edd | 56.784 | 21525.68 | 26.068 | 79.12 | 74.508 | 414.8 | 0 | 0 | 0 | 0.0002 | 0.0027 | 1.268 |
-| fifo | 26.43 | 52672.8 | 27.018 | 76.22 | 70.632 | 749.6 | 0 | 0 | 0 | 0.0002 | 0.0025 | 1.29 |
-| cr | 33.928 | 22923.68 | 29.412 | 73.538 | 67.606 | 315.4 | 0 | 0 | 0 | 0.0002 | 0.0027 | 1.384 |
+| resilimes | 56.428 | 21988.14 | 25.876 | 76.208 | 71.63 | 386.0 | 0.0 | 0.0 | 156.2 | 0.0002 | 0.0065 | 2.489 |
+| edd | 56.784 | 21525.68 | 26.068 | 79.12 | 74.508 | 414.8 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.0029 | 1.357 |
+| fifo | 26.43 | 52672.8 | 27.018 | 76.22 | 70.632 | 749.6 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.0027 | 1.385 |
+| cr | 33.928 | 22923.68 | 29.412 | 73.538 | 67.606 | 315.4 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.0029 | 1.485 |
+| smt_rule | 28.214 | 24232.66 | 28.01 | 75.498 | 69.798 | 348.8 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.0036 | 1.783 |
+
+`smt_rule` is `rule_HotLotFIRST` with `rank_HP;rank_RSETUP;rank_CR` (PRIOR at least 20 first, then higher PRIOR, then shorter setup, then lower CR). Implant_128, Implant_132, and Implant_91 use `rule_LSSU` (setup first, then that cascade). The idle-tool loop still picks the tool. `wake_LeastSetupTime` is not implemented. On published dues, ResiliMES on-time 56.428% beats smt_rule 28.214%. Weighted tardiness is 24232.66 minutes under smt_rule and 21988.14 under ResiliMES. Q-time is 348.8 against 386.0. Re-cleans are 25.0 against 25.2. On X-factor dues at a 600-minute repair, ResiliMES on-time 97.47% beats smt_rule 70.116%. Weighted tardiness is 2124.84 minutes under smt_rule and 458.16 under ResiliMES. Q-time is 670.4 against 430.0. Re-cleans are 70.2 against 38.0. These rows were not tuned after the run.
 
 ### Lithography breakdown
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | Candidate cap | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| resilimes | 56.428 | 21844.54 | 26.282 | 75.886 | 71.306 | 395.6 | 0 | 0 | 155.8 | 0.0002 | 0.0057 | 2.283 |
-| edd | 56.784 | 21436.12 | 25.61 | 79.07 | 74.514 | 419.4 | 0 | 0 | 0 | 0.0002 | 0.0027 | 1.262 |
+| resilimes | 56.428 | 21844.54 | 26.282 | 75.886 | 71.306 | 395.6 | 0.0 | 0.0 | 155.8 | 0.0002 | 0.0064 | 2.476 |
+| edd | 56.784 | 21436.12 | 25.61 | 79.07 | 74.514 | 419.4 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.0028 | 1.349 |
 
-While `Litho_FE_92-1` is down, other tools in `Litho_FE_92` start 250.4 lots under ResiliMES and 250.8 under EDD (five-seed mean). The family queue peaks at 40 lots. The downstream queue peaks at 375.4 under ResiliMES and 486.2 under EDD. On-time uses 56 lots due inside the horizon, of which 10 are already late at the snapshot. The interactive lithography click is 12 hours and seed 1, and the two policies tie there at 2/19. That click is not this 48-hour table.
+While `Litho_FE_92-1` is down, other tools in `Litho_FE_92` start 250.4 lots under ResiliMES and 250.8 under EDD (five-seed mean). The family queue peaks at 40.0 lots. The downstream queue peaks at 375.4 under ResiliMES and 486.2 under EDD. On-time uses 56.0 lots due inside the horizon, of which 10.0 are already late at the snapshot. The interactive lithography click is 12 hours and seed 1, and the two policies tie there at 2/19. That click is not this 48-hour table.
 
 ### PM avoidance (calendar shifted, durations unchanged)
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | Candidate cap | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| resilimes | 55.0 | 22795.84 | 26.85 | 74.39 | 69.902 | 367 | 54.2 | 0 | 154.6 | 0.0002 | 0.0057 | 2.286 |
-| edd | 56.784 | 21525.68 | 26.068 | 79.12 | 74.508 | 414.8 | 0 | 495.6 | 0 | 0.0002 | 0.0027 | 1.267 |
+| resilimes | 55.0 | 22795.84 | 26.85 | 74.39 | 69.902 | 367.0 | 54.2 | 0.0 | 154.6 | 0.0002 | 0.0064 | 2.473 |
+| edd | 55.716 | 22564.8 | 25.514 | 76.996 | 72.634 | 439.8 | 45.6 | 0.0 | 0.0 | 0.0002 | 0.0029 | 1.359 |
 
 ### Hot lot
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | Candidate cap | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| resilimes | 55.09 | 27588.48 | 26.628 | 76.602 | 71.934 | 389.2 | 0 | 0 | 151.2 | 0.0002 | 0.0058 | 2.331 |
-| fifo | 26.43 | 52672.8 | 27.018 | 76.22 | 70.632 | 749.6 | 0 | 0 | 0 | 0.0002 | 0.0024 | 1.282 |
+| resilimes | 55.09 | 27588.48 | 26.628 | 76.602 | 71.934 | 389.2 | 0.0 | 0.0 | 151.2 | 0.0002 | 0.0065 | 2.528 |
+| fifo | 26.43 | 52672.8 | 27.018 | 76.22 | 70.632 | 749.6 | 0.0 | 0.0 | 0.0 | 0.0002 | 0.0026 | 1.382 |
 
-`Init_Lot_10_11` completes 37 steps under ResiliMES and 23 under FIFO. Promoting it moves the on-time denominator to 57 lots (56 on the FIFO book).
+`Init_Lot_10_11` completes 37.0 steps under ResiliMES and 23.0 under FIFO. Promoting it moves the on-time denominator to 57.0 lots (56.0 on the FIFO book).
 
-## Seeds 9-13 (one run, then keep or revert)
+## Seeds 9-13 control (regenerated by make smt-bench)
 
-Registered before the run. Seeds 9, 10, 11, 12, 13. X-factor book: due = remaining process times 2.75, 48 hours, 87 lots due, `Litho_FE_92-1` down 600 minutes. Published-due book: 48 hours, 56 lots due. Policies: ResiliMES, EDD, FIFO, CR. Slack threshold 7200 seconds. Keep a ResiliMES arm only when, on both books, the on-time lot count is not lower and re-cleans are not higher and Q-time violations are not higher than the control. EDD, FIFO, and CR matched the control on every arm.
+Shipped score only. Seeds 9, 10, 11, 12, 13. X-factor book: due = remaining process times 2.75, 48 hours, `Litho_FE_92-1` down 600 minutes. Published-due book: 48 hours, published dues. PM refusal applies to every policy. This table is recomputed by `make smt-bench`.
 
-Control is the shipped score: lot due inside `dpi()`, the Wet_Etch gate, and the candidate cap. Sums are five seeds.
+| Book | Policy | On time | Q-time | Re-cleans | Per seed |
+| --- | --- | ---: | ---: | ---: | --- |
+| xfactor | resilimes | 407/435 | 2223 | 223 | 82/87, 74/87, 87/87, 87/87, 77/87 |
+| xfactor | edd | 434/435 | 2447 | 283 | 86/87, 87/87, 87/87, 87/87, 87/87 |
+| xfactor | fifo | 89/435 | 3756 | 455 | 19/87, 22/87, 16/87, 16/87, 16/87 |
+| xfactor | cr | 301/435 | 3577 | 557 | 41/87, 65/87, 70/87, 61/87, 64/87 |
+| published | resilimes | 156/280 | 1821 | 131 | 32/56, 31/56, 32/56, 32/56, 29/56 |
+| published | edd | 158/280 | 1952 | 206 | 31/56, 32/56, 32/56, 31/56, 32/56 |
+| published | fifo | 72/280 | 3647 | 444 | 13/56, 15/56, 15/56, 16/56, 13/56 |
+| published | cr | 82/280 | 1602 | 68 | 18/56, 20/56, 13/56, 16/56, 15/56 |
+
+## Seeds 9-13 arm decisions (lab note, not regenerated by make smt-bench)
+
+The rows below are the one-shot recorded before `make smt-bench` regenerated the control. The expose-due and dry-etch arms are not in the code, so this command does not recompute them. Do not read the lab-note control as the current score. The current score is the regenerated table above.
+
+Registered before that one-shot. Seeds 9, 10, 11, 12, 13. X-factor book: due = remaining process times 2.75, 48 hours, 87 lots due, `Litho_FE_92-1` down 600 minutes. Published-due book: 48 hours, 56 lots due. Policies: ResiliMES, EDD, FIFO, CR. Slack threshold 7200 seconds. Keep a ResiliMES arm only when, on both books, the on-time lot count is not lower and re-cleans are not higher and Q-time violations are not higher than the control. EDD, FIFO, and CR matched the control on every arm.
+
+Control in this lab note is the score shipped at that one-shot: lot due inside `dpi()`, the Wet_Etch gate, and the candidate cap. Sums are five seeds.
 
 | Book | Arm | Decision | On time | Q-time | Re-cleans |
 | --- | --- | --- | ---: | ---: | ---: |

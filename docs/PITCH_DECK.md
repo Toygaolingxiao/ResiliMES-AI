@@ -97,7 +97,7 @@ What we deliberately left out: a general chat box as the product, a schedule the
 
 ## 10. Engineering (Technical)
 
-Python 3.11+, typed package, ruff, mypy, pytest, GitHub Actions on 3.11 and 3.12, Dockerfile, `make demo` with no credentials. Structured logs redact secrets. Zetaris schema names are validated. SQL on the read path is `SELECT` only. `smt_rule` is the dataset dispatch cascade from `tool.txt.1l` (`rule_HotLotFIRST` with `rank_HP;rank_RSETUP;rank_CR`, and `rule_LSSU` on Implant_128, Implant_132, and Implant_91). Its rows are whatever `make smt-bench` wrote. They were not tuned after the run.
+Python 3.11+, typed package, ruff, mypy, pytest, GitHub Actions on 3.11 and 3.12, Dockerfile, `make demo` with no credentials. Structured logs redact secrets. Zetaris schema names are validated. SQL on the read path is `SELECT` only. `smt_rule` is the dataset dispatch cascade from `tool.txt.1l` (`rule_HotLotFIRST` with `rank_HP;rank_RSETUP;rank_CR`, and `rule_LSSU` on Implant_128, Implant_132, and Implant_91). Seeds 1-5, scored once: ResiliMES beats it on on-time, 56.428% against 28.214% on published dues and 97.47% against 70.116% on the X-factor book. Those rows were not tuned after the run. On the shifted PM calendar, with the same PM refusal on every policy, EDD is 55.716% on time and ResiliMES is 55.0%.
 
 ## 11. What we would do next
 
