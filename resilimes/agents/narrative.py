@@ -21,9 +21,7 @@ def narrate(
         and row.after_equipment
         and row.before_equipment != row.after_equipment
     ]
-    held = [
-        row for row in outcomes if row.after_completion_min is None and row.after_tardiness_min > 0
-    ]
+    held = [row for row in outcomes if row.job_id in after.unscheduled_lots]
     new_lots = [
         row
         for row in outcomes
@@ -49,7 +47,10 @@ def narrate(
         )
     if held:
         names = ", ".join(row.job_id for row in held)
-        parts.append(f"Held for a hard constraint: {names}.")
+        parts.append(
+            f"Held for a hard constraint: {names}. "
+            "Those lots stay blocked until the constraint clears. No finish time is assumed."
+        )
     parts.append(
         f"On-time delivery {before.on_time_delivery_pct:.1f}% → {after.on_time_delivery_pct:.1f}%. "
         f"Priority-weighted tardiness {before.weighted_tardiness_min:.0f} → "

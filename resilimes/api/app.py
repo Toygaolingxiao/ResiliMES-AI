@@ -64,7 +64,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "label": "OFFLINE MOCK" if llm == "mock" and data == "sample" else llm.upper(),
             "nightshift_configured": cfg.token_configured,
             "zetaris_configured": cfg.zetaris_configured,
-            "nemotron_model": cfg.nemotron_model,
+            "nemotron_model": cfg.nemotron_model if cfg.token_configured else None,
             "engines": ["scout-intent", "world-model", "markovian"],
             "horizon": cfg.horizon.strftime("%Y-%m-%dT%H:%M:%SZ"),
         }

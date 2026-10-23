@@ -132,6 +132,7 @@ def compress(carry: dict[str, Any]) -> dict[str, Any]:
 
 
 def estimate_tokens(value: object) -> int:
+    """Rough size, not a model tokenizer: JSON characters divided by 4."""
     encoded = json.dumps(value, default=str, sort_keys=True)
     return max(1, len(encoded) // 4)
 

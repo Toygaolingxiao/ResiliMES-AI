@@ -22,6 +22,7 @@ from resilimes.domain.kpis import (
     bottleneck_report,
     compare_load,
     evaluate,
+    fed_bottleneck,
     flow_metrics,
     job_outcomes,
     lots_moved,
@@ -364,11 +365,16 @@ def run_recovery(
         bundle["committed"] = committed
         bundle["rejected"] = rejected
         refused = rejected.violations[0].constraint if rejected.violations else ""
+        critic_line = (
+            f"Verdict {committed.verdict}. Refused alternative: {refused}."
+            if refused
+            else f"Verdict {committed.verdict}. No unsafe alternative was proposed."
+        )
         emit(
             "critique",
             "evaluator",
             "Critic",
-            f"Verdict {committed.verdict}. Refused alternative: {refused or 'none'}.",
+            critic_line,
             [item.detail for item in rejected.violations[:2]],
             {
                 "verdict": committed.verdict,
@@ -473,7 +479,7 @@ def run_recovery(
                 payload={
                     "equipmentId": action.to_equipment,
                     "step": action.step,
-                    "type": action.type,
+                    "actionType": action.type,
                 },
                 contract=contract,
                 idempotency_key=f"commit-{action.job_id}-{action.step}",
@@ -482,6 +488,16 @@ def run_recovery(
         replay = world.query(contract, entity_type="job")
         bundle["world"] = world
         bundle["replay_jobs"] = len(replay)
+        bundle["replayed"] = [
+            {
+                "id": row.get("id"),
+                "type": row.get("type"),
+                "equipmentId": row.get("equipmentId"),
+                "step": row.get("step"),
+                "actionType": row.get("actionType"),
+            }
+            for row in replay
+        ]
         emit(
             "commit",
             "world-model",
@@ -611,6 +627,7 @@ def run_recovery(
         world_model={
             "events": len(bundle["world"].events),
             "replay_jobs": bundle["replay_jobs"],
+            "replayed": bundle.get("replayed") or [],
             "schema_version": bundle["world"].schema_version,
         },
         provider_call=bundle.get("provider_call"),
@@ -622,7 +639,9 @@ def run_recovery(
             after=after_kpi,
             rejected=rejected,
             verdict=committed.verdict,
-            bottleneck=_protected_bottleneck(bundle["after"]),
+            bottleneck=_kept_bottleneck(plants.after, bundle["before"], bundle["after"]),
+            focus_equipment=_focus_equipment(scenario, decision),
+            repair_min=_repair_min(scenario, decision),
         ),
         steps=steps,
     )
@@ -651,14 +670,38 @@ def _kind_for(intent_id: str) -> str:
     return "frozen_vs_recover"
 
 
-def _protected_bottleneck(schedule: Any) -> str:
-    area = str(getattr(schedule, "bottleneck_area", "") or "")
-    if not area:
+def _kept_bottleneck(after_plant: Any, before: Any, after: Any) -> str:
+    load = compare_load(after_plant, before, after_plant, after)
+    before_side = cast(dict[str, Any], load["before"])
+    after_side = cast(dict[str, Any], load["after"])
+    return fed_bottleneck(
+        before,
+        after,
+        after_plant,
+        cast(list[dict[str, Any]], before_side["areas"]),
+        cast(list[dict[str, Any]], after_side["areas"]),
+    )
+
+
+def _focus_equipment(scenario: Scenario | None, decision: Decision) -> str:
+    if scenario is not None:
         return ""
-    for action in getattr(schedule, "actions", []):
-        if "bottleneck" in action.reason:
-            return area
-    return ""
+    parameters = decision.intent.get("parameters") or {}
+    if not isinstance(parameters, dict):
+        return ""
+    return str(parameters.get("equipment_id") or "")
+
+
+def _repair_min(scenario: Scenario | None, decision: Decision) -> int | None:
+    if scenario is not None:
+        return None
+    parameters = decision.intent.get("parameters") or {}
+    if not isinstance(parameters, dict):
+        return None
+    repair = parameters.get("repair_min")
+    if isinstance(repair, int):
+        return repair
+    return None
 
 
 def _mode_banner(settings: Settings, mocked: bool, source_name: str) -> dict[str, Any]:
@@ -668,7 +711,7 @@ def _mode_banner(settings: Settings, mocked: bool, source_name: str) -> dict[str
         "llm": llm,
         "data": source_name,
         "label": "OFFLINE MOCK" if mocked and source_name == "sample" else llm.upper(),
-        "nemotron_model": settings.nemotron_model,
+        "nemotron_model": settings.nemotron_model if settings.token_configured else None,
     }
 
 
