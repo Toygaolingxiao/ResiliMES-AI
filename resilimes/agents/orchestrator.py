@@ -3,18 +3,28 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+import time
+from collections.abc import Callable
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
+from resilimes.agents.brief import refusal_brief, schedule_brief, status_brief
 from resilimes.agents.narrative import narrate
 from resilimes.agents.planner import naive_alternative, reject_alternative
 from resilimes.agents.specialist import gather
 from resilimes.config import Settings
 from resilimes.data.factory import build_source
 from resilimes.domain.critique import critique_schedule
-from resilimes.domain.gantt import build_gantt
-from resilimes.domain.kpis import evaluate, job_outcomes
+from resilimes.domain.gantt import annotate_moves, build_gantt
+from resilimes.domain.kpis import (
+    compare_load,
+    evaluate,
+    flow_metrics,
+    job_outcomes,
+    lots_moved,
+    step_waits,
+)
 from resilimes.domain.scenarios import (
     Scenario,
     apply_free_text,
@@ -66,9 +76,15 @@ class RecoveryReport(BaseModel):
     markovian: dict[str, Any] = Field(default_factory=dict)
     world_model: dict[str, Any] = Field(default_factory=dict)
     provider_call: dict[str, Any] | None = None
+    brief: dict[str, Any] = Field(default_factory=dict)
+    steps: list[dict[str, Any]] = Field(default_factory=list)
 
 
-def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
+def run_recovery(
+    settings: Settings,
+    request: RecoverInput,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
+) -> RecoveryReport:
     scenario: Scenario | None = None
     if request.scenario:
         scenario = get_scenario(request.scenario)
@@ -86,6 +102,41 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
         provider_mode="mock" if provider.mocked else "nightshift",
         ttl_seconds=settings.scout_ttl_seconds,
     )
+    mode = _mode_banner(settings, provider.mocked, source.name)
+    steps: list[dict[str, Any]] = []
+    started = time.perf_counter()
+
+    def emit(
+        phase: str,
+        agent: str,
+        title: str,
+        summary: str,
+        evidence: list[str] | None = None,
+        slots: dict[str, Any] | None = None,
+    ) -> None:
+        event = {
+            "type": "step",
+            "seq": len(steps) + 1,
+            "phase": phase,
+            "agent": agent,
+            "title": title,
+            "summary": summary,
+            "evidence": [item for item in (evidence or []) if item],
+            "slots": slots or {},
+            "elapsed_ms": int((time.perf_counter() - started) * 1000),
+        }
+        steps.append(event)
+        if on_event is not None:
+            on_event(event)
+
+    emit(
+        "alert",
+        "console",
+        "Disruption",
+        incident,
+        [],
+        {"scenario": scenario.id if scenario else ""},
+    )
     decision = scout.decide(
         {
             "prompt": incident,
@@ -93,7 +144,6 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
             "user": {"id": request.actor_id, "role": request.actor_role},
         }
     )
-    mode = _mode_banner(settings, provider.mocked, source.name)
     trace: list[dict[str, Any]] = [
         _trace(
             1,
@@ -103,9 +153,26 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
             [flag.get("code", "") for flag in decision.risk.get("flags") or []],
         )
     ]
+    emit(
+        "scout",
+        "scout",
+        "Intent signed" if decision.execution_contract else "Intent classified",
+        (
+            f"Intent {decision.intent.get('primary')}. "
+            f"Confidence {decision.intent.get('confidence')}. "
+            f"Risk {decision.risk.get('level')}."
+        ),
+        [flag.get("code", "") for flag in decision.risk.get("flags") or []],
+        {
+            "intent": decision.intent.get("primary"),
+            "confidence": decision.intent.get("confidence"),
+            "risk": decision.risk.get("level"),
+        },
+    )
     if decision.risk.get("level") == "block" or decision.execution_contract is None:
         reason = decision.risk.get("reason") or "Scout blocked the request."
         trace.append(_trace(2, "scout", "Guard refused the request", str(reason), []))
+        emit("guard", "scout", "Guard refused the request", str(reason), [], {"reason": reason})
         return _shell(
             incident=incident,
             scenario=scenario,
@@ -116,6 +183,8 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
             narrative=str(reason),
             blocked=True,
             block_reason=str(reason),
+            steps=steps,
+            brief=refusal_brief(str(reason)),
         )
 
     contract = decision.execution_contract
@@ -124,6 +193,19 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
         secret=settings.scout_signing_secret,
         engine="orchestrator",
         required_capability=None,
+    )
+    public = _public_contract(contract)
+    emit(
+        "contract",
+        "scout",
+        "Contract verified",
+        f"Signature {public['signaturePrefix']} verified.",
+        [],
+        {
+            "signature_prefix": public["signaturePrefix"],
+            "contract_id": public["contractId"],
+            "capabilities": public["capabilities"],
+        },
     )
     intent_id = str(decision.intent.get("primary"))
     if decision.risk.get("level") == "high" and not (decision.risk.get("approvals") or []):
@@ -136,6 +218,14 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
                 [],
             )
         )
+        emit(
+            "guard",
+            "scout",
+            "Approval required",
+            "High-risk intents are not executed without an approval record.",
+            [],
+            {},
+        )
         return _shell(
             incident=incident,
             scenario=scenario,
@@ -145,11 +235,22 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
             trace=trace,
             narrative="This intent is high risk. Record an approval before any tool is stopped.",
             approval_required=True,
+            steps=steps,
+            brief=refusal_brief("approval required", approval=True),
         )
 
     if scenario is None and intent_id in _READ_ONLY:
         facts = gather(base, queries)
         narrative = _status_narrative(base)
+        queries_only = [item for item in facts if str(item.get("name", "")).startswith("query.")]
+        emit(
+            "query",
+            "specialist",
+            "Zetaris read",
+            f"{len(queries_only)} reads from {source.name}.",
+            [str(item.get("evidence")) for item in queries_only],
+            {"source": source.name, "reads": len(queries_only)},
+        )
         trace.append(
             _trace(
                 2,
@@ -169,6 +270,15 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
             narrative=narrative,
             facts=_public_facts(facts),
             needs_clarification=decision.needs_clarification,
+            steps=steps,
+            brief=status_brief(
+                [
+                    item.equipment_id
+                    for item in base.equipment
+                    if item.status in {"DOWN", "MAINTENANCE"}
+                ],
+                [job.job_id for job in base.jobs if job.status == "BLOCKED"],
+            ),
         )
 
     if scenario is not None:
@@ -187,6 +297,23 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
     def sense(carry: dict[str, Any]) -> dict[str, Any]:
         facts = gather(plants.after, queries)
         bundle["facts"] = facts
+        queries_only = [item for item in facts if str(item.get("name", "")).startswith("query.")]
+        emit(
+            "query",
+            "specialist",
+            "Zetaris read",
+            f"{len(queries_only)} reads from {source.name}.",
+            [str(item.get("evidence")) for item in queries_only],
+            {"source": source.name, "reads": len(queries_only), "checkpoint": 1, "checkpoints": 5},
+        )
+        emit(
+            "sense",
+            "specialist",
+            "Sense",
+            f"{len(facts)} facts on the disrupted plant.",
+            [],
+            {"facts": len(facts), "checkpoint": 1, "checkpoints": 5},
+        )
         state = dict(carry.get("state") or {})
         state["fact_count"] = len(facts)
         entities = dict(carry.get("entities") or {})
@@ -203,6 +330,19 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
         after = schedule_plant(plants.after, POLICY_RECOVER)
         bundle["before"] = before
         bundle["after"] = after
+        emit(
+            "plan",
+            "planner",
+            "Plan",
+            (f"{len(after.operations)} operations, {len(after.unscheduled)} holds."),
+            [action.reason for action in after.actions[:4]],
+            {
+                "operations": len(after.operations),
+                "holds": len(after.unscheduled),
+                "checkpoint": 2,
+                "checkpoints": 5,
+            },
+        )
         state = dict(carry.get("state") or {})
         state["actions"] = [item.type + ":" + item.job_id for item in after.actions]
         return {
@@ -217,6 +357,20 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
         rejected = reject_alternative(plants.after, naive_alternative(plants.after, kind))
         bundle["committed"] = committed
         bundle["rejected"] = rejected
+        refused = rejected.violations[0].constraint if rejected.violations else ""
+        emit(
+            "critique",
+            "evaluator",
+            "Critic",
+            f"Verdict {committed.verdict}. Refused alternative: {refused or 'none'}.",
+            [item.detail for item in rejected.violations[:2]],
+            {
+                "verdict": committed.verdict,
+                "refused": refused,
+                "checkpoint": 3,
+                "checkpoints": 5,
+            },
+        )
         state = dict(carry.get("state") or {})
         state["verdict"] = committed.verdict
         issues = [item.constraint for item in rejected.violations]
@@ -262,6 +416,21 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
         )
         bundle["provider_call"] = result.model_dump()
         spoken = _narrative_from_model(result.content, text)
+        emit(
+            "explain",
+            "nightshift",
+            "Explain",
+            f"{result.provider} · {result.model} · {int(result.latency_ms)} ms.",
+            [],
+            {
+                "provider": result.provider,
+                "model": result.model,
+                "mocked": result.mocked,
+                "latency_ms": result.latency_ms,
+                "checkpoint": 4,
+                "checkpoints": 5,
+            },
+        )
         bundle["narrative"] = spoken
         state = dict(carry.get("state") or {})
         state["narrative"] = spoken[:500]
@@ -307,6 +476,19 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
         replay = world.query(contract, entity_type="job")
         bundle["world"] = world
         bundle["replay_jobs"] = len(replay)
+        emit(
+            "commit",
+            "world-model",
+            "Commit",
+            f"{len(world.events)} events, {len(replay)} job entities replayed.",
+            [],
+            {
+                "events": len(world.events),
+                "jobs": len(replay),
+                "checkpoint": 5,
+                "checkpoints": 5,
+            },
+        )
         state = dict(carry.get("state") or {})
         state["committed_jobs"] = len(replay)
         return {
@@ -398,16 +580,16 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
             "actions": [item.model_dump() for item in naive_alternative(plants.after, kind)],
             "critique": rejected.model_dump(),
         },
-        kpis={
-            "before": before_kpi.model_dump(),
-            "after": after_kpi.model_dump(),
-            "delta": _delta(before_kpi.model_dump(), after_kpi.model_dump()),
-        },
+        kpis=_comparison_kpis(
+            before_kpi.model_dump(),
+            after_kpi.model_dump(),
+            plants.before,
+            bundle["before"],
+            plants.after,
+            bundle["after"],
+        ),
         outcomes=[row.model_dump() for row in bundle["outcomes"]],
-        gantt={
-            "before": build_gantt(plants.before, bundle["before"]),
-            "after": build_gantt(plants.after, bundle["after"]),
-        },
+        gantt=_gantt_pair(plants.before, bundle["before"], plants.after, bundle["after"]),
         trace=trace,
         narrative=str(bundle.get("narrative") or ""),
         facts=_public_facts(facts),
@@ -425,7 +607,23 @@ def run_recovery(settings: Settings, request: RecoverInput) -> RecoveryReport:
         },
         provider_call=bundle.get("provider_call"),
         needs_clarification=decision.needs_clarification,
+        brief=schedule_brief(
+            kind=kind,
+            outcomes=bundle["outcomes"],
+            before=before_kpi,
+            after=after_kpi,
+            rejected=rejected,
+            verdict=committed.verdict,
+        ),
+        steps=steps,
     )
+
+
+def _gantt_pair(before_plant: Any, before: Any, after_plant: Any, after: Any) -> dict[str, Any]:
+    before_gantt = build_gantt(before_plant, before)
+    after_gantt = build_gantt(after_plant, after)
+    annotate_moves(before_gantt, after_gantt)
+    return {"before": before_gantt, "after": after_gantt}
 
 
 def _kind_for(intent_id: str) -> str:
@@ -480,6 +678,33 @@ def _public_facts(facts: list[dict[str, object]]) -> list[dict[str, Any]]:
     return public
 
 
+def _comparison_kpis(
+    before_dump: dict[str, Any],
+    after_dump: dict[str, Any],
+    before_plant: Any,
+    before: Any,
+    after_plant: Any,
+    after: Any,
+) -> dict[str, Any]:
+    load = compare_load(before_plant, before, after_plant, after)
+    before_side = cast(dict[str, Any], load["before"])
+    after_side = cast(dict[str, Any], load["after"])
+    before_dump["utilization_pct"] = before_side["utilization_pct"]
+    after_dump["utilization_pct"] = after_side["utilization_pct"]
+    before_dump.update(flow_metrics(before))
+    after_dump.update(flow_metrics(after))
+    return {
+        "before": before_dump,
+        "after": after_dump,
+        "delta": _delta(before_dump, after_dump),
+        "areas": {"before": before_side["areas"], "after": after_side["areas"]},
+        "lots_moved": lots_moved(before, after),
+        "horizon_min": load["horizon_min"],
+        "down": {"before": before_side["down"], "after": after_side["down"]},
+        "waits": {"before": step_waits(before), "after": step_waits(after)},
+    }
+
+
 def _delta(before: dict[str, Any], after: dict[str, Any]) -> dict[str, float]:
     keys = (
         "on_time_delivery_pct",
@@ -488,6 +713,9 @@ def _delta(before: dict[str, Any], after: dict[str, Any]) -> dict[str, float]:
         "utilization_pct",
         "lots_at_risk",
         "setup_changes",
+        "mean_lead_min",
+        "mean_wait_min",
+        "mean_x_factor",
     )
     return {key: float(after[key]) - float(before[key]) for key in keys}
 
@@ -540,6 +768,8 @@ def _shell(
     needs_clarification: bool = False,
     block_reason: str | None = None,
     facts: list[dict[str, Any]] | None = None,
+    steps: list[dict[str, Any]] | None = None,
+    brief: dict[str, Any] | None = None,
 ) -> RecoveryReport:
     return RecoveryReport(
         blocked=blocked,
@@ -560,4 +790,6 @@ def _shell(
         trace=trace,
         narrative=narrative,
         facts=facts or [],
+        steps=steps or [],
+        brief=brief or {},
     )

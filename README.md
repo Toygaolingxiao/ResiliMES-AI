@@ -65,7 +65,7 @@ pip install -r requirements-dev.txt
 make demo
 ```
 
-Open http://127.0.0.1:8000. The console loads the machine-breakdown scenario. No API keys are required. The amber banner means both providers are on their offline twins.
+Open http://127.0.0.1:8000. Choose a disruption. The console waits, so the stack light and the agent loop are visible when you click. No API keys are required. The amber banner means both providers are on their offline twins. In mock mode the stream pauses about 680 ms between real steps so a recording can read them. Pass `pace_ms: 0` to `POST /api/recover/stream` to skip that pause.
 
 Headless check:
 
@@ -125,7 +125,7 @@ python -m resilimes recover --scenario rush_order
 python -m resilimes recover --incident "Machine ETCH-02 Down, repair ETA 300 minutes"
 ```
 
-HTTP: `GET /api/health`, `GET /api/scenarios`, `POST /api/recover`, `GET /docs`.
+HTTP: `GET /api/health`, `GET /api/scenarios`, `POST /api/recover`, `POST /api/recover/stream` (server-sent steps, then the report), `GET /docs`.
 
 ## Tests
 

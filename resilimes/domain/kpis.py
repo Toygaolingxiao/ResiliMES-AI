@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from itertools import pairwise
+from typing import cast
+
 from .models import JobOutcome, KpiReport, Plant, Schedule, ScheduledOp, priority_weight
 from .plant import minutes_between
 
@@ -123,6 +126,190 @@ def _first_tool(schedule: Schedule) -> dict[str, str]:
         if op.job_id not in found:
             found[op.job_id] = op.equipment_id
     return found
+
+
+def makespan_of(schedule: Schedule) -> int:
+    return max((op.end_min for op in schedule.operations), default=0)
+
+
+def shared_horizon(before: Schedule, after: Schedule) -> int:
+    """One clock for both books: the longer makespan.
+
+    A shorter recovered book must not shrink the denominator.
+    """
+    return max(makespan_of(before), makespan_of(after))
+
+
+def compare_load(
+    before_plant: Plant,
+    before: Schedule,
+    after_plant: Plant,
+    after: Schedule,
+) -> dict[str, object]:
+    """Available-tool utilization of both books on ``shared_horizon``."""
+    horizon = shared_horizon(before, after)
+    return {
+        "horizon_min": horizon,
+        "before": load_side(before_plant, before, horizon),
+        "after": load_side(after_plant, after, horizon),
+    }
+
+
+def load_side(plant: Plant, schedule: Schedule, horizon: int) -> dict[str, object]:
+    """Busy time over up-time inside a fixed window.
+
+    Down minutes are not in the denominator. They are returned separately so a
+    tool that is down cannot raise utilization by disappearing from the window.
+    """
+    areas = area_utilization(plant, schedule, horizon)
+    busy = sum(cast(int, row["busy_min"]) for row in areas)
+    available = sum(cast(int, row["available_min"]) for row in areas)
+    pct = round(100.0 * busy / available, 1) if available else 0.0
+    down: list[dict[str, object]] = []
+    for equipment in plant.equipment:
+        down_min = _down_min(equipment.available_at_min, horizon)
+        if down_min <= 0:
+            continue
+        down.append(
+            {
+                "equipment_id": equipment.equipment_id,
+                "down_min": down_min,
+                "status": equipment.status,
+            }
+        )
+    return {
+        "utilization_pct": pct,
+        "busy_min": busy,
+        "available_min": available,
+        "areas": areas,
+        "down": down,
+    }
+
+
+def area_utilization(plant: Plant, schedule: Schedule, horizon: int) -> list[dict[str, object]]:
+    """Busy time over up-time for each tool area, on a caller-supplied horizon."""
+    by_area: dict[str, list[str]] = {}
+    available_at: dict[str, int] = {}
+    for equipment in plant.equipment:
+        by_area.setdefault(equipment.area, []).append(equipment.equipment_id)
+        available_at[equipment.equipment_id] = equipment.available_at_min
+    busy_by_tool: dict[str, int] = {}
+    for op in schedule.operations:
+        busy_by_tool[op.equipment_id] = busy_by_tool.get(op.equipment_id, 0) + (
+            op.process_min + op.setup_min
+        )
+    rows: list[dict[str, object]] = []
+    for area in sorted(by_area):
+        tool_ids = by_area[area]
+        available = 0
+        busy = 0
+        for tool_id in tool_ids:
+            available += _up_min(available_at[tool_id], horizon)
+            busy += busy_by_tool.get(tool_id, 0)
+        pct = round(100.0 * busy / available, 1) if available else 0.0
+        rows.append(
+            {
+                "area": area,
+                "tools": len(tool_ids),
+                "utilization_pct": pct,
+                "busy_min": busy,
+                "available_min": available,
+            }
+        )
+    return rows
+
+
+def flow_metrics(schedule: Schedule) -> dict[str, float]:
+    """Lead time, inter-step wait, and X-factor for lots the book actually finishes.
+
+    Lead time is completion minus the scenario clock. X-factor is that lead time
+    divided by raw process time. Held lots are omitted, not charged 24 hours.
+    """
+    unscheduled = {item.job_id for item in schedule.unscheduled}
+    leads: list[float] = []
+    waits: list[int] = []
+    factors: list[float] = []
+    for job_id, ordered in _by_job(schedule).items():
+        if job_id in unscheduled:
+            continue
+        completion = ordered[-1].end_min
+        process = sum(op.process_min for op in ordered)
+        leads.append(float(completion))
+        for left, right in pairwise(ordered):
+            waits.append(max(0, right.start_min - left.end_min))
+        if process > 0:
+            factors.append(completion / process)
+    return {
+        "mean_lead_min": round(sum(leads) / len(leads), 1) if leads else 0.0,
+        "mean_wait_min": round(sum(waits) / len(waits), 1) if waits else 0.0,
+        "mean_x_factor": round(sum(factors) / len(factors), 2) if factors else 0.0,
+    }
+
+
+def step_waits(schedule: Schedule) -> list[dict[str, object]]:
+    """Average and max gap between consecutive steps, ranked by the average."""
+    buckets: dict[tuple[str, str], list[int]] = {}
+    for ordered in _by_job(schedule).values():
+        for left, right in pairwise(ordered):
+            gap = max(0, right.start_min - left.end_min)
+            buckets.setdefault((left.step, right.step), []).append(gap)
+    rows: list[dict[str, object]] = []
+    for (src, dst), values in buckets.items():
+        rows.append(
+            {
+                "from_step": src,
+                "to_step": dst,
+                "avg_min": round(sum(values) / len(values), 1),
+                "max_min": max(values),
+                "n": len(values),
+            }
+        )
+    rows.sort(
+        key=lambda row: (
+            -cast(float, row["avg_min"]),
+            str(row["from_step"]),
+            str(row["to_step"]),
+        )
+    )
+    return rows
+
+
+def _by_job(schedule: Schedule) -> dict[str, list[ScheduledOp]]:
+    grouped: dict[str, list[ScheduledOp]] = {}
+    for op in schedule.operations:
+        grouped.setdefault(op.job_id, []).append(op)
+    return {
+        job_id: sorted(ops, key=lambda op: (op.step_index, op.start_min))
+        for job_id, ops in grouped.items()
+    }
+
+
+def _up_min(available_at: int, horizon: int) -> int:
+    if horizon <= 0:
+        return 0
+    return max(0, horizon - available_at)
+
+
+def _down_min(available_at: int, horizon: int) -> int:
+    if horizon <= 0:
+        return 0
+    return min(max(available_at, 0), horizon)
+
+
+def lots_moved(before: Schedule, after: Schedule) -> list[str]:
+    """Lots whose tool changed on a step that exists in both books.
+
+    A new lot, a held lot, and a lot that only moved in time stay out of this list.
+    """
+    prior: dict[tuple[str, str], str] = {}
+    for op in before.operations:
+        prior.setdefault((op.job_id, op.step), op.equipment_id)
+    moved: set[str] = set()
+    for op in after.operations:
+        old = prior.get((op.job_id, op.step))
+        if old is not None and old != op.equipment_id:
+            moved.add(op.job_id)
+    return sorted(moved)
 
 
 def _utilization(plant: Plant, schedule: Schedule, makespan: int) -> float:

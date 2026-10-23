@@ -70,7 +70,9 @@ The explainer calls `LlmProvider.complete` once per recovery. In mock mode that 
 
 ## Console
 
-FastAPI serves `/` and `/api/*`. The page is static HTML, CSS, and JS with no build step and no external font or script host, so `make demo` works offline. The Gantt uses one time scale for both charts. Down time is the hatched band. KPI color follows the direction that helps the fab: on-time delivery up is good, tardiness and lots-at-risk down are good.
+FastAPI serves `/` and `/api/*`. The page is static HTML, CSS, and JS with no build step and no external font or script host, so `make demo` works offline. `POST /api/recover/stream` emits each real step (alert, Scout, contract, Zetaris read, sense, plan, critique, explain, commit) as server-sent events while `run_recovery` is still running, then the same report as `POST /api/recover`. Mock mode inserts a 680 ms gap between those events so the console can be filmed. The gap is delivery pacing; `elapsed_ms` on each event is the compute time. `pace_ms: 0` skips it. Live mode does not pace.
+
+The Gantt uses one time scale for both charts. Down time is the hatched band. A bar outline marks a lot that changed tool or start. KPI color follows the direction that helps the fab: on-time delivery up is good, tardiness and lots-at-risk down are good. Durations on screen are hours and days; the API still speaks minutes.
 
 ## Failure behavior
 
