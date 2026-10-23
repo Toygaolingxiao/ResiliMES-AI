@@ -72,10 +72,19 @@ class WorldModel:
         entities: dict[str, dict[str, Any]] = {}
         for event in self.events:
             key = f"{event['entityType']}:{event['entityId']}"
-            current = entities.get(key, {"id": event["entityId"], "type": event["entityType"]})
+            current = entities.get(key)
+            if current is None:
+                current = {}
             payload = event["payload"]
             if isinstance(payload, dict):
-                current.update(payload)
+                for field, value in payload.items():
+                    # Identity comes from the event, never from a payload key
+                    # that happens to be named id or type.
+                    if field in {"id", "type"}:
+                        continue
+                    current[field] = value
+            current["id"] = event["entityId"]
+            current["type"] = event["entityType"]
             current["lastEvent"] = event["eventId"]
             entities[key] = current
         return entities

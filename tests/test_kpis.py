@@ -216,7 +216,13 @@ def test_stockout_does_not_paint_a_shorter_book_as_a_win() -> None:
         assert tones[key]["comparable"] is False
         assert tones[key]["tone"] == "flat"
     assert tones["on_time_delivery_pct"]["tone"] == "bad"
-    assert tones["weighted_tardiness_min"]["tone"] == "bad"
+    assert tones["weighted_tardiness_min"]["comparable"] is False
+    assert tones["weighted_tardiness_min"]["tone"] == "flat"
+    assert (
+        report.kpis["after"]["weighted_tardiness_min"]
+        == report.kpis["before"]["weighted_tardiness_min"]
+    )
+    assert report.kpis["after"]["unscheduled_lots"]
     assert tones["lots_at_risk"]["tone"] == "bad"
     assert tones["utilization_pct"]["tone"] == "flat"
     assert metric_tones(report.kpis["before"], report.kpis["after"]) == tones

@@ -109,7 +109,7 @@ An append-only log. Event ids are a hash of type, entity, payload, and idempoten
 
 ### Markovian
 
-`compress` keeps decisions, entities, open issues, and structured state. It drops `transcript`, `messages`, `raw_prompt`, `prose`, and `history`. A step that raises is recorded and the checkpoint stays at the last good state, so the next chunk still runs. The run reports checkpoint tokens next to the quadratic cost of resending the whole history. On the litho scenario the five chunks use about 500 checkpoint tokens against about 1600 for the naive history.
+`compress` keeps decisions, entities, open issues, and structured state. It drops `transcript`, `messages`, `raw_prompt`, `prose`, and `history`. A step that raises is recorded and the checkpoint stays at the last good state, so the next chunk still runs. The run reports a checkpoint size next to the quadratic cost of resending the whole history. The count is `len(json) // 4`, a size comparison, not a model tokenizer. On the litho scenario the five chunks use about 500 against about 1600 for the naive history.
 
 ## Agents and the model
 

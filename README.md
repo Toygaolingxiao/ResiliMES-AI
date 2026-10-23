@@ -56,7 +56,7 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Sponsor write-up: [docs/S
 
 ## Quick start
 
-Python 3.11 or 3.12.
+Python 3.11 or 3.12. On Debian or Ubuntu, `python -m venv` fails with `ensurepip is not available` until the venv package is installed (`sudo apt install python3-venv`, or `python3.12-venv` for that interpreter).
 
 ```bash
 python -m venv .venv

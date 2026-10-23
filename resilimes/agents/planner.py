@@ -43,7 +43,46 @@ def _start_on_down_tool(plant: Plant) -> list[Action]:
                 evidence=[f"equipment:{target} status={machine.status}"],
             )
         )
-    return actions
+    if actions:
+        return actions
+    machine = next((item for item in plant.equipment if item.status == "DOWN"), None)
+    if machine is None:
+        return []
+    products = plant.product_map()
+    ranked: list[tuple[tuple[int, int, int, str], Action]] = []
+    for job in plant.jobs:
+        product = products.get(job.product_id)
+        if product is None:
+            continue
+        for step in product.route:
+            if step.capability not in machine.capability:
+                continue
+            preferred = machine.equipment_id in job.preferred_equipment
+            queued = job.status == "QUEUED"
+            key = (0 if preferred else 1, 0 if queued else 1, job.priority, job.job_id)
+            ranked.append(
+                (
+                    key,
+                    Action(
+                        type="reassign",
+                        job_id=job.job_id,
+                        step=step.step,
+                        from_equipment=job.assigned_equipment,
+                        to_equipment=machine.equipment_id,
+                        start_min=0,
+                        reason=(
+                            f"Naive plan: start {job.job_id} on {machine.equipment_id} "
+                            "immediately and ignore the repair."
+                        ),
+                        evidence=[f"equipment:{machine.equipment_id} status={machine.status}"],
+                    ),
+                )
+            )
+            break
+    if not ranked:
+        return actions
+    ranked.sort(key=lambda item: item[0])
+    return [ranked[0][1]]
 
 
 def _preempt_running(plant: Plant) -> list[Action]:

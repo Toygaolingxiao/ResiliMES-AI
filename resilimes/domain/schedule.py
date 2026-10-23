@@ -558,6 +558,11 @@ def _remember_reticle(
 
 
 def _candidates(step: StepWork, plant: Plant, policy: str) -> list[Equipment]:
+    stuck = _stuck_equipment(step, plant)
+    if policy == POLICY_FROZEN and stuck is not None:
+        locked = [item for item in plant.equipment if item.equipment_id == stuck]
+        if locked:
+            return locked
     capable = [item for item in plant.equipment if step.capability in item.capability]
     if policy == POLICY_FROZEN and step.is_first:
         if step.assigned_equipment:
@@ -579,6 +584,14 @@ def _candidates(step: StepWork, plant: Plant, policy: str) -> list[Equipment]:
         for item in capable
         if not inhibited(plant, step.product_id, step.recipe, item.equipment_id)
     ]
+
+
+def _stuck_equipment(step: StepWork, plant: Plant) -> str | None:
+    prefix = f"{step.job_id}:{step.step}:"
+    for item in plant.frozen_stick:
+        if item.startswith(prefix):
+            return item[len(prefix) :]
+    return None
 
 
 def _later_process(step: StepWork, plant: Plant) -> int:
@@ -655,6 +668,23 @@ def _staff_ok(
     return True
 
 
+def _bottleneck_clause(
+    plant: Plant,
+    equipment_id: str,
+    bottleneck: str,
+    unscheduled: list[Unscheduled],
+) -> str:
+    """Area name only when this placement is on an up tool and nothing is held."""
+    if unscheduled or not bottleneck:
+        return ""
+    destination = plant.equipment_map().get(equipment_id)
+    if destination is None or destination.area != bottleneck:
+        return ""
+    if destination.status in UNAVAILABLE:
+        return ""
+    return destination.area
+
+
 def _actions(
     plant: Plant,
     operations: list[ScheduledOp],
@@ -679,8 +709,7 @@ def _actions(
                 f"{job_id} moves from {origin} to {op.equipment_id} for {op.step}. "
                 "The destination is up, capability matches, and the slot protects the due date."
             )
-            destination = plant.equipment_map().get(op.equipment_id)
-            if destination is not None and bottleneck and destination.area == bottleneck:
+            if _bottleneck_clause(plant, op.equipment_id, bottleneck, unscheduled):
                 reason += f" This keeps the {bottleneck} bottleneck on an up tool."
             mask = reticle_for(plant, job.product_id, op.step)
             if mask:
@@ -699,8 +728,7 @@ def _actions(
         else:
             kind = "assign"
             reason = f"{job_id} is dispatched to {op.equipment_id} for {op.step}."
-            destination = plant.equipment_map().get(op.equipment_id)
-            if destination is not None and bottleneck and destination.area == bottleneck:
+            if _bottleneck_clause(plant, op.equipment_id, bottleneck, unscheduled):
                 reason += f" This feeds the {bottleneck} bottleneck."
         evidence = [
             f"equipment:{op.equipment_id}",

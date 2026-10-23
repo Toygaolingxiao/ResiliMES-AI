@@ -95,6 +95,8 @@ def test_api_health_scenarios_and_recover() -> None:
     body = health.json()
     assert body["llm"] == "mock"
     assert body["data"] == "sample"
+    assert body["nemotron_model"] is None
+    assert body["nightshift_configured"] is False
     assert "scout-intent" in body["engines"]
     scenarios = client.get("/api/scenarios")
     assert {item["id"] for item in scenarios.json()["scenarios"]} == {

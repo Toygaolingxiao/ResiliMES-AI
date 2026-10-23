@@ -11,7 +11,7 @@ LANGS: tuple[Lang, ...] = ("en", "zh", "ja")
 
 
 def human_minutes(minutes: float, lang: Lang) -> str:
-    """Compact duration. 17280 minutes is 12 d; 840 minutes is 14 h."""
+    """Compact duration. 840 minutes is 14 h. Two days and up is shown in days."""
     sign = "−" if minutes < 0 else ""
     total = round(abs(minutes))
     if total < 60:
@@ -60,6 +60,8 @@ def schedule_brief(
     rejected: Critique,
     verdict: str,
     bottleneck: str = "",
+    focus_equipment: str = "",
+    repair_min: int | None = None,
 ) -> dict[str, dict[str, object]]:
     constraint = rejected.violations[0].constraint if rejected.violations else ""
     moved = [
@@ -69,9 +71,12 @@ def schedule_brief(
         and row.after_equipment
         and row.before_equipment != row.after_equipment
     ]
-    held = [
-        row for row in outcomes if row.after_completion_min is None and row.after_tardiness_min > 0
+    step_moves = [
+        row
+        for row in outcomes
+        if row.moved_from and row.moved_to and row.moved_from != row.moved_to
     ]
+    held = [row for row in outcomes if row.job_id in after.unscheduled_lots]
     inserted = [
         row
         for row in outcomes
@@ -88,9 +93,20 @@ def schedule_brief(
     elif kind == "insert_lot" or inserted:
         lead = _inserted_lead(inserted, after)
         chosen = _rush(lead, before, after, verdict, constraint)
-    elif moved:
-        lead = min(moved, key=lambda row: row.after_tardiness_min - row.before_tardiness_min)
+    elif step_moves or moved:
+        pool = step_moves or moved
+        if focus_equipment:
+            named = [
+                row
+                for row in pool
+                if row.moved_from == focus_equipment or row.before_equipment == focus_equipment
+            ]
+            if named:
+                pool = named
+        lead = min(pool, key=lambda row: row.after_tardiness_min - row.before_tardiness_min)
         chosen = _move(lead, before, after, verdict, constraint)
+    elif focus_equipment:
+        chosen = _named_down(focus_equipment, repair_min, before, after, verdict, constraint)
     else:
         chosen = _generic(before, after, verdict, constraint)
     return _pack(_with_bottleneck(chosen, bottleneck))
@@ -258,12 +274,6 @@ def _queue(
         else f"帳票は {job} を保留する。"
     )
     otd_b, otd_a = _pct(before, after)
-    tard_b = human_minutes(before.weighted_tardiness_min, "en")
-    tard_a = human_minutes(after.weighted_tardiness_min, "en")
-    tard_b_zh = human_minutes(before.weighted_tardiness_min, "zh")
-    tard_a_zh = human_minutes(after.weighted_tardiness_min, "zh")
-    tard_b_ja = human_minutes(before.weighted_tardiness_min, "ja")
-    tard_a_ja = human_minutes(after.weighted_tardiness_min, "ja")
     return {
         "en": (
             f"{job} misses the etch queue time",
@@ -274,7 +284,7 @@ def _queue(
             ],
             (
                 f"{job} is held because CMP would start after the etch queue time. "
-                f"Weighted tardiness {tard_b} → {tard_a}. {_refusal(constraint, 'en')}"
+                f"{_hold_clock(before, after, 'en')} {_refusal(constraint, 'en')}"
             ),
         ),
         "zh": (
@@ -286,7 +296,7 @@ def _queue(
             ],
             (
                 f"{job} 被暂扣，因为 CMP 会在刻蚀队列时间之后才开工。"
-                f"加权拖期 {tard_b_zh} → {tard_a_zh}。{_refusal(constraint, 'zh')}"
+                f"{_hold_clock(before, after, 'zh')}{_refusal(constraint, 'zh')}"
             ),
         ),
         "ja": (
@@ -298,7 +308,7 @@ def _queue(
             ],
             (
                 f"{job} は、CMP が待ち時間の後に始まるため保留。"
-                f"加重遅延 {tard_b_ja} → {tard_a_ja}。{_refusal(constraint, 'ja')}"
+                f"{_hold_clock(before, after, 'ja')}{_refusal(constraint, 'ja')}"
             ),
         ),
     }
@@ -357,7 +367,11 @@ def _pack(
     rows: dict[Lang, tuple[str, list[str], str]],
 ) -> dict[str, dict[str, object]]:
     return {
-        lang: {"headline": headline, "points": points, "detail": detail}
+        lang: {
+            "headline": headline.strip(),
+            "points": [point.strip() for point in points],
+            "detail": detail.strip(),
+        }
         for lang, (headline, points, detail) in rows.items()
     }
 
@@ -373,7 +387,79 @@ def _pct(before: KpiReport, after: KpiReport) -> tuple[str, str]:
     return (f"{before.on_time_delivery_pct:.1f}%", f"{after.on_time_delivery_pct:.1f}%")
 
 
+def _hold_clock(before: KpiReport, after: KpiReport, lang: Lang) -> str:
+    """Say what the tardiness figure is when held lots have no finish time."""
+    if after.unscheduled_lots and after.weighted_tardiness_min == before.weighted_tardiness_min:
+        if lang == "zh":
+            return "暂扣批次不假设完工时刻。"
+        if lang == "ja":
+            return "保留ロットに完了時刻は仮定しない。"
+        return "Held lots are not given a finish time."
+    if lang == "zh":
+        return (
+            f"加权拖期 {human_minutes(before.weighted_tardiness_min, 'zh')} → "
+            f"{human_minutes(after.weighted_tardiness_min, 'zh')}。"
+        )
+    if lang == "ja":
+        return (
+            f"加重遅延 {human_minutes(before.weighted_tardiness_min, 'ja')} → "
+            f"{human_minutes(after.weighted_tardiness_min, 'ja')}。"
+        )
+    return (
+        f"Weighted tardiness {human_minutes(before.weighted_tardiness_min, 'en')} → "
+        f"{human_minutes(after.weighted_tardiness_min, 'en')}."
+    )
+
+
+def _named_down(
+    tool: str,
+    repair_min: int | None,
+    before: KpiReport,
+    after: KpiReport,
+    verdict: str,
+    constraint: str,
+) -> dict[Lang, tuple[str, list[str], str]]:
+    span_en = human_minutes(repair_min, "en") if repair_min else ""
+    span_zh = human_minutes(repair_min, "zh") if repair_min else ""
+    span_ja = human_minutes(repair_min, "ja") if repair_min else ""
+    otd_b, otd_a = _pct(before, after)
+    title_en = f"{tool} is down for {span_en}" if span_en else f"{tool} is down"
+    title_zh = f"{tool} 宕机 {span_zh}" if span_zh else f"{tool} 宕机"
+    title_ja = f"{tool} は {span_ja}停止" if span_ja else f"{tool} は停止"
+    return {
+        "en": (
+            title_en,
+            [
+                f"{tool} is the tool in the request.",
+                f"On-time delivery {otd_b} → {otd_a}.",
+                f"The critic {_verdict(verdict, 'en')} the schedule. {_refusal(constraint, 'en')}",
+            ],
+            f"{title_en}. {_refusal(constraint, 'en')}",
+        ),
+        "zh": (
+            title_zh,
+            [
+                f"请求点名的是 {tool}。",
+                f"准时交付 {otd_b} → {otd_a}。",
+                f"评审{_verdict(verdict, 'zh')}这版排程。{_refusal(constraint, 'zh')}",
+            ],
+            f"{title_zh}。{_refusal(constraint, 'zh')}",
+        ),
+        "ja": (
+            title_ja,
+            [
+                f"依頼が名指しした装置は {tool}。",
+                f"納期遵守 {otd_b} → {otd_a}。",
+                f"批評は日程を{_verdict(verdict, 'ja')}。{_refusal(constraint, 'ja')}",
+            ],
+            f"{title_ja}。{_refusal(constraint, 'ja')}",
+        ),
+    }
+
+
 def _refusal(constraint: str, lang: Lang) -> str:
+    if not constraint:
+        return ""
     table: dict[str, dict[Lang, str]] = {
         "equipment_status": {
             "en": "Starting the blocked lot on the down tool was refused.",
@@ -422,13 +508,25 @@ def _move(
     constraint: str,
 ) -> dict[Lang, tuple[str, list[str], str]]:
     otd_b, otd_a = _pct(before, after)
+    origin = lead.moved_from or lead.before_equipment or ""
+    dest = lead.moved_to or lead.after_equipment or ""
+    blocked = not lead.moved_from or lead.moved_from == lead.before_equipment
+    step = lead.moved_step or ""
+    if blocked:
+        wait_en = f"{origin} stays down. {lead.job_id} was blocked on it."
+        wait_zh = f"{origin} 仍然宕机。{lead.job_id} 原先被挡在上面。"
+        wait_ja = f"{origin} は停止のまま。{lead.job_id} はそこに止まっていた。"
+    else:
+        wait_en = f"{origin} stays down. {lead.job_id} {step} was on it."
+        wait_zh = f"{origin} 仍然宕机。{lead.job_id} 的 {step} 原先排在上面。"
+        wait_ja = f"{origin} は停止のまま。{lead.job_id} の {step} はそこにあった。"
     return {
         "en": (
-            f"{lead.job_id} leaves {lead.before_equipment}",
+            f"{lead.job_id} leaves {origin}",
             [
-                f"{lead.before_equipment} stays down. {lead.job_id} was blocked on it.",
+                wait_en,
                 (
-                    f"It runs on {lead.after_equipment}. "
+                    f"It runs on {dest}. "
                     f"On-time delivery {otd_b} → {otd_a}. "
                     f"Weighted tardiness {human_minutes(before.weighted_tardiness_min, 'en')} → "
                     f"{human_minutes(after.weighted_tardiness_min, 'en')}."
@@ -436,7 +534,7 @@ def _move(
                 f"The critic {_verdict(verdict, 'en')} the schedule. {_refusal(constraint, 'en')}",
             ],
             (
-                f"{lead.job_id} moves from {lead.before_equipment} to {lead.after_equipment}. "
+                f"{lead.job_id} moves from {origin} to {dest}. "
                 f"Completion {human_minutes(lead.before_completion_min or 0, 'en')} → "
                 f"{human_minutes(lead.after_completion_min or 0, 'en')}. "
                 f"Makespan {human_minutes(before.makespan_min, 'en')} → "
@@ -445,11 +543,11 @@ def _move(
             ),
         ),
         "zh": (
-            f"{lead.job_id} 离开 {lead.before_equipment}",
+            f"{lead.job_id} 离开 {origin}",
             [
-                f"{lead.before_equipment} 仍然宕机。{lead.job_id} 原先被挡在上面。",
+                wait_zh,
                 (
-                    f"改到 {lead.after_equipment}。"
+                    f"改到 {dest}。"
                     f"准时交付 {otd_b} → {otd_a}。"
                     f"加权拖期 {human_minutes(before.weighted_tardiness_min, 'zh')} → "
                     f"{human_minutes(after.weighted_tardiness_min, 'zh')}。"
@@ -457,7 +555,7 @@ def _move(
                 f"评审{_verdict(verdict, 'zh')}这版排程。{_refusal(constraint, 'zh')}",
             ],
             (
-                f"{lead.job_id} 从 {lead.before_equipment} 改到 {lead.after_equipment}。"
+                f"{lead.job_id} 从 {origin} 改到 {dest}。"
                 f"完工 {human_minutes(lead.before_completion_min or 0, 'zh')} → "
                 f"{human_minutes(lead.after_completion_min or 0, 'zh')}。"
                 f"总工期 {human_minutes(before.makespan_min, 'zh')} → "
@@ -466,11 +564,11 @@ def _move(
             ),
         ),
         "ja": (
-            f"{lead.job_id} が {lead.before_equipment} を離れる",
+            f"{lead.job_id} が {origin} を離れる",
             [
-                f"{lead.before_equipment} は停止のまま。{lead.job_id} はそこに止まっていた。",
+                wait_ja,
                 (
-                    f"{lead.after_equipment} で流す。"
+                    f"{dest} で流す。"
                     f"納期遵守 {otd_b} → {otd_a}。"
                     f"加重遅延 {human_minutes(before.weighted_tardiness_min, 'ja')} → "
                     f"{human_minutes(after.weighted_tardiness_min, 'ja')}。"
@@ -478,7 +576,7 @@ def _move(
                 f"批評は日程を{_verdict(verdict, 'ja')}。{_refusal(constraint, 'ja')}",
             ],
             (
-                f"{lead.job_id} は {lead.before_equipment} から {lead.after_equipment} へ移る。"
+                f"{lead.job_id} は {origin} から {dest} へ移る。"
                 f"完了 {human_minutes(lead.before_completion_min or 0, 'ja')} → "
                 f"{human_minutes(lead.after_completion_min or 0, 'ja')}。"
                 f"総所要 {human_minutes(before.makespan_min, 'ja')} → "
@@ -557,20 +655,21 @@ def _shortage(
 ) -> dict[Lang, tuple[str, list[str], str]]:
     names = ", ".join(row.job_id for row in held) or "lots"
     otd_b, otd_a = _pct(before, after)
-    tard = human_minutes(after.weighted_tardiness_min, "en")
-    tard_zh = human_minutes(after.weighted_tardiness_min, "zh")
-    tard_ja = human_minutes(after.weighted_tardiness_min, "ja")
     count = len(held)
     return {
         "en": (
             f"{count} lots wait on RESIST-UV" if count else "Resist is short",
             [
                 f"On-hand is zero. Held: {names}.",
-                f"On-time delivery {otd_b} → {otd_a}. Weighted tardiness rises to {tard}.",
+                (
+                    f"On-time delivery {otd_b} → {otd_a}. "
+                    "Blocked until RESIST-UV is replenished. No delivery time is assumed."
+                ),
                 f"The verdict is {_verdict(verdict, 'en')}. {_refusal(constraint, 'en')}",
             ],
             (
-                f"RESIST-UV on hand is zero, so {names} stay unscheduled. "
+                f"RESIST-UV on hand is zero, so {names} stay unscheduled until it is replenished. "
+                "No delivery time is assumed. "
                 f"Lots that already consumed resist keep running. {_refusal(constraint, 'en')}"
             ),
         ),
@@ -578,11 +677,11 @@ def _shortage(
             f"{count} 个批次在等 RESIST-UV" if count else "光刻胶短缺",
             [
                 f"库存为零。暂扣：{names}。",
-                f"准时交付 {otd_b} → {otd_a}。加权拖期升到 {tard_zh}。",
+                f"准时交付 {otd_b} → {otd_a}。在 RESIST-UV 补货之前一直挡住。不假设到货时间。",
                 f"评审结果{_verdict(verdict, 'zh')}。{_refusal(constraint, 'zh')}",
             ],
             (
-                f"RESIST-UV 库存为零，因此 {names} 不能排产。"
+                f"RESIST-UV 库存为零，因此 {names} 在补货之前不能排产。不假设到货时间。"
                 f"已经用过光刻胶的批次继续加工。{_refusal(constraint, 'zh')}"
             ),
         ),
@@ -590,11 +689,11 @@ def _shortage(
             f"{count} ロットが RESIST-UV 待ち" if count else "レジスト不足",
             [
                 f"在庫はゼロ。保留：{names}。",
-                f"納期遵守 {otd_b} → {otd_a}。加重遅延は {tard_ja} まで増える。",
+                f"納期遵守 {otd_b} → {otd_a}。RESIST-UV の補充までブロック。納入時刻は仮定しない。",
                 f"批評は{_verdict(verdict, 'ja')}。{_refusal(constraint, 'ja')}",
             ],
             (
-                f"RESIST-UV の在庫はゼロなので、{names} は未計画のまま。"
+                f"RESIST-UV の在庫はゼロなので、{names} は補充まで未計画のまま。納入時刻は仮定しない。"
                 f"レジストを消費済みのロットは流し続ける。{_refusal(constraint, 'ja')}"
             ),
         ),

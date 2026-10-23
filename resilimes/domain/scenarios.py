@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from .models import Job, Plant
 from .plant import enrich_availability
+from .schedule import POLICY_FROZEN, schedule_plant
 
 LITHO_REPAIR_MIN = 600
 RUSH_DUE_MIN = 180
@@ -217,13 +218,7 @@ def apply_free_text(
             incident=incident,
             scenario=None,
         )
-    disrupted = _apply_down(base, parameters)
-    return ScenarioPlants(
-        before=disrupted,
-        after=disrupted.model_copy(deep=True),
-        incident=incident,
-        scenario=None,
-    )
+    return _machine_down(base, incident, parameters)
 
 
 def _mentions_only_rush(incident: str) -> bool:
@@ -306,6 +301,50 @@ def _tighten_qtime(plant: Plant) -> Plant:
         if rule.rule_id == QTIME_TIGHT_RULE:
             rule.max_min = QTIME_TIGHT_MIN
     return copied
+
+
+def _machine_down(base: Plant, incident: str, parameters: dict[str, object]) -> ScenarioPlants:
+    """A named tool-down is that tool's story.
+
+    The sample fab is already a lithography fault. A sentence that names
+    another tool starts from a lithography bay that is up, then puts the
+    named tool down for the stated repair. The before book waits on the
+    lots a healthy book had placed there. The after book may move them.
+    """
+    equipment_id = str(parameters.get("equipment_id") or "")
+    known = {item.equipment_id for item in base.equipment}
+    if equipment_id not in known:
+        equipment_id = "LITHO-02"
+    if equipment_id == "LITHO-02":
+        disrupted = _litho_down(base)
+        repair = parameters.get("repair_min")
+        if isinstance(repair, (int, float)):
+            for equipment in disrupted.equipment:
+                if equipment.equipment_id == "LITHO-02":
+                    equipment.repair_min = int(repair)
+                    equipment.eta_from_horizon = True
+            disrupted = enrich_availability(disrupted)
+        return ScenarioPlants(
+            before=disrupted,
+            after=disrupted.model_copy(deep=True),
+            incident=incident,
+            scenario=None,
+        )
+    host = _restore_litho(base)
+    healthy = schedule_plant(host, POLICY_FROZEN)
+    stick = [
+        f"{op.job_id}:{op.step}:{op.equipment_id}"
+        for op in healthy.operations
+        if op.equipment_id == equipment_id
+    ]
+    bound = dict(parameters)
+    bound["equipment_id"] = equipment_id
+    disrupted = _apply_down(host, bound)
+    before = disrupted.model_copy(deep=True)
+    before.frozen_stick = stick
+    after = disrupted.model_copy(deep=True)
+    after.frozen_stick = []
+    return ScenarioPlants(before=before, after=after, incident=incident, scenario=None)
 
 
 def _apply_down(base: Plant, parameters: dict[str, object]) -> Plant:

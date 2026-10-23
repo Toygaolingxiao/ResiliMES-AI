@@ -2,7 +2,7 @@
 
 Target length: 3 minutes 20 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
 
-Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks them as hours and days: 840 minutes is 14 h, 17280 minutes is 12 d, 560 minutes is 9 h 20 min.
+Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks scheduled lateness as hours: 840 minutes is 14 h, 560 minutes is 9 h 20 min. A held lot is not given a finish time, so a stockout does not become a day count.
 
 The Recover tab is the filmed frame. Do not scroll it. Idle shows one empty state, not a row of Waiting cards. No scenario is marked active until you press Run.
 
@@ -78,15 +78,15 @@ Hover Scout on the stepper if you want the confidence. The canned rush sentence 
 
 Press **Run** on **Material shortage**. RESIST-UV flashes. After the loop, still on Recover:
 
-"Two lots wait on RESIST-UV. On-time delivery falls to 66.7 percent. Weighted tardiness rises to 12 days, which is the hold, not a silent zero. Lots at risk go from zero to two. Starting lithography without the resist was refused."
+"Two lots wait on RESIST-UV. On-time delivery falls to 66.7 percent. Lots at risk go from zero to two. Weighted tardiness stays flat: the held lots are blocked until the resist is replenished, and the model does not assume a delivery time. The after chart marks those lots held. Starting lithography without the resist was refused."
 
 Open Analyze and point at the gray rows. "Makespan, mean lead time, X-factor, and changeovers look shorter only because held lots left the book. They stay gray. The note says they are not a win. The lot that moved is LOT-1002."
 
 ### 2:50–3:05 — The sponsor stack (Sponsor tech)
 
-Back on Recover for machine breakdown if you need the contract line again. Hover Zetaris and Nightshift.
+Back on Recover for machine breakdown if you need the contract line again. In mock mode the stepper says Plant read and Explainer. Hover them.
 
-"Live, that SQL is a Zetaris call, and that Nightshift tip is Meterless Nightshift calling NVIDIA Nemotron. Scout Intent is the engine. The test that proves the signature, the expiry, the injection block, and the trigger scan is `tests/test_scout_engine.py`. The stream itself is `tests/test_stream.py`. World Model stores the assignments. Markovian keeps each chunk on a checkpoint."
+"Live, those two nodes are named Zetaris and Nightshift: the SQL is a Zetaris call, and Nightshift calls NVIDIA Nemotron. This recording is the offline twin, and the banner says so. Scout Intent is the engine. The test that proves the signature, the expiry, the injection block, and the trigger scan is `tests/test_scout_engine.py`. The stream itself is `tests/test_stream.py`. World Model stores the assignments and replays the jobs. Markovian keeps each chunk on a checkpoint."
 
 If you have the live clip, cut it here for five seconds: the JSON `provider` and `model` fields, token not visible.
 
@@ -108,7 +108,7 @@ Open **Verify** only if you also want the queue-time row. That row is the next p
 
 Press **Run** on **Queue time**.
 
-"LOT-1003 misses the etch queue time. Etch finished before 06:30, and CMP had 15 minutes. The book holds LOT-1003 and LOT-1006: one reticle serializes lithography, so CMP is no longer free inside that window. On-time delivery goes from 100 to 66.7 percent. Weighted tardiness goes from zero to 4 days. The refused plan started CMP at minute 120."
+"LOT-1003 misses the etch queue time. Etch finished before 06:30, and CMP had 15 minutes. The book holds LOT-1003 and LOT-1006: one reticle serializes lithography, so CMP is no longer free inside that window. On-time delivery goes from 100 to 66.7 percent. Those holds are not given a finish time, so weighted tardiness does not become a day count. The after chart marks the lots held. The refused plan started CMP at minute 120."
 
 On **Verify**, queue time passed on the committed book. Open the row for the refused plan that started CMP after the window. On **Analyze**, compliance goes from 100 percent to 60, with two holds.
 

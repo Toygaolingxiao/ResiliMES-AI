@@ -59,6 +59,33 @@ def test_ingest_is_idempotent_and_replayable() -> None:
     assert rows[0]["status"] == "DOWN"
 
 
+def test_payload_type_does_not_overwrite_the_job_entity() -> None:
+    world = WorldModel(SECRET)
+    contract = _contract()
+    world.ingest(
+        event_type="job.assigned",
+        entity_type="job",
+        entity_id="LOT-1001",
+        payload={
+            "equipmentId": "LITHO-01",
+            "step": "LITHO",
+            "type": "reassign",
+            "actionType": "reassign",
+        },
+        contract=contract,
+        idempotency_key="commit-LOT-1001-LITHO",
+        required_capability="schedule.commit",
+        now=CLOCK,
+    )
+    rows = world.query(contract, entity_type="job", now=CLOCK)
+    assert len(rows) == 1
+    assert rows[0]["type"] == "job"
+    assert rows[0]["id"] == "LOT-1001"
+    assert rows[0]["equipmentId"] == "LITHO-01"
+    assert rows[0]["step"] == "LITHO"
+    assert rows[0]["actionType"] == "reassign"
+
+
 def test_world_model_refuses_unsigned_and_out_of_scope() -> None:
     world = WorldModel(SECRET)
     with pytest.raises(ContractError):

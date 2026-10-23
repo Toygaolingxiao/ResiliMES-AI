@@ -61,6 +61,7 @@ const COPY = {
     refused: "Request refused.",
     refusedLine: "Refused:",
     idle: "Choose a disruption.",
+    working: "Running the recovery.",
     emptyTitle: "Which disruption should the bay recover?",
     emptyHint: "Click Run on a disruption. The books stay off this frame until the critic commits.",
     mock: "Offline mock. The schedule, the critic, and the engines are real. Nightshift and Zetaris are not called. Secrets stay off this screen.",
@@ -78,6 +79,7 @@ const COPY = {
     down: "Down",
     maint: "Maintenance",
     held: "held",
+    heldAside: "held lots excluded",
     lots: "Lots",
     lot: "Lot",
     pri: "Pri",
@@ -95,10 +97,12 @@ const COPY = {
     computed: "computed",
     nodeScout: "Scout",
     nodeZetaris: "Zetaris",
+    nodePlant: "Plant read",
     nodeSense: "Sense",
     nodePlan: "Plan",
     nodeCritic: "Critic",
     nodeExplain: "Nightshift",
+    nodeExplainer: "Explainer",
     nodeCommit: "Commit",
     wait: "Waiting",
     runState: "Running",
@@ -225,6 +229,7 @@ const COPY = {
     refused: "请求被拒绝。",
     refusedLine: "拒绝：",
     idle: "选择一个异常。",
+    working: "正在恢复。",
     emptyTitle: "这一班要先恢复哪一件异常？",
     emptyHint: "在异常上点开始。评审提交之前，账不出现在这一屏。",
     mock: "离线样例。排程、评审和引擎是真的。没有调用 Nightshift 和 Zetaris。密钥不出现在这屏。",
@@ -242,6 +247,7 @@ const COPY = {
     down: "宕机",
     maint: "维护",
     held: "暂停",
+    heldAside: "不含暂扣",
     lots: "批次",
     lot: "批次",
     pri: "优先",
@@ -259,10 +265,12 @@ const COPY = {
     computed: "计算",
     nodeScout: "Scout",
     nodeZetaris: "Zetaris",
+    nodePlant: "产线读取",
     nodeSense: "感知",
     nodePlan: "计划",
     nodeCritic: "评审",
     nodeExplain: "Nightshift",
+    nodeExplainer: "说明",
     nodeCommit: "提交",
     wait: "等待",
     runState: "进行中",
@@ -389,6 +397,7 @@ const COPY = {
     refused: "要求は拒否された。",
     refusedLine: "拒否：",
     idle: "異常を選ぶ。",
+    working: "回復を実行中。",
     emptyTitle: "この直で、どの異常から回復するか？",
     emptyHint: "異常の実行を押す。批評が確定するまで帳票はこの画面に出さない。",
     mock: "オフラインの見本。日程、批評、エンジンは本物。Nightshift と Zetaris は呼ばない。秘密はこの画面に出さない。",
@@ -406,6 +415,7 @@ const COPY = {
     down: "停止",
     maint: "保全",
     held: "保留",
+    heldAside: "保留は含めない",
     lots: "ロット",
     lot: "ロット",
     pri: "優先",
@@ -423,10 +433,12 @@ const COPY = {
     computed: "計算",
     nodeScout: "Scout",
     nodeZetaris: "Zetaris",
+    nodePlant: "ライン読取",
     nodeSense: "検知",
     nodePlan: "計画",
     nodeCritic: "批評",
     nodeExplain: "Nightshift",
+    nodeExplainer: "説明",
     nodeCommit: "確定",
     wait: "待機",
     runState: "実行中",
@@ -662,7 +674,8 @@ function paint() {
   paintRecover();
   paintAnalyze();
   paintVerify();
-  if (!state.running && !state.report) $("#status").textContent = copy.idle;
+  if (state.running && !state.report) $("#status").textContent = copy.working;
+  else if (!state.running && !state.report) $("#status").textContent = copy.idle;
 }
 
 function paintTabs() {
@@ -816,7 +829,8 @@ function renderCards(report) {
     value.textContent = formatMeasure(report.kpis.after[key], kind, digits);
     const sub = document.createElement("div");
     sub.className = "sub";
-    sub.innerHTML = `${escapeHtml(formatMeasure(report.kpis.before[key], kind, digits))} <span class="${escapeHtml(tone.tone)}">${escapeHtml(signedMeasure(report.kpis.delta[key], kind, digits))}</span>`;
+    const aside = tone.comparable === false ? ` · ${copy.heldAside}` : "";
+    sub.innerHTML = `${escapeHtml(formatMeasure(report.kpis.before[key], kind, digits))} <span class="${escapeHtml(tone.tone)}">${escapeHtml(signedMeasure(report.kpis.delta[key], kind, digits))}</span>${escapeHtml(aside)}`;
     const details = document.createElement("button");
     details.type = "button";
     details.className = "details";
@@ -854,9 +868,9 @@ function paintStepper() {
     const running = Boolean(step) && phase === active && state.running;
     const li = document.createElement("li");
     li.className = running ? "on" : step ? "done" : "";
-    li.textContent = copy[key];
+    li.textContent = nodeLabel(key);
     if (step) {
-      const text = `${copy[key]} · ${stepOutput(phase, step.slots || {}, copy)} · ${step.summary || ""} · ${step.elapsed_ms} ms`;
+      const text = `${nodeLabel(key)} · ${stepOutput(phase, step.slots || {}, copy)} · ${step.summary || ""} · ${step.elapsed_ms} ms`;
       li.addEventListener("pointerenter", (event) => showPlainTip(event, text));
       li.addEventListener("pointerleave", hideTip);
     }
@@ -868,7 +882,7 @@ function paintStepper() {
   const label = document.createElement("div");
   label.className = "progress-label";
   const current = NODES.find(([phase]) => phase === active);
-  label.textContent = state.running && current ? `${pct}% · ${copy[current[1]]}` : `${pct}%`;
+  label.textContent = state.running && current ? `${pct}% · ${nodeLabel(current[1])}` : `${pct}%`;
   bindTip(label, copy.progressTip);
   const stack = document.createElement("div");
   stack.append(side, label);
@@ -1437,16 +1451,20 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     for (const bar of row.bars) {
       const node = document.createElement("div");
       const tone = areaTone(bar.area || row.area);
-      node.className = "bar" + (bar.moved ? " moved" : "") + (bar.fresh ? " fresh" : "") + (bar.rework ? " rework" : "") + (bar.moved && !draw ? " leaving" : "");
+      node.className = "bar" + (bar.held ? " held" : "") + (bar.moved ? " moved" : "") + (bar.fresh ? " fresh" : "") + (bar.rework ? " rework" : "") + (bar.moved && !draw ? " leaving" : "");
       if (state.routeJob === bar.job_id) node.classList.add("selected");
       node.dataset.start = String(bar.start_min);
       node.dataset.end = String(bar.end_min);
-      node.style.backgroundColor = tone.fill;
-      node.style.color = tone.ink;
-      node.title = bar.job_id;
+      if (!bar.held) {
+        node.style.backgroundColor = tone.fill;
+        node.style.color = tone.ink;
+      }
+      node.title = bar.held ? (bar.reason || bar.job_id) : bar.job_id;
       const name = document.createElement("span");
       name.className = "bar-label";
-      name.textContent = shortLot(bar.job_id);
+      name.textContent = bar.held
+        ? (state.view === "lot" ? t().held : `${shortLot(bar.job_id)} ${t().held}`)
+        : shortLot(bar.job_id);
       node.appendChild(name);
       const toolId = bar.equipment_id || row.equipment_id;
       node.addEventListener("pointerenter", (event) => showTip(event, bar, toolId, horizon));
@@ -1542,7 +1560,7 @@ function lotRows(gantt) {
 function drawLinks(track) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "links");
-  const bars = [...track.querySelectorAll(".bar")].sort((a, b) => Number(a.dataset.start) - Number(b.dataset.start));
+  const bars = [...track.querySelectorAll(".bar:not(.held)")].sort((a, b) => Number(a.dataset.start) - Number(b.dataset.start));
   for (let index = 0; index < bars.length - 1; index += 1) {
     const left = bars[index];
     const right = bars[index + 1];
@@ -1567,7 +1585,7 @@ function openRoute(event, jobId, gantt, horizon) {
   const steps = [];
   for (const row of gantt.rows) {
     for (const bar of row.bars) {
-      if (bar.job_id === jobId) steps.push({ ...bar, equipment_id: row.equipment_id, area: row.area });
+      if (bar.job_id === jobId && !bar.held) steps.push({ ...bar, equipment_id: row.equipment_id, area: row.area });
     }
   }
   steps.sort((a, b) => a.start_min - b.start_min);
@@ -1610,7 +1628,8 @@ function layoutTrack(track, scale) {
   const span = scale.end_min - origin;
   if (!width || !span) return;
   track.querySelectorAll(".rail-label, .side-label").forEach((node) => node.remove());
-  const items = [...track.querySelectorAll(".bar")]
+  placeHeld(track);
+  const items = [...track.querySelectorAll(".bar:not(.held)")]
     .map((node) => ({ node, start: Number(node.dataset.start), end: Number(node.dataset.end) }))
     .sort((a, b) => a.start - b.start);
   items.forEach((item) => {
@@ -1690,6 +1709,29 @@ function layoutTrack(track, scale) {
   });
 }
 
+function placeHeld(track) {
+  let cursor = 6;
+  track.querySelectorAll(".bar.held").forEach((node) => {
+    const label = node.querySelector(".bar-label");
+    const text = label ? label.textContent : "";
+    const need = textWidth(text) + 8;
+    node.style.left = `${cursor}px`;
+    node.style.width = `${Math.max(need, 10)}px`;
+    node.style.top = "2px";
+    node.style.height = "16px";
+    node.classList.remove("silent");
+    cursor += Math.max(need, 10) + 4;
+  });
+}
+
+function nodeLabel(key) {
+  const copy = t();
+  const mock = state.health && state.health.llm === "mock" && state.health.data === "sample";
+  if (mock && key === "nodeZetaris") return copy.nodePlant;
+  if (mock && key === "nodeExplain") return copy.nodeExplainer;
+  return copy[key];
+}
+
 function hits(placed, left, right, gap) {
   return placed.some((span) => left < span[1] + gap && right > span[0] - gap);
 }
@@ -1726,6 +1768,10 @@ function renderLegend(report) {
     ((side && side.rows) || []).some((row) => (row.bars || []).some((bar) => bar.rework))
   );
   if (rework) host.appendChild(legendItem(null, copy.rework, null, "rework"));
+  const held = [report.gantt.before, report.gantt.after].some((side) =>
+    ((side && side.rows) || []).some((row) => (row.bars || []).some((bar) => bar.held))
+  );
+  if (held) host.appendChild(legendItem(null, copy.held, null, "held"));
   host.appendChild(legendItem(null, copy.moved, null, "moved"));
   host.appendChild(legendItem(null, copy.down, null, "hatch-down"));
   host.appendChild(legendItem(null, copy.maint, null, "hatch-maint"));
@@ -1747,6 +1793,13 @@ function legendItem(fill, label, ink, kind) {
 
 function showTip(event, bar, equipment, horizon) {
   const copy = t();
+  if (bar.held) {
+    const tip = $("#tip");
+    tip.textContent = `${bar.job_id} · ${copy.held}\n${equipment} · ${bar.step}\n${bar.reason || ""}`;
+    tip.hidden = false;
+    moveTip(event);
+    return;
+  }
   const flags = [bar.moved ? copy.moved : "", bar.fresh ? copy.fresh : "", bar.rework ? copy.rework : ""].filter(Boolean).join(" · ");
   const text = `${bar.job_id} · P${bar.priority}\n${equipment} · ${bar.step}\n${formatClock(shift(horizon, bar.start_min)).slice(11, 16)}–${formatClock(shift(horizon, bar.end_min)).slice(11, 16)} · ${formatDuration(bar.end_min - bar.start_min)}${flags ? `\n${flags}` : ""}`;
   const tip = $("#tip");

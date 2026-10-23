@@ -164,6 +164,9 @@ class Plant(BaseModel):
     reticles: list[Reticle] = Field(default_factory=list)
     inhibits: list[Inhibit] = Field(default_factory=list)
     source: str = "sample"
+    # "JOB:STEP:TOOL" pairs the frozen book must leave on that tool.
+    # Free-text recovery uses this so "wait for repair" is the before book.
+    frozen_stick: list[str] = Field(default_factory=list)
 
     def equipment_map(self) -> dict[str, Equipment]:
         return {item.equipment_id: item for item in self.equipment}

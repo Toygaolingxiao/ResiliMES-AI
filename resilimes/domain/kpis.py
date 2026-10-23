@@ -8,10 +8,15 @@ from typing import cast
 from .models import Job, JobOutcome, KpiReport, Plant, Schedule, ScheduledOp, priority_weight
 from .plant import minutes_between
 
-_UNSCHEDULED_LATE = 24 * 60
-
 
 def evaluate(plant: Plant, schedule: Schedule) -> KpiReport:
+    """Score a book.
+
+    A held lot has no completion. It counts as late for on-time delivery and,
+    at priority 1 or 2, as a lot at risk. It is not charged a finish time.
+    The old flat 24-hour charge turned two held lots into "12 days" or
+    "4 days" of tardiness. That number was the charge, not a modeled clock.
+    """
     completions = _completions(plant, schedule)
     weights = 0
     weighted = 0
@@ -21,15 +26,15 @@ def evaluate(plant: Plant, schedule: Schedule) -> KpiReport:
     for job in plant.jobs:
         completion = completions[job.job_id]
         due = minutes_between(plant.horizon, job.due_at)
+        tardiness = 0
         if completion is None:
-            tardiness = _UNSCHEDULED_LATE
             late.append(job.job_id)
         else:
             tardiness = max(0, completion - due)
             flows.append(completion)
+            weighted += tardiness * priority_weight(job.priority)
             if tardiness > 0:
                 late.append(job.job_id)
-        weighted += tardiness * priority_weight(job.priority)
         weights += 1
         if job.priority <= 2 and (completion is None or tardiness > 0):
             at_risk += 1
@@ -95,7 +100,7 @@ def job_outcomes(
 
 def _tardiness(completion: int | None, due: int) -> int:
     if completion is None:
-        return _UNSCHEDULED_LATE
+        return 0
     return max(0, completion - due)
 
 
@@ -337,8 +342,17 @@ _DOWN_GOOD = frozenset(
     }
 )
 # A hold drops unfinished lots out of the book. Shorter makespan, lead, X-factor,
-# and fewer changeovers are then not a better fab.
-_HOLD_NEUTRAL = frozenset({"makespan_min", "mean_lead_min", "mean_x_factor", "setup_changes"})
+# fewer changeovers, and a tardiness sum that ignores those lots are then not
+# a better fab.
+_HOLD_NEUTRAL = frozenset(
+    {
+        "makespan_min",
+        "mean_lead_min",
+        "mean_x_factor",
+        "setup_changes",
+        "weighted_tardiness_min",
+    }
+)
 _NEVER_DIRECTIONAL = frozenset({"utilization_pct"})
 
 
@@ -371,6 +385,47 @@ def _held_count(value: object) -> int:
     if isinstance(value, list):
         return len(value)
     return 0
+
+
+def fed_bottleneck(
+    before: Schedule,
+    after: Schedule,
+    after_plant: Plant,
+    areas_before: list[dict[str, object]],
+    areas_after: list[dict[str, object]],
+) -> str:
+    """Bottleneck area a recovery move actually kept on an up tool.
+
+    Empty when the book holds work, no step moved onto an up tool in that
+    area, or that area's load fell. Copy must not claim the move feeds the
+    bottleneck unless this returns the area.
+    """
+    if after.unscheduled:
+        return ""
+    area = after.bottleneck_area
+    if not area:
+        return ""
+    equipment = after_plant.equipment_map()
+    moved = False
+    for _step, _old, new in step_tool_changes(before, after).values():
+        destination = equipment.get(new)
+        if destination is None or destination.area != area:
+            continue
+        if destination.status in {"DOWN", "MAINTENANCE"}:
+            continue
+        moved = True
+    if not moved:
+        return ""
+
+    def _util(rows: list[dict[str, object]]) -> float:
+        for row in rows:
+            if row.get("area") == area:
+                return float(cast(float, row["utilization_pct"]))
+        return 0.0
+
+    if _util(areas_after) + 0.05 < _util(areas_before):
+        return ""
+    return area
 
 
 def _utilization(plant: Plant, schedule: Schedule, makespan: int) -> float:

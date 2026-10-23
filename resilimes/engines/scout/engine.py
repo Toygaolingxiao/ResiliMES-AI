@@ -31,6 +31,13 @@ _TRIGGERS: dict[str, tuple[str, ...]] = {
         r"\bbreakdown\b",
         r"\boffline\b",
         r"\blaser\b",
+        r"宕机",
+        r"停机",
+        r"故障",
+        r"停止",
+        r"ダウン",
+        r"维修",
+        r"修理",
     ),
     "plant.rush_order": (r"\brush\b", r"\bhot lot\b", r"\bexpedite\b", r"pull[- ]in"),
     "plant.material_shortage": (
@@ -75,8 +82,11 @@ _TOOLS: dict[str, list[dict[str, str]]] = {
     "memory.write": [{"tool": "markovian.checkpoint", "capability": "memory.write"}],
 }
 
-_EQUIPMENT = re.compile(r"\b([A-Za-z]{2,})-(\d{2})\b")
-_REPAIR = re.compile(r"(\d+)\s*(minutes|minute|mins|min|hours|hour|hrs|hr)\b", re.I)
+_EQUIPMENT = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]{2,})-(\d{2})(?!\d)")
+_REPAIR = re.compile(
+    r"(\d+)\s*(minutes|minute|mins|min|hours|hour|hrs|hr|分钟|小时|時間|分)",
+    re.I,
+)
 _MATERIAL = re.compile(r"\b(RESIST-UV|WAFER-300|WAFER-200|GAS-CF4|SLURRY-OX)\b", re.I)
 _PRODUCT = re.compile(r"\b(PROD-[A-Z0-9]+)\b", re.I)
 

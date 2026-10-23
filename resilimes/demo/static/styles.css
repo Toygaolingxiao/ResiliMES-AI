@@ -473,10 +473,24 @@ textarea {
   text-overflow: ellipsis;
 }
 .bar.silent .bar-label { visibility: hidden; }
+.bar.held {
+  z-index: 5;
+  background: transparent;
+  color: var(--alarm);
+  box-shadow: inset 0 0 0 1.5px var(--alarm);
+  border-radius: 2px;
+}
+.bar.held .bar-label {
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 16px;
+  color: var(--alarm);
+}
 .bar.moved {
   box-shadow: inset 0 0 0 3px var(--ink);
   z-index: 3;
 }
+.bar.held.moved { box-shadow: inset 0 0 0 1.5px var(--alarm); }
 .bar.leaving { opacity: 0.45; }
 .bar.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
 .due-line {
@@ -537,6 +551,10 @@ textarea {
 }
 .swatch.hatch-maint {
   background: repeating-linear-gradient(-45deg, rgba(154, 52, 18, 0.5) 0 3px, var(--track) 3px 6px);
+}
+.swatch.held {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--alarm);
 }
 .swatch.moved { background: var(--sheet); box-shadow: inset 0 0 0 3px var(--ink); }
 .swatch.rework {
