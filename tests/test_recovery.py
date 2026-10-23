@@ -186,6 +186,7 @@ def test_nightshift_retries_rate_limits() -> None:
     assert result.content == "pong"
     assert result.mocked is False
     assert create.call_count == 3
+    assert create.call_args.kwargs["max_tokens"] == 4096
 
 
 def test_live_mode_requires_credentials() -> None:

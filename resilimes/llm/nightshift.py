@@ -8,6 +8,7 @@ Retries: 429 and connection / 5xx, with exponential backoff. The token is never 
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -19,6 +20,23 @@ from resilimes.llm.urls import assert_runtime_token, normalize_base_url
 from resilimes.logging_config import get_logger
 
 logger = get_logger("resilimes.llm")
+
+_THINK_BLOCK = re.compile(r"<think\b[^>]*>.*?</think>", re.IGNORECASE | re.DOTALL)
+_THINK_CLOSE = "</think>"
+
+
+def strip_reasoning(text: str) -> str:
+    """Drop reasoning spans. A leaked prefix ends at </think>."""
+    cleaned = _THINK_BLOCK.sub("", text)
+    close = cleaned.lower().rfind(_THINK_CLOSE)
+    if close >= 0:
+        cleaned = cleaned[close + len(_THINK_CLOSE) :]
+    return cleaned.strip()
+
+
+def _token_budget(settings: Settings) -> int:
+    raw = settings.nemotron_max_tokens
+    return raw if raw > 0 else 4096
 
 
 def build_openai_client(
@@ -65,32 +83,61 @@ class NightshiftProvider:
         temperature: float = 0.2,
     ) -> LlmResult:
         model = self.model_for(lane)
+        budget = _token_budget(self._settings)
+        started = time.perf_counter()
+        response: Any = None
+        content = ""
+        for index, max_tokens in enumerate((budget, budget * 2)):
+            response = self._create(
+                messages,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                lane=lane,
+            )
+            content = strip_reasoning(_message_text(response))
+            if content or index == 1:
+                break
+        elapsed = (time.perf_counter() - started) * 1000
+        logger.info(
+            "nightshift completion",
+            extra={
+                "fields": {
+                    "lane": lane,
+                    "model": model,
+                    "latency_ms": round(elapsed, 1),
+                    "empty": content == "",
+                }
+            },
+        )
+        return LlmResult(
+            content=content,
+            model=model,
+            provider=self.name,
+            lane=lane,
+            latency_ms=elapsed,
+            mocked=False,
+        )
+
+    def _create(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+        lane: str,
+    ) -> Any:
         delay = 0.5
         attempts = max(1, self._settings.llm_max_retries)
         last_error: Exception | None = None
-        started = time.perf_counter()
         for attempt in range(attempts):
             try:
-                response = self._client.chat.completions.create(
+                return self._client.chat.completions.create(
                     model=model,
                     messages=messages,  # type: ignore[arg-type]
                     temperature=temperature,
-                )
-                content = _content(response)
-                elapsed = (time.perf_counter() - started) * 1000
-                logger.info(
-                    "nightshift completion",
-                    extra={
-                        "fields": {"lane": lane, "model": model, "latency_ms": round(elapsed, 1)}
-                    },
-                )
-                return LlmResult(
-                    content=content,
-                    model=model,
-                    provider=self.name,
-                    lane=lane,
-                    latency_ms=elapsed,
-                    mocked=False,
+                    max_tokens=max_tokens,
                 )
             except (RateLimitError, APIConnectionError, APIStatusError) as exc:
                 if isinstance(exc, APIStatusError) and exc.status_code not in {429, 500, 502, 503}:
@@ -132,11 +179,11 @@ def probe_nightshift(settings: Settings, timeout_s: float = 3.0) -> dict[str, An
     }
 
 
-def _content(response: Any) -> str:
+def _message_text(response: Any) -> str:
     choice = response.choices[0].message
     content = choice.content
     if content is None:
-        raise RuntimeError("Nemotron returned empty content")
+        return ""
     if isinstance(content, list):
         parts: list[str] = []
         for part in content:
@@ -144,5 +191,5 @@ def _content(response: Any) -> str:
                 parts.append(str(part.get("text") or ""))
             elif isinstance(part, str):
                 parts.append(part)
-        return "".join(parts).strip()
-    return str(content).strip()
+        return "".join(parts)
+    return str(content)
