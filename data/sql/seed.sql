@@ -60,8 +60,10 @@ INSERT INTO resilimes.qtime_rule (rule_id, product_id, from_step, to_step, max_m
 INSERT INTO resilimes.qtime_rule (rule_id, product_id, from_step, to_step, max_min) VALUES ('QT-B14-CLEAN-DEP', 'PROD-B14', 'CLEAN', 'DEP-2', '480');
 
 CREATE TABLE resilimes.reticle (reticle_id VARCHAR(256), product_id VARCHAR(256), layer VARCHAR(256), step VARCHAR(256));
-INSERT INTO resilimes.reticle (reticle_id, product_id, layer, step) VALUES ('RET-A28-L1', 'PROD-A28', 'L1', 'LITHO');
-INSERT INTO resilimes.reticle (reticle_id, product_id, layer, step) VALUES ('RET-A28-L2', 'PROD-A28', 'L2', 'LITHO-L2');
+INSERT INTO resilimes.reticle (reticle_id, product_id, layer, step) VALUES ('RET-A28-L1-1', 'PROD-A28', 'L1', 'LITHO');
+INSERT INTO resilimes.reticle (reticle_id, product_id, layer, step) VALUES ('RET-A28-L1-2', 'PROD-A28', 'L1', 'LITHO');
+INSERT INTO resilimes.reticle (reticle_id, product_id, layer, step) VALUES ('RET-A28-L2-1', 'PROD-A28', 'L2', 'LITHO-L2');
+INSERT INTO resilimes.reticle (reticle_id, product_id, layer, step) VALUES ('RET-A28-L2-2', 'PROD-A28', 'L2', 'LITHO-L2');
 
 CREATE TABLE resilimes.inhibit (inhibit_id VARCHAR(256), product_id VARCHAR(256), recipe VARCHAR(256), equipment_id VARCHAR(256));
 INSERT INTO resilimes.inhibit (inhibit_id, product_id, recipe, equipment_id) VALUES ('INH-C07-LITHO01', 'PROD-C07', NULL, 'LITHO-01');

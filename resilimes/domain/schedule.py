@@ -19,8 +19,11 @@ Assumptions (also listed in docs/ASSUMPTIONS.md):
   date, then release, onto the qualified tool that can start soonest.
 - An overlay fail inserts a wet strip, one re-expose, and one re-measure,
   and stops when `rework_count` has reached `rework_limit`.
-- A lithography reticle is on one tool at a time. The same tool may use it
-  for the next lot. A lot does not start before its release minute.
+- A lithography step needs a scanner and one physical copy of its reticle.
+  Each copy is on one scanner at a time. Mounting a copy that is not already
+  on that scanner takes 5 minutes, inside the scheduled interval. The same
+  scanner may keep the copy for the next lot with no extra load.
+- A lot does not start before its release minute.
 - An inhibit row removes that tool from the flexible candidates.
 """
 
@@ -30,7 +33,7 @@ import bisect
 import heapq
 from dataclasses import dataclass, field
 
-from .checks import inhibited, reticle_for
+from .checks import inhibited, reticle_copies, reticle_for
 from .models import (
     Action,
     Equipment,
@@ -49,6 +52,7 @@ POLICY_RECOVER = "recover"
 POLICY_EDD = "edd"
 UNAVAILABLE = {"DOWN", "MAINTENANCE"}
 _POLICIES = {POLICY_FROZEN, POLICY_RECOVER, POLICY_EDD}
+RETICLE_LOAD_MIN = 5
 
 
 @dataclass
@@ -67,10 +71,9 @@ class _Reservation:
 
 
 @dataclass
-class _ReticleUse:
-    start: int
-    end: int
-    tool_id: str
+class _Copy:
+    available_at: int = 0
+    tool_id: str | None = None
 
 
 class _Staff:
@@ -138,8 +141,7 @@ class _Board:
     machines: dict[str, _Machine]
     staff: _Staff
     ends: list[int]
-    masks: dict[str, list[_ReticleUse]]
-    mask_of: dict[tuple[str, str], str]
+    copies: dict[str, _Copy]
     rules: dict[tuple[str, str, str], int]
     reservations: list[_Reservation] = field(default_factory=list)
 
@@ -409,17 +411,6 @@ def _push(
 
 
 def _board(plant: Plant) -> _Board:
-    masks: dict[tuple[str, str], str] = {}
-    for item in plant.reticles:
-        masks[(item.product_id, item.step)] = item.reticle_id
-    fallback = {"LITHO-RW": "LITHO", "LITHO-L2-RW": "LITHO-L2"}
-    resolved: dict[tuple[str, str], str] = dict(masks)
-    products = {item.product_id for item in plant.reticles}
-    for product_id in products:
-        for alias, origin in fallback.items():
-            mask = masks.get((product_id, origin))
-            if mask is not None:
-                resolved[(product_id, alias)] = mask
     return _Board(
         machines={
             item.equipment_id: _Machine(
@@ -430,8 +421,7 @@ def _board(plant: Plant) -> _Board:
         },
         staff=_Staff(),
         ends=[],
-        masks={},
-        mask_of=resolved,
+        copies={item.reticle_id: _Copy() for item in plant.reticles},
         rules={
             (item.product_id, item.from_step, item.to_step): item.max_min
             for item in plant.qtime_rules
@@ -529,7 +519,8 @@ def _place_pinned(step: StepWork, plant: Plant, board: _Board) -> ScheduledOp | 
     machine.last_family = step.setup_family
     machine.jobs.add(step.job_id)
     _occupy(board, 0, end, equipment.operators_required)
-    _remember_reticle(step, equipment_id, 0, end, board)
+    copy_id = _mounted_copy(step, equipment_id, plant, board)
+    _claim_copy(board, copy_id, equipment_id, end)
     return ScheduledOp(
         job_id=step.job_id,
         product_id=step.product_id,
@@ -544,6 +535,8 @@ def _place_pinned(step: StepWork, plant: Plant, board: _Board) -> ScheduledOp | 
         priority=step.priority,
         pinned=True,
         rework=step.rework,
+        reticle_id=copy_id,
+        reticle_load_min=0,
     )
 
 
@@ -607,7 +600,7 @@ def _place_flexible(
     machine.jobs.add(step.job_id)
     need = plant.equipment_map()[placed.equipment_id].operators_required
     _occupy(board, placed.start_min, placed.end_min, need)
-    _remember_reticle(step, placed.equipment_id, placed.start_min, placed.end_min, board)
+    _claim_copy(board, placed.reticle_id, placed.equipment_id, placed.end_min)
     _take_material(step, plant, inventory, consumed)
     return placed, ""
 
@@ -618,41 +611,58 @@ def _try_machine(
     plant: Plant,
     board: _Board,
 ) -> ScheduledOp | None:
-    machine = board.machines[equipment.equipment_id]
     # max_wip is the tool's simultaneous lot limit. The scheduler never overlaps
     # lots on a tool, so any max_wip >= 1 is feasible; a zero cap means "do not use".
     if equipment.max_wip < 1:
         return None
+    copies = reticle_copies(plant, step.product_id, step.step)
+    if not copies:
+        return _fit(step, equipment, plant, board, ready=0, load=0, copy_id="")
+    best: tuple[tuple[int, int, int, str], ScheduledOp] | None = None
+    for copy in copies:
+        state = board.copies[copy.reticle_id]
+        load = 0 if state.tool_id == equipment.equipment_id else RETICLE_LOAD_MIN
+        placed = _fit(
+            step,
+            equipment,
+            plant,
+            board,
+            ready=state.available_at,
+            load=load,
+            copy_id=copy.reticle_id,
+        )
+        if placed is None:
+            continue
+        rank = (placed.start_min, placed.end_min, placed.setup_min, copy.reticle_id)
+        if best is None or rank < best[0]:
+            best = (rank, placed)
+    return None if best is None else best[1]
+
+
+def _fit(
+    step: StepWork,
+    equipment: Equipment,
+    plant: Plant,
+    board: _Board,
+    ready: int,
+    load: int,
+    copy_id: str,
+) -> ScheduledOp | None:
+    machine = board.machines[equipment.equipment_id]
     setup = 0
     if machine.last_family is not None and machine.last_family != step.setup_family:
         setup = equipment.setup_time_min
-    earliest = max(machine.available_at, step.ready_at, equipment.available_at_min)
-    duration = setup + step.process_min
-    start: int | None = None
-    end = earliest
-    for _ in range(8):
-        start = _earliest_staffed(
-            earliest,
-            duration,
-            equipment.operators_required,
-            plant.operator_pool,
-            board,
-        )
-        if start is None:
-            return None
-        end = start + duration
-        ready = _reticle_ready(step, equipment.equipment_id, start, end, board)
-        if ready is None:
-            return None
-        if ready == start:
-            break
-        earliest = ready
-    else:
-        return None
+    earliest = max(machine.available_at, step.ready_at, equipment.available_at_min, ready)
+    duration = load + setup + step.process_min
+    start = _earliest_staffed(
+        earliest,
+        duration,
+        equipment.operators_required,
+        plant.operator_pool,
+        board,
+    )
     if start is None:
         return None
-    # Staffing may push the start past the machine's previous family window.
-    # Setup is unchanged because nothing else is inserted on this tool.
     return ScheduledOp(
         job_id=step.job_id,
         product_id=step.product_id,
@@ -660,64 +670,36 @@ def _try_machine(
         step_index=step.step_index,
         equipment_id=equipment.equipment_id,
         start_min=start,
-        end_min=end,
+        end_min=start + duration,
         setup_min=setup,
         process_min=step.process_min,
         setup_family=step.setup_family,
         priority=step.priority,
         pinned=False,
         rework=step.rework,
+        reticle_id=copy_id,
+        reticle_load_min=load,
     )
 
 
-def _reticle_ready(
-    step: StepWork,
-    tool_id: str,
-    start: int,
-    end: int,
-    board: _Board,
-) -> int | None:
-    """Earliest start that keeps this mask off every other lithography tool."""
-    reticle_id = board.mask_of.get((step.product_id, step.step))
-    if reticle_id is None:
-        return start
-    uses = board.masks.get(reticle_id)
-    if not uses:
-        return start
-    # Uses are sorted by start and do not overlap, so only the tail can hit this window.
-    conflict = start
-    blocked = False
-    index = bisect.bisect_left(uses, end, key=lambda item: item.start)
-    cursor = index - 1
-    while cursor >= 0 and uses[cursor].end > start:
-        used = uses[cursor]
-        if used.tool_id != tool_id and start < used.end and end > used.start:
-            blocked = True
-            conflict = max(conflict, used.end)
-        cursor -= 1
-    if not blocked:
-        return start
-    if conflict > start + 24 * 60:
-        return None
-    return conflict
+def _mounted_copy(step: StepWork, tool_id: str, plant: Plant, board: _Board) -> str:
+    """A running lithography lot already has a copy on its scanner."""
+    copies = reticle_copies(plant, step.product_id, step.step)
+    for copy in copies:
+        if board.copies[copy.reticle_id].tool_id is None:
+            return copy.reticle_id
+    for copy in copies:
+        if board.copies[copy.reticle_id].tool_id == tool_id:
+            return copy.reticle_id
+    return copies[0].reticle_id if copies else ""
 
 
-def _remember_reticle(
-    step: StepWork,
-    tool_id: str,
-    start: int,
-    end: int,
-    board: _Board,
-) -> None:
-    reticle_id = board.mask_of.get((step.product_id, step.step))
-    if reticle_id is None:
+def _claim_copy(board: _Board, reticle_id: str, tool_id: str, end: int) -> None:
+    if not reticle_id:
         return
-    uses = board.masks.setdefault(reticle_id, [])
-    bisect.insort(
-        uses,
-        _ReticleUse(start=start, end=end, tool_id=tool_id),
-        key=lambda item: item.start,
-    )
+    state = board.copies[reticle_id]
+    state.available_at = max(state.available_at, end)
+    state.tool_id = tool_id
 
 
 def _occupy(board: _Board, start: int, end: int, operators: int) -> None:
@@ -894,7 +876,7 @@ def _actions(
             )
             if _bottleneck_clause(plant, op.equipment_id, bottleneck, unscheduled):
                 reason += f" This keeps the {bottleneck} bottleneck on an up tool."
-            mask = reticle_for(plant, job.product_id, op.step)
+            mask = op.reticle_id or reticle_for(plant, job.product_id, op.step)
             if mask:
                 reason += f" Reticle {mask} is on that tool."
         elif origin and origin == op.equipment_id:

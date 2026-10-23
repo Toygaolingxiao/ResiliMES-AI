@@ -422,9 +422,10 @@ def _tool_for(capability: str, used: set[str]) -> str | None:
 def _pin_down_scanner(plant: Plant, products: dict[str, Product], lots: int) -> None:
     """Park one lot per product on the down scanner.
 
-    Each product has its own reticle, so the up scanners can run those lots
-    together. Waiting for the repair queues them on one tool. Slack is shorter
-    than the repair and longer than one pass across the up scanners.
+    Each product-layer has two physical reticles, so two scanners can expose
+    that layer together. Waiting for the repair queues one lot per product on
+    the down tool. Slack is shorter than the repair and longer than one pass
+    across the up scanners.
     """
     per_product = 1
     cap = 24 if lots >= 200 else max(4, lots // 10)
@@ -501,14 +502,15 @@ def _reticles(products: list[Product]) -> list[Reticle]:
             if step.capability != "litho_193nm":
                 continue
             layer = step.layer or "L1"
-            rows.append(
-                Reticle(
-                    reticle_id=f"RET-{product.product_id}-{layer}",
-                    product_id=product.product_id,
-                    layer=layer,
-                    step=step.step,
+            for copy in (1, 2):
+                rows.append(
+                    Reticle(
+                        reticle_id=f"RET-{product.product_id}-{layer}-{copy}",
+                        product_id=product.product_id,
+                        layer=layer,
+                        step=step.step,
+                    )
                 )
-            )
     return rows
 
 

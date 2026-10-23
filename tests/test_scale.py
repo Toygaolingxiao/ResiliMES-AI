@@ -39,7 +39,12 @@ def test_scale_plant_is_deterministic_and_covers_the_loop() -> None:
         step.capability == "cvd_oxide" for product in first.products for step in product.route
     )
     assert first.qtime_rules
-    assert first.reticles
+    counts: dict[tuple[str, str], int] = {}
+    for item in first.reticles:
+        key = (item.product_id, item.step)
+        counts[key] = counts.get(key, 0) + 1
+    assert counts
+    assert min(counts.values()) >= 2
     assert first.inhibits
     assert any(
         job.status == "BLOCKED" and job.assigned_equipment == SCALE_DOWN_TOOL for job in first.jobs

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from .models import Action, Job, Plant, Schedule, ScheduledOp, Violation
+from .models import Action, Job, Plant, Reticle, Schedule, ScheduledOp, Violation
 from .plant import minutes_between
 
 UNAVAILABLE = {"DOWN", "MAINTENANCE"}
@@ -49,18 +49,25 @@ class Check:
     applies: Callable[[Plant, Schedule], bool] | None = None
 
 
-def reticle_for(plant: Plant, product_id: str, step: str) -> str | None:
-    """Mask for this product step. A rework exposure reuses the lithography mask."""
-    for item in plant.reticles:
-        if item.product_id == product_id and item.step == step:
-            return item.reticle_id
+def reticle_copies(plant: Plant, product_id: str, step: str) -> list[Reticle]:
+    """Physical masks for this product step. A rework exposure reuses the lithography mask."""
+    direct = [
+        item for item in plant.reticles if item.product_id == product_id and item.step == step
+    ]
+    if direct:
+        return direct
     fallback = {"LITHO-RW": "LITHO", "LITHO-L2-RW": "LITHO-L2"}.get(step)
     if fallback is None:
-        return None
-    for item in plant.reticles:
-        if item.product_id == product_id and item.step == fallback:
-            return item.reticle_id
-    return None
+        return []
+    return [
+        item for item in plant.reticles if item.product_id == product_id and item.step == fallback
+    ]
+
+
+def reticle_for(plant: Plant, product_id: str, step: str) -> str | None:
+    """One physical copy, for callers that only need a mask id."""
+    copies = reticle_copies(plant, product_id, step)
+    return copies[0].reticle_id if copies else None
 
 
 def recipe_for(plant: Plant, product_id: str, step: str) -> str:
@@ -413,10 +420,16 @@ def _rework_limit(plant: Plant, schedule: Schedule) -> list[Finding]:
     return found
 
 
+def _assigned_reticle(plant: Plant, op: ScheduledOp) -> str | None:
+    if op.reticle_id:
+        return op.reticle_id
+    return reticle_for(plant, op.product_id, op.step)
+
+
 def _reticle_uses(plant: Plant, schedule: Schedule) -> list[tuple[str, str, str, int, int]]:
     uses: list[tuple[str, str, str, int, int]] = []
     for op in schedule.operations:
-        reticle_id = reticle_for(plant, op.product_id, op.step)
+        reticle_id = _assigned_reticle(plant, op)
         if reticle_id is None:
             continue
         uses.append((reticle_id, op.equipment_id, op.job_id, op.start_min, op.end_min))
@@ -428,7 +441,7 @@ def _reticle(plant: Plant, schedule: Schedule) -> list[Finding]:
     found: list[Finding] = []
     for index, left in enumerate(uses):
         for right in uses[index + 1 :]:
-            if left[0] != right[0] or left[1] == right[1]:
+            if left[0] != right[0]:
                 continue
             if left[3] < right[4] and right[3] < left[4]:
                 found.append(
@@ -440,7 +453,7 @@ def _reticle(plant: Plant, schedule: Schedule) -> list[Finding]:
                             f"[{left[3]}, {left[4]}] and on {right[1]} for {right[2]} "
                             f"[{right[3]}, {right[4]}]."
                         ),
-                        fix_hint="Keep the reticle on one lithography tool at a time.",
+                        fix_hint="Keep each physical reticle on one scanner at a time.",
                     )
                 )
     return found
@@ -782,6 +795,22 @@ def _running_hold(job: Job, horizon: datetime) -> tuple[str, int] | None:
     return job.assigned_equipment, remaining
 
 
+def _copies_in_use(plant: Plant) -> dict[str, tuple[str, str, int]]:
+    """Physical copies a running lot already holds: reticle id to tool, lot, and end."""
+    mounted: dict[str, tuple[str, str, int]] = {}
+    for holder in plant.jobs:
+        held = _running_hold(holder, plant.horizon)
+        if held is None:
+            continue
+        tool, end = held
+        for copy in reticle_copies(plant, holder.product_id, holder.current_step):
+            if copy.reticle_id in mounted:
+                continue
+            mounted[copy.reticle_id] = (tool, holder.job_id, end)
+            break
+    return mounted
+
+
 def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
     """Checks appended after the original action rules, so the first refusal stays put."""
     jobs = plant.job_map()
@@ -789,32 +818,32 @@ def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
     if job is None or not action.step or not action.to_equipment:
         return []
     found: list[Violation] = []
-    reticle_id = reticle_for(plant, job.product_id, action.step)
-    if reticle_id is not None and action.start_min is not None:
-        for holder in plant.jobs:
-            if holder.job_id == action.job_id:
-                continue
-            held = _running_hold(holder, plant.horizon)
-            if held is None:
-                continue
-            tool, end = held
-            mask = reticle_for(plant, holder.product_id, holder.current_step)
-            if mask != reticle_id or tool == action.to_equipment:
-                continue
-            if action.start_min < end:
-                found.append(
-                    Violation(
-                        constraint="reticle",
-                        severity="high",
-                        detail=(
-                            f"Reticle {reticle_id} is on {tool} with {holder.job_id} "
-                            f"until t={end} min; {action.job_id} cannot start on "
-                            f"{action.to_equipment} at t={action.start_min}."
-                        ),
-                        fix_hint="Use the tool that already has the reticle, or wait until it is free.",
-                    )
-                )
+    copies = reticle_copies(plant, job.product_id, action.step)
+    if copies and action.start_min is not None:
+        mounted = _copies_in_use(plant)
+        blocked: tuple[str, str, str, int] | None = None
+        free = False
+        for copy in copies:
+            hold = mounted.get(copy.reticle_id)
+            if hold is None or hold[0] == action.to_equipment or action.start_min >= hold[2]:
+                free = True
                 break
+            if blocked is None:
+                blocked = (copy.reticle_id, hold[0], hold[1], hold[2])
+        if not free and blocked is not None:
+            reticle_id, tool, holder_id, end = blocked
+            found.append(
+                Violation(
+                    constraint="reticle",
+                    severity="high",
+                    detail=(
+                        f"Reticle {reticle_id} is on {tool} with {holder_id} "
+                        f"until t={end} min; {action.job_id} cannot start on "
+                        f"{action.to_equipment} at t={action.start_min}."
+                    ),
+                    fix_hint="Use a free copy, or wait until one is free.",
+                )
+            )
     recipe = recipe_for(plant, job.product_id, action.step)
     if inhibited(plant, job.product_id, recipe, action.to_equipment):
         found.append(

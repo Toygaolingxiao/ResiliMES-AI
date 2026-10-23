@@ -70,7 +70,8 @@ def test_litho_book_passes_and_keeps_the_down_tool_refusal() -> None:
     committed = critique_schedule(pair.after, after)
     rejected = reject_alternative(pair.after, naive_alternative(pair.after, "frozen"))
     assert rejected.violations[0].constraint == "equipment_status"
-    assert any(item.constraint == "reticle" for item in rejected.violations)
+    # A second L1 copy is free, so the down-tool plan is refused for the tool.
+    assert all(item.constraint != "reticle" for item in rejected.violations)
     rows = constraint_checks(committed, rejected)
     refused = next(row for row in rows if row["constraint"] == "equipment_status")
     assert refused["result"] == "rejected"
