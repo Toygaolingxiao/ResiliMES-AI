@@ -57,7 +57,27 @@ A queue-time rule says the start of `to_step` must be within `max_min` of the en
 - `SampleSource` reads `data/sample` and records the SQL that Zetaris would have run.
 - `ZetarisSource` runs that SQL through `agent.tools_zetaris.run_sql` and folds the rows with `plant_from_rows`.
 
-The schema name is checked against `^[A-Za-z_][A-Za-z0-9_]*$` before it is interpolated. Statements are single `SELECT`s. `scripts/load_zetaris.py` is the only writer, and it only runs when someone passes `--execute`.
+The schema name is checked against `^[A-Za-z_][A-Za-z0-9_]*$` before it is interpolated. Statements are single `SELECT`s. Maintenance logs are read from datasource `fab_cmms`. BOM and materials are read from `fab_erp`. Every other plant table uses `ZETARIS_SCHEMA`. `scripts/zetaris_setup.sh` loads Postgres and registers those datasources. `scripts/load_zetaris.py` only points at that script. The recipe is `docs/ZETARIS.md`.
+
+## Three-stage kernel
+
+`schedule_plant` is still the book the console and `POST /api/intents/confirm` commit. `resilimes.kernel` scores a candidate (DPI, setup, PED, a PM window, a batch pack). It does not take the lock and it does not replace `InMemoryEngine`. Locks are `lock:{equipment_id}` through `StateStore.compare_and_set`. See [API.md](API.md).
+
+```mermaid
+flowchart LR
+  ERP["Stage 1 ERP: orders, MPS, litho gap, rough MRP"] --> DPI["Stage 2 DPI on each lot"]
+  DPI --> IDLE["Stage 3 score when a tool is IDLE"]
+  CONFIRM["POST /api/intents/confirm"] --> ENGINE["InMemoryEngine"]
+  ENGINE --> STORE["StateStore: memory or Redis"]
+```
+
+Stage 1 reads SMT2020 release intervals into `orders`. It builds a shift release plan, a coarse litho capacity gap, and a rough material check. A product with no BOM is `unchecked`. Customers are `derived:<order id>`. Margin tier is `unpriced` unless a row says `high`.
+
+Stage 2 writes `DPI = w1·LotValue + w2·(3600/slack)`. Slack at or below 60 seconds uses urgency 60, and slack at or below zero sets `late`. Critical ratio is stored as `cr_reference` with coefficient 0 so the due date is not counted twice. The litho scanner group is the finite-capacity constraint: operation dues walk backward from the contract due, scanner steps are placed forward, and other steps shift around those scanner windows.
+
+Stage 3 runs when a tool is `IDLE`. A lot whose process would finish after the next PM or planned-down start is skipped, including a lot with the highest DPI. The trace line is `skipped LOT-x: 180 min > 30 min to PM`. Setup comes from `setup_matrix`. Batch tools pack the same recipe up to `batch_size` wafers and ship a partial pack only after the max wait. The score is `w_dpi·DPI − w_setup·setup_seconds + w_ped·PEDRisk`.
+
+Modeled: re-entrant routes as operation ids, scanner capacity, PM windows, setup matrix, batch packing, and the DPI score. Simplified: one scanner family as the only finite constraint, no AMHS, customers and margins derived, PM duration as the published MTTR mean. Not modeled: reinforcement learning, full AMHS, thermal chemistry, millisecond MES sync, Kafka. Confirm still calls `schedule_plant`.
 
 ## Schedule
 

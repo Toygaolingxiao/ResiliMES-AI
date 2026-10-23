@@ -1,6 +1,6 @@
 PY ?= python3
 
-.PHONY: install demo demo-live test lint typecheck check format sql smoke
+.PHONY: install demo demo-live test lint typecheck check format sql smoke redis kernel-sql
 
 install:
 	$(PY) -m pip install -r requirements-dev.txt
@@ -32,3 +32,9 @@ sql:
 
 smoke:
 	RESILIMES_MODE=mock $(PY) smoke_test.py --mock
+
+redis:
+	docker compose up -d redis
+
+kernel-sql:
+	$(PY) -m resilimes.data.smt2020_kernel

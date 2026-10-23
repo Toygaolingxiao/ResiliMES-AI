@@ -10,16 +10,15 @@ Confirmed from the scaffold, the Zetaris knowledge base article on pipeline sche
 - SQL runs as `POST` with JSON `{"sql": "..."}`.
 - Headers are `Authorization: Bearer <api key>`, `X-Org-ID` (numeric organisation id), `X-Request-ID` (fresh UUID), and `Content-Type: application/json`.
 - A documented success shape is `{"headers": [...], "data": [[...]]}`. `rows_as_dicts` also accepts `columns`/`rows`, a list of objects, and a body wrapped in `result`.
-- The knowledge-base example path is `/sql-editor/sqls/run-query`. The scaffold default, which this repo keeps, is `/sql-editor/sqls/run`. Set `ZETARIS_SQL_PATH` to the path your tenant returns 200 for.
-- Organisation id comes from Management → Organisation → ID.
+- The SQL path on the owner's bundle is `/sql-editor/sqls/run-query`. `/sql-editor/sqls/run` accepts the same body. `ZETARIS_SQL_PATH` defaults to `run-query`.
+- Organisation id `1` is returned by `POST /api/auth/login` as `orgId`. Every REST call sends it as `X-Org-ID`. A call without it returns 400. `X-API-Key` alone returns 401.
+- Login returns `idToken` (about 900 seconds), `refreshToken`, and `orgId`. Refresh is `GET /auth/refresh` with the refresh token as Bearer plus `X-Org-ID`. The app uses a long-lived key from `POST /auth/api-key`, sent as `Authorization: Bearer`.
+- Success is `{headers, data, total, timeUsed}` and every value is a string. Failure is `{msg}` with status 400.
+- Postgres is container `fab-mes`. Zetaris datasources are `resilimes` (`fab_mes`), `fab_cmms`, and `fab_erp`, each with schema `resilimes`. The JDBC `schema` option is required. Tables are `<datasource>.<table>`. Cross-datasource views are not created.
 
-Not confirmed, so we did not depend on it:
+The factory tables are created in Postgres by `scripts/zetaris_setup.sh`, then registered. `data/sql/seed.sql` is still all-`VARCHAR` sample data. `data/sql/kernel.sql` is typed SMT2020 data. The recovery path only `SELECT`s. `ZETARIS_SCHEMA` and every datasource in `ZETARIS_TABLE_SOURCES` must match `^[A-Za-z_][A-Za-z0-9_]*$`.
 
-- Whether `CREATE TABLE` is allowed in every Lightning tenant. `data/sql/seed.sql` uses ordinary `CREATE TABLE` plus `INSERT`, with every column as `VARCHAR(256)`. If the editor rejects that DDL, register `data/zetaris/*.csv` as tables with the same names and set `ZETARIS_SCHEMA`.
-- The database name. We use `resilimes` unless `ZETARIS_SCHEMA` overrides it. The value must match `^[A-Za-z_][A-Za-z0-9_]*$`.
-- Extra response envelopes beyond `result`. If a tenant wraps rows differently, extend `rows_as_dicts` only.
-
-Reads on the recovery path are `SELECT` only. The load script is explicit and off by default.
+`rows_as_dicts` still accepts `columns`/`rows` and a body wrapped in `result`, in addition to the verified `headers` + `data` shape.
 
 ## Meterless Nightshift
 

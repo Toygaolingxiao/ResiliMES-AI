@@ -1,7 +1,8 @@
 """Transactional boundary the scheduler does not own.
 
-The in-memory store is the default. A Redis or database transaction on the
-other branch implements the same protocols. See docs/API.md.
+``InMemoryStateStore`` is the default. ``RedisStateStore`` implements the same
+``get`` / ``set`` / ``delete`` / ``compare_and_set`` protocol when ``REDIS_URL``
+is set. ``InMemoryEngine`` is the transaction for either store. See docs/API.md.
 """
 
 from resilimes.txn.engine import (
@@ -11,7 +12,7 @@ from resilimes.txn.engine import (
     MachineLock,
     TxnResult,
 )
-from resilimes.txn.store import InMemoryStateStore, StateStore
+from resilimes.txn.store import InMemoryStateStore, RedisStateStore, StateStore, build_store
 
 __all__ = [
     "EngineTransaction",
@@ -19,6 +20,8 @@ __all__ = [
     "InMemoryStateStore",
     "LockError",
     "MachineLock",
+    "RedisStateStore",
     "StateStore",
     "TxnResult",
+    "build_store",
 ]

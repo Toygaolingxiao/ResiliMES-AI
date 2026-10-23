@@ -61,7 +61,7 @@ The client is the scaffold in `agent/tools_zetaris.py`:
 
 `resilimes/data/zetaris_source.py` issues one `SELECT` per table from `resilimes/data/sql_catalog.py` and builds the same `Plant` the scheduler uses. The schema identifier is validated so it cannot carry a second statement.
 
-`data/sql/seed.sql` and `data/zetaris/*.csv` are generated from `data/sample` by `python scripts/export_zetaris_sql.py`. `tests/test_sql_export.py` fails if those files drift. `python scripts/load_zetaris.py --execute` sends the seed, one statement per request.
+`data/sql/seed.sql` and `data/zetaris/*.csv` are generated from `data/sample` by `python scripts/export_zetaris_sql.py`. `tests/test_sql_export.py` fails if those files drift. `scripts/zetaris_setup.sh` loads that seed, plus `data/sql/kernel.sql` when it exists, into Postgres and registers datasources `resilimes`, `fab_cmms`, and `fab_erp`. `scripts/load_zetaris.py` only points at that script.
 
 In mock mode the specialist still records those SQL strings and answers them from the sample files. The trace labels the mode `sample-equivalent`, so a recording does not imply a live warehouse call. `tests/test_recovery.py::test_zetaris_headers_and_row_shape` checks the bearer token, org header, request id, URL, and the `headers` + `data` row shape, including a body wrapped in `result`.
 

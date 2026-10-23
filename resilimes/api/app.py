@@ -34,7 +34,7 @@ from resilimes.engines.contracts import ContractError
 from resilimes.llm.nightshift import probe_nightshift
 from resilimes.logging_config import configure_logging
 from resilimes.txn.engine import InMemoryEngine, LockError
-from resilimes.txn.store import InMemoryStateStore
+from resilimes.txn.store import build_store
 
 _STATIC = Path(__file__).resolve().parents[1] / "demo" / "static"
 
@@ -56,7 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         summary="Autonomous rescheduling and fault recovery for smart manufacturing.",
     )
     app.state.settings = active
-    app.state.engine = InMemoryEngine(InMemoryStateStore())
+    app.state.engine = InMemoryEngine(build_store(active.redis_url))
 
     @app.get("/api/health")
     def health() -> dict[str, object]:
@@ -83,7 +83,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/scenarios")
     def scenarios() -> dict[str, object]:
         cfg: Settings = app.state.settings
-        plant, _records = build_source(cfg).load_plant(cfg.horizon)
+        try:
+            plant, _records = build_source(cfg).load_plant(cfg.horizon)
+        except (ConfigError, ZetarisDataError, PlantDataError) as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         bay: list[dict[str, str]] = [
             {"id": equipment.equipment_id, "kind": "tool", "status": equipment.status}
             for equipment in plant.equipment

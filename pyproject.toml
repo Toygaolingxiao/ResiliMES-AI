@@ -68,5 +68,5 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["openai.*", "dotenv.*", "requests.*", "uvicorn.*"]
+module = ["openai.*", "dotenv.*", "requests.*", "uvicorn.*", "redis.*"]
 ignore_missing_imports = true

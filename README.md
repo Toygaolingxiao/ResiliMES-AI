@@ -67,7 +67,7 @@ Nemotron turns a dispatcher sentence into one tool call, and later turns the eng
 | World Model | Append-only plant log. Assignments are ingested under the contract and replayed. |
 | Nightshift | OpenAI-compatible hotspot. Nemotron parses dispatch intents and writes feedback and the supervisor narrative when a runtime token is configured. The planner and the critic stay deterministic code. A Nightshift outage uses the regex parser and the deterministic narrative, and that fallback is labeled. |
 
-`POST /api/intents` validates the tool call, checks lot and tool ids, and asks Scout to sign. Nothing is applied until `POST /api/intents/confirm`. The confirm path takes a machine `lock_token`, applies the change, and re-dispatches. `check_inventory` runs the BOM check first. `notify_pe` is a trace line for the UI. It does not send email or any other message. The contract for the in-memory store, and for the Redis or database transaction on the scheduling branch, is [docs/API.md](docs/API.md).
+`POST /api/intents` validates the tool call, checks lot and tool ids, and asks Scout to sign. Nothing is applied until `POST /api/intents/confirm`. The confirm path takes a machine `lock_token`, applies the change, and re-dispatches. `check_inventory` runs the BOM check first. `notify_pe` is a trace line for the UI. It does not send email or any other message. The contract is [docs/API.md](docs/API.md). `REDIS_URL` selects `RedisStateStore` for that same engine. Empty keeps the in-memory store.
 
 Nightshift can point `NEMOTRON_MODEL` at a local on-prem model and keep the same lanes. This repo does not add a second client for that. Nightshift stays the provider.
 
@@ -108,14 +108,15 @@ The image sets `RESILIMES_MODE=mock`.
 
 1. Install a NVIDIA Nemotron model in [Meterless Nightshift](https://meterless.ai/) and copy the runtime token from `<stateDir>/proxy-token`. Do not use the placeholder `rt-local`.
 2. Set `METERLESS_BASE_URL`, `METERLESS_RUNTIME_TOKEN`, and `NEMOTRON_MODEL` to the id `GET /v1/models` returns.
-3. Load the factory tables. Dry-run, then execute:
+3. Load Postgres and register the three datasources. From Windows:
 
 ```bash
-python scripts/load_zetaris.py
-python scripts/load_zetaris.py --execute
+wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh
 ```
 
-4. Set `ZETARIS_REST_URL`, `ZETARIS_ORG_ID`, `ZETARIS_API_KEY`, and, if your tenant needs it, `ZETARIS_SQL_PATH=/sql-editor/sqls/run-query`.
+The same script on the Linux tree is `bash scripts/zetaris_setup.sh`. It writes the API key to `~/.config/fab-mes/api-key` and does not print it. The recipe is [docs/ZETARIS.md](docs/ZETARIS.md).
+
+4. Set `ZETARIS_REST_URL`, `ZETARIS_ORG_ID`, `ZETARIS_API_KEY`, `ZETARIS_TABLE_SOURCES`, and `ZETARIS_TIMEOUT_S`. The SQL path default is `/sql-editor/sqls/run-query`.
 5. Start with `make demo-live` or `RESILIMES_MODE=auto python -m resilimes serve`.
 
 `RESILIMES_MODE=live` refuses to start the recovery loop unless both providers are configured. The full variable list is in [.env.example](.env.example). Nothing in that file is a real secret.
