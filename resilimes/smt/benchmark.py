@@ -104,7 +104,7 @@ def main() -> None:
     aps_ms, scanner_steps = macro_aps_ms(fab)
     horizon = STUDY_HORIZON_SEC
     print(f"APS {aps_ms:.1f} ms, {scanner_steps} scanner steps", flush=True)
-    steady = _matrix(fab, horizon, ("resilimes", "edd", "fifo", "cr"), kind="steady")
+    steady = _matrix(fab, horizon, ("resilimes", "edd", "fifo", "cr", "smt_rule"), kind="steady")
     litho = _matrix(fab, horizon, ("resilimes", "edd"), kind="litho")
     pm = _matrix(fab, horizon, ("resilimes", "edd"), kind="pm")
     hot = _matrix(fab, horizon, ("resilimes", "fifo"), kind="hot")
@@ -134,7 +134,7 @@ def main() -> None:
         "xfactor": _xfactor(fab),
         "repair_mc": _repair_mc(),
         "price": _prices(fab),
-        "heldout_seeds_9_13": _HELDOUT,
+        "heldout_seeds_9_13": _heldout_control(fab),
     }
     json_path = ROOT / "data" / "smt2020" / "benchmark.json"
     json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -224,7 +224,11 @@ def _xfactor(fab: Fab) -> dict[str, Any]:
         "etas": {},
     }
     for eta in _X_ETAS:
-        policies = ("resilimes", "edd", "fifo", "cr") if eta == 600.0 else ("resilimes", "edd")
+        policies = (
+            ("resilimes", "edd", "fifo", "cr", "smt_rule")
+            if eta == 600.0
+            else ("resilimes", "edd", "smt_rule")
+        )
         rows: dict[str, list[RunResult]] = {policy: [] for policy in policies}
         for seed in SEEDS:
             downs = sample_downs(
@@ -470,14 +474,16 @@ def _markdown(payload: dict[str, Any]) -> str:
         "Each seed draws exponential MTTF/MTTR from `downcal.txt`, one clock per tool. "
         "The same draw is shared across policies.",
         "",
-        f"Macro APS (backward due, then earliest free expose scanner, "
-        f"{payload['scanner_steps']} scanner steps): **{payload['aps_ms']} ms**.",
+        f"Macro APS places {payload['scanner_steps']} scanner steps. "
+        "That step count is the stable spec. "
+        f"The timer is about 0.3 s on the CI VM (this run recorded {payload['aps_ms']} ms).",
         "",
         "Dispatch latency is the time to choose the next lot for one idle tool, "
         "look-ahead 24 (8 when that family's queue exceeds two lots per tool). "
         "The headline p50/p95 includes empty wakes. "
         "Nonempty-queue decisions on the X-factor ResiliMES runs, seeds 1-5, "
-        "are p50 0.0090-0.0107 ms and p95 0.244-0.250 ms. "
+        "are p50 0.0090-0.0107 ms and p95 about 0.25-0.26 ms "
+        "(recorded 0.244-0.250 ms). "
         "It is not the full simulation time. Simulation time is the whole 48-hour run.",
         "",
         "The WIP column is a candidate cap, not a replan. "
@@ -502,9 +508,9 @@ def _markdown(payload: dict[str, Any]) -> str:
         "Litho utilization is busy time on the 102 `Litho_*` tools divided by "
         "tools times horizon. Scanner utilization uses the 82 expose tools. "
         "Q-time violations are published CQT misses. "
-        "PM avoided is a ResiliMES decision that refused at least one lot "
-        "because the process would cross a PM. "
-        "PM overlaps are baseline starts that run across a PM.",
+        "PM avoided counts decisions, on every policy, that refused at least one "
+        "lot because the process would cross a PM. "
+        "PM overlaps are starts that still run across a PM.",
         "",
         "The weekly PM FOA on the focus family is outside a 48-hour window "
         "(about 7 days). The steady and litho studies therefore show zero PM "
@@ -571,6 +577,8 @@ def _markdown(payload: dict[str, Any]) -> str:
         "",
         _table(payload["steady"]),
         "",
+        _smt_rule_note(payload),
+        "",
         "### Lithography breakdown",
         "",
         _table(payload["litho"]),
@@ -587,7 +595,7 @@ def _markdown(payload: dict[str, Any]) -> str:
         "",
         _hot_note(payload),
         "",
-        _heldout(),
+        _heldout(payload),
         "",
         "Per-seed rows are in `data/smt2020/benchmark.json`. Regenerate with `make smt-bench`.",
         "What the extract contains, and what this simulator leaves out, is "
@@ -597,13 +605,70 @@ def _markdown(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _heldout() -> str:
-    """Seeds 9-13, one run, pre-registered. Not retuned after the numbers."""
-    return """## Seeds 9-13 (one run, then keep or revert)
+_HELDOUT_SEEDS = (9, 10, 11, 12, 13)
 
-Registered before the run. Seeds 9, 10, 11, 12, 13. X-factor book: due = remaining process times 2.75, 48 hours, 87 lots due, `Litho_FE_92-1` down 600 minutes. Published-due book: 48 hours, 56 lots due. Policies: ResiliMES, EDD, FIFO, CR. Slack threshold 7200 seconds. Keep a ResiliMES arm only when, on both books, the on-time lot count is not lower and re-cleans are not higher and Q-time violations are not higher than the control. EDD, FIFO, and CR matched the control on every arm.
 
-Control is the shipped score: lot due inside `dpi()`, the Wet_Etch gate, and the candidate cap. Sums are five seeds.
+def _heldout_control(fab: Fab) -> dict[str, Any]:
+    """Recompute the shipped score on seeds 9-13. The arm table stays a lab note.
+
+    Policies are resilimes, edd, fifo, and cr. The expose-due and dry-etch arms
+    are not in this code, so they are not recomputed.
+    """
+    policies = ("resilimes", "edd", "fifo", "cr")
+    books: dict[str, Any] = {}
+    horizon = STUDY_HORIZON_SEC
+    for name in ("xfactor", "published"):
+        plant = apply_xfactor(fab) if name == "xfactor" else fab
+        rows: dict[str, dict[str, Any]] = {
+            policy: {"on_time": 0, "due": 0, "qtime": 0, "recleans": 0, "per_seed": []}
+            for policy in policies
+        }
+        for seed in _HELDOUT_SEEDS:
+            downs = sample_downs(
+                plant,
+                seed,
+                horizon,
+                forced_tool=plant.focus_tool if name == "xfactor" else None,
+                forced_until=600.0 * 60.0 if name == "xfactor" else 0.0,
+            )
+            pm = pm_windows(plant, horizon)
+            for policy in policies:
+                print(f"heldout {name} {policy} seed {seed}", flush=True)
+                result = run_policy(
+                    plant,
+                    policy=policy,
+                    seed=seed,
+                    horizon=horizon,
+                    downs=downs,
+                    pm=pm,
+                    trace=False,
+                    focus_down_until=600.0 * 60.0 if name == "xfactor" else 0.0,
+                )
+                num = _count(result.on_time_pct, result.due_in_horizon)
+                rows[policy]["on_time"] += num
+                rows[policy]["due"] += result.due_in_horizon
+                rows[policy]["qtime"] += result.qtime_violations
+                rows[policy]["recleans"] += result.recleans
+                rows[policy]["per_seed"].append(f"{num}/{result.due_in_horizon}")
+        books[name] = rows
+    return {
+        "seeds": list(_HELDOUT_SEEDS),
+        "regenerated_by": "make smt-bench",
+        "books": books,
+        "lab_note": _HELDOUT,
+    }
+
+
+def _heldout(payload: dict[str, Any]) -> str:
+    """Seeds 9-13. The control is regenerated. The arm table is a lab note."""
+    fresh = _heldout_fresh(payload.get("heldout_seeds_9_13") or {})
+    lab = """## Seeds 9-13 arm decisions (lab note, not regenerated by make smt-bench)
+
+The rows below are the one-shot recorded before `make smt-bench` regenerated the control. The expose-due and dry-etch arms are not in the code, so this command does not recompute them. Do not read the lab-note control as the current score. The current score is the regenerated table above.
+
+Registered before that one-shot. Seeds 9, 10, 11, 12, 13. X-factor book: due = remaining process times 2.75, 48 hours, 87 lots due, `Litho_FE_92-1` down 600 minutes. Published-due book: 48 hours, 56 lots due. Policies: ResiliMES, EDD, FIFO, CR. Slack threshold 7200 seconds. Keep a ResiliMES arm only when, on both books, the on-time lot count is not lower and re-cleans are not higher and Q-time violations are not higher than the control. EDD, FIFO, and CR matched the control on every arm.
+
+Control in this lab note is the score shipped at that one-shot: lot due inside `dpi()`, the Wet_Etch gate, and the candidate cap. Sums are five seeds.
 
 | Book | Arm | Decision | On time | Q-time | Re-cleans |
 | --- | --- | --- | ---: | ---: | ---: |
@@ -625,6 +690,79 @@ The slack exception matched the control on every seed of both books. It stays in
 Per seed, ResiliMES on time, X-factor control: 82/87, 74/87, 87/87, 87/87, 77/87. Expose due: 82/87, 87/87, 87/87, 87/87, 77/87. Dry-etch: 82/87, 74/87, 87/87, 87/87, 77/87. Slack: same as control.
 
 Per seed, ResiliMES on time, published control: 32/56, 31/56, 32/56, 32/56, 29/56. Expose due: 32/56, 31/56, 32/56, 32/56, 28/56. Dry-etch and slack: same as control."""
+    if not fresh:
+        return lab
+    return fresh + "\n\n" + lab
+
+
+def _heldout_fresh(block: dict[str, Any]) -> str:
+    if block.get("regenerated_by") != "make smt-bench":
+        return ""
+    lines = [
+        "## Seeds 9-13 control (regenerated by make smt-bench)",
+        "",
+        "Shipped score only. Seeds 9, 10, 11, 12, 13. "
+        "X-factor book: due = remaining process times 2.75, 48 hours, "
+        "`Litho_FE_92-1` down 600 minutes. "
+        "Published-due book: 48 hours, published dues. "
+        "PM refusal applies to every policy. "
+        "This table is recomputed by `make smt-bench`.",
+        "",
+        "| Book | Policy | On time | Q-time | Re-cleans | Per seed |",
+        "| --- | --- | ---: | ---: | ---: | --- |",
+    ]
+    books = block.get("books") or {}
+    for book, rows in books.items():
+        for policy, item in rows.items():
+            per_seed = ", ".join(item.get("per_seed") or [])
+            lines.append(
+                f"| {book} | {policy} | {item['on_time']}/{item['due']} | "
+                f"{item['qtime']} | {item['recleans']} | {per_seed} |"
+            )
+    return "\n".join(lines)
+
+
+def _smt_rule_note(payload: dict[str, Any]) -> str:
+    """Report smt_rule against ResiliMES from the rows this run wrote."""
+    steady = payload.get("steady") or {}
+    if "smt_rule" not in steady or "resilimes" not in steady:
+        return ""
+    res = steady["resilimes"]["mean"]
+    rule = steady["smt_rule"]["mean"]
+    published = _rule_vs(res, rule, "published dues")
+    xf_block = ((payload.get("xfactor") or {}).get("etas") or {}).get("600.0") or {}
+    xf = ""
+    if "smt_rule" in xf_block and "resilimes" in xf_block:
+        xf = " " + _rule_vs(
+            xf_block["resilimes"]["mean"],
+            xf_block["smt_rule"]["mean"],
+            "X-factor dues at a 600-minute repair",
+        )
+    return (
+        "`smt_rule` is `rule_HotLotFIRST` with `rank_HP;rank_RSETUP;rank_CR` "
+        "(PRIOR at least 20 first, then higher PRIOR, then shorter setup, then lower CR). "
+        "Implant_128, Implant_132, and Implant_91 use `rule_LSSU` (setup first, then that cascade). "
+        "The idle-tool loop still picks the tool. `wake_LeastSetupTime` is not implemented. "
+        f"{published}{xf} "
+        "These rows were not tuned after the run."
+    )
+
+
+def _rule_vs(res: dict[str, Any], rule: dict[str, Any], book: str) -> str:
+    res_otd = res["on_time_pct"]
+    rule_otd = rule["on_time_pct"]
+    if rule_otd > res_otd:
+        delivery = f"On {book}, smt_rule on-time {rule_otd}% beats ResiliMES {res_otd}%."
+    elif rule_otd < res_otd:
+        delivery = f"On {book}, ResiliMES on-time {res_otd}% beats smt_rule {rule_otd}%."
+    else:
+        delivery = f"On {book}, smt_rule and ResiliMES tie on on-time at {res_otd}%."
+    return (
+        f"{delivery} Weighted tardiness is {rule['weighted_tardiness_min']} minutes "
+        f"under smt_rule and {res['weighted_tardiness_min']} under ResiliMES. "
+        f"Q-time is {rule['qtime_violations']} against {res['qtime_violations']}. "
+        f"Re-cleans are {rule['recleans']} against {res['recleans']}."
+    )
 
 
 def _published_lead(payload: dict[str, Any]) -> str:
@@ -754,7 +892,7 @@ def _xfactor_prose(payload: dict[str, Any]) -> str:
         "wet step once. That is not the published rework probability. "
         f"Ten thousand exponential draws of the lithography MTTR "
         f"({LITHO_MTTR_MIN} minutes) have mean {repair['mean_min']} minutes, "
-        f"sample std {repair['std_min']}, p50 {repair['p50_min']}, "
+        f"population standard deviation {repair['std_min']}, p50 {repair['p50_min']}, "
         f"p90 {repair['p90_min']}. "
         f"The share at or under 180 / 300 / 600 minutes is "
         f"{repair['p_le_180']} / {repair['p_le_300']} / {repair['p_le_600']}. "
@@ -808,7 +946,7 @@ def _xfactor_price(payload: dict[str, Any]) -> str:
         f"{paid} Mean X-factor on this seed is {xf.get('mean_x_before')} under "
         f"EDD and {xf.get('mean_x_after')} under ResiliMES. "
         f"Upstream gates {xf.get('gates')}. Re-cleans {xf.get('recleans')}. "
-        "Spread across seeds is the sample standard deviation, n=5."
+        "Spread across seeds is the population standard deviation, n=5."
     )
 
 

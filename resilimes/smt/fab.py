@@ -54,6 +54,8 @@ class Family:
     tool0: int
     litho: bool
     scanner: bool
+    # tool.txt.1l RULE. HotLotFIRST everywhere except Implant_128/132/91 (LSSU).
+    rule: str = "rule_HotLotFIRST"
 
 
 @dataclass
@@ -182,6 +184,7 @@ def _tools(path: Path) -> tuple[list[Family], list[int], list[str], dict[str, in
                 tool0=len(tool_name),
                 litho=name.startswith("Litho_"),
                 scanner=_is_scanner(name),
+                rule=row["RULE"].strip() or "rule_HotLotFIRST",
             )
         )
         for number in range(1, qty + 1):

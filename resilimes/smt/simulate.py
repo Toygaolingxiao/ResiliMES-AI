@@ -2,8 +2,8 @@
 
 One decision looks only at the station family of the tool that just went idle,
 and only at a bounded look-ahead inside that queue. Breakdown clocks are
-exponential MTTF/MTTR from ``downcal.txt``, one clock per tool. ResiliMES
-refuses a start that would run across the next PM. EDD, FIFO, and CR do not.
+exponential MTTF/MTTR from ``downcal.txt``, one clock per tool. Every policy
+refuses a start that falls inside a PM or whose process would cross the next PM.
 
 Transport (``fromto`` is one Fab-to-Fab row), operators, reticle copies, and
 the published fractional rework probability are not in this loop. A litho
@@ -88,6 +88,9 @@ class RunResult:
     dispatch_busy_p50_ms: float = 0.0
     dispatch_busy_p95_ms: float = 0.0
     dispatch_busy_decisions: int = 0
+    # Starts committed while a down window covered the tool. Empty when the
+    # loop refuses those starts before choose().
+    down_starts: list[dict[str, Any]] = field(default_factory=list)
 
 
 def interrupt_remaining(started: float, moment: float, proc: float) -> tuple[float, float]:
@@ -259,7 +262,7 @@ def run_policy(
     bar_family: int | None = None,
     bar_until: float | None = None,
 ) -> RunResult:
-    if policy not in {"resilimes", "edd", "fifo", "cr"}:
+    if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     sim = _Sim(
         fab,
@@ -348,6 +351,7 @@ class _Sim:
         ]
         self.gated = 0
         self.recleans = 0
+        self.down_starts: list[dict[str, Any]] = []
         self.n = len(fab.lot_id)
         self.tools = len(fab.tool_name)
         self.step = list(fab.lot_step)
@@ -500,6 +504,9 @@ class _Sim:
         pool = ready_pool
         over_cap = self.policy == "resilimes" and self.depth[fam] > self.threshold[fam]
         limit = 8 if over_cap else LOOKAHEAD
+        if self.policy == "smt_rule":
+            # The dataset cascade ranks the whole queue. The candidate cap is ResiliMES.
+            limit = len(pool)
         if len(pool) > limit:
             if self.policy == "fifo":
                 pool = pool[:limit]
@@ -515,14 +522,14 @@ class _Sim:
                         if lot not in kept and self._slack(lot, moment) <= SLACK_CANDIDATE_SEC:
                             ranked.append(lot)
                 pool = ranked
-        pm_start = self.next_pm_start(tool, moment) if self.policy == "resilimes" else None
+        pm_start = self.next_pm_start(tool, moment)
         feasible: list[int] = []
         skipped = False
         gated = False
         gate_wake: float | None = None
         for lot in pool:
             proc = self.piece_seconds(lot, tool)
-            if self.policy == "resilimes" and pm_start is not None and moment + proc > pm_start:
+            if pm_start is not None and moment + proc > pm_start:
                 skipped = True
                 continue
             if self.policy == "resilimes":
@@ -661,13 +668,15 @@ class _Sim:
             return (-self.dpi(lot, moment), self.ready[lot], lot)
         return (self.ready[lot], self.due[lot], lot)
 
-    def rank(self, lot: int, tool: int, moment: float) -> tuple[float, float, int]:
+    def rank(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
         if self.policy == "fifo":
             return (self.ready[lot], self.due[lot], lot)
         if self.policy == "edd":
             return (self.due[lot], self.ready[lot], lot)
         if self.policy == "cr":
             return (self.cr(lot, moment), self.due[lot], lot)
+        if self.policy == "smt_rule":
+            return self.smt_rule_key(lot, tool, moment)
         fam = self.fab.tool_family[tool]
         route = self.fab.routes[self.fab.lot_route[lot]]
         setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[self.step[lot]])
@@ -675,6 +684,29 @@ class _Sim:
             dpi=self.dpi(lot, moment), setup_sec=setup, ped=self.ped(lot, moment)
         )
         return (-score, self.ready[lot], lot)
+
+    def smt_rule_key(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
+        """Dataset cascade from ``tool.txt.1l``. Not ``dispatch_score``.
+
+        ``rule_HotLotFIRST`` with ``rank_HP;rank_RSETUP;rank_CR``: a lot whose
+        PRIOR is at least 20 (hot, including VIP at 30) ranks before a normal
+        lot, then higher PRIOR, then shorter setup, then lower CR. The 20 is
+        the published band in ``order_class_from_priority``, not a tuned weight.
+        ``rule_LSSU`` (Implant_128, Implant_132, Implant_91) puts setup first
+        and then that same cascade. Tool choice stays the idle-tool loop.
+        ``wake_LeastSetupTime`` is not implemented.
+        """
+        fam = self.fab.tool_family[tool]
+        family = self.fab.families[fam]
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[self.step[lot]])
+        priority = self.fab.lot_priority[lot]
+        hot = 0.0 if priority >= 20 else 1.0
+        ratio = self.cr(lot, moment)
+        cascade = (hot, -float(priority), setup, ratio, float(lot))
+        if family.rule == "rule_LSSU":
+            return (setup, hot, -float(priority), ratio, float(lot))
+        return cascade
 
     def dpi(self, lot: int, moment: float) -> float:
         route = self.fab.routes[self.fab.lot_route[lot]]
@@ -719,11 +751,10 @@ class _Sim:
             return
         if self._queue_down_ends(tool, moment):
             return
-        if self.policy == "resilimes":
-            in_pm = _covering(self.pm[tool], moment)
-            if in_pm is not None:
-                self.push(in_pm[1], _WAKE, tool)
-                return
+        in_pm = _covering(self.pm[tool], moment)
+        if in_pm is not None:
+            self.push(in_pm[1], _WAKE, tool)
+            return
         chosen, wake_at = self.choose(tool, moment)
         fam = self.fab.tool_family[tool]
         if not chosen:
@@ -751,6 +782,18 @@ class _Sim:
             if tool not in self.idle[fam]:
                 self.idle[fam].append(tool)
             return
+        covered = _covering(self.downs[tool], moment)
+        if covered is not None:
+            down_min = (covered[1] - covered[0]) / 60.0
+            for lot in started:
+                self.down_starts.append(
+                    {
+                        "lot_id": self.fab.lot_id[lot],
+                        "tool": self.fab.tool_name[tool],
+                        "t": moment,
+                        "down_min": down_min,
+                    }
+                )
         self.tool_gen[tool] += 1
         self.running[tool] = started[0]
         self.on_tool[tool] = started
@@ -763,7 +806,7 @@ class _Sim:
         finish = moment + piece
         self.piece_started[tool] = moment
         self.piece_proc[tool] = piece
-        if self.policy != "resilimes" and self.overlaps_pm(tool, moment, piece):
+        if self.overlaps_pm(tool, moment, piece):
             self.pm_overlaps += 1
         self.push(finish, _DONE, tool, self.tool_gen[tool])
         self.busy_until[tool] = finish
@@ -993,4 +1036,5 @@ class _Sim:
             mean_x_factor=mean_x,
             qtime_gates=self.gated,
             recleans=self.recleans,
+            down_starts=self.down_starts,
         )
