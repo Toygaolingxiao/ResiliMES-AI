@@ -963,20 +963,9 @@ function paintSmtRecover(report) {
   $("#headline").textContent = report.incident || "";
   const hot = report.hot_lot || {};
   const refused = report.refusal && report.refusal.detail;
-  const xf = report.xfactor;
-  if (xf && state.smtPinned !== report.scenario_id) {
-    state.smtGroup = "Litho";
-    state.smtEnd = Math.round((report.horizon_h || 48) * 60);
-    state.smtPinned = report.scenario_id;
-  }
-  const price = report.price;
-  const paid = !price
-    ? ""
-    : price.lots
-      ? `Non-hot lots delayed by the recovery: ${price.lots}, ${price.extra_h} h extra. Worst ${((price.worst || [])[0] || {}).lot_id || ""}.`
-      : "No scored non-hot lot finished later under the recovery.";
-  const knock = report.scenario_id === "xfactor" && xf
-    ? `Dues are remaining process x ${xf.factor}. ${xf.tool} is down ${xf.down_min} min. Mean X-factor ${xf.mean_x_before} → ${xf.mean_x_after}. Upstream gates ${xf.gates}. Re-cleans ${xf.recleans}.`
+  const review = smtReviewCopy(report);
+  const knock = review.knock
+    ? review.knock
     : report.scenario_id === "tight_p1" && tight
     ? `${tight.tool} is down ${tight.down_min} min. ${tight.p1_lots.length} VIP lots due at ${tight.p1_due_h} h. ${tight.decoy_lots.length} normal lots in the same queue due at ${tight.decoy_due_h} h. ${tight.spotlight_lot} is ${tight.spotlight_late_h_before} h late under EDD and ${tight.spotlight_late_h_after} h late under ResiliMES on this seed.`
     : report.scenario_id === "litho_down"
@@ -986,7 +975,7 @@ function paintSmtRecover(report) {
       : report.scenario_id === "pm_avoid"
         ? `${(report.pm && report.pm.calendar) || "PM"} shifted ${report.pm && report.pm.shift_h} h so the published window opens inside this run.`
         : "";
-  $("#refusal").textContent = [refused, knock, paid].filter(Boolean).join(" ");
+  $("#refusal").textContent = [refused, knock, review.paid].filter(Boolean).join(" ");
   if (report.kpis) renderSmtCards(report);
   paintStepper();
   paintSmtCharts(report);
@@ -1001,11 +990,12 @@ function renderSmtCards(report) {
     ["On time", `${before.on_time_pct}%`, `${after.on_time_pct}%`, `${before.due_in_horizon} lots due in horizon, ${before.already_late} already late at the snapshot`],
     ["Weighted tardiness", `${before.weighted_tardiness_min} min`, `${after.weighted_tardiness_min} min`, "Open lots are censored at the horizon"],
     ["Cycle time", before.cycle_time_h == null ? "—" : `${before.cycle_time_h} h`, after.cycle_time_h == null ? "—" : `${after.cycle_time_h} h`, `${after.completed_routes} routes finished on the recovery book`],
-    ...(report.xfactor ? [["X-factor", report.xfactor.mean_x_before == null ? "—" : String(report.xfactor.mean_x_before), report.xfactor.mean_x_after == null ? "—" : String(report.xfactor.mean_x_after), `Due = remaining process x ${report.xfactor.factor}. Gates ${report.xfactor.gates}. Re-cleans ${report.xfactor.recleans}.`]] : []),
     ["Litho utilization", `${before.litho_util_pct}%`, `${after.litho_util_pct}%`, "102 Litho_* tools. Scanner util is separate in the timing line"],
     ["Q-time violations", String(before.qtime_violations), String(after.qtime_violations), "Published CQT"],
     ["PM interruptions avoided", String(before.pm_avoided), String(after.pm_avoided), `Baseline overlaps ${before.pm_overlaps} → ${after.pm_overlaps}`],
   ];
+  const extra = smtReviewCards(report);
+  if (extra.length) rows.splice(3, 0, ...extra);
   for (const [label, left, right, note] of rows) {
     const card = document.createElement("article");
     card.className = "card";
@@ -2481,6 +2471,40 @@ async function getJson(url) {
 window.addEventListener("resize", () => {
   if (state.report && state.report.gantt) renderCharts(state.report);
 });
+
+// SMT2020 review copy. New sentences live in this block so the scenario
+// lines above stay free for the first-impression wording pass.
+function smtReviewCopy(report) {
+  const xf = report.xfactor;
+  if (xf && state.smtPinned !== report.scenario_id) {
+    state.smtGroup = "Litho";
+    state.smtEnd = Math.round((report.horizon_h || 48) * 60);
+    state.smtPinned = report.scenario_id;
+  }
+  const price = report.price;
+  const paid = !price
+    ? ""
+    : price.lots
+      ? `Non-hot lots delayed by the recovery: ${price.lots}, ${price.extra_h} h extra. Worst ${((price.worst || [])[0] || {}).lot_id || ""}.`
+      : "No scored non-hot lot finished later under the recovery.";
+  const knock = xf
+    ? `Dues are remaining process x ${xf.factor}. ${xf.tool} is down ${xf.down_min} min. Mean X-factor ${xf.mean_x_before} → ${xf.mean_x_after}. Upstream gates ${xf.gates}. Re-cleans ${xf.recleans}.`
+    : "";
+  return { paid, knock };
+}
+
+function smtReviewCards(report) {
+  const xf = report.xfactor;
+  if (!xf) return [];
+  const before = xf.mean_x_before == null ? "—" : String(xf.mean_x_before);
+  const after = xf.mean_x_after == null ? "—" : String(xf.mean_x_after);
+  return [[
+    "X-factor",
+    before,
+    after,
+    `Due = remaining process x ${xf.factor}. Gates ${xf.gates}. Re-cleans ${xf.recleans}.`,
+  ]];
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
