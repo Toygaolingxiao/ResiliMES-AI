@@ -667,9 +667,9 @@ REGISTRY: tuple[Check, ...] = (
         id="reticle",
         name=_text("Reticle", "光罩", "レチクル"),
         description=_text(
-            "A lithography reticle can be on only one tool at a time.",
-            "一块光罩同一时间只能在一台光刻机上。",
-            "レチクルは同時に一台のリソ装置にしか載せられない。",
+            "Each physical reticle copy is on one scanner at a time.",
+            "每一块实物光罩同一时间只能在一台光刻机上。",
+            "レチクルの現物は同時に一台のスキャナにしか載せられない。",
         ),
         category="equipment",
         fields=("reticle.reticle_id", "reticle.step", "operation.equipment_id"),

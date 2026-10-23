@@ -8,9 +8,10 @@ from pathlib import Path
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
 from resilimes.agents.planner import naive_alternative, reject_alternative
 from resilimes.config import HORIZON, Settings
-from resilimes.domain.checks import REGISTRY, validate
+from resilimes.domain.checks import REGISTRY, extra_action_violations, validate
 from resilimes.domain.critique import constraint_checks, critique_schedule
 from resilimes.domain.models import (
+    Action,
     Equipment,
     Inhibit,
     Job,
@@ -111,6 +112,57 @@ def test_reticle_blocks_two_tools_at_once() -> None:
             if left[0] == right[0]:
                 continue
             assert left[2] <= right[1] or right[2] <= left[1]
+
+
+def test_two_copies_may_overlap_and_one_copy_may_not() -> None:
+    plant = _bay()
+    plant.reticles = [
+        Reticle(reticle_id="RET-1", product_id="P", layer="L1", step="LITHO"),
+        Reticle(reticle_id="RET-2", product_id="P", layer="L1", step="LITHO"),
+    ]
+    parallel = Schedule(
+        policy="recover",
+        operations=[
+            _op("LOT-1", "T-01", 0, 30, reticle_id="RET-1"),
+            _op("LOT-2", "T-02", 0, 30, reticle_id="RET-2"),
+        ],
+    )
+    assert critique_schedule(plant, parallel).verdict == "accept"
+    double = Schedule(
+        policy="recover",
+        operations=[
+            _op("LOT-1", "T-01", 0, 30, reticle_id="RET-1"),
+            _op("LOT-2", "T-02", 10, 40, reticle_id="RET-1"),
+        ],
+    )
+    critique = critique_schedule(plant, double)
+    assert critique.verdict == "reject"
+    assert any(item.constraint == "reticle" for item in critique.violations)
+    unnamed = Schedule(
+        policy="recover",
+        operations=[
+            _op("LOT-1", "T-01", 0, 30),
+            _op("LOT-2", "T-02", 0, 30),
+        ],
+    )
+    fallback = critique_schedule(plant, unnamed)
+    assert any(item.constraint == "reticle" for item in fallback.violations)
+    plant.jobs[0].status = "RUNNING"
+    plant.jobs[0].assigned_equipment = "T-01"
+    plant.jobs[0].started_at = HORIZON - timedelta(minutes=5)
+    action = Action(
+        type="reassign",
+        job_id="LOT-2",
+        step="LITHO",
+        to_equipment="T-02",
+        start_min=0,
+        reason="Start on the other scanner.",
+    )
+    spare = extra_action_violations(plant, action)
+    assert all(item.constraint != "reticle" for item in spare)
+    plant.reticles = plant.reticles[:1]
+    busy = extra_action_violations(plant, action)
+    assert any(item.constraint == "reticle" for item in busy)
 
 
 def test_inhibit_rejects_a_dedicated_tool() -> None:
@@ -233,6 +285,7 @@ def _op(
     step: str = "LITHO",
     rework: bool = False,
     step_index: int = 0,
+    reticle_id: str = "",
 ) -> ScheduledOp:
     return ScheduledOp(
         job_id=job_id,
@@ -247,4 +300,5 @@ def _op(
         setup_family="L",
         priority=1,
         rework=rework,
+        reticle_id=reticle_id,
     )
