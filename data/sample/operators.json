@@ -12,7 +12,7 @@
     {
       "operator_id": "OP-02",
       "name": "L. Nguyen",
-      "certified": ["litho_193nm", "cvd_oxide"],
+      "certified": ["litho_193nm", "cvd_oxide", "overlay_cd"],
       "shift": "A"
     },
     {
@@ -24,7 +24,7 @@
     {
       "operator_id": "OP-04",
       "name": "R. Singh",
-      "certified": ["cmp_oxide", "etch_metal"],
+      "certified": ["cmp_oxide", "etch_metal", "wet_clean"],
       "shift": "A"
     }
   ]

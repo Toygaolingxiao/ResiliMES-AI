@@ -3,7 +3,7 @@
   "plant_id": "FAB-A",
   "routes": [
     { "route_id": "ROUTE-A28", "product_id": "PROD-A28", "name": "Logic A28, two layers" },
-    { "route_id": "ROUTE-B14", "product_id": "PROD-B14", "name": "Analog B14" },
+    { "route_id": "ROUTE-B14", "product_id": "PROD-B14", "name": "Analog B14 film cap" },
     { "route_id": "ROUTE-C07", "product_id": "PROD-C07", "name": "Sensor C07" }
   ],
   "products": [
@@ -13,69 +13,135 @@
       "route_id": "ROUTE-A28",
       "route": [
         {
-          "step": "LITHO",
+          "step": "DEP",
           "step_no": 10,
+          "operation": "Deposition",
+          "area": "Deposition",
+          "recipe": "CVD_L1",
+          "layer": "L1",
+          "capability": "cvd_oxide",
+          "process_time_min": 28,
+          "setup_family": "CVD_OX"
+        },
+        {
+          "step": "LITHO",
+          "step_no": 20,
           "operation": "Lithography",
           "area": "Lithography",
           "recipe": "LITHO_L1",
           "layer": "L1",
           "capability": "litho_193nm",
-          "process_time_min": 90,
+          "process_time_min": 75,
           "setup_family": "LITHO_A"
         },
         {
+          "step": "MEAS",
+          "step_no": 30,
+          "operation": "Metrology",
+          "area": "Metrology",
+          "recipe": "OCD_L1",
+          "layer": "L1",
+          "capability": "overlay_cd",
+          "process_time_min": 20,
+          "setup_family": "OCD"
+        },
+        {
           "step": "ETCH",
-          "step_no": 20,
+          "step_no": 40,
           "operation": "Etch",
           "area": "Etch",
           "recipe": "ETCH_L1",
           "layer": "L1",
           "capability": "etch_dielectric",
-          "process_time_min": 60,
+          "process_time_min": 40,
           "setup_family": "ETCH_D"
         },
         {
+          "step": "CLEAN",
+          "step_no": 50,
+          "operation": "Clean",
+          "area": "Clean",
+          "recipe": "WET_L1",
+          "layer": "L1",
+          "capability": "wet_clean",
+          "process_time_min": 16,
+          "setup_family": "WET"
+        },
+        {
           "step": "CMP",
-          "step_no": 30,
+          "step_no": 60,
           "operation": "CMP",
           "area": "CMP",
           "recipe": "CMP_L1",
           "layer": "L1",
           "capability": "cmp_oxide",
-          "process_time_min": 45,
+          "process_time_min": 32,
           "setup_family": "CMP_OX"
         },
         {
+          "step": "DEP-L2",
+          "step_no": 70,
+          "operation": "Deposition",
+          "area": "Deposition",
+          "recipe": "CVD_L2",
+          "layer": "L2",
+          "capability": "cvd_oxide",
+          "process_time_min": 28,
+          "setup_family": "CVD_OX"
+        },
+        {
           "step": "LITHO-L2",
-          "step_no": 40,
+          "step_no": 80,
           "operation": "Lithography",
           "area": "Lithography",
           "recipe": "LITHO_L2",
           "layer": "L2",
           "capability": "litho_193nm",
-          "process_time_min": 90,
+          "process_time_min": 75,
           "setup_family": "LITHO_A"
         },
         {
+          "step": "MEAS-L2",
+          "step_no": 90,
+          "operation": "Metrology",
+          "area": "Metrology",
+          "recipe": "OCD_L2",
+          "layer": "L2",
+          "capability": "overlay_cd",
+          "process_time_min": 20,
+          "setup_family": "OCD"
+        },
+        {
           "step": "ETCH-L2",
-          "step_no": 50,
+          "step_no": 100,
           "operation": "Etch",
           "area": "Etch",
           "recipe": "ETCH_L2",
           "layer": "L2",
           "capability": "etch_dielectric",
-          "process_time_min": 60,
+          "process_time_min": 40,
           "setup_family": "ETCH_D"
         },
         {
+          "step": "CLEAN-L2",
+          "step_no": 110,
+          "operation": "Clean",
+          "area": "Clean",
+          "recipe": "WET_L2",
+          "layer": "L2",
+          "capability": "wet_clean",
+          "process_time_min": 16,
+          "setup_family": "WET"
+        },
+        {
           "step": "CMP-L2",
-          "step_no": 60,
+          "step_no": 120,
           "operation": "CMP",
           "area": "CMP",
           "recipe": "CMP_L2",
           "layer": "L2",
           "capability": "cmp_oxide",
-          "process_time_min": 45,
+          "process_time_min": 32,
           "setup_family": "CMP_OX"
         }
       ],
@@ -90,26 +156,48 @@
       "route_id": "ROUTE-B14",
       "route": [
         {
-          "step": "ETCH",
+          "step": "DEP",
           "step_no": 10,
+          "operation": "Deposition",
+          "area": "Deposition",
+          "recipe": "CVD_B14",
+          "layer": "M1",
+          "capability": "cvd_oxide",
+          "process_time_min": 20,
+          "setup_family": "CVD_OX"
+        },
+        {
+          "step": "ETCH",
+          "step_no": 20,
           "operation": "Etch",
           "area": "Etch",
           "recipe": "ETCH_M1",
           "layer": "M1",
           "capability": "etch_metal",
-          "process_time_min": 60,
+          "process_time_min": 30,
           "setup_family": "ETCH_M"
         },
         {
-          "step": "CMP",
-          "step_no": 20,
-          "operation": "CMP",
-          "area": "CMP",
-          "recipe": "CMP_M1",
+          "step": "CLEAN",
+          "step_no": 30,
+          "operation": "Clean",
+          "area": "Clean",
+          "recipe": "WET_B14",
           "layer": "M1",
-          "capability": "cmp_oxide",
-          "process_time_min": 40,
-          "setup_family": "CMP_OX"
+          "capability": "wet_clean",
+          "process_time_min": 12,
+          "setup_family": "WET"
+        },
+        {
+          "step": "DEP-2",
+          "step_no": 40,
+          "operation": "Deposition",
+          "area": "Deposition",
+          "recipe": "CVD_CAP",
+          "layer": "M1",
+          "capability": "cvd_oxide",
+          "process_time_min": 20,
+          "setup_family": "CVD_OX"
         }
       ],
       "materials": [
@@ -123,12 +211,34 @@
       "route_id": "ROUTE-C07",
       "route": [
         {
-          "step": "CMP",
+          "step": "LITHO",
           "step_no": 10,
+          "operation": "Lithography",
+          "area": "Lithography",
+          "recipe": "LITHO_C07",
+          "layer": "S1",
+          "capability": "litho_193nm",
+          "process_time_min": 40,
+          "setup_family": "LITHO_C"
+        },
+        {
+          "step": "ETCH",
+          "step_no": 20,
+          "operation": "Etch",
+          "area": "Etch",
+          "recipe": "ETCH_SNS",
+          "layer": "S1",
+          "capability": "etch_dielectric",
+          "process_time_min": 24,
+          "setup_family": "ETCH_D"
+        },
+        {
+          "step": "CMP",
+          "step_no": 30,
           "operation": "CMP",
           "area": "CMP",
           "recipe": "CMP_SNS",
-          "layer": "",
+          "layer": "S1",
           "capability": "cmp_oxide",
           "process_time_min": 45,
           "setup_family": "CMP_OX"

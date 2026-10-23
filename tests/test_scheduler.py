@@ -24,7 +24,7 @@ def test_litho_recovery_saves_the_priority_lot() -> None:
     assert before_first is not None and after_first is not None
     assert before_first.equipment_id == "LITHO-02"
     assert after_first.equipment_id == "LITHO-01"
-    assert completion_of(after, "LOT-1001") == 250
+    assert completion_of(after, "LOT-1001") == 253
     before_kpi = evaluate(pair.before, before)
     after_kpi = evaluate(pair.after, after)
     assert after_kpi.weighted_tardiness_min < before_kpi.weighted_tardiness_min

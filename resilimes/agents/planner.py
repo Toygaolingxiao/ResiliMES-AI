@@ -134,7 +134,7 @@ def _expedite_without_material(plant: Plant) -> list[Action]:
 
 
 def _start_after_qtime(plant: Plant) -> list[Action]:
-    """Start CMP long after etch ended. The committed book holds the lot instead."""
+    """Start the next film long after clean ended. The committed book holds the lot."""
     job = plant.job_map().get("LOT-1003")
     if job is None or job.started_at is None:
         return []
@@ -144,13 +144,13 @@ def _start_after_qtime(plant: Plant) -> list[Action]:
         Action(
             type="expedite",
             job_id=job.job_id,
-            step="CMP",
+            step="DEP-2",
             from_equipment=job.assigned_equipment,
-            to_equipment="CMP-01",
+            to_equipment="DEP-01",
             start_min=120,
             anchor_end_min=anchor,
-            reason="Naive plan: start CMP after the etch queue-time window.",
-            evidence=["qtime:ETCH->CMP"],
+            reason="Naive plan: start deposition after the clean queue-time window.",
+            evidence=["qtime:CLEAN->DEP-2"],
         )
     ]
 

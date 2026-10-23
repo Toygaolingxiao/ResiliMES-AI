@@ -4,12 +4,16 @@ const AREA_TONE = {
     Etch: { fill: "#cff4f6", ink: "#0c4a4e" },
     CMP: { fill: "#e6d9f7", ink: "#3b0764" },
     Deposition: { fill: "#d4f3e8", ink: "#064e3b" },
+    Metrology: { fill: "#fde7c7", ink: "#7c4a03" },
+    Clean: { fill: "#d7e6f5", ink: "#1e3a5f" },
   },
   dark: {
     Lithography: { fill: "#312e81", ink: "#e0e7ff" },
     Etch: { fill: "#155e75", ink: "#cffafe" },
     CMP: { fill: "#5b21b6", ink: "#f3e8ff" },
     Deposition: { fill: "#115e59", ink: "#ccfbf1" },
+    Metrology: { fill: "#92400e", ink: "#ffedd5" },
+    Clean: { fill: "#1e3a5f", ink: "#e0f2fe" },
   },
 };
 
@@ -205,16 +209,23 @@ const COPY = {
       other: "Other",
     },
     status: { IDLE: "Idle", RUNNING: "Running", DOWN: "Down", MAINTENANCE: "Maintenance", ok: "In stock", short: "Short" },
-    areas: { Lithography: "Lithography", Etch: "Etch", CMP: "CMP", Deposition: "Deposition" },
+    areas: {
+      Lithography: "Lithography",
+      Etch: "Etch",
+      CMP: "CMP",
+      Deposition: "Deposition",
+      Metrology: "Metrology",
+      Clean: "Clean",
+    },
     scenarios: {
       litho_down: ["Machine breakdown", "LITHO-02 is down for 10 h. LOT-1001 is blocked, due 18:00 UTC."],
       rush_order: ["Rush order", "A hot lot is due in 3 h. Running lots stay on their tools."],
       material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
-      rework: ["Lithography rework", "LOT-1004 overlay failed. Strip and re-expose once."],
-      qtime: ["Queue time", "Etch already finished. CMP must start within 15 min."],
+      rework: ["Overlay rework", "LOT-1004 overlay failed at measure. Strip, re-expose, re-measure once."],
+      qtime: ["Queue time", "Clean already finished. The next film must start within 15 min."],
     },
     chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip and re-expose", qtime: "15 min queue time" },
+    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time" },
   },
   zh: {
     tagline: "一个机台的恢复",
@@ -373,16 +384,16 @@ const COPY = {
       other: "其他",
     },
     status: { IDLE: "空闲", RUNNING: "加工", DOWN: "宕机", MAINTENANCE: "维护", ok: "有库存", short: "短缺" },
-    areas: { Lithography: "光刻", Etch: "刻蚀", CMP: "抛光", Deposition: "沉积" },
+    areas: { Lithography: "光刻", Etch: "刻蚀", CMP: "抛光", Deposition: "沉积", Metrology: "量测", Clean: "清洗" },
     scenarios: {
       litho_down: ["设备故障", "光刻机 02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
       rush_order: ["急单", "一个热批次 3 小时内要交。正在加工的批次留在原设备。"],
       material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
-      rework: ["光刻返工", "LOT-1004 套刻失败。去胶，再曝光一次。"],
-      qtime: ["队列时间", "刻蚀已经结束。CMP 必须在 15 分钟内开工。"],
+      rework: ["套刻返工", "LOT-1004 量测套刻失败。去胶、再曝光、再量一次。"],
+      qtime: ["队列时间", "清洗已经结束。下一道成膜必须在 15 分钟内开工。"],
     },
     chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶再曝光", qtime: "15 分钟队列" },
+    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列" },
   },
   ja: {
     tagline: "一つのベイの回復",
@@ -541,16 +552,16 @@ const COPY = {
       other: "その他",
     },
     status: { IDLE: "空き", RUNNING: "加工", DOWN: "停止", MAINTENANCE: "保全", ok: "在庫あり", short: "不足" },
-    areas: { Lithography: "リソ", Etch: "エッチ", CMP: "CMP", Deposition: "成膜" },
+    areas: { Lithography: "リソ", Etch: "エッチ", CMP: "CMP", Deposition: "成膜", Metrology: "測定", Clean: "洗浄" },
     scenarios: {
       litho_down: ["装置故障", "リソ 02 が 10 時間停止。LOT-1001 が詰まり、納期 18:00 UTC。"],
       rush_order: ["特急", "ホットロットの納期は 3 時間。加工中のロットは装置に残す。"],
       material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
-      rework: ["リソ再加工", "LOT-1004 の重ね合わせ不良。剥離して一度再露光。"],
-      qtime: ["待ち時間", "エッチは終了済み。CMP は 15 分以内に始める。"],
+      rework: ["重ね合わせ再加工", "LOT-1004 は測定で不良。剥離し、再露光し、再測定する。"],
+      qtime: ["待ち時間", "洗浄は終了済み。次の成膜は 15 分以内に始める。"],
     },
     chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離して再露光", qtime: "待ち 15 分" },
+    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分" },
   },
 };
 
@@ -559,7 +570,7 @@ const ALERT = {
   rush_order: "LITHO-01",
   material_shortage: "RESIST-UV",
   rework: "LOT-1004",
-  qtime: "CMP-01",
+  qtime: "DEP-01",
 };
 
 const state = {
@@ -1671,6 +1682,7 @@ function layoutTrack(track, scale) {
     const label = item.node.querySelector(".bar-label");
     const text = label ? label.textContent : "";
     const need = textWidth(text);
+    const chip = need + 6;
     item.node.classList.remove("lane-above", "lane-below", "silent");
     if (label) label.style.paddingLeft = "";
     if (!text) {
@@ -1686,8 +1698,8 @@ function layoutTrack(track, scale) {
     if (item.node.classList.contains("stacked")) return;
     const sideLeft = item.left + item.draw + gap;
     const sideLimit = nextLeft >= width - 0.5 ? width : nextLeft - gap;
-    if (sideLeft >= nowClear && sideLeft + need <= sideLimit && !hits(sides, sideLeft, sideLeft + need, gap)) {
-      sides.push([sideLeft, sideLeft + need]);
+    if (sideLeft >= nowClear && sideLeft + chip <= sideLimit && !hits(sides, sideLeft, sideLeft + chip, gap)) {
+      sides.push([sideLeft, sideLeft + chip]);
       const cap = document.createElement("span");
       cap.className = "side-label";
       cap.textContent = text;
@@ -1697,8 +1709,8 @@ function layoutTrack(track, scale) {
     }
     if (track.dataset.links === "1") return;
     let railLeft = Math.max(item.left, nowClear);
-    if (railLeft + need > width) railLeft = Math.max(nowClear, width - need);
-    const railRight = railLeft + need;
+    if (railLeft + chip > width) railLeft = Math.max(nowClear, width - chip);
+    const railRight = railLeft + chip;
     if (railLeft < nowClear || railRight > width + 1 || hits(rails, railLeft, railRight, gap)) return;
     rails.push([railLeft, railRight]);
     const cap = document.createElement("span");
@@ -1755,7 +1767,7 @@ function renderLegend(report) {
   const copy = t();
   const host = $("#legend");
   host.innerHTML = "";
-  const order = ["Lithography", "Etch", "CMP", "Deposition"];
+  const order = ["Lithography", "Etch", "CMP", "Deposition", "Metrology", "Clean"];
   const seen = new Set();
   for (const side of [report.gantt.before, report.gantt.after]) {
     for (const row of (side && side.rows) || []) if (row.area) seen.add(row.area);

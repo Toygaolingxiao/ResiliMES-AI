@@ -12,7 +12,7 @@ Scout contracts use the wall clock. A contract TTL of five minutes is the public
 
 `Plant` is the in-memory snapshot: equipment, jobs, routes, queue-time rules, stock, operators, maintenance. Two sources build the same object.
 
-A product follows one route. A route is an ordered list of operations. The same area can return on a later layer. PROD-A28 is lithography, etch, CMP on layer L1, then the same three areas again on L2. A lot released only through CMP is scheduled through the first CMP and does not enter L2 today. That is a release limit, not a second route.
+A product follows one route. A route is an ordered list of operations. The same area can return on a later layer. Each layer of PROD-A28 is deposition, lithography, metrology, etch, wet clean, and CMP. L2 repeats those six steps. Coat, expose, and develop are one lithography step. Strip and the wet clean are one clean step. A lot released only through CMP is scheduled through the first CMP and does not enter L2 today. That is a release limit, not a second route. DEP-01, MEAS-01, and WET-01 are on the routes.
 
 ```mermaid
 erDiagram
@@ -52,9 +52,7 @@ erDiagram
   }
 ```
 
-A queue-time rule says the start of `to_step` must be within `max_min` of the end of `from_step`. The sample uses etch to CMP, which is the handoff this bay actually runs. The same shape covers a clean-to-furnace limit. There is no furnace in this six-tool bay, so the seed does not invent one.
-
-The sample limit is 1100 minutes. Waiting out the scanner repair still places every lot, and LOT-1003, whose etch finished before 06:30, sits past 80 percent of that limit. The queue-time scenario tightens the B14 rule to 15 minutes. RET-A28-L1 is the L1 lithography mask and can be on one scanner at a time, so those lots run in series. A recipe or a product can be inhibited on a tool. A lot's `release_min` is the earliest it may start; the sample is released at 0. The Zetaris tables add `reticle` and `inhibit`, plus `release_min` on `wip_jobs`. `data/sql/seed.sql` is generated from `data/sample`.
+A queue-time rule says the start of `to_step` must be within `max_min` of the end of `from_step`. Steps may sit between the pair. The sample rule is surface exposure: clean end to the next deposition. On PROD-A28 that is CLEAN to DEP-L2, 480 minutes, and CMP is in between, so the limit covers the polish. On PROD-B14 the cap film follows the clean immediately. The queue-time scenario tightens that B14 rule to 15 minutes. LOT-1003's clean finished before 06:30, so the cap cannot start inside 15 minutes and the book holds the lot. RET-A28-L1 is the L1 lithography mask and can be on one scanner at a time, so those lots run in series. A recipe or a product can be inhibited on a tool. A lot's `release_min` is the earliest it may start; the sample is released at 0. The Zetaris tables add `reticle` and `inhibit`, plus `release_min` on `wip_jobs`. `data/sql/seed.sql` is generated from `data/sample`.
 
 - `SampleSource` reads `data/sample` and records the SQL that Zetaris would have run.
 - `ZetarisSource` runs that SQL through `agent.tools_zetaris.run_sql` and folds the rows with `plant_from_rows`.
@@ -65,7 +63,7 @@ The schema name is checked against `^[A-Za-z_][A-Za-z0-9_]*$` before it is inter
 
 `schedule_plant` is a list scheduler.
 
-1. Expand each lot's remaining route. An in-progress step keeps its remaining minutes. A step that already finished is skipped and opens a queue-time window if a rule names it. The sample's LOT-1003 has finished etch by 06:30, so only CMP remains. A rework flag inserts strip, then one re-expose, after the failed lithography step, and stops when `rework_count` has reached `rework_limit`.
+1. Expand each lot's remaining route. An in-progress step keeps its remaining minutes. A step that already finished is skipped and opens a queue-time window for every later step a rule names, including a step that is not the immediate successor. The sample's LOT-1003 has finished clean by 06:30, so only the cap deposition remains. An overlay fail inserts a wet strip, one re-expose, and one re-measure after the failed metrology step. Only the re-measure counts as the rework pass. Insertion stops when `rework_count` has reached `rework_limit`.
 2. Pin lots that are running on an up tool. They are not preempted.
 3. Name the bottleneck: the area with the most remaining process minutes per up-tool minute over one day. A down tool adds no minutes. Ties break by area name.
 4. Dispatch by priority, then due time, then whether the step is in the bottleneck or feeds it, then ready time, then lot id.
@@ -79,7 +77,7 @@ The schema name is checked against `^[A-Za-z_][A-Za-z0-9_]*$` before it is inter
 
 The critic is a registry of small checks. Each one names itself in English, 中文, and 日本語, states the category (equipment, lot, process, material, or time), and lists the fields it reads. `validate` runs every check and returns passed, failed, skipped, an overall result, and the violations (`lot_id`, `tool_id`, `detail`). A check is skipped when its data is absent. Hard failures reject. Holds are a row of their own and do not reject the book, so a queue-time hold stays conditional.
 
-`critique_schedule` still walks the hard checks in the same order as before: calendar, capability, overlap, simultaneous WIP, operators, material, precedence, preemption, queue time, then rework limit, reticle, inhibit, and release time. A placed pair whose gap exceeds the rule is a high violation. A held lot is not a queue-time failure; the hold is how the book keeps the rule. The naive alternative (start on a down tool, preempt a running lot, expedite without resist, or start CMP after the etch window) goes through `critique_actions`. New action checks are appended after those, so the first refusal on the litho plan is still the down tool. The reticle refusal is the next line: RET-A28-L1 is on LITHO-01 with LOT-1002.
+`critique_schedule` still walks the hard checks in the same order as before: calendar, capability, overlap, simultaneous WIP, operators, material, precedence, preemption, queue time, then rework limit, reticle, inhibit, and release time. A placed pair whose gap exceeds the rule is a high violation. A held lot is not a queue-time failure; the hold is how the book keeps the rule. The naive alternative (start on a down tool, preempt a running lot, expedite without resist, or start the cap film after the clean window) goes through `critique_actions`. New action checks are appended after those, so the first refusal on the litho plan is still the down tool. The reticle refusal is the next line: RET-A28-L1 is on LITHO-01 with LOT-1002.
 
 When a recovery assigns or moves a lot onto the bottleneck area, the action reason says so, and the brief adds one sentence to its last point. Dispatch already prefers that area, and the step that feeds it, ahead of other work at the same priority and due time.
 

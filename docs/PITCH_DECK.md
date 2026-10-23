@@ -22,8 +22,8 @@ The problem is not a missing chatbot. A priority lot blocked on a down tool miss
 
 Three disruptions, one console.
 
-- Machine breakdown: on-time delivery 83.3% → 100%, weighted tardiness 840 → 0 minutes.
-- Rush order: the hot lot is 1 h 10 min late because a running lot is not preempted and the reticle stays on that scanner.
+- Machine breakdown: on-time delivery 83.3% → 100%, weighted tardiness 744 → 0 minutes.
+- Rush order: the hot lot is 1 h 13 min late because a running lot is not preempted and the reticle stays on that scanner.
 - Material shortage: lots that need photoresist are held, with the stock row as evidence.
 
 Screenshot: KPI cards plus the two Gantts.
@@ -106,4 +106,4 @@ Team names, repo URL, video link, and the sponsor paragraph from `docs/SPONSOR_T
 
 ## Speaker notes for the judges' weights
 
-If a judge only remembers three numbers, they should be 83.3 to 100, 840 to 0, and "the rush lot is 1 h 10 min late because we would not preempt, and the reticle stays with the running lot." Those three cover impact, the decision, and the refusal.
+If a judge only remembers three numbers, they should be 83.3 to 100, 744 to 0, and "the rush lot is 1 h 13 min late because we would not preempt, and the reticle stays with the running lot." Those three cover impact, the decision, and the refusal.

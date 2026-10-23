@@ -68,13 +68,37 @@
       "equipment_id": "DEP-01",
       "name": "CVD Deposition 01",
       "area": "Deposition",
-      "status": "MAINTENANCE",
+      "status": "IDLE",
       "capability": ["cvd_oxide"],
-      "setup_time_min": 40,
-      "operators_required": 2,
+      "setup_time_min": 25,
+      "operators_required": 1,
       "max_wip": 2,
       "mtbf_hours": 150,
       "last_pm_at": "2026-10-22T04:00:00Z"
+    },
+    {
+      "equipment_id": "MEAS-01",
+      "name": "Overlay and CD Metrology 01",
+      "area": "Metrology",
+      "status": "IDLE",
+      "capability": ["overlay_cd"],
+      "setup_time_min": 12,
+      "operators_required": 1,
+      "max_wip": 2,
+      "mtbf_hours": 300,
+      "last_pm_at": "2026-10-19T08:00:00Z"
+    },
+    {
+      "equipment_id": "WET-01",
+      "name": "Wet Bench 01",
+      "area": "Clean",
+      "status": "IDLE",
+      "capability": ["wet_clean"],
+      "setup_time_min": 10,
+      "operators_required": 1,
+      "max_wip": 4,
+      "mtbf_hours": 400,
+      "last_pm_at": "2026-10-17T08:00:00Z"
     }
   ]
 }

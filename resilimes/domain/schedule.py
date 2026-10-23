@@ -11,11 +11,12 @@ Assumptions (also listed in docs/ASSUMPTIONS.md):
   on a tool at the horizon is unknown, so the first lot pays no setup.
 - In-progress lots on an up tool are not preempted.
 - Lot material is consumed when a not-yet-started lot is dispatched.
-- A queue-time rule caps the wait from the end of one step to the start of
-  the next. The scheduler takes a slot inside the window, or holds the lot.
+- A queue-time rule caps the wait from the end of `from_step` to the start
+  of `to_step`. Steps may sit between them. The scheduler takes a slot inside
+  the window, or holds the lot.
 - Same-priority lots that feed the bottleneck area are dispatched first.
-- A rework loop inserts strip and a second lithography pass, and stops at
-  the lot's rework limit.
+- An overlay fail inserts a wet strip, one re-expose, and one re-measure,
+  and stops when `rework_count` has reached `rework_limit`.
 - A lithography reticle is on one tool at a time. The same tool may use it
   for the next lot. A lot does not start before its release minute.
 - An inhibit row removes that tool from the flexible candidates.
@@ -100,10 +101,7 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
             continue
         operations.append(placed)
         _take_material(step, plant, inventory, consumed)
-        nxt = _successor(step, work)
-        if nxt is not None:
-            _arm_qtime(nxt, step.step, placed.end_min, plant)
-            queue.append(nxt)
+        _arm_after(step, placed.end_min, work, plant, queue)
 
     while queue:
         queue.sort(key=lambda step: _dispatch_key(step, bottleneck))
@@ -115,10 +113,7 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
             unscheduled.append(Unscheduled(job_id=step.job_id, step=step.step, reason=reason))
             continue
         operations.append(placed)
-        nxt = _successor(step, work)
-        if nxt is not None:
-            _arm_qtime(nxt, step.step, placed.end_min, plant)
-            queue.append(nxt)
+        _arm_after(step, placed.end_min, work, plant, queue)
 
     operations.sort(key=lambda op: (op.start_min, op.equipment_id, op.job_id))
     return Schedule(
@@ -164,18 +159,20 @@ def _job_steps(job: Job, route: list[RouteStep], plant: Plant) -> list[StepWork]
         if offset == 0 and remaining_process is not None:
             process = remaining_process
         nxt = route[index + offset + 1] if index + offset + 1 < len(route) else None
-        anchor = carried_anchor if offset == 0 else None
-        source = carried_from if offset == 0 else ""
-        if offset > 0:
-            anchor = None
-            source = ""
-        q_from, q_anchor, q_latest = _qtime_window(
-            plant,
-            job,
-            source or (route[index + offset - 1].step if index + offset > 0 else ""),
-            route_step.step,
-            anchor,
-        )
+        if offset == 0 and carried_from:
+            previous = carried_from
+        elif index + offset > 0:
+            previous = route[index + offset - 1].step
+        else:
+            previous = ""
+        anchor = carried_anchor if previous == carried_from else None
+        q_from, q_anchor, q_latest = _qtime_window(plant, job, previous, route_step.step, anchor)
+        if carried_from and carried_anchor is not None and carried_from != previous:
+            far_from, far_anchor, far_latest = _qtime_window(
+                plant, job, carried_from, route_step.step, carried_anchor
+            )
+            if far_latest is not None and (q_latest is None or far_latest < q_latest):
+                q_from, q_anchor, q_latest = far_from, far_anchor, far_latest
         steps.append(
             StepWork(
                 job_id=job.job_id,
@@ -210,6 +207,11 @@ def _job_steps(job: Job, route: list[RouteStep], plant: Plant) -> list[StepWork]
 
 
 def _with_rework(job: Job, route: list[RouteStep]) -> list[RouteStep]:
+    """Overlay fail: wet strip, one re-expose, one re-measure.
+
+    Only the re-measure is marked rework. The limit counts that pass, and the
+    check expects the step name `{rework_of}-RW`.
+    """
     if not job.rework_of or job.rework_count >= job.rework_limit:
         return route
     built: list[RouteStep] = []
@@ -218,34 +220,56 @@ def _with_rework(job: Job, route: list[RouteStep]) -> list[RouteStep]:
         if step.step != job.rework_of or step.rework:
             continue
         layer = step.layer or "L1"
+        exposure = _exposure(route, layer)
+        expose_name = f"{exposure.step}-RW" if exposure is not None else "LITHO-RW"
         built.append(
             RouteStep(
                 step="STRIP",
-                capability="etch_dielectric",
-                process_time_min=20,
-                setup_family="STRIP",
+                capability="wet_clean",
+                process_time_min=15,
+                setup_family="WET",
                 step_no=step.step_no,
                 operation="Strip",
-                area="Etch",
+                area="Clean",
                 recipe="STRIP_PR",
                 layer=layer,
             )
         )
         built.append(
             RouteStep(
-                step="LITHO-RW",
+                step=expose_name,
                 capability="litho_193nm",
-                process_time_min=step.process_time_min,
-                setup_family=step.setup_family,
+                process_time_min=exposure.process_time_min if exposure is not None else 40,
+                setup_family=exposure.setup_family if exposure is not None else "LITHO_A",
                 step_no=step.step_no,
                 operation="Lithography",
                 area="Lithography",
                 recipe="LITHO_RW",
                 layer=layer,
+            )
+        )
+        built.append(
+            RouteStep(
+                step=f"{job.rework_of}-RW",
+                capability=step.capability,
+                process_time_min=step.process_time_min,
+                setup_family=step.setup_family,
+                step_no=step.step_no,
+                operation=step.operation or "Metrology",
+                area=step.area or "Metrology",
+                recipe=step.recipe,
+                layer=layer,
                 rework=True,
             )
         )
     return built
+
+
+def _exposure(route: list[RouteStep], layer: str) -> RouteStep | None:
+    for step in route:
+        if step.layer == layer and step.capability == "litho_193nm" and not step.rework:
+            return step
+    return None
 
 
 def _released(route: list[RouteStep], job: Job) -> list[RouteStep]:
@@ -330,8 +354,26 @@ def _split_pinned(
     return pinned, queue
 
 
-def _arm_qtime(step: StepWork, previous: str, end_min: int, plant: Plant) -> None:
-    step.ready_at = end_min
+def _arm_after(
+    step: StepWork,
+    end_min: int,
+    work: dict[str, list[StepWork]],
+    plant: Plant,
+    queue: list[StepWork],
+) -> None:
+    """Open the next step, and arm every later queue-time rule this step starts."""
+    steps = work[step.job_id]
+    location = next((idx for idx, item in enumerate(steps) if item is step), None)
+    if location is None:
+        return
+    for offset, later in enumerate(steps[location + 1 :]):
+        if offset == 0:
+            later.ready_at = end_min
+            queue.append(later)
+        _bind_qtime(later, step.step, end_min, plant)
+
+
+def _bind_qtime(step: StepWork, previous: str, end_min: int, plant: Plant) -> None:
     rule = next(
         (
             item
@@ -344,17 +386,12 @@ def _arm_qtime(step: StepWork, previous: str, end_min: int, plant: Plant) -> Non
     )
     if rule is None:
         return
+    latest = end_min + rule.max_min
+    if step.qtime_latest is not None and step.qtime_latest <= latest:
+        return
     step.qtime_from = rule.from_step
     step.qtime_anchor = end_min
-    step.qtime_latest = end_min + rule.max_min
-
-
-def _successor(step: StepWork, work: dict[str, list[StepWork]]) -> StepWork | None:
-    steps = work[step.job_id]
-    location = next((idx for idx, item in enumerate(steps) if item.step == step.step), None)
-    if location is None or location + 1 >= len(steps):
-        return None
-    return steps[location + 1]
+    step.qtime_latest = latest
 
 
 def _place_pinned(

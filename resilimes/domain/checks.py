@@ -11,7 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from .models import Action, Plant, Schedule, ScheduledOp, Violation
+from .models import Action, Job, Plant, Schedule, ScheduledOp, Violation
 from .plant import minutes_between
 
 UNAVAILABLE = {"DOWN", "MAINTENANCE"}
@@ -53,10 +53,11 @@ def reticle_for(plant: Plant, product_id: str, step: str) -> str | None:
     for item in plant.reticles:
         if item.product_id == product_id and item.step == step:
             return item.reticle_id
-    if step != "LITHO-RW":
+    fallback = {"LITHO-RW": "LITHO", "LITHO-L2-RW": "LITHO-L2"}.get(step)
+    if fallback is None:
         return None
     for item in plant.reticles:
-        if item.product_id == product_id and item.step == "LITHO":
+        if item.product_id == product_id and item.step == fallback:
             return item.reticle_id
     return None
 
@@ -67,7 +68,7 @@ def recipe_for(plant: Plant, product_id: str, step: str) -> str:
         for route_step in product.route:
             if route_step.step == step:
                 return route_step.recipe
-    if step == "LITHO-RW":
+    if step in {"LITHO-RW", "LITHO-L2-RW"}:
         return "LITHO_RW"
     if step == "STRIP":
         return "STRIP_PR"
@@ -323,9 +324,16 @@ def _qtime(plant: Plant, schedule: Schedule) -> list[Finding]:
                 continue
             left = ops.get(rule.from_step)
             right = ops.get(rule.to_step)
-            if left is None or right is None:
+            if right is None:
                 continue
-            gap = right.start_min - left.end_min
+            anchor: int | None
+            if left is not None:
+                anchor = left.end_min
+            else:
+                anchor = _finished_before_clock(job, rule.from_step, plant)
+            if anchor is None:
+                continue
+            gap = right.start_min - anchor
             if gap <= rule.max_min:
                 continue
             found.append(
@@ -333,7 +341,7 @@ def _qtime(plant: Plant, schedule: Schedule) -> list[Finding]:
                     lot_id=job_id,
                     tool_id=right.equipment_id,
                     detail=(
-                        f"{rule.from_step} ended at t={left.end_min} min; "
+                        f"{rule.from_step} ended at t={anchor} min; "
                         f"{job_id} {rule.to_step} starts at t={right.start_min} min, "
                         f"past the {rule.max_min} min queue time."
                     ),
@@ -341,6 +349,16 @@ def _qtime(plant: Plant, schedule: Schedule) -> list[Finding]:
                 )
             )
     return found
+
+
+def _finished_before_clock(job: Job, from_step: str, plant: Plant) -> int | None:
+    """End minute of a step that finished before the scenario clock."""
+    if job.current_step != from_step or job.started_at is None or job.status != "RUNNING":
+        return None
+    elapsed = minutes_between(job.started_at, plant.horizon)
+    if elapsed < job.process_time_min:
+        return None
+    return job.process_time_min - elapsed
 
 
 def _rework_limit(plant: Plant, schedule: Schedule) -> list[Finding]:
@@ -596,9 +614,9 @@ REGISTRY: tuple[Check, ...] = (
         id="qtime",
         name=_text("Queue time", "队列时间", "待ち時間"),
         description=_text(
-            "The next step must start within the queue-time limit.",
-            "下道工序必须在队列时间内开始。",
-            "次工程は待ち時間の制限内に始める。",
+            "The named later step must start within the limit after the named step ends.",
+            "规则指定的后道工序必须在时限内开始。",
+            "指定された後工程は制限時間内に始める。",
         ),
         category="time",
         fields=("qtime_rule.from_step", "qtime_rule.to_step", "qtime_rule.max_min"),

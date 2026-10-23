@@ -3,25 +3,18 @@
   "plant_id": "FAB-A",
   "rules": [
     {
-      "rule_id": "QT-A28-ETCH-CMP",
+      "rule_id": "QT-A28-CLEAN-DEP",
       "product_id": "PROD-A28",
-      "from_step": "ETCH",
-      "to_step": "CMP",
-      "max_min": 1100
+      "from_step": "CLEAN",
+      "to_step": "DEP-L2",
+      "max_min": 480
     },
     {
-      "rule_id": "QT-A28-ETCH-L2",
-      "product_id": "PROD-A28",
-      "from_step": "ETCH-L2",
-      "to_step": "CMP-L2",
-      "max_min": 1100
-    },
-    {
-      "rule_id": "QT-B14-ETCH-CMP",
+      "rule_id": "QT-B14-CLEAN-DEP",
       "product_id": "PROD-B14",
-      "from_step": "ETCH",
-      "to_step": "CMP",
-      "max_min": 1100
+      "from_step": "CLEAN",
+      "to_step": "DEP-2",
+      "max_min": 480
     }
   ]
 }

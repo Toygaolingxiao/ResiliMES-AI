@@ -20,7 +20,7 @@ from resilimes.domain.plant import load_sample
 from resilimes.domain.scenarios import plants_for_scenario
 from resilimes.domain.schedule import POLICY_FROZEN, POLICY_RECOVER, schedule_plant
 
-AREAS = {"CMP", "Deposition", "Etch", "Lithography"}
+AREAS = {"CMP", "Clean", "Deposition", "Etch", "Lithography", "Metrology"}
 
 
 def _span(tool: str, start: int, end: int) -> ScheduledOp:
@@ -147,9 +147,9 @@ def test_litho_lots_moved_is_the_scanner_change() -> None:
     outcomes = {row.job_id: row for row in job_outcomes(before_plant, before, after_plant, after)}
     assert outcomes["LOT-1001"].moved_from == "LITHO-02"
     assert outcomes["LOT-1001"].moved_to == "LITHO-01"
-    assert outcomes["LOT-1004"].moved_step == "ETCH"
-    assert outcomes["LOT-1004"].moved_from == "ETCH-02"
-    assert outcomes["LOT-1004"].moved_to == "ETCH-01"
+    assert outcomes["LOT-1001"].moved_step == "LITHO"
+    assert moved == ["LOT-1001"]
+    assert outcomes["LOT-1004"].moved_from is None
     for job_id in moved:
         row = outcomes[job_id]
         assert row.moved_from != row.moved_to
