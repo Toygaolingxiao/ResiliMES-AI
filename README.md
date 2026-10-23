@@ -6,6 +6,8 @@ ResiliMES is a self-healing, constraint-aware **Manufacturing Execution System (
 
 When a tool fails (e.g. *“Machine Litho-02 Down”*), agents discover plant state, propose reschedules, and critic-check them against due dates, setup times, and operator capacity before anything is committed.
 
+Hackathon rules / 比赛规则: [docs/hackathon/HACKATHON_RULES.md](docs/hackathon/HACKATHON_RULES.md)
+
 ## Problem
 
 Factories run on fragmented signals: equipment status, WIP, BOM/routes, and maintenance logs. A single downtime event cascades into missed due dates unless APS can react with constraint-aware recovery — fast enough for the floor, explainable enough for planners.
