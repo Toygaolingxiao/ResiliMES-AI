@@ -125,6 +125,62 @@ def _first_tool(schedule: Schedule) -> dict[str, str]:
     return found
 
 
+def area_utilization(plant: Plant, schedule: Schedule) -> list[dict[str, object]]:
+    """Busy time over available time for each tool area, same window as plant utilization.
+
+    A tool that is down past the book's makespan adds no available minutes. The rows
+    reconcile with ``evaluate``: summing busy and available across areas reproduces
+    the plant-wide percentage.
+    """
+    makespan = max((op.end_min for op in schedule.operations), default=0)
+    by_area: dict[str, list[str]] = {}
+    available_at: dict[str, int] = {}
+    for equipment in plant.equipment:
+        by_area.setdefault(equipment.area, []).append(equipment.equipment_id)
+        available_at[equipment.equipment_id] = equipment.available_at_min
+    busy_by_tool: dict[str, int] = {}
+    for op in schedule.operations:
+        busy_by_tool[op.equipment_id] = busy_by_tool.get(op.equipment_id, 0) + (
+            op.process_min + op.setup_min
+        )
+    rows: list[dict[str, object]] = []
+    for area in sorted(by_area):
+        tool_ids = by_area[area]
+        available = 0
+        busy = 0
+        for tool_id in tool_ids:
+            if makespan > available_at[tool_id]:
+                available += makespan - available_at[tool_id]
+            busy += busy_by_tool.get(tool_id, 0)
+        pct = round(100.0 * busy / available, 1) if available else 0.0
+        rows.append(
+            {
+                "area": area,
+                "tools": len(tool_ids),
+                "utilization_pct": pct,
+                "busy_min": busy,
+                "available_min": available,
+            }
+        )
+    return rows
+
+
+def lots_moved(before: Schedule, after: Schedule) -> list[str]:
+    """Lots whose tool changed on a step that exists in both books.
+
+    A new lot, a held lot, and a lot that only moved in time stay out of this list.
+    """
+    prior: dict[tuple[str, str], str] = {}
+    for op in before.operations:
+        prior.setdefault((op.job_id, op.step), op.equipment_id)
+    moved: set[str] = set()
+    for op in after.operations:
+        old = prior.get((op.job_id, op.step))
+        if old is not None and old != op.equipment_id:
+            moved.add(op.job_id)
+    return sorted(moved)
+
+
 def _utilization(plant: Plant, schedule: Schedule, makespan: int) -> float:
     if makespan <= 0:
         return 0.0

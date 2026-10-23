@@ -26,7 +26,7 @@ Point at the scenario clock: 22 Oct 2026 06:30 UTC.
 
 ### 0:18–0:45 — The disruption and the loop (Demo, Product & UX, Technical)
 
-Click **Machine breakdown**. LITHO-02's lamp flashes red. Do not scroll. Let the agent row fill: Scout, Zetaris, Sense, Plan, Critic, Nightshift, Commit. Each step is a real event from `POST /api/recover/stream`, held about 680 ms so it can be read. The millisecond on the node is compute time, not the hold.
+Click **Machine breakdown**. LITHO-02's lamp flashes red. Do not scroll. The recovery loop is the wide pipeline under the headline: 01 Scout, 02 Zetaris, 03 Sense, 04 Plan, 05 Critic, 06 Nightshift, 07 Commit. The running station is the red one. Each station shows Waiting, then Running, then Done, a short output from that event (intent, read count, operation count, verdict, provider), and the compute time in milliseconds. Each station is a real event from `POST /api/recover/stream`, held about 680 ms so it can be read. The millisecond is compute time, not the hold.
 
 "Scout classifies it and signs a contract. Zetaris, or the sample twin with the same SQL, is the read. The planner builds both books. The critic checks the move. Nightshift only explains. The world model commits."
 
@@ -34,11 +34,13 @@ If a SQL line is on screen, point at `SELECT` and `sample-equivalent`.
 
 ### 0:45–1:20 — The decision (Impact, Demo)
 
-When the headline lands, read it, then the three bullets, then the four figures.
+When the headline lands, read it, then the three bullets, then the comparison board. Columns are Before, After, and Change. The area panel is utilization for Lithography, Etch, CMP, and Deposition, computed on each book's own makespan.
 
-"LOT-1001 leaves LITHO-02. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 14 hours to zero. Makespan goes from 16 h 5 min to 7 h. Lots at risk go from one to zero."
+"LOT-1001 leaves LITHO-02. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 14 hours to zero. Makespan goes from 16 h 5 min to 7 h. Lots at risk go from one to zero. Lots moved are LOT-1001 and LOT-1004. Changeovers stay at one."
 
-Point at the left chart. "The red line is now. The hatch is the scanner down until the repair. 1001 sits on LITHO-02 and finishes late."
+"Plant utilization goes from 14.9 percent to 39.8, and the lithography row from 17.7 to 56. The book now ends at 7 hours, before LITHO-02 is back, so the down scanner is outside that window."
+
+Point at the left chart. "The red line is now. The hatch is the scanner down until the repair. 1001 sits on LITHO-02 and finishes late. On CMP-01 the lot numbers sit on the bar, or just above and below it, so neighbors do not cover each other."
 
 Point at the right chart. "The same lot is outlined because it moved, onto LITHO-01, behind the lot already running. The legend is priority, not a new color per lot. Hover a bar if you need the clock times."
 
@@ -52,13 +54,13 @@ Stay on **Why the critic committed this**.
 
 Click **Rush order**. Watch the loop once, shorter if you are tight on time. Then the headline.
 
-"A hot lot is due in 3 hours. LOT-2001 finishes 15 minutes late. On-time delivery falls to 85.7 percent. Weighted tardiness rises by 2 hours. Pulling a running lot off its tool was refused."
+"A hot lot is due in 3 hours. LOT-2001 finishes 15 minutes late. On-time delivery falls to 85.7 percent. Weighted tardiness rises by 2 hours. Lots at risk go from zero to one. Pulling a running lot off its tool was refused. LOT-2001 is a new lot, so it is not in Lots moved."
 
 ### 2:05–2:30 — The stockout (Sponsor tech)
 
 Click **Material shortage**. RESIST-UV flashes. After the loop:
 
-"On-hand is zero. Two lots wait. On-time delivery falls to 66.7 percent. Weighted tardiness rises to 12 days, which is the hold, not a silent zero. Starting lithography without the resist was refused. Those rows are the materials table Zetaris serves."
+"On-hand is zero. Two lots wait. On-time delivery falls to 66.7 percent. Weighted tardiness rises to 12 days, which is the hold, not a silent zero. Changeovers go from one to zero. Lots at risk go from zero to two. Starting lithography without the resist was refused. Those rows are the materials table Zetaris serves."
 
 ### 2:30–2:55 — The sponsor stack (Sponsor tech)
 
@@ -78,11 +80,11 @@ Stop. Do not add a chatbot ending.
 
 | Criterion | Where it is on screen |
 | --- | --- |
-| Impact 30 | Idle problem, headline, KPI strip, the close |
-| Technical 20 | Agent row filling from the stream, contract, SQL, critic |
+| Impact 30 | Idle problem, headline, before/after board, the close |
+| Technical 20 | Pipeline filling from the stream, contract, SQL, critic |
 | Innovation 15 | Solver commits, model explains; rush refuses preemption |
-| Demo 15 | Lamp, then the loop, then three disruptions with readable durations |
-| Product & UX 10 | Headline and three bullets, legend, before/after chart, language toggle, truthful banner |
+| Demo 15 | Lamp, then the pipeline, then three disruptions with readable durations |
+| Product & UX 10 | Headline and three bullets, comparison board, legend, before/after chart, language toggle, truthful banner |
 | Sponsor tech 10 | Zetaris node, Scout contract, Nightshift line or the live cut |
 
 ## If something looks different

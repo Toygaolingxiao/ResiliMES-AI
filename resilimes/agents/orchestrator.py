@@ -17,7 +17,7 @@ from resilimes.config import Settings
 from resilimes.data.factory import build_source
 from resilimes.domain.critique import critique_schedule
 from resilimes.domain.gantt import annotate_moves, build_gantt
-from resilimes.domain.kpis import evaluate, job_outcomes
+from resilimes.domain.kpis import area_utilization, evaluate, job_outcomes, lots_moved
 from resilimes.domain.scenarios import (
     Scenario,
     apply_free_text,
@@ -577,6 +577,11 @@ def run_recovery(
             "before": before_kpi.model_dump(),
             "after": after_kpi.model_dump(),
             "delta": _delta(before_kpi.model_dump(), after_kpi.model_dump()),
+            "areas": {
+                "before": area_utilization(plants.before, bundle["before"]),
+                "after": area_utilization(plants.after, bundle["after"]),
+            },
+            "lots_moved": lots_moved(bundle["before"], bundle["after"]),
         },
         outcomes=[row.model_dump() for row in bundle["outcomes"]],
         gantt=_gantt_pair(plants.before, bundle["before"], plants.after, bundle["after"]),

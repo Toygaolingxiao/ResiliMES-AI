@@ -67,7 +67,34 @@ const COPY = {
     nodeCritic: "Critic",
     nodeExplain: "Nightshift",
     nodeCommit: "Commit",
-    kpis: ["On-time delivery", "Weighted tardiness", "Makespan", "Lots at risk"],
+    wait: "Waiting",
+    runState: "Running",
+    done: "Done",
+    reads: "reads",
+    facts: "facts",
+    ops: "operations",
+    holds: "holds",
+    events: "events",
+    loopLabel: "Recovery loop",
+    change: "Change",
+    byArea: "Utilization by area",
+    kpiOtd: "On-time delivery",
+    kpiTardy: "Weighted tardiness",
+    kpiSpan: "Makespan",
+    kpiUtil: "Plant utilization",
+    kpiChange: "Changeovers",
+    kpiRisk: "Lots at risk",
+    kpiMoved: "Lots moved",
+    intents: {
+      machine_down: "machine down",
+      rush_order: "rush order",
+      material_shortage: "material shortage",
+      query_status: "status",
+      explain: "explain",
+      emergency_stop: "emergency stop",
+    },
+    verdicts: { accept: "accepted", conditional: "conditional", reject: "rejected" },
+    areas: { Lithography: "Lithography", Etch: "Etch", CMP: "CMP", Deposition: "Deposition" },
     scenarios: {
       litho_down: ["Machine breakdown", "LITHO-02 is down for 10 h. LOT-1001 is blocked, due 18:00 UTC."],
       rush_order: ["Rush order", "A hot lot is due in 3 h. Running lots stay on their tools."],
@@ -127,7 +154,34 @@ const COPY = {
     nodeCritic: "评审",
     nodeExplain: "Nightshift",
     nodeCommit: "提交",
-    kpis: ["准时交付", "加权拖期", "总工期", "风险批次"],
+    wait: "等待",
+    runState: "运行",
+    done: "完成",
+    reads: "次读取",
+    facts: "条事实",
+    ops: "道工序",
+    holds: "个暂扣",
+    events: "条事件",
+    loopLabel: "恢复循环",
+    change: "变化",
+    byArea: "各区域利用率",
+    kpiOtd: "准时交付",
+    kpiTardy: "加权拖期",
+    kpiSpan: "总工期",
+    kpiUtil: "产线利用率",
+    kpiChange: "换型",
+    kpiRisk: "风险批次",
+    kpiMoved: "移动批次",
+    intents: {
+      machine_down: "设备宕机",
+      rush_order: "急单",
+      material_shortage: "物料短缺",
+      query_status: "状态",
+      explain: "说明",
+      emergency_stop: "紧急停止",
+    },
+    verdicts: { accept: "接受", conditional: "有条件", reject: "拒绝" },
+    areas: { Lithography: "光刻", Etch: "刻蚀", CMP: "CMP", Deposition: "沉积" },
     scenarios: {
       litho_down: ["设备故障", "LITHO-02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
       rush_order: ["急单", "一个热批次要求 3 小时内交货。正在加工的批次留在设备上。"],
@@ -187,7 +241,34 @@ const COPY = {
     nodeCritic: "批評",
     nodeExplain: "Nightshift",
     nodeCommit: "確定",
-    kpis: ["納期遵守", "加重遅延", "総所要", "危険ロット"],
+    wait: "待機",
+    runState: "実行",
+    done: "完了",
+    reads: "件の読取",
+    facts: "件の事実",
+    ops: "工程",
+    holds: "件の保留",
+    events: "件のイベント",
+    loopLabel: "回復ループ",
+    change: "変化",
+    byArea: "エリア別の稼働率",
+    kpiOtd: "納期遵守",
+    kpiTardy: "加重遅延",
+    kpiSpan: "総所要",
+    kpiUtil: "ライン稼働率",
+    kpiChange: "段取り",
+    kpiRisk: "危険ロット",
+    kpiMoved: "移動ロット",
+    intents: {
+      machine_down: "装置停止",
+      rush_order: "特急",
+      material_shortage: "材料不足",
+      query_status: "状態",
+      explain: "説明",
+      emergency_stop: "非常停止",
+    },
+    verdicts: { accept: "受理", conditional: "条件付き", reject: "拒否" },
+    areas: { Lithography: "露光", Etch: "エッチング", CMP: "CMP", Deposition: "成膜" },
     scenarios: {
       litho_down: ["装置故障", "LITHO-02 は 10 時間停止。LOT-1001 が止まり、納期は 18:00 UTC。"],
       rush_order: ["特急", "特急ロットの納期は 3 時間後。加工中のロットは装置に残す。"],
@@ -396,6 +477,7 @@ async function run(body) {
   } finally {
     state.running = false;
     $("#run").disabled = false;
+    paintAgents();
   }
 }
 
@@ -432,20 +514,36 @@ function parseSse(block) {
 function paintAgents() {
   const copy = t();
   const host = $("#agents");
+  host.setAttribute("aria-label", copy.loopLabel);
   host.innerHTML = "";
   const seen = new Map(state.steps.map((step) => [step.phase, step]));
   let active = "";
   for (const step of state.steps) {
     if (NODES.some(([phase]) => phase === step.phase)) active = step.phase;
   }
-  for (const [phase, key] of NODES) {
+  NODES.forEach(([phase, key], index) => {
     const step = seen.get(phase);
+    const running = Boolean(step) && phase === active && state.running;
     const li = document.createElement("li");
-    li.className = step ? (phase === active && state.running ? "on" : "done") : "";
-    const ms = step ? `${step.elapsed_ms} ms` : "";
-    li.innerHTML = `<span class="who">${escapeHtml(copy[key])}</span><span class="ms">${escapeHtml(ms)}</span>`;
+    li.className = running ? "on" : step ? "done" : "wait";
+    const no = document.createElement("span");
+    no.className = "step-no";
+    no.textContent = String(index + 1).padStart(2, "0");
+    const who = document.createElement("span");
+    who.className = "who";
+    who.textContent = copy[key];
+    const status = document.createElement("span");
+    status.className = "state";
+    status.textContent = running ? copy.runState : step ? copy.done : copy.wait;
+    const out = document.createElement("span");
+    out.className = "out";
+    out.textContent = step ? stepOutput(phase, step.slots || {}, copy) : "";
+    const ms = document.createElement("span");
+    ms.className = "ms";
+    ms.textContent = step ? `${step.elapsed_ms} ms` : "";
+    li.append(no, who, status, out, ms);
     host.appendChild(li);
-  }
+  });
   const last = state.steps[state.steps.length - 1];
   const line = $("#agent-line");
   const evidence = $("#agent-evidence");
@@ -459,6 +557,25 @@ function paintAgents() {
   line.textContent = `${last.summary}${checkpoint} · ${copy.computed} ${last.elapsed_ms} ms`;
   const lines = (last.evidence || []).slice(0, 2);
   evidence.textContent = lines.join("\n");
+}
+
+function stepOutput(phase, slots, copy) {
+  if (phase === "scout") {
+    const raw = String(slots.intent || "").replace(/^plant\./, "");
+    const label = (copy.intents && copy.intents[raw]) || raw.replaceAll("_", " ");
+    const conf = typeof slots.confidence === "number" ? ` · ${Math.round(slots.confidence * 100)}%` : "";
+    return `${label}${conf}`;
+  }
+  if (phase === "query") return `${slots.reads ?? 0} ${copy.reads}`;
+  if (phase === "sense") return `${slots.facts ?? 0} ${copy.facts}`;
+  if (phase === "plan") return `${slots.operations ?? 0} ${copy.ops} · ${slots.holds ?? 0} ${copy.holds}`;
+  if (phase === "critique") return String((copy.verdicts && copy.verdicts[slots.verdict]) || slots.verdict || "");
+  if (phase === "explain") {
+    const model = String(slots.model || "").split("/").pop();
+    return [slots.provider, model].filter(Boolean).join(" · ");
+  }
+  if (phase === "commit") return `${slots.events ?? 0} ${copy.events}`;
+  return "";
 }
 
 function render(report) {
@@ -516,33 +633,118 @@ function renderKpis(report) {
   const host = $("#kpis");
   const copy = t();
   host.hidden = false;
+  host.innerHTML = "";
   if (!report.kpis) {
-    host.innerHTML = `<div class="kpi"><p class="label">${escapeHtml(copy.noSchedule)}</p><p class="value">—</p><p class="delta flat">${escapeHtml(report.block_reason || copy.readOnly)}</p></div>`;
+    const empty = document.createElement("p");
+    empty.className = "board-empty";
+    empty.textContent = report.block_reason || copy.readOnly;
+    host.appendChild(empty);
     return;
   }
-  const cards = [
-    ["on_time_delivery_pct", "%", 1, true],
-    ["weighted_tardiness_min", "dur", 0, false],
-    ["makespan_min", "dur", 0, false],
-    ["lots_at_risk", "", 0, false],
+  const specs = [
+    ["on_time_delivery_pct", copy.kpiOtd, "%", 1, true],
+    ["weighted_tardiness_min", copy.kpiTardy, "dur", 0, false],
+    ["makespan_min", copy.kpiSpan, "dur", 0, false],
+    ["utilization_pct", copy.kpiUtil, "%", 1, null],
+    ["setup_changes", copy.kpiChange, "", 0, false],
+    ["lots_at_risk", copy.kpiRisk, "", 0, false],
   ];
-  host.innerHTML = "";
-  cards.forEach(([key, kind, digits, upGood], index) => {
+  const table = document.createElement("table");
+  table.className = "compare";
+  const head = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  for (const label of ["", copy.before, copy.after, copy.change]) {
+    const th = document.createElement("th");
+    th.textContent = label;
+    headRow.appendChild(th);
+  }
+  head.appendChild(headRow);
+  const body = document.createElement("tbody");
+  for (const [key, label, kind, digits, upGood] of specs) {
     const before = report.kpis.before[key];
     const after = report.kpis.after[key];
     const delta = report.kpis.delta[key];
-    const improved = upGood ? delta > 0.05 : delta < -0.05;
-    const worse = upGood ? delta < -0.05 : delta > 0.05;
-    const tone = improved ? "good" : worse ? "bad" : "flat";
-    const article = document.createElement("div");
-    article.className = "kpi";
-    article.innerHTML = `
-      <p class="label">${escapeHtml(copy.kpis[index])}</p>
-      <p class="value">${escapeHtml(formatMeasure(after, kind, digits))}</p>
-      <p class="delta ${tone}">${escapeHtml(signedMeasure(delta, kind, digits))}</p>
-      <p class="was flat">${escapeHtml(copy.was)} ${escapeHtml(formatMeasure(before, kind, digits))}</p>`;
-    host.appendChild(article);
+    body.appendChild(compareRow(
+      label,
+      formatMeasure(before, kind, digits),
+      formatMeasure(after, kind, digits),
+      signedMeasure(delta, kind, digits),
+      deltaTone(delta, upGood),
+    ));
+  }
+  const moved = report.kpis.lots_moved || [];
+  body.appendChild(compareRow(
+    copy.kpiMoved,
+    "—",
+    String(moved.length),
+    moved.length ? moved.join(", ") : "—",
+    "flat",
+    true,
+  ));
+  table.append(head, body);
+  host.append(table, renderAreas(report.kpis.areas || {}, copy));
+}
+
+function compareRow(label, before, after, change, tone, ids) {
+  const tr = document.createElement("tr");
+  const values = [label, before, after, change];
+  values.forEach((text, index) => {
+    const cell = document.createElement(index === 0 ? "th" : "td");
+    if (index > 0) cell.className = "num" + (index === 3 ? ` ${tone}` : "") + (index === 3 && ids ? " ids" : "");
+    cell.textContent = text;
+    tr.appendChild(cell);
   });
+  return tr;
+}
+
+function deltaTone(delta, upGood) {
+  if (upGood === null || Math.abs(delta) <= 0.05) return "flat";
+  return (upGood ? delta > 0 : delta < 0) ? "good" : "bad";
+}
+
+function renderAreas(sides, copy) {
+  const wrap = document.createElement("div");
+  wrap.className = "areas";
+  const title = document.createElement("h3");
+  title.textContent = copy.byArea;
+  const key = document.createElement("p");
+  key.className = "area-key";
+  key.append(meterKey("before"), document.createTextNode(` ${copy.before} `), meterKey("after"), document.createTextNode(` ${copy.after}`));
+  wrap.append(title, key);
+  const before = new Map((sides.before || []).map((row) => [row.area, row]));
+  const after = new Map((sides.after || []).map((row) => [row.area, row]));
+  const names = [...new Set([...before.keys(), ...after.keys()])].sort();
+  for (const name of names) {
+    const bPct = before.has(name) ? before.get(name).utilization_pct : 0;
+    const aPct = after.has(name) ? after.get(name).utilization_pct : 0;
+    const row = document.createElement("div");
+    row.className = "area";
+    const label = document.createElement("span");
+    label.className = "name";
+    label.textContent = (copy.areas && copy.areas[name]) || name;
+    const fig = document.createElement("span");
+    fig.className = "fig";
+    fig.textContent = `${formatMeasure(bPct, "%", 1)} → ${formatMeasure(aPct, "%", 1)}`;
+    const meters = document.createElement("span");
+    meters.className = "meters";
+    meters.append(meterBar("before", bPct), meterBar("after", aPct));
+    row.append(label, fig, meters);
+    wrap.appendChild(row);
+  }
+  return wrap;
+}
+
+function meterKey(kind) {
+  return meterBar(kind, 100);
+}
+
+function meterBar(kind, pct) {
+  const span = document.createElement("span");
+  span.className = `meter ${kind}`;
+  const fill = document.createElement("i");
+  fill.style.width = `${Math.max(0, Math.min(100, Number(pct) || 0))}%`;
+  span.appendChild(fill);
+  return span;
 }
 
 function renderGantt(host, gantt, horizon, scale, draw) {
@@ -550,6 +752,7 @@ function renderGantt(host, gantt, horizon, scale, draw) {
   if (!gantt) return;
   const wrap = document.createElement("div");
   wrap.className = "gantt" + (draw ? " draw" : "");
+  wrap.dataset.scale = String(scale);
   for (const row of gantt.rows) {
     const line = document.createElement("div");
     line.className = "gantt-row";
@@ -569,17 +772,15 @@ function renderGantt(host, gantt, horizon, scale, draw) {
       const node = document.createElement("div");
       const tone = PRIORITY[bar.priority] || PRIORITY[4];
       node.className = "bar" + (bar.moved ? " moved" : "") + (bar.fresh ? " fresh" : "") + (bar.moved && !draw ? " leaving" : "");
-      node.style.left = `${(bar.start_min / scale) * 100}%`;
-      node.style.width = `${Math.max(1.4, ((bar.end_min - bar.start_min) / scale) * 100)}%`;
+      node.dataset.start = String(bar.start_min);
+      node.dataset.end = String(bar.end_min);
       node.style.background = tone.fill;
       node.style.color = tone.ink;
+      node.title = bar.job_id;
       const label = document.createElement("span");
       label.className = "bar-label";
       label.textContent = shortLot(bar.job_id);
       node.appendChild(label);
-      requestAnimationFrame(() => {
-        if (node.scrollWidth > node.clientWidth + 1) node.classList.add("tight");
-      });
       node.addEventListener("pointerenter", (event) => showTip(event, bar, row.equipment_id, horizon));
       node.addEventListener("pointermove", moveTip);
       node.addEventListener("pointerleave", hideTip);
@@ -598,6 +799,69 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     axis.appendChild(tick);
   }
   host.append(wrap, axis);
+  wrap.querySelectorAll(".track").forEach((track) => layoutTrack(track, scale));
+}
+
+function layoutTrack(track, scale) {
+  const width = track.clientWidth;
+  if (!width || !scale) return;
+  const items = [...track.querySelectorAll(".bar")]
+    .map((node) => ({
+      node,
+      start: Number(node.dataset.start),
+      end: Number(node.dataset.end),
+    }))
+    .sort((a, b) => a.start - b.start);
+  items.forEach((item) => {
+    item.left = (item.start / scale) * width;
+    item.raw = ((item.end - item.start) / scale) * width;
+  });
+  items.forEach((item, index) => {
+    const nextLeft = index + 1 < items.length ? items[index + 1].left : width;
+    const room = Math.max(0, nextLeft - item.left - 1);
+    const floor = Math.min(3, room);
+    item.draw = room <= 0 ? 0 : Math.min(Math.max(item.raw, floor), room);
+    item.node.style.left = `${item.left}px`;
+    item.node.style.width = `${item.draw}px`;
+  });
+  const lanes = { above: [], below: [] };
+  items.forEach((item, index) => {
+    const label = item.node.querySelector(".bar-label");
+    const text = label ? label.textContent : "";
+    const need = textWidth(text);
+    item.node.classList.remove("lane-above", "lane-below", "silent");
+    if (!text || item.draw >= need) return;
+    const labelLeft = item.left;
+    const labelRight = item.left + Math.max(0, need - 8);
+    const prefer = index % 2 === 0 ? "above" : "below";
+    const order = prefer === "above" ? ["above", "below"] : ["below", "above"];
+    let lane = "";
+    for (const candidate of order) {
+      const hit = lanes[candidate].some((span) => labelLeft < span[1] + 2 && labelRight > span[0] - 2);
+      if (!hit && labelRight <= width + 1) {
+        lane = candidate;
+        lanes[candidate].push([labelLeft, labelRight]);
+        break;
+      }
+    }
+    if (lane === "above") item.node.classList.add("lane-above");
+    else if (lane === "below") item.node.classList.add("lane-below");
+    else item.node.classList.add("silent");
+  });
+}
+
+function textWidth(text) {
+  if (!textWidth.probe) {
+    const probe = document.createElement("span");
+    probe.className = "bar-label";
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    probe.style.left = "-9999px";
+    document.body.appendChild(probe);
+    textWidth.probe = probe;
+  }
+  textWidth.probe.textContent = text;
+  return textWidth.probe.offsetWidth;
 }
 
 function renderLegend(report) {
@@ -772,6 +1036,13 @@ async function getJson(url) {
   if (!response.ok) throw new Error(`Request failed (${response.status})`);
   return response.json();
 }
+
+window.addEventListener("resize", () => {
+  document.querySelectorAll(".gantt").forEach((wrap) => {
+    const scale = Number(wrap.dataset.scale || 0);
+    wrap.querySelectorAll(".track").forEach((track) => layoutTrack(track, scale));
+  });
+});
 
 function escapeHtml(value) {
   return String(value ?? "")

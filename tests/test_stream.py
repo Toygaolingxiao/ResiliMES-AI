@@ -83,6 +83,13 @@ def test_stream_litho_emits_the_loop_then_the_report() -> None:
     report = reports[0]
     assert report["kpis"]["after"]["on_time_delivery_pct"] == 100.0
     assert report["kpis"]["before"]["weighted_tardiness_min"] == 840
+    assert "LOT-1001" in report["kpis"]["lots_moved"]
+    assert {row["area"] for row in report["kpis"]["areas"]["after"]} >= {
+        "Lithography",
+        "Etch",
+        "CMP",
+        "Deposition",
+    }
     assert "LOT-1001" in report["brief"]["en"]["headline"]
     assert "LOT-1001" in report["brief"]["zh"]["headline"]
     assert "LOT-1001" in report["brief"]["ja"]["headline"]
