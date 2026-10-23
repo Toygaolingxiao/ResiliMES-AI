@@ -186,9 +186,7 @@ def test_litho_dedication_follows_forward_same_family_links() -> None:
 
 
 def _two_scanner_fab(dedicate_root: list[int]) -> Fab:
-    family = Family(
-        name="Litho_FE_92", group="Litho", tools=2, tool0=0, litho=True, scanner=True
-    )
+    family = Family(name="Litho_FE_92", group="Litho", tools=2, tool0=0, litho=True, scanner=True)
     route = Route(
         route_id="r",
         family=[0, 0],

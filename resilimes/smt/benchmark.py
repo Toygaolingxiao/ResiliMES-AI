@@ -500,9 +500,7 @@ def _tight_price(payload: dict[str, Any]) -> str:
     price = (payload.get("price") or {}).get("tight_seed1")
     if not price:
         return ""
-    worst = ", ".join(
-        f"{item['lot_id']} +{item['extra_h']} h" for item in price["worst"]
-    )
+    worst = ", ".join(f"{item['lot_id']} +{item['extra_h']} h" for item in price["worst"])
     spot = price.get("spotlight_lot") or "the spotlight lot"
     return (
         f"Seed 1, who paid: {price['lots']} non-hot lots in that queue finish "
@@ -603,13 +601,10 @@ def _xfactor_price(payload: dict[str, Any]) -> str:
         return ""
     if price["lots"] == 0:
         paid = (
-            "Seed 1, who paid: no scored non-hot lot finishes later under "
-            "ResiliMES than under EDD."
+            "Seed 1, who paid: no scored non-hot lot finishes later under ResiliMES than under EDD."
         )
     else:
-        worst = ", ".join(
-            f"{item['lot_id']} +{item['extra_h']} h" for item in price["worst"]
-        )
+        worst = ", ".join(f"{item['lot_id']} +{item['extra_h']} h" for item in price["worst"])
         paid = (
             f"Seed 1, who paid: {price['lots']} non-hot lots, "
             f"{price['extra_h']} extra hours ({worst})."

@@ -144,8 +144,7 @@ SCENARIOS: dict[str, SmtScenario] = {
             "Litho_FE_92-1 is down for 600 minutes. The baseline is EDD."
         ),
         incident=(
-            "Litho_FE_92-1 down for 600 minutes. Dues are 2.75 times the "
-            "remaining process time."
+            "Litho_FE_92-1 down for 600 minutes. Dues are 2.75 times the remaining process time."
         ),
         before_policy="edd",
         after_policy="resilimes",
@@ -360,7 +359,9 @@ def simulate_pair(
         watch: tuple[int, ...] = book.watch
     elif scenario.kind == "xfactor":
         watch = tuple(
-            index for index, due in enumerate(plant.lot_due) if due <= horizon and fab.lot_class[index] != "VIP"
+            index
+            for index, due in enumerate(plant.lot_due)
+            if due <= horizon and fab.lot_class[index] != "VIP"
         )
     else:
         watch = ()
@@ -395,9 +396,7 @@ def simulate_pair(
     report = _report(fab, scenario, before, after, seed, horizon, aps_ms, scanner_steps, shift)
     if book is not None:
         report["tight"] = _tight_public(fab, book, before, after)
-        report["price"] = price_paid(
-            before, after, [fab.lot_id[index] for index in book.decoy]
-        )
+        report["price"] = price_paid(before, after, [fab.lot_id[index] for index in book.decoy])
     if scenario.kind == "xfactor":
         report["xfactor"] = {
             "factor": X_FACTOR,

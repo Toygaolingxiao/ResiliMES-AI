@@ -108,9 +108,7 @@ def price_paid(
     return {
         "lots": len(worse),
         "extra_h": round(sum(item[0] for item in worse), 2),
-        "worst": [
-            {"lot_id": lot_id, "extra_h": round(delta, 2)} for delta, lot_id in worse[:5]
-        ],
+        "worst": [{"lot_id": lot_id, "extra_h": round(delta, 2)} for delta, lot_id in worse[:5]],
     }
 
 
