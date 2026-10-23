@@ -53,9 +53,23 @@ def test_hero_reference_passes_the_critic_and_matches_tardiness(scenario: str) -
     assert critique_schedule(after, heuristic).verdict != "reject"
     assert critique_schedule(after, reference).verdict != "reject"
     assert evaluate(after, reference).weighted_tardiness_min == report["best_tardiness_min"]
+    litho = [op for op in reference.operations if op.step.startswith("LITHO")]
+    assert litho
+    assert all(op.reticle_id for op in litho)
     if scenario == "rework":
         assert report["best_tardiness_min"] == 0
-        assert report["best_makespan_min"] < heuristic_kpi.makespan_min
+        assert heuristic_kpi.makespan_min == 402
+        assert report["best_makespan_min"] == 326
+        assert report["improved"] is True
+    elif scenario == "rush_order":
+        assert report["best_tardiness_min"] == heuristic_kpi.weighted_tardiness_min
+        assert heuristic_kpi.makespan_min == 342
+        assert report["best_makespan_min"] == 293
+        assert report["improved"] is True
+    elif scenario == "qtime":
+        assert report["best_tardiness_min"] == heuristic_kpi.weighted_tardiness_min
+        assert heuristic_kpi.makespan_min == 285
+        assert report["best_makespan_min"] == 256
         assert report["improved"] is True
     else:
         assert report["best_tardiness_min"] == heuristic_kpi.weighted_tardiness_min
@@ -87,14 +101,10 @@ def test_scale_neighborhood_keeps_the_heuristic_available() -> None:
     heuristic_kpi = evaluate(plant, heuristic)
     assert report["best_tardiness_min"] <= heuristic_kpi.weighted_tardiness_min
     assert validate(plant, heuristic)["failed"] == 0
-    assert report["status"] == "OPTIMAL"
-    assert report["improved"] is True
+    assert report["status"] == "KEPT"
+    assert report["improved"] is False
     assert report["best_tardiness_min"] == 0
-    assert heuristic_kpi.makespan_min == 4974
-    assert report["best_makespan_min"] == 4934
-    assert report["makespan_delta_min"] == 40
-    assert report["reference"]["changed"]
-    reference = _book(report)
-    assert validate(plant, reference)["failed"] == 0
-    assert critique_schedule(plant, reference).verdict != "reject"
-    assert evaluate(plant, reference).makespan_min == 4934
+    assert heuristic_kpi.makespan_min == 5116
+    assert report["best_makespan_min"] == 5116
+    assert report["makespan_delta_min"] == 0
+    assert report["reference"] is None

@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, cast
 
-from resilimes.domain.checks import inhibited, reticle_for, validate
+from resilimes.domain.checks import inhibited, reticle_copies, validate
 from resilimes.domain.checks import recipe_for as recipe_of
 from resilimes.domain.kpis import evaluate
 from resilimes.domain.models import (
@@ -27,7 +27,7 @@ from resilimes.domain.models import (
     priority_weight,
 )
 from resilimes.domain.plant import minutes_between
-from resilimes.domain.schedule import _expand
+from resilimes.domain.schedule import RETICLE_LOAD_MIN, _expand
 
 _UNAVAILABLE = {"DOWN", "MAINTENANCE"}
 _EXACT_LIMIT_S = 5.0
@@ -113,7 +113,9 @@ class _StepVar:
     end: Any
     setup: Any
     size: Any
+    load: Any
     assign: dict[str, Any] = field(default_factory=dict)
+    copies: dict[str, Any] = field(default_factory=dict)
 
 
 def _solve_exact(
@@ -331,9 +333,14 @@ def _add_step(model: Any, step: StepWork, machines: list[Equipment], horizon: in
     setup_cap = max((machine.setup_time_min for machine in machines), default=0)
     start = model.NewIntVar(0, horizon, f"s_{name}")
     setup = model.NewIntVar(0, setup_cap, f"u_{name}")
-    size = model.NewIntVar(step.process_min, step.process_min + setup_cap, f"z_{name}")
-    end = model.NewIntVar(0, horizon + setup_cap, f"e_{name}")
-    model.Add(size == step.process_min + setup)
+    load = model.NewIntVar(0, RETICLE_LOAD_MIN, f"ld_{name}")
+    size = model.NewIntVar(
+        step.process_min,
+        step.process_min + setup_cap + RETICLE_LOAD_MIN,
+        f"z_{name}",
+    )
+    end = model.NewIntVar(0, horizon + setup_cap + RETICLE_LOAD_MIN, f"e_{name}")
+    model.Add(size == step.process_min + setup + load)
     model.Add(end == start + size)
     assign = {
         machine.equipment_id: model.NewBoolVar(f"m_{name}_{machine.equipment_id}")
@@ -347,6 +354,7 @@ def _add_step(model: Any, step: StepWork, machines: list[Equipment], horizon: in
         model.Add(present == 1)
         model.Add(start == 0)
         model.Add(setup == 0)
+        model.Add(load == 0)
         model.Add(assign[machines[0].equipment_id] == 1)
     else:
         model.Add(start >= step.ready_at).OnlyEnforceIf(present)
@@ -360,6 +368,7 @@ def _add_step(model: Any, step: StepWork, machines: list[Equipment], horizon: in
         end=end,
         setup=setup,
         size=size,
+        load=load,
         assign=assign,
     )
 
@@ -557,34 +566,154 @@ def _reticles(
     made: dict[tuple[str, str], _StepVar],
     blocks: list[ScheduledOp],
 ) -> None:
-    grouped: dict[str, list[Any]] = {}
+    """One physical copy per lithography step, with the same mount time as the list scheduler."""
+    users: dict[str, list[_StepVar]] = {}
     for var in made.values():
-        mask = reticle_for(plant, var.step.product_id, var.step.step)
-        if mask is None:
+        copies = reticle_copies(plant, var.step.product_id, var.step.step)
+        if not copies:
+            model.Add(var.load == 0)
             continue
-        grouped.setdefault(mask, []).append(
+        flags = {
+            copy.reticle_id: model.NewBoolVar(
+                f"c_{var.step.job_id}_{var.step.step}_{copy.reticle_id}"
+            )
+            for copy in copies
+        }
+        var.copies = flags
+        model.Add(sum(flags.values()) == var.present)
+        model.Add(var.load == 0).OnlyEnforceIf(var.present.Not())
+        for reticle_id in flags:
+            users.setdefault(reticle_id, []).append(var)
+    held: dict[str, list[ScheduledOp]] = {}
+    for op in blocks:
+        if not op.reticle_id:
+            continue
+        held.setdefault(op.reticle_id, []).append(op)
+    for reticle_id in set(users) | set(held):
+        _one_copy(model, reticle_id, users.get(reticle_id, []), held.get(reticle_id, []))
+
+
+def _one_copy(
+    model: Any,
+    reticle_id: str,
+    free: list[_StepVar],
+    blocks: list[ScheduledOp],
+) -> None:
+    intervals: list[Any] = []
+    for var in free:
+        intervals.append(
             model.NewOptionalIntervalVar(
                 var.start,
                 var.size,
                 var.end,
-                var.present,
-                f"mask_{mask}_{var.step.job_id}_{var.step.step}",
+                var.copies[reticle_id],
+                f"mask_{reticle_id}_{var.step.job_id}_{var.step.step}",
             )
         )
     for op in blocks:
-        mask = reticle_for(plant, op.product_id, op.step)
-        if mask is None:
-            continue
-        grouped.setdefault(mask, []).append(
+        intervals.append(
             model.NewFixedSizeIntervalVar(
                 op.start_min,
-                max(0, op.end_min - op.start_min),
-                f"maskblk_{mask}_{op.job_id}_{op.step}",
+                max(1, op.end_min - op.start_min),
+                f"maskblk_{reticle_id}_{op.job_id}_{op.step}",
             )
         )
-    for intervals in grouped.values():
-        if len(intervals) > 1:
-            model.AddNoOverlap(intervals)
+    if len(intervals) > 1:
+        model.AddNoOverlap(intervals)
+    if not free:
+        return
+    nodes: list[dict[str, Any]] = [
+        {"kind": "free", "var": var, "on": var.copies[reticle_id]} for var in free
+    ]
+    nodes.extend(
+        {
+            "kind": "block",
+            "op": op,
+            "tool": op.equipment_id,
+            "start": op.start_min,
+            "end": op.end_min,
+        }
+        for op in blocks
+    )
+    arcs: list[tuple[int, int, Any]] = []
+    for index, node in enumerate(nodes, start=1):
+        if node["kind"] == "free":
+            arcs.append((index, index, node["on"].Not()))
+    for left_i, left in enumerate(nodes):
+        for right_i, right in enumerate(nodes):
+            if left_i == right_i:
+                continue
+            lit = model.NewBoolVar(f"rarc_{reticle_id}_{left_i}_{right_i}")
+            arcs.append((left_i + 1, right_i + 1, lit))
+            _copy_follows(model, left, right, lit)
+    for index, node in enumerate(nodes, start=1):
+        first = model.NewBoolVar(f"rfirst_{reticle_id}_{index}")
+        last = model.NewBoolVar(f"rlast_{reticle_id}_{index}")
+        arcs.append((0, index, first))
+        arcs.append((index, 0, last))
+        if node["kind"] == "free" and not node["var"].step.in_progress:
+            model.Add(node["var"].load == RETICLE_LOAD_MIN).OnlyEnforceIf(first)
+    if not blocks:
+        # A copy that no free step picks still needs a closed circuit.
+        inactive = model.NewBoolVar(f"rempty_{reticle_id}")
+        ons = [node["on"] for node in nodes]
+        model.Add(sum(ons) == 0).OnlyEnforceIf(inactive)
+        model.Add(sum(ons) >= 1).OnlyEnforceIf(inactive.Not())
+        arcs.append((0, 0, inactive))
+    model.AddCircuit(arcs)
+
+
+def _copy_follows(model: Any, left: dict[str, Any], right: dict[str, Any], lit: Any) -> None:
+    if left["kind"] == "block" and right["kind"] == "block":
+        if int(left["end"]) > int(right["start"]):
+            model.Add(lit == 0)
+        return
+    if right["kind"] == "free":
+        if left["kind"] == "free":
+            model.Add(right["var"].start >= left["var"].end).OnlyEnforceIf(lit)
+        else:
+            model.Add(right["var"].start >= int(left["end"])).OnlyEnforceIf(lit)
+        if right["var"].step.in_progress:
+            return
+        _mount_load(model, right["var"], lit, _node_tools(left))
+        return
+    if left["kind"] == "free":
+        model.Add(left["var"].end <= int(right["start"])).OnlyEnforceIf(lit)
+
+
+def _node_tools(node: dict[str, Any]) -> list[tuple[str, Any | None]]:
+    if node["kind"] == "block":
+        return [(str(node["tool"]), None)]
+    return [(tool, choice) for tool, choice in node["var"].assign.items()]
+
+
+def _mount_load(
+    model: Any,
+    right: _StepVar,
+    lit: Any,
+    previous: list[tuple[str, Any | None]],
+) -> None:
+    """Five minutes unless the previous use of this copy was already on this scanner."""
+    boths: list[Any] = []
+    tag = f"{right.step.job_id}_{right.step.step}_{id(lit)}"
+    for tool, on_tool in previous:
+        choice = right.assign.get(tool)
+        if choice is None:
+            continue
+        if on_tool is None:
+            boths.append(choice)
+            continue
+        both = model.NewBoolVar(f"stay_{tag}_{tool}")
+        model.AddMultiplicationEquality(both, [on_tool, choice])
+        boths.append(both)
+    if not boths:
+        model.Add(right.load == RETICLE_LOAD_MIN).OnlyEnforceIf(lit)
+        return
+    same = model.NewBoolVar(f"same_{tag}")
+    model.AddBoolOr(boths).OnlyEnforceIf(same)
+    model.AddBoolAnd([item.Not() for item in boths]).OnlyEnforceIf(same.Not())
+    model.Add(right.load == 0).OnlyEnforceIf([lit, same])
+    model.Add(right.load == RETICLE_LOAD_MIN).OnlyEnforceIf([lit, same.Not()])
 
 
 def _operators(
@@ -673,9 +802,12 @@ def _hint(model: Any, made: dict[tuple[str, str], _StepVar], heuristic: Schedule
         model.AddHint(var.present, 1)
         model.AddHint(var.start, op.start_min)
         model.AddHint(var.setup, op.setup_min)
+        model.AddHint(var.load, op.reticle_load_min)
         model.AddHint(var.end, op.end_min)
         for equipment_id, choice in var.assign.items():
             model.AddHint(choice, 1 if equipment_id == op.equipment_id else 0)
+        for reticle_id, choice in var.copies.items():
+            model.AddHint(choice, 1 if reticle_id == op.reticle_id else 0)
 
 
 def _read_schedule(
@@ -698,6 +830,10 @@ def _read_schedule(
         equipment_id = next(
             tool for tool, choice in var.assign.items() if solver.Value(choice) == 1
         )
+        reticle_id = next(
+            (mask for mask, choice in var.copies.items() if solver.Value(choice) == 1),
+            "",
+        )
         operations.append(
             ScheduledOp(
                 job_id=var.step.job_id,
@@ -713,6 +849,8 @@ def _read_schedule(
                 priority=var.step.priority,
                 pinned=var.step.in_progress,
                 rework=var.step.rework,
+                reticle_id=reticle_id,
+                reticle_load_min=int(solver.Value(var.load)),
             )
         )
     kept = {(op.job_id, op.step) for op in operations}
@@ -798,7 +936,7 @@ def _repair_setups(plant: Plant, schedule: Schedule) -> Schedule:
                     update={
                         "start_min": start,
                         "setup_min": expected,
-                        "end_min": start + op.process_min + expected,
+                        "end_min": start + op.process_min + expected + op.reticle_load_min,
                     }
                 )
             updated[(current.job_id, current.step)] = current

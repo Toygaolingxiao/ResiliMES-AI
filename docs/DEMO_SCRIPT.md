@@ -94,7 +94,7 @@ If you have the live clip, cut it here for five seconds: the JSON `provider` and
 
 Press **Run** on **Scale**. Stay on Recover. Do not scroll. This frame is a tool strip, not a lot Gantt.
 
-"A thousand lots, 36 tools, one scanner down. The left strip is EDD dispatch: it already meets every due date, and the 24 priority-1 lots are on scanners that are up. Priority recovery matches on-time delivery, weighted tardiness, and lots at risk. All three stay at 100%, zero, and zero. The hatch is the down scanner. Schedule and critic, under a second. The badge on the chart row is the CP-SAT neighborhood. The three cards stay on the list schedule."
+"A thousand lots, 36 tools, one scanner down. The left strip is EDD dispatch: it already meets every due date, and the 24 priority-1 lots are on scanners that are up. Priority recovery matches on-time delivery, weighted tardiness, and lots at risk. All three stay at 100%, zero, and zero. The hatch is the down scanner. Schedule and critic, under a second. The badge says no improvement, heuristic kept. The three cards stay on the list schedule."
 
 Point at the chart title "vs. EDD dispatch". Point at the stat line: schedule, critic, 1,000 lots, 36 tools, 3,426 steps, 14 passed. The three cards are flat. The strip is the first 12 hours. CMP stays the bottleneck, about 84.7%. The refused line names LITHO-03 down until minute 600.
 
