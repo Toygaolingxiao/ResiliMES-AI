@@ -59,6 +59,7 @@ def schedule_brief(
     after: KpiReport,
     rejected: Critique,
     verdict: str,
+    bottleneck: str = "",
 ) -> dict[str, dict[str, object]]:
     constraint = rejected.violations[0].constraint if rejected.violations else ""
     moved = [
@@ -78,15 +79,21 @@ def schedule_brief(
         and row.before_completion_min is None
         and row.after_equipment
     ]
-    if kind == "stockout" or (held and kind != "insert_lot"):
-        return _pack(_shortage(held, before, after, verdict, constraint))
-    if kind == "insert_lot" or inserted:
+    if kind == "qtime":
+        chosen = _queue(held, before, after, verdict, constraint)
+    elif kind == "rework":
+        chosen = _rework(before, after, verdict, constraint)
+    elif kind == "stockout" or (held and kind != "insert_lot"):
+        chosen = _shortage(held, before, after, verdict, constraint)
+    elif kind == "insert_lot" or inserted:
         lead = _inserted_lead(inserted, after)
-        return _pack(_rush(lead, before, after, verdict, constraint))
-    if moved:
+        chosen = _rush(lead, before, after, verdict, constraint)
+    elif moved:
         lead = min(moved, key=lambda row: row.after_tardiness_min - row.before_tardiness_min)
-        return _pack(_move(lead, before, after, verdict, constraint))
-    return _pack(_generic(before, after, verdict, constraint))
+        chosen = _move(lead, before, after, verdict, constraint)
+    else:
+        chosen = _generic(before, after, verdict, constraint)
+    return _pack(_with_bottleneck(chosen, bottleneck))
 
 
 def refusal_brief(reason: str, *, approval: bool = False) -> dict[str, dict[str, object]]:
@@ -209,6 +216,143 @@ def status_brief(down: list[str], blocked: list[str]) -> dict[str, dict[str, obj
     }
 
 
+def _with_bottleneck(
+    rows: dict[Lang, tuple[str, list[str], str]],
+    bottleneck: str,
+) -> dict[Lang, tuple[str, list[str], str]]:
+    if not bottleneck:
+        return rows
+    updated: dict[Lang, tuple[str, list[str], str]] = {}
+    for lang, (headline, points, detail) in rows.items():
+        clause = _bottleneck_clause(bottleneck, lang)
+        copied = list(points)
+        copied[-1] = f"{copied[-1]} {clause}"
+        updated[lang] = (headline, copied, f"{detail} {clause}")
+    return updated
+
+
+def _bottleneck_clause(area: str, lang: Lang) -> str:
+    if lang == "zh":
+        return f"这一步保住了 {area} 这个瓶颈。"
+    if lang == "ja":
+        return f"この手はボトルネックの {area} を守る。"
+    return f"This keeps the {area} bottleneck fed."
+
+
+def _queue(
+    held: list[JobOutcome],
+    before: KpiReport,
+    after: KpiReport,
+    verdict: str,
+    constraint: str,
+) -> dict[Lang, tuple[str, list[str], str]]:
+    job = held[0].job_id if held else "The lot"
+    extra = len(held) > 1
+    hold_en = (
+        f"The book holds {len(held)} lots, including {job}." if extra else f"The book holds {job}."
+    )
+    hold_zh = f"账上暂扣 {len(held)} 个批次，包括 {job}。" if extra else f"账上暂扣 {job}。"
+    hold_ja = (
+        f"帳票は {len(held)} ロットを保留する。{job} を含む。"
+        if extra
+        else f"帳票は {job} を保留する。"
+    )
+    otd_b, otd_a = _pct(before, after)
+    tard_b = human_minutes(before.weighted_tardiness_min, "en")
+    tard_a = human_minutes(after.weighted_tardiness_min, "en")
+    tard_b_zh = human_minutes(before.weighted_tardiness_min, "zh")
+    tard_a_zh = human_minutes(after.weighted_tardiness_min, "zh")
+    tard_b_ja = human_minutes(before.weighted_tardiness_min, "ja")
+    tard_a_ja = human_minutes(after.weighted_tardiness_min, "ja")
+    return {
+        "en": (
+            f"{job} misses the etch queue time",
+            [
+                "Etch finished before the clock. CMP had to start within 15 min.",
+                f"{hold_en} On-time delivery {otd_b} → {otd_a}.",
+                f"The verdict is {_verdict(verdict, 'en')}. {_refusal(constraint, 'en')}",
+            ],
+            (
+                f"{job} is held because CMP would start after the etch queue time. "
+                f"Weighted tardiness {tard_b} → {tard_a}. {_refusal(constraint, 'en')}"
+            ),
+        ),
+        "zh": (
+            f"{job} 错过了刻蚀后的队列时间",
+            [
+                "刻蚀在时钟之前已经结束。CMP 必须在 15 分钟内开工。",
+                f"{hold_zh}准时交付 {otd_b} → {otd_a}。",
+                f"评审结果{_verdict(verdict, 'zh')}。{_refusal(constraint, 'zh')}",
+            ],
+            (
+                f"{job} 被暂扣，因为 CMP 会在刻蚀队列时间之后才开工。"
+                f"加权拖期 {tard_b_zh} → {tard_a_zh}。{_refusal(constraint, 'zh')}"
+            ),
+        ),
+        "ja": (
+            f"{job} はエッチ後の待ち時間を外した",
+            [
+                "エッチは時計の前に終わっている。CMP は 15 分以内に始める。",
+                f"{hold_ja}納期遵守 {otd_b} → {otd_a}。",
+                f"批評は{_verdict(verdict, 'ja')}。{_refusal(constraint, 'ja')}",
+            ],
+            (
+                f"{job} は、CMP が待ち時間の後に始まるため保留。"
+                f"加重遅延 {tard_b_ja} → {tard_a_ja}。{_refusal(constraint, 'ja')}"
+            ),
+        ),
+    }
+
+
+def _rework(
+    before: KpiReport,
+    after: KpiReport,
+    verdict: str,
+    constraint: str,
+) -> dict[Lang, tuple[str, list[str], str]]:
+    job = "LOT-1004"
+    otd_b, otd_a = _pct(before, after)
+    close_en = f"The critic {_verdict(verdict, 'en')} the book."
+    close_zh = f"评审{_verdict(verdict, 'zh')}这版账。"
+    close_ja = f"批評は計画を{_verdict(verdict, 'ja')}。"
+    if constraint:
+        close_en = f"{close_en} {_refusal(constraint, 'en')}"
+        close_zh = f"{close_zh}{_refusal(constraint, 'zh')}"
+        close_ja = f"{close_ja}{_refusal(constraint, 'ja')}"
+    return {
+        "en": (
+            f"{job} re-enters lithography",
+            [
+                "Overlay failed. Strip, then one re-expose. The limit is 1.",
+                f"Lithography takes the extra pass. On-time delivery {otd_b} → {otd_a}.",
+                close_en,
+            ],
+            (
+                f"{job} strips and re-exposes once, then rejoins etch. "
+                f"A second loop is not inserted. {close_en}"
+            ),
+        ),
+        "zh": (
+            f"{job} 重新进入光刻",
+            [
+                "套刻失败。去胶，再曝光一次。上限是 1。",
+                f"光刻多走一道。准时交付 {otd_b} → {otd_a}。",
+                close_zh,
+            ],
+            f"{job} 去胶并再曝光一次，然后回到刻蚀。不会插入第二次。{close_zh}",
+        ),
+        "ja": (
+            f"{job} がリソグラフィに戻る",
+            [
+                "重ね合わせ不良。剥離して、一度だけ再露光。上限は 1。",
+                f"リソが一行程増える。納期遵守 {otd_b} → {otd_a}。",
+                close_ja,
+            ],
+            f"{job} は剥離して一度再露光し、エッチに戻る。二度目は入れない。{close_ja}",
+        ),
+    }
+
+
 def _pack(
     rows: dict[Lang, tuple[str, list[str], str]],
 ) -> dict[str, dict[str, object]]:
@@ -245,6 +389,11 @@ def _refusal(constraint: str, lang: Lang) -> str:
             "en": "Starting lithography without the resist was refused.",
             "zh": "没有光刻胶就开工被拒绝。",
             "ja": "レジストなしで露光を始める案は拒否された。",
+        },
+        "qtime": {
+            "en": "Starting CMP after the queue-time window was refused.",
+            "zh": "超过队列时间再开始 CMP 被拒绝。",
+            "ja": "待ち時間を過ぎて CMP を始める案は拒否された。",
         },
     }
     if constraint in table:

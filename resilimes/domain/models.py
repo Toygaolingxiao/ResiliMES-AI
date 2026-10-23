@@ -15,12 +15,54 @@ class MaterialNeed(BaseModel):
 
 
 class RouteStep(BaseModel):
+    """One operation on a product route. The same area can return on a later layer."""
+
     model_config = ConfigDict(extra="ignore")
 
     step: str
     capability: str
     process_time_min: int
     setup_family: str
+    step_no: int = 0
+    operation: str = ""
+    area: str = ""
+    recipe: str = ""
+    layer: str = ""
+    rework: bool = False
+
+
+class QTimeRule(BaseModel):
+    """Queue time from the end of one step to the start of a later step."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    rule_id: str
+    product_id: str
+    from_step: str
+    to_step: str
+    max_min: int
+
+
+class Reticle(BaseModel):
+    """One lithography mask for a product layer. It can sit on one tool at a time."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    reticle_id: str
+    product_id: str
+    layer: str = ""
+    step: str
+
+
+class Inhibit(BaseModel):
+    """A lot or a recipe that must not run on one tool."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    inhibit_id: str
+    equipment_id: str
+    product_id: str = ""
+    recipe: str = ""
 
 
 class Product(BaseModel):
@@ -29,6 +71,7 @@ class Product(BaseModel):
     product_id: str
     name: str
     route: list[RouteStep]
+    route_id: str = ""
     materials: list[MaterialNeed] = Field(default_factory=list)
 
 
@@ -98,6 +141,11 @@ class Job(BaseModel):
     process_time_min: int
     remaining_steps: list[str] = Field(default_factory=list)
     preferred_equipment: list[str] = Field(default_factory=list)
+    released_through: str | None = None
+    rework_of: str | None = None
+    rework_count: int = 0
+    rework_limit: int = 1
+    release_min: int = 0
 
 
 class Plant(BaseModel):
@@ -112,6 +160,9 @@ class Plant(BaseModel):
     materials: list[MaterialStock] = Field(default_factory=list)
     operators: list[Operator] = Field(default_factory=list)
     maintenance: list[MaintenanceEvent] = Field(default_factory=list)
+    qtime_rules: list[QTimeRule] = Field(default_factory=list)
+    reticles: list[Reticle] = Field(default_factory=list)
+    inhibits: list[Inhibit] = Field(default_factory=list)
     source: str = "sample"
 
     def equipment_map(self) -> dict[str, Equipment]:
@@ -145,6 +196,13 @@ class StepWork(BaseModel):
     preferred_equipment: list[str] = Field(default_factory=list)
     is_first: bool = False
     consumes_material: bool = False
+    area: str = ""
+    feeds: str = ""
+    recipe: str = ""
+    rework: bool = False
+    qtime_from: str = ""
+    qtime_anchor: int | None = None
+    qtime_latest: int | None = None
 
 
 class ScheduledOp(BaseModel):
@@ -160,6 +218,7 @@ class ScheduledOp(BaseModel):
     setup_family: str
     priority: int
     pinned: bool = False
+    rework: bool = False
 
 
 class Unscheduled(BaseModel):
@@ -178,6 +237,7 @@ class Action(BaseModel):
     end_min: int | None = None
     reason: str
     evidence: list[str] = Field(default_factory=list)
+    anchor_end_min: int | None = None
 
 
 class Schedule(BaseModel):
@@ -185,6 +245,7 @@ class Schedule(BaseModel):
     operations: list[ScheduledOp] = Field(default_factory=list)
     unscheduled: list[Unscheduled] = Field(default_factory=list)
     actions: list[Action] = Field(default_factory=list)
+    bottleneck_area: str = ""
 
 
 class KpiReport(BaseModel):

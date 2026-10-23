@@ -64,6 +64,40 @@
       "version": 1
     },
     {
+      "id": "plant.rework",
+      "category": "plant",
+      "description": "A lithography lot failed overlay or CD and must strip and re-expose once.",
+      "parameters": {
+        "job_id": "string"
+      },
+      "capabilities": ["world.query", "world.sync", "schedule.recover", "schedule.commit", "memory.write"],
+      "riskClass": "medium",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin", "operator"],
+      "examples": [
+        "Rework: LOT-1004 overlay failed at lithography. Strip and re-expose once. Rework limit is 1.",
+        "overlay fail strip and rework the litho lot",
+        "rework the exposure"
+      ],
+      "version": 1
+    },
+    {
+      "id": "plant.qtime",
+      "category": "plant",
+      "description": "A queue-time window from one step to the next is at risk or already closed.",
+      "parameters": {},
+      "capabilities": ["world.query", "world.sync", "schedule.recover", "schedule.commit", "memory.write"],
+      "riskClass": "medium",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin", "operator"],
+      "examples": [
+        "Q-time: etch to CMP must start within 15 minutes. The naive plan starts CMP after the window.",
+        "queue time from etch to CMP is 15 minutes",
+        "queue-time window already closed"
+      ],
+      "version": 1
+    },
+    {
       "id": "plant.explain",
       "category": "plant",
       "description": "Explain a schedule decision with evidence. Read only.",

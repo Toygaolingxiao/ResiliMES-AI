@@ -1,0 +1,4 @@
+route_id,product_id,name
+ROUTE-A28,PROD-A28,"Logic A28, two layers"
+ROUTE-B14,PROD-B14,Analog B14
+ROUTE-C07,PROD-C07,Sensor C07

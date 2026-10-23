@@ -1,0 +1,3 @@
+inhibit_id,product_id,recipe,equipment_id
+INH-C07-LITHO01,PROD-C07,,LITHO-01
+INH-L2-LITHO02,,LITHO_L2,LITHO-02

@@ -54,6 +54,17 @@ def test_canned_rush_incident_clears_the_floor() -> None:
     assert decision.intent["confidence"] >= 0.92  # type: ignore[attr-defined]
 
 
+def test_rework_and_qtime_clear_the_floor() -> None:
+    from resilimes.domain.scenarios import get_scenario
+
+    rework = _decide(get_scenario("rework").incident)
+    assert rework.intent["primary"] == "plant.rework"  # type: ignore[attr-defined]
+    assert rework.intent["confidence"] >= 0.92  # type: ignore[attr-defined]
+    qtime = _decide(get_scenario("qtime").incident)
+    assert qtime.intent["primary"] == "plant.qtime"  # type: ignore[attr-defined]
+    assert qtime.intent["confidence"] >= 0.92  # type: ignore[attr-defined]
+
+
 def test_rush_and_shortage_intents() -> None:
     rush = _decide("Rush order for PROD-A28, hot lot due in 3 hours")
     assert rush.intent["primary"] == "plant.rush_order"  # type: ignore[attr-defined]

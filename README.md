@@ -2,7 +2,7 @@
 
 Autonomous multi-agent rescheduling and fault recovery for smart manufacturing. Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026).
 
-A production supervisor gets a line-down, a rush order, or a material shortage. ResiliMES reads the plant, classifies the disruption, builds a constraint-safe schedule, and shows the before/after Gantt with the KPI delta and the reason each move was allowed or refused.
+A production supervisor gets a line-down, a rush order, a material shortage, a lithography rework, or a queue-time miss. ResiliMES reads the plant, classifies the disruption, builds a constraint-safe schedule, and shows the before/after Gantt with the KPI delta and the reason each move was allowed or refused.
 
 **Primary track: Track 03 — Reasoning Architecture.** The product turns fragmented factory data, a signed intent contract, a world-model event log, and bounded agent steps into a schedule a supervisor can commit. Explainability is part of that decision, not a separate product. See [why this track](#track).
 
@@ -17,9 +17,9 @@ Sample fab FAB-A, scenario clock 22 Oct 2026 06:30 UTC. Machine breakdown (`lith
 | Makespan | 965 min | 420 min |
 | Priority-1/2 lots at risk | 1 | 0 |
 
-LOT-1001 is priority 1, blocked on LITHO-02 (laser fault, revised repair 600 minutes), due 18:00 UTC. Waiting finishes it 105 minutes late. The recovery moves it to LITHO-01, which shares `litho_193nm` and the setup family already on the tool, and finishes it at t=250. A naive plan that starts the lot on the down tool immediately is rejected.
+LOT-1001 is priority 1, blocked on LITHO-02 (laser fault, revised repair 600 minutes), due 18:00 UTC. Waiting finishes it 105 minutes late. The recovery moves it to LITHO-01, which shares `litho_193nm`, the setup family already on the tool, and reticle RET-A28-L1, and finishes it at t=250. A naive plan that starts the lot on the down tool immediately is rejected. That plan also asks for the reticle that is still on LITHO-01.
 
-Two more disruptions are one click away: a three-hour rush order that is still 15 minutes late because a running lot is not preempted, and a photoresist stockout that holds the lots which still need lithography.
+Four more disruptions are one click away. A three-hour rush order finishes 1 h 10 min late: the running lot is not preempted, and its reticle cannot move to the other scanner until that exposure ends. A photoresist stockout holds the lots which still need lithography. A lithography rework strips LOT-1004 and re-exposes it once, and a second loop is not inserted. A queue-time miss holds LOT-1003 because etch finished before the clock and CMP would start after a 15-minute window; the same reticle queue also holds LOT-1006. The critic refuses that late CMP start.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ The language model explains a schedule it did not invent. The committed plan com
 | Scout Intent | Classifies the disruption, checks role, surface, and prompt injection, and signs an execution contract. Downstream engines refuse unsigned, expired, or out-of-scope contracts. |
 | Specialist | Reads equipment, WIP, routes, materials, and maintenance. In live mode those reads are Zetaris SQL. In mock mode the same SQL is recorded and answered from `data/sample`. |
 | Planner | Builds the frozen schedule and the recovered schedule. Also proposes a naive alternative so the critic has something real to reject. |
-| Critic | Enforces tool status, capability, single-server overlap, simultaneous WIP, operators, material, precedence, and no preemption of a running lot. |
+| Critic | A registry of independent checks: tool status, capability, overlap, WIP, operators, material, route order, preemption, queue time, rework limit, reticle, tool inhibit, and lot release. A hold is listed and does not by itself reject the book. |
 | Markovian | Runs sense → plan → critique → explain → commit as bounded chunks. Each chunk sees a checkpoint, not the growing transcript. |
 | World Model | Append-only plant log. Assignments are ingested under the contract and replayed. |
 | Nightshift | OpenAI-compatible hotspot. The explainer calls NVIDIA Nemotron when a runtime token is configured. Nightshift explains. The planner and the critic stay deterministic code. |
@@ -112,11 +112,15 @@ Mask the token if you film that command. The console never prints it. A recovery
 
 ## Usage
 
-The console is the product. Three presets:
+The console is the product. Five presets:
 
-- **Machine breakdown** — LITHO-02 down for 10 hours. Compare “wait for repair” with a recovered schedule.
-- **Rush order** — insert priority-1 LOT-2001 due in three hours. Running lots stay put, so the promise is 15 minutes late.
+- **Machine breakdown** — LITHO-02 down for 10 hours. Compare “wait for repair” with a recovered schedule. Lithography is the bottleneck, and the recovery keeps it on an up tool.
+- **Rush order** — insert priority-1 LOT-2001 due in three hours. Running lots stay put, and the L1 reticle stays with them, so the promise is 1 h 10 min late.
 - **Material shortage** — RESIST-UV on hand is zero. Lots that still need lithography are held. LOT-1002 is already running and keeps its resist.
+- **Lithography rework** — overlay failed on LOT-1004. The book inserts strip and one re-expose. The rework limit is 1. The re-expose bar is striped.
+- **Queue time** — etch to CMP on PROD-B14 must start within 15 minutes. LOT-1003 already missed that window. LOT-1006 misses it too once lithography is serialized on one reticle. A naive start at t=120 is refused.
+
+PROD-A28's route visits lithography, etch, and CMP on L1 and again on L2. Lots released through CMP stay on the first layer today. Queue time in the seed is 1100 minutes from etch end to CMP start. RET-A28-L1 can be on one lithography tool at a time. Analyze shows compliance and the bottleneck. Verify lists every registered check.
 
 Or type an incident. Scout classifies it. A viewer role, or a prompt-injection attempt, is refused before any schedule is written.
 

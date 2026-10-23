@@ -15,15 +15,18 @@ from resilimes.agents.planner import naive_alternative, reject_alternative
 from resilimes.agents.specialist import gather
 from resilimes.config import Settings
 from resilimes.data.factory import build_source
+from resilimes.domain.checks import validate
 from resilimes.domain.critique import constraint_checks, critique_schedule
-from resilimes.domain.gantt import annotate_moves, build_gantt
+from resilimes.domain.gantt import annotate_moves, build_gantt, shared_window
 from resilimes.domain.kpis import (
+    bottleneck_report,
     compare_load,
     evaluate,
     flow_metrics,
     job_outcomes,
     lots_moved,
     metric_tones,
+    qtime_report,
     step_waits,
 )
 from resilimes.domain.scenarios import (
@@ -79,6 +82,7 @@ class RecoveryReport(BaseModel):
     provider_call: dict[str, Any] | None = None
     brief: dict[str, Any] = Field(default_factory=dict)
     checks: list[dict[str, str]] = Field(default_factory=list)
+    validation: dict[str, Any] | None = None
     steps: list[dict[str, Any]] = Field(default_factory=list)
 
 
@@ -594,6 +598,7 @@ def run_recovery(
         gantt=_gantt_pair(plants.before, bundle["before"], plants.after, bundle["after"]),
         trace=trace,
         checks=constraint_checks(committed, rejected),
+        validation=validate(plants.after, bundle["after"]),
         narrative=str(bundle.get("narrative") or ""),
         facts=_public_facts(facts),
         markovian={
@@ -617,6 +622,7 @@ def run_recovery(
             after=after_kpi,
             rejected=rejected,
             verdict=committed.verdict,
+            bottleneck=_protected_bottleneck(bundle["after"]),
         ),
         steps=steps,
     )
@@ -626,7 +632,11 @@ def _gantt_pair(before_plant: Any, before: Any, after_plant: Any, after: Any) ->
     before_gantt = build_gantt(before_plant, before)
     after_gantt = build_gantt(after_plant, after)
     annotate_moves(before_gantt, after_gantt)
-    return {"before": before_gantt, "after": after_gantt}
+    return {
+        "before": before_gantt,
+        "after": after_gantt,
+        "window": shared_window(before_gantt, after_gantt),
+    }
 
 
 def _kind_for(intent_id: str) -> str:
@@ -634,7 +644,21 @@ def _kind_for(intent_id: str) -> str:
         return "insert_lot"
     if intent_id == "plant.material_shortage":
         return "stockout"
+    if intent_id == "plant.rework":
+        return "rework"
+    if intent_id == "plant.qtime":
+        return "qtime"
     return "frozen_vs_recover"
+
+
+def _protected_bottleneck(schedule: Any) -> str:
+    area = str(getattr(schedule, "bottleneck_area", "") or "")
+    if not area:
+        return ""
+    for action in getattr(schedule, "actions", []):
+        if "bottleneck" in action.reason:
+            return area
+    return ""
 
 
 def _mode_banner(settings: Settings, mocked: bool, source_name: str) -> dict[str, Any]:
@@ -705,6 +729,16 @@ def _comparison_kpis(
         "horizon_min": load["horizon_min"],
         "down": {"before": before_side["down"], "after": after_side["down"]},
         "waits": {"before": step_waits(before), "after": step_waits(after)},
+        "qtime": {
+            "before": qtime_report(before_plant, before),
+            "after": qtime_report(after_plant, after),
+        },
+        "bottleneck": bottleneck_report(
+            before,
+            after,
+            cast(list[dict[str, Any]], before_side["areas"]),
+            cast(list[dict[str, Any]], after_side["areas"]),
+        ),
     }
 
 

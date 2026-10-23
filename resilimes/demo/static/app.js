@@ -129,6 +129,18 @@ const COPY = {
     utilTip: "One window for both books: the longer makespan. Busy time divided by the time tools are up. Down time is excluded and listed here, so a shorter book cannot raise this number.",
     xTip: "Mean completion time divided by raw process time. 1.0 is all processing. Held lots are omitted.",
     changeTip: "Setups charged because the recipe family changed.",
+    qtimeTitle: "Queue time",
+    qtimeNote: "End of one step to the start of the next.",
+    qtimeTip: "Pairs that start inside the limit, including pairs past 80 percent of it. Holds and violations are the misses.",
+    violationTip: "Placed pairs whose gap is longer than the limit.",
+    atRiskTip: "Placed pairs still inside the limit, past 80 percent of it.",
+    bottleneckTitle: "Bottleneck",
+    bottleneckNote: "Most remaining minutes per up-tool minute, over one day. Down tools add no time.",
+    bottleneckTip: "Same-priority work in this area, and the step that feeds it, is dispatched first.",
+    compliance: "Compliance",
+    violations: "Violations",
+    atRisk: "At risk",
+    rework: "Rework",
     areaTip: "Busy time in this area divided by up-time in this area, on the shared window.",
     waitPair: "Mean gap from {from} to {to} on the after book, across {n} lots.",
     tardyCellTip: "Lateness before, then after. A lot with no finish time is charged 24 hours.",
@@ -151,7 +163,15 @@ const COPY = {
     check: "Check",
     result: "Result",
     reason: "Reason",
-    verifyLead: "One row per constraint.",
+    verifyLead: "One row per registered check. Open a row for the reason.",
+    category: "Category",
+    checkStatus: "Status",
+    violations: "Violations",
+    passed: "Passed",
+    failed: "Failed",
+    skipped: "Skipped",
+    refusedPlan: "Refused plan",
+    categories: { equipment: "Equipment", lot: "Lot", process: "Process", material: "Material", time: "Time" },
     figures: "Figures",
     figuresNote: "Gray is not a direction. A hold cannot turn a shorter book green.",
     utilNote: "Highest share of up-time first.",
@@ -164,6 +184,8 @@ const COPY = {
       query_status: "status",
       explain: "explain",
       emergency_stop: "emergency stop",
+      rework: "rework",
+      qtime: "queue time",
     },
     verdicts: { accept: "accepted", conditional: "conditional", reject: "rejected" },
     checks: {
@@ -175,6 +197,7 @@ const COPY = {
       material: "Material",
       precedence: "Route order",
       preemption: "Preemption",
+      qtime: "Queue time",
       other: "Other",
     },
     status: { IDLE: "Idle", RUNNING: "Running", DOWN: "Down", MAINTENANCE: "Maintenance", ok: "In stock", short: "Short" },
@@ -183,9 +206,11 @@ const COPY = {
       litho_down: ["Machine breakdown", "LITHO-02 is down for 10 h. LOT-1001 is blocked, due 18:00 UTC."],
       rush_order: ["Rush order", "A hot lot is due in 3 h. Running lots stay on their tools."],
       material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
+      rework: ["Lithography rework", "LOT-1004 overlay failed. Strip and re-expose once."],
+      qtime: ["Queue time", "Etch already finished. CMP must start within 15 min."],
     },
-    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout" },
+    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time" },
+    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip and re-expose", qtime: "15 min queue time" },
   },
   zh: {
     tagline: "一个机台的恢复",
@@ -268,6 +293,18 @@ const COPY = {
     utilTip: "两本账用同一个窗口，取较长的总工期。忙时除以设备可用的时间。宕机时间不进分母，列在这里，所以较短的账不会把这个数抬高。",
     xTip: "完工时间除以纯加工时间的平均。1.0 表示全是加工。暂停的批次不计入。",
     changeTip: "因配方族变化而发生的换型次数。",
+    qtimeTitle: "队列时间",
+    qtimeNote: "上一道结束到下一道开始。",
+    qtimeTip: "在时限内开工的配对，包括已过时限八成的。暂扣和超时是未遵守。",
+    violationTip: "已经排上、间隔超过时限的配对。",
+    atRiskTip: "已经排上、仍在时限内、但已过时限八成的配对。",
+    bottleneckTitle: "瓶颈",
+    bottleneckNote: "一天里，剩余加工分钟除以可用设备分钟。宕机设备不贡献时间。",
+    bottleneckTip: "同优先级时，这个区域和给它供料的工序先派工。",
+    compliance: "遵守率",
+    violations: "超时",
+    atRisk: "临近",
+    rework: "返工",
     areaTip: "该区域的忙时，除以该区域在共享窗口内的可用时间。",
     waitPair: "恢复后从 {from} 到 {to} 的平均间隔，共 {n} 个批次。",
     tardyCellTip: "移动前的拖期，然后是移动后。没有完工时间按 24 小时计。",
@@ -290,7 +327,15 @@ const COPY = {
     check: "检查",
     result: "结果",
     reason: "原因",
-    verifyLead: "一行一条约束。",
+    verifyLead: "每一条已登记的检查。打开一行看原因。",
+    category: "类别",
+    checkStatus: "状态",
+    violations: "违反",
+    passed: "通过",
+    failed: "失败",
+    skipped: "跳过",
+    refusedPlan: "被拒绝的方案",
+    categories: { equipment: "设备", lot: "批次", process: "工艺", material: "物料", time: "时间" },
     figures: "指标",
     figuresNote: "灰色不是方向。暂停不能把更短的账涂成改善。",
     utilNote: "可用时间占比从高到低。",
@@ -303,6 +348,8 @@ const COPY = {
       query_status: "状态",
       explain: "说明",
       emergency_stop: "紧急停止",
+      rework: "返工",
+      qtime: "队列时间",
     },
     verdicts: { accept: "接受", conditional: "有条件", reject: "拒绝" },
     checks: {
@@ -314,6 +361,7 @@ const COPY = {
       material: "物料",
       precedence: "工艺顺序",
       preemption: "抢占",
+      qtime: "队列时间",
       other: "其他",
     },
     status: { IDLE: "空闲", RUNNING: "加工", DOWN: "宕机", MAINTENANCE: "维护", ok: "有库存", short: "短缺" },
@@ -322,9 +370,11 @@ const COPY = {
       litho_down: ["设备故障", "光刻机 02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
       rush_order: ["急单", "一个热批次 3 小时内要交。正在加工的批次留在原设备。"],
       material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
+      rework: ["光刻返工", "LOT-1004 套刻失败。去胶，再曝光一次。"],
+      qtime: ["队列时间", "刻蚀已经结束。CMP 必须在 15 分钟内开工。"],
     },
-    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货" },
+    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列" },
+    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶再曝光", qtime: "15 分钟队列" },
   },
   ja: {
     tagline: "一つのベイの回復",
@@ -407,6 +457,18 @@ const COPY = {
     utilTip: "二つの帳票は同じ窓。長い方の総所要を使う。稼働時間を、装置が上がっている時間で割る。停止時間は分母に入れずここに示す。短い帳票だから割合は上がらない。",
     xTip: "完了時間を純加工時間で割った平均。1.0 は加工だけ。保留は除く。",
     changeTip: "レシピ族が変わって発生した段取り。",
+    qtimeTitle: "待ち時間",
+    qtimeNote: "前工程の終わりから次工程の開始まで。",
+    qtimeTip: "制限内に始まった組。制限の 8 割を過ぎた組も含む。保留と超過は未達。",
+    violationTip: "計画に入り、間隔が制限を超えた組。",
+    atRiskTip: "計画に入り、制限内だが 8 割を過ぎた組。",
+    bottleneckTitle: "ボトルネック",
+    bottleneckNote: "一日あたり、残加工分を稼働装置分で割った最大。停止装置は分を出さない。",
+    bottleneckTip: "同じ優先度では、このエリアとそこへ送る工程を先に流す。",
+    compliance: "遵守率",
+    violations: "超過",
+    atRisk: "危険",
+    rework: "再加工",
     areaTip: "このエリアの稼働時間を、共有の窓で上がっている時間で割る。",
     waitPair: "回復後の {from} から {to} までの平均間隔。{n} ロット。",
     tardyCellTip: "移動前の遅延、その後が移動後。完了時刻がなければ 24 時間。",
@@ -429,7 +491,15 @@ const COPY = {
     check: "検査",
     result: "結果",
     reason: "理由",
-    verifyLead: "制約ごとに一行。",
+    verifyLead: "登録された検査が一行。開くと理由。",
+    category: "分類",
+    checkStatus: "状態",
+    violations: "違反",
+    passed: "合格",
+    failed: "不合格",
+    skipped: "対象外",
+    refusedPlan: "拒否した案",
+    categories: { equipment: "装置", lot: "ロット", process: "工程", material: "資材", time: "時間" },
     figures: "指標",
     figuresNote: "灰色は方向ではない。保留で短い帳票を改善色にしない。",
     utilNote: "上がっている時間の割合が高い順。",
@@ -442,6 +512,8 @@ const COPY = {
       query_status: "状態",
       explain: "説明",
       emergency_stop: "緊急停止",
+      rework: "再加工",
+      qtime: "待ち時間",
     },
     verdicts: { accept: "受理", conditional: "条件付き", reject: "却下" },
     checks: {
@@ -453,6 +525,7 @@ const COPY = {
       material: "資材",
       precedence: "工程順",
       preemption: "割り込み",
+      qtime: "待ち時間",
       other: "その他",
     },
     status: { IDLE: "空き", RUNNING: "加工", DOWN: "停止", MAINTENANCE: "保全", ok: "在庫あり", short: "不足" },
@@ -461,9 +534,11 @@ const COPY = {
       litho_down: ["装置故障", "リソ 02 が 10 時間停止。LOT-1001 が詰まり、納期 18:00 UTC。"],
       rush_order: ["特急", "ホットロットの納期は 3 時間。加工中のロットは装置に残す。"],
       material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
+      rework: ["リソ再加工", "LOT-1004 の重ね合わせ不良。剥離して一度再露光。"],
+      qtime: ["待ち時間", "エッチは終了済み。CMP は 15 分以内に始める。"],
     },
-    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品" },
+    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間" },
+    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離して再露光", qtime: "待ち 15 分" },
   },
 };
 
@@ -471,6 +546,8 @@ const ALERT = {
   litho_down: "LITHO-02",
   rush_order: "LITHO-01",
   material_shortage: "RESIST-UV",
+  rework: "LOT-1004",
+  qtime: "CMP-01",
 };
 
 const state = {
@@ -822,7 +899,7 @@ function paintAnalyze() {
   }
   const wrap = document.createElement("div");
   wrap.className = "analyze";
-  wrap.append(figuresCard(report), utilCard(report), waitCard(report), lotsCard(report));
+  wrap.append(figuresCard(report), utilCard(report), waitCard(report), qtimeCard(report), bottleneckCard(report), lotsCard(report));
   host.appendChild(wrap);
 }
 
@@ -962,6 +1039,72 @@ function waitCard(report) {
   return card;
 }
 
+function qtimeCard(report) {
+  const copy = t();
+  const card = document.createElement("article");
+  card.className = "card";
+  card.appendChild(cardHead(copy.qtimeTitle, copy.qtimeNote));
+  const qtime = report.kpis.qtime || {};
+  const before = qtime.before || {};
+  const after = qtime.after || {};
+  const grid = document.createElement("div");
+  grid.className = "qtime-grid";
+  for (const [label, tip, left, right] of [
+    [copy.compliance, copy.qtimeTip, before.compliance_pct, after.compliance_pct],
+    [copy.violations, copy.violationTip, before.violations, after.violations],
+    [copy.atRisk, copy.atRiskTip, before.at_risk, after.at_risk],
+  ]) {
+    const line = document.createElement("div");
+    line.className = "qtime-row";
+    const name = document.createElement("span");
+    name.append(document.createTextNode(label), infoButton(tip));
+    const fig = document.createElement("span");
+    fig.className = "num";
+    const leftText = label === copy.compliance ? `${Number(left || 0).toFixed(1)}%` : String(left || 0);
+    const rightText = label === copy.compliance ? `${Number(right || 0).toFixed(1)}%` : String(right || 0);
+    fig.textContent = `${leftText} → ${rightText}`;
+    bindTip(fig, tip);
+    line.append(name, fig);
+    grid.appendChild(line);
+  }
+  card.appendChild(grid);
+  const rows = (after.rows || []).filter((row) => row.state !== "met");
+  if (rows.length) {
+    const list = document.createElement("ul");
+    list.className = "qtime-list";
+    for (const row of rows.slice(0, 4)) {
+      const item = document.createElement("li");
+      const gap = row.gap_min == null ? copy.held : formatDuration(row.gap_min);
+      item.textContent = `${row.job_id} ${row.from_step} → ${row.to_step} · ${gap} · ${row.state}`;
+      list.appendChild(item);
+    }
+    card.appendChild(list);
+  }
+  return card;
+}
+
+function bottleneckCard(report) {
+  const copy = t();
+  const card = document.createElement("article");
+  card.className = "card";
+  const head = cardHead(copy.bottleneckTitle, copy.bottleneckNote);
+  head.appendChild(infoButton(copy.bottleneckTip));
+  card.appendChild(head);
+  const bottleneck = report.kpis.bottleneck || {};
+  const area = bottleneck.area || "—";
+  const name = document.createElement("p");
+  name.className = "bottleneck-name";
+  name.textContent = (copy.areas && copy.areas[area]) || area;
+  const fig = document.createElement("p");
+  fig.className = "num bottleneck-fig";
+  const before = Number(bottleneck.before_pct || 0).toFixed(1);
+  const after = Number(bottleneck.after_pct || 0).toFixed(1);
+  fig.textContent = `${before}% → ${after}%`;
+  bindTip(fig, copy.bottleneckTip);
+  card.append(name, fig);
+  return card;
+}
+
 function lotsCard(report) {
   const copy = t();
   const card = document.createElement("article");
@@ -1010,6 +1153,48 @@ function paintVerify() {
     summary.append(document.createTextNode(` ${report.verdict.rationale}`));
   }
   card.appendChild(summary);
+  const validation = report.validation;
+  if (!validation || !validation.details) {
+    card.appendChild(legacyChecks(report, copy));
+    host.appendChild(card);
+    return;
+  }
+  const counts = document.createElement("p");
+  counts.className = "note-inline";
+  counts.textContent = `${validation.passed} ${copy.passed} · ${validation.failed} ${copy.failed} · ${validation.skipped} ${copy.skipped}`;
+  card.appendChild(counts);
+  const table = document.createElement("table");
+  table.className = "checks";
+  table.innerHTML = `<thead><tr><th>${escapeHtml(copy.check)}</th><th>${escapeHtml(copy.category)}</th><th>${escapeHtml(copy.checkStatus)}</th><th class="num">${escapeHtml(copy.violations)}</th><th>${escapeHtml(copy.reason)}</th></tr></thead>`;
+  const body = document.createElement("tbody");
+  const lang = state.lang || "en";
+  for (const row of validation.details) {
+    const tr = document.createElement("tr");
+    const name = (row.name && (row.name[lang] || row.name.en)) || row.id;
+    const category = (copy.categories && copy.categories[row.category]) || row.category;
+    const status = copy[row.status] || row.status;
+    const reasons = checkReasons(report, row, copy);
+    const reasonCell = reasons.length
+      ? `<details class="check-reasons"><summary>${escapeHtml(copy.reason)}</summary><ul>${reasons.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></details>`
+      : "—";
+    tr.innerHTML = `<td>${escapeHtml(name)}</td><td>${escapeHtml(category)}</td><td><span class="pill ${escapeHtml(row.status)}">${escapeHtml(status)}</span></td><td class="num">${(row.violations || []).length}</td><td>${reasonCell}</td>`;
+    body.appendChild(tr);
+  }
+  table.appendChild(body);
+  card.appendChild(table);
+  host.appendChild(card);
+}
+
+function checkReasons(report, row, copy) {
+  const reasons = (row.violations || []).map((item) => item.detail).filter(Boolean);
+  const legacy = (report.checks || []).find((item) => item.constraint === row.constraint || item.constraint === row.id);
+  if (legacy && legacy.result === "rejected" && legacy.reason && !reasons.includes(legacy.reason)) {
+    reasons.push(`${copy.refusedPlan}: ${legacy.reason}`);
+  }
+  return reasons;
+}
+
+function legacyChecks(report, copy) {
   const table = document.createElement("table");
   table.innerHTML = `<thead><tr><th>${escapeHtml(copy.check)}</th><th>${escapeHtml(copy.result)}</th><th>${escapeHtml(copy.reason)}</th></tr></thead>`;
   const body = document.createElement("tbody");
@@ -1021,8 +1206,7 @@ function paintVerify() {
     body.appendChild(tr);
   }
   table.appendChild(body);
-  card.appendChild(table);
-  host.appendChild(card);
+  return table;
 }
 
 function cardHead(title, note) {
@@ -1217,13 +1401,15 @@ function paintViews() {
 function renderGantt(host, gantt, horizon, scale, draw) {
   host.innerHTML = "";
   if (!gantt) return;
+  const origin = scale.start_min;
+  const span = scale.end_min - origin;
   const wrap = document.createElement("div");
-  wrap.className = "gantt" + (draw ? " draw" : "");
-  wrap.dataset.scale = String(scale);
+  wrap.className = "gantt" + (draw ? " draw" : "") + (state.view === "lot" ? " lot" : "");
+  wrap.dataset.scale = String(scale.end_min);
   const rows = state.view === "lot" ? lotRows(gantt) : gantt.rows;
   for (const row of rows) {
     const line = document.createElement("div");
-    line.className = "gantt-row";
+    line.className = "gantt-row" + (row.bottleneck && state.view !== "lot" ? " bottleneck" : "");
     const label = document.createElement("div");
     label.className = "gantt-label";
     if (state.view === "lot") {
@@ -1234,21 +1420,28 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     const track = document.createElement("div");
     track.className = "track";
     if (state.view === "lot") track.dataset.links = "1";
-    if (state.view !== "lot" && row.available_at_min > 0) {
-      const shade = document.createElement("div");
-      shade.className = row.status === "MAINTENANCE" ? "shade maint" : "shade down";
-      shade.style.left = "0";
-      shade.style.width = `${(row.available_at_min / scale) * 100}%`;
-      track.appendChild(shade);
+    if (state.view !== "lot" && row.available_at_min > 0 && span > 0) {
+      const visStart = Math.max(0, origin);
+      const visEnd = Math.min(row.available_at_min, scale.end_min);
+      if (visEnd > visStart) {
+        const shade = document.createElement("div");
+        shade.className = row.status === "MAINTENANCE" ? "shade maint" : "shade down";
+        shade.style.left = `${((visStart - origin) / span) * 100}%`;
+        shade.style.width = `${((visEnd - visStart) / span) * 100}%`;
+        if (row.available_at_min > scale.end_min) shade.classList.add("continues");
+        const until = formatClock(shift(horizon, row.available_at_min)).slice(11, 16);
+        shade.title = `${row.equipment_id} · ${row.status === "MAINTENANCE" ? t().maint : t().down} · ${until}`;
+        track.appendChild(shade);
+      }
     }
     for (const bar of row.bars) {
       const node = document.createElement("div");
       const tone = areaTone(bar.area || row.area);
-      node.className = "bar" + (bar.moved ? " moved" : "") + (bar.fresh ? " fresh" : "") + (bar.moved && !draw ? " leaving" : "");
+      node.className = "bar" + (bar.moved ? " moved" : "") + (bar.fresh ? " fresh" : "") + (bar.rework ? " rework" : "") + (bar.moved && !draw ? " leaving" : "");
       if (state.routeJob === bar.job_id) node.classList.add("selected");
       node.dataset.start = String(bar.start_min);
       node.dataset.end = String(bar.end_min);
-      node.style.background = tone.fill;
+      node.style.backgroundColor = tone.fill;
       node.style.color = tone.ink;
       node.title = bar.job_id;
       const name = document.createElement("span");
@@ -1271,39 +1464,68 @@ function renderGantt(host, gantt, horizon, scale, draw) {
   }
   const axis = document.createElement("div");
   axis.className = "axis";
-  const step = Math.max(60, Math.round(scale / 4 / 60) * 60);
-  for (let minute = 0; minute <= scale; minute += step) {
-    const tick = document.createElement("span");
-    tick.textContent = minute === 0 ? t().now : formatClock(shift(horizon, minute)).slice(11, 16);
-    if (minute === 0) tick.className = "now-tick";
-    axis.appendChild(tick);
+  if (span > 0) {
+    for (let minute = origin; minute <= scale.end_min; minute += scale.step_min) {
+      const tick = document.createElement("span");
+      const atStart = minute === origin;
+      const atEnd = minute === scale.end_min;
+      tick.textContent = atStart ? t().now : formatClock(shift(horizon, minute)).slice(11, 16);
+      tick.style.left = `${((minute - origin) / span) * 100}%`;
+      if (atStart) {
+        tick.className = "now-tick";
+        tick.style.transform = "translateX(0)";
+      } else if (atEnd) {
+        tick.style.transform = "translateX(-100%)";
+      } else {
+        tick.style.transform = "translateX(-50%)";
+      }
+      axis.appendChild(tick);
+    }
   }
-  host.append(wrap, axis);
+  wrap.appendChild(axis);
+  host.appendChild(wrap);
   wrap.querySelectorAll(".track").forEach((track) => {
     layoutTrack(track, scale);
     if (track.dataset.links === "1") drawLinks(track);
   });
-  if (state.view !== "lot") drawDues(wrap, gantt, scale);
+  drawDues(wrap, gantt, scale);
 }
 
 function drawDues(wrap, gantt, scale) {
   const track = wrap.querySelector(".track");
-  if (!track || !scale) return;
+  const axis = wrap.querySelector(".axis");
+  const span = scale.end_min - scale.start_min;
+  if (!track || !axis || !span) return;
   const wrapBox = wrap.getBoundingClientRect();
   const trackBox = track.getBoundingClientRect();
   const origin = trackBox.left - wrapBox.left;
   const width = trackBox.width;
+  let any = false;
   for (const due of gantt.dues || []) {
-    if (due.due_min < 0 || due.due_min > scale) continue;
-    const mark = document.createElement("div");
-    mark.className = "due-line";
-    mark.style.left = `${origin + (due.due_min / scale) * width}px`;
+    if (due.due_min < scale.start_min) continue;
+    any = true;
     const cap = document.createElement("span");
+    cap.className = "due-tick";
     cap.textContent = `${shortLot(due.job_id)} ${t().due}`;
     bindTip(cap, t().dueTip);
-    mark.appendChild(cap);
+    if (due.due_min > scale.end_min) {
+      cap.classList.add("edge");
+      axis.appendChild(cap);
+      continue;
+    }
+    const mark = document.createElement("div");
+    mark.className = "due-line";
+    const pct = ((due.due_min - scale.start_min) / span) * 100;
+    mark.style.left = `${origin + (pct / 100) * width}px`;
+    mark.style.bottom = `${axis.offsetHeight + 4}px`;
     wrap.appendChild(mark);
+    cap.style.left = `${pct}%`;
+    if (pct > 88) cap.style.transform = "translateX(-100%)";
+    else if (pct < 6) cap.style.transform = "translateX(0)";
+    else cap.style.transform = "translateX(-50%)";
+    axis.appendChild(cap);
   }
+  if (any) axis.classList.add("with-due");
 }
 
 function lotRows(gantt) {
@@ -1384,13 +1606,16 @@ function closeRoute() {
 
 function layoutTrack(track, scale) {
   const width = track.clientWidth;
-  if (!width || !scale) return;
+  const origin = scale.start_min;
+  const span = scale.end_min - origin;
+  if (!width || !span) return;
+  track.querySelectorAll(".rail-label, .side-label").forEach((node) => node.remove());
   const items = [...track.querySelectorAll(".bar")]
     .map((node) => ({ node, start: Number(node.dataset.start), end: Number(node.dataset.end) }))
     .sort((a, b) => a.start - b.start);
   items.forEach((item) => {
-    item.left = (item.start / scale) * width;
-    item.raw = ((item.end - item.start) / scale) * width;
+    item.left = ((item.start - origin) / span) * width;
+    item.raw = ((item.end - item.start) / span) * width;
   });
   const laneEnds = [];
   items.forEach((item) => {
@@ -1402,7 +1627,11 @@ function layoutTrack(track, scale) {
     item.lane = lane;
   });
   const laneCount = Math.max(1, laneEnds.length);
-  if (laneCount > 1) track.style.height = `${8 + laneCount * 22}px`;
+  const inset = 4;
+  const nowClear = 6;
+  const gap = 4;
+  const rails = [];
+  const sides = [];
   items.forEach((item) => {
     const later = items.filter((other) => other.lane === item.lane && other.left > item.left + 0.5);
     const nextLeft = later.length ? Math.min(...later.map((other) => other.left)) : width;
@@ -1412,37 +1641,57 @@ function layoutTrack(track, scale) {
     item.node.style.left = `${item.left}px`;
     item.node.style.width = `${item.draw}px`;
     if (laneCount > 1) {
-      item.node.style.top = `${4 + item.lane * 22}px`;
+      item.node.style.top = `${2 + item.lane * 34}px`;
+      item.node.style.height = "30px";
       item.node.classList.add("stacked");
     } else {
       item.node.style.top = "";
+      item.node.style.height = "";
       item.node.classList.remove("stacked");
     }
-  });
-  const lanes = { above: [], below: [] };
-  items.forEach((item, index) => {
     const label = item.node.querySelector(".bar-label");
     const text = label ? label.textContent : "";
     const need = textWidth(text);
     item.node.classList.remove("lane-above", "lane-below", "silent");
-    if (!text || item.draw >= need || item.node.classList.contains("stacked")) return;
-    const labelLeft = item.left;
-    const labelRight = item.left + Math.max(0, need - 8);
-    const prefer = index % 2 === 0 ? "above" : "below";
-    const order = prefer === "above" ? ["above", "below"] : ["below", "above"];
-    let lane = "";
-    for (const candidate of order) {
-      const hit = lanes[candidate].some((span) => labelLeft < span[1] + 2 && labelRight > span[0] - 2);
-      if (!hit && labelRight <= width + 1) {
-        lane = candidate;
-        lanes[candidate].push([labelLeft, labelRight]);
-        break;
-      }
+    if (label) label.style.paddingLeft = "";
+    if (!text) {
+      item.node.classList.add("silent");
+      return;
     }
-    if (lane === "above") item.node.classList.add("lane-above");
-    else if (lane === "below") item.node.classList.add("lane-below");
-    else item.node.classList.add("silent");
+    const padLeft = Math.max(inset, item.left < nowClear ? nowClear - item.left : inset);
+    if (!item.node.classList.contains("stacked") && padLeft + need + inset <= item.draw) {
+      label.style.paddingLeft = `${padLeft}px`;
+      return;
+    }
+    item.node.classList.add("silent");
+    if (item.node.classList.contains("stacked")) return;
+    const sideLeft = item.left + item.draw + gap;
+    const sideLimit = nextLeft >= width - 0.5 ? width : nextLeft - gap;
+    if (sideLeft >= nowClear && sideLeft + need <= sideLimit && !hits(sides, sideLeft, sideLeft + need, gap)) {
+      sides.push([sideLeft, sideLeft + need]);
+      const cap = document.createElement("span");
+      cap.className = "side-label";
+      cap.textContent = text;
+      cap.style.left = `${sideLeft}px`;
+      track.appendChild(cap);
+      return;
+    }
+    if (track.dataset.links === "1") return;
+    let railLeft = Math.max(item.left, nowClear);
+    if (railLeft + need > width) railLeft = Math.max(nowClear, width - need);
+    const railRight = railLeft + need;
+    if (railLeft < nowClear || railRight > width + 1 || hits(rails, railLeft, railRight, gap)) return;
+    rails.push([railLeft, railRight]);
+    const cap = document.createElement("span");
+    cap.className = "rail-label";
+    cap.textContent = text;
+    cap.style.left = `${railLeft}px`;
+    track.appendChild(cap);
   });
+}
+
+function hits(placed, left, right, gap) {
+  return placed.some((span) => left < span[1] + gap && right > span[0] - gap);
 }
 
 function textWidth(text) {
@@ -1455,6 +1704,7 @@ function textWidth(text) {
     document.body.appendChild(probe);
     textWidth.probe = probe;
   }
+  textWidth.probe.style.padding = "0";
   textWidth.probe.textContent = text;
   return textWidth.probe.offsetWidth;
 }
@@ -1472,6 +1722,10 @@ function renderLegend(report) {
     const tone = areaTone(area);
     host.appendChild(legendItem(tone.fill, (copy.areas && copy.areas[area]) || area, tone.ink));
   }
+  const rework = [report.gantt.before, report.gantt.after].some((side) =>
+    ((side && side.rows) || []).some((row) => (row.bars || []).some((bar) => bar.rework))
+  );
+  if (rework) host.appendChild(legendItem(null, copy.rework, null, "rework"));
   host.appendChild(legendItem(null, copy.moved, null, "moved"));
   host.appendChild(legendItem(null, copy.down, null, "hatch-down"));
   host.appendChild(legendItem(null, copy.maint, null, "hatch-maint"));
@@ -1493,7 +1747,7 @@ function legendItem(fill, label, ink, kind) {
 
 function showTip(event, bar, equipment, horizon) {
   const copy = t();
-  const flags = [bar.moved ? copy.moved : "", bar.fresh ? copy.fresh : ""].filter(Boolean).join(" · ");
+  const flags = [bar.moved ? copy.moved : "", bar.fresh ? copy.fresh : "", bar.rework ? copy.rework : ""].filter(Boolean).join(" · ");
   const text = `${bar.job_id} · P${bar.priority}\n${equipment} · ${bar.step}\n${formatClock(shift(horizon, bar.start_min)).slice(11, 16)}–${formatClock(shift(horizon, bar.end_min)).slice(11, 16)} · ${formatDuration(bar.end_min - bar.start_min)}${flags ? `\n${flags}` : ""}`;
   const tip = $("#tip");
   tip.textContent = text;
@@ -1512,16 +1766,32 @@ function hideTip() {
 }
 
 function scaleOf(report) {
-  let max = 240;
+  const shared = report.gantt && report.gantt.window;
+  if (shared && Number(shared.end_min) > Number(shared.start_min || 0)) {
+    return {
+      start_min: Number(shared.start_min) || 0,
+      end_min: Number(shared.end_min),
+      step_min: Number(shared.step_min) || 60,
+    };
+  }
+  let end = 0;
   for (const side of [report.gantt && report.gantt.before, report.gantt && report.gantt.after]) {
     if (!side) continue;
-    for (const due of side.dues || []) max = Math.max(max, due.due_min || 0);
     for (const row of side.rows || []) {
-      max = Math.max(max, row.available_at_min || 0);
-      for (const bar of row.bars) max = Math.max(max, bar.end_min);
+      for (const bar of row.bars || []) end = Math.max(end, bar.end_min || 0);
     }
   }
-  return Math.ceil(max / 60) * 60;
+  if (end <= 0) end = 60;
+  const padded = end + Math.max(Math.floor(end / 20), 10);
+  const steps = [15, 30, 60, 120, 180, 240];
+  let step = 240;
+  for (const candidate of steps) {
+    if (padded <= candidate * 8) {
+      step = candidate;
+      break;
+    }
+  }
+  return { start_min: 0, end_min: Math.ceil(padded / step) * step, step_min: step };
 }
 
 function shortLot(jobId) {

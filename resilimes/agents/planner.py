@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from resilimes.domain.critique import critique_actions
 from resilimes.domain.models import Action, Critique, Plant
+from resilimes.domain.plant import minutes_between
 
 UNAVAILABLE = {"DOWN", "MAINTENANCE"}
 
@@ -13,6 +14,8 @@ def naive_alternative(plant: Plant, kind: str) -> list[Action]:
         return _expedite_without_material(plant)
     if kind == "insert_lot":
         return _preempt_running(plant)
+    if kind == "qtime":
+        return _start_after_qtime(plant)
     return _start_on_down_tool(plant)
 
 
@@ -87,6 +90,28 @@ def _expedite_without_material(plant: Plant) -> list[Action]:
             start_min=0,
             reason=f"Naive plan: start {held.job_id} and consume resist that is not on hand.",
             evidence=["material:RESIST-UV"],
+        )
+    ]
+
+
+def _start_after_qtime(plant: Plant) -> list[Action]:
+    """Start CMP long after etch ended. The committed book holds the lot instead."""
+    job = plant.job_map().get("LOT-1003")
+    if job is None or job.started_at is None:
+        return []
+    elapsed = minutes_between(job.started_at, plant.horizon)
+    anchor = job.process_time_min - elapsed
+    return [
+        Action(
+            type="expedite",
+            job_id=job.job_id,
+            step="CMP",
+            from_equipment=job.assigned_equipment,
+            to_equipment="CMP-01",
+            start_min=120,
+            anchor_end_min=anchor,
+            reason="Naive plan: start CMP after the etch queue-time window.",
+            evidence=["qtime:ETCH->CMP"],
         )
     ]
 

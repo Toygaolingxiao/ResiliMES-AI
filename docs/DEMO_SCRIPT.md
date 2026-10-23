@@ -2,7 +2,7 @@
 
 Target length: 3 minutes 20 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
 
-Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks them as hours and days: 840 minutes is 14 h, 17280 minutes is 12 d, 120 minutes is 2 h.
+Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks them as hours and days: 840 minutes is 14 h, 17280 minutes is 12 d, 560 minutes is 9 h 20 min.
 
 The Recover tab is the filmed frame. Do not scroll it. Idle shows one empty state, not a row of Waiting cards. No scenario is marked active until you press Run.
 
@@ -52,7 +52,7 @@ Leave the theme on Light. Dark is the control next to the languages, for a secon
 
 Open **Verify**.
 
-"The pill says accepted. The table is one row per constraint. Equipment status is refused, because the alternative started LOT-1001 on a down scanner. The solver commits. The model does not."
+"The pill says accepted. Each row is one registered check. Tool calendar passed on the committed book. Open that row for the refused plan that started LOT-1001 on the down scanner. Open Reticle for the same plan: the mask is on LITHO-01 until the running lot finishes. The solver commits. The model does not."
 
 Back on **Recover**, hover Nightshift. In this recording the tip reads `mock · resilimes-mock`.
 
@@ -62,7 +62,7 @@ Open **Analyze**. This is the only place that scrolls.
 
 "Makespan goes from 16 h 5 min to 7 h. Mean lead time goes from 12 h 18 min to 4 h 43 min. Mean wait between steps goes from 4 h 37 min to 44 min. X-factor goes from 7.94 to 3.26. Utilization stays 14.9 percent, gray on purpose. Both books share one window, the longer makespan, 16 h 5 min. LITHO-02 is down 10 hours and DEP-01 is in maintenance 4 hours. That time is listed under the figures and is not in the denominator."
 
-The area card has Before and After. The area percents stay flat: Lithography 17.7, Etch 14.2, CMP 23.8, Deposition 0. The wait card shows etch into CMP, about 1 h 16 min on average. The lot table shows LOT-1004 as ETCH, ETCH-02 to ETCH-01.
+The area card has Before and After. The area percents stay flat: Lithography 17.7, Etch 14.2, CMP 23.8, Deposition 0. The wait card shows etch into CMP, about 1 h 16 min on average. The lot table shows LOT-1004 as ETCH, ETCH-02 to ETCH-01. The queue-time card is 100 percent both ways, with one at-risk pair while waiting and none after. The bottleneck card names Lithography. The tool labels on that area carry a small mark.
 
 Return to **Recover** before the next disruption.
 
@@ -70,7 +70,7 @@ Return to **Recover** before the next disruption.
 
 Press **Run** on **Rush order**. After the stepper:
 
-"LOT-2001 finishes 15 minutes late. The dashed tick on the after chart is its due, three hours out. On-time delivery falls from 100 to 85.7 percent. Weighted tardiness rises by 2 hours. Lots at risk go from zero to one. Pulling a running lot off its tool was refused: LOT-1002 is already running on LITHO-01. LOT-2001 is a new lot, so it is not in Lots moved."
+"LOT-2001 finishes 1 hour 10 minutes late. The dashed tick on the after chart is its due, three hours out. The reticle stays on LITHO-01 with the running lot, so the hot lot takes that scanner next and finishes at 4 h 10 min. On-time delivery falls from 100 to 85.7 percent. Weighted tardiness rises by 9 h 20 min. Lots at risk go from zero to one. Pulling a running lot off its tool was refused: LOT-1002 is already running on LITHO-01. LOT-2001 is a new lot, so it is not in Lots moved."
 
 Hover Scout on the stepper if you want the confidence. The canned rush sentence clears 92 percent.
 
@@ -95,6 +95,22 @@ If you have the live clip, cut it here for five seconds: the JSON `provider` and
 "The supervisor gets a schedule they can defend: what moved, what was refused, and the due-date delta in hours, not a raw minute count. Next we point the same loop at the plant's Zetaris tables and the team's Nightshift token. The banner already says which path you are on."
 
 Stop. Do not add a chatbot ending.
+
+### Optional — Rework, only if the cut is still under four minutes
+
+Press **Run** on **Lithography rework**. Stay on Recover.
+
+"LOT-1004 re-enters lithography. Overlay failed, so the book strips and re-exposes once. The limit is one. The striped bar is the re-expose. On-time delivery stays 100 percent. Lithography's share of the window rises."
+
+Open **Verify** only if you also want the queue-time row. That row is the next preset, not this one.
+
+### Optional — Queue time, still inside four minutes
+
+Press **Run** on **Queue time**.
+
+"LOT-1003 misses the etch queue time. Etch finished before 06:30, and CMP had 15 minutes. The book holds LOT-1003 and LOT-1006: one reticle serializes lithography, so CMP is no longer free inside that window. On-time delivery goes from 100 to 66.7 percent. Weighted tardiness goes from zero to 4 days. The refused plan started CMP at minute 120."
+
+On **Verify**, queue time passed on the committed book. Open the row for the refused plan that started CMP after the window. On **Analyze**, compliance goes from 100 percent to 60, with two holds.
 
 ## Judging map
 

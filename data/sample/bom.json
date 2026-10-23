@@ -1,25 +1,79 @@
 {
   "generated_at": "2026-10-01T00:00:00Z",
   "plant_id": "FAB-A",
+  "routes": [
+    { "route_id": "ROUTE-A28", "product_id": "PROD-A28", "name": "Logic A28, two layers" },
+    { "route_id": "ROUTE-B14", "product_id": "PROD-B14", "name": "Analog B14" },
+    { "route_id": "ROUTE-C07", "product_id": "PROD-C07", "name": "Sensor C07" }
+  ],
   "products": [
     {
       "product_id": "PROD-A28",
       "name": "Logic Node A28",
+      "route_id": "ROUTE-A28",
       "route": [
         {
           "step": "LITHO",
+          "step_no": 10,
+          "operation": "Lithography",
+          "area": "Lithography",
+          "recipe": "LITHO_L1",
+          "layer": "L1",
           "capability": "litho_193nm",
           "process_time_min": 90,
           "setup_family": "LITHO_A"
         },
         {
           "step": "ETCH",
+          "step_no": 20,
+          "operation": "Etch",
+          "area": "Etch",
+          "recipe": "ETCH_L1",
+          "layer": "L1",
           "capability": "etch_dielectric",
           "process_time_min": 60,
           "setup_family": "ETCH_D"
         },
         {
           "step": "CMP",
+          "step_no": 30,
+          "operation": "CMP",
+          "area": "CMP",
+          "recipe": "CMP_L1",
+          "layer": "L1",
+          "capability": "cmp_oxide",
+          "process_time_min": 45,
+          "setup_family": "CMP_OX"
+        },
+        {
+          "step": "LITHO-L2",
+          "step_no": 40,
+          "operation": "Lithography",
+          "area": "Lithography",
+          "recipe": "LITHO_L2",
+          "layer": "L2",
+          "capability": "litho_193nm",
+          "process_time_min": 90,
+          "setup_family": "LITHO_A"
+        },
+        {
+          "step": "ETCH-L2",
+          "step_no": 50,
+          "operation": "Etch",
+          "area": "Etch",
+          "recipe": "ETCH_L2",
+          "layer": "L2",
+          "capability": "etch_dielectric",
+          "process_time_min": 60,
+          "setup_family": "ETCH_D"
+        },
+        {
+          "step": "CMP-L2",
+          "step_no": 60,
+          "operation": "CMP",
+          "area": "CMP",
+          "recipe": "CMP_L2",
+          "layer": "L2",
           "capability": "cmp_oxide",
           "process_time_min": 45,
           "setup_family": "CMP_OX"
@@ -33,15 +87,26 @@
     {
       "product_id": "PROD-B14",
       "name": "Analog Node B14",
+      "route_id": "ROUTE-B14",
       "route": [
         {
           "step": "ETCH",
+          "step_no": 10,
+          "operation": "Etch",
+          "area": "Etch",
+          "recipe": "ETCH_M1",
+          "layer": "M1",
           "capability": "etch_metal",
           "process_time_min": 60,
           "setup_family": "ETCH_M"
         },
         {
           "step": "CMP",
+          "step_no": 20,
+          "operation": "CMP",
+          "area": "CMP",
+          "recipe": "CMP_M1",
+          "layer": "M1",
           "capability": "cmp_oxide",
           "process_time_min": 40,
           "setup_family": "CMP_OX"
@@ -55,9 +120,15 @@
     {
       "product_id": "PROD-C07",
       "name": "Sensor Node C07",
+      "route_id": "ROUTE-C07",
       "route": [
         {
           "step": "CMP",
+          "step_no": 10,
+          "operation": "CMP",
+          "area": "CMP",
+          "recipe": "CMP_SNS",
+          "layer": "",
           "capability": "cmp_oxide",
           "process_time_min": 45,
           "setup_family": "CMP_OX"

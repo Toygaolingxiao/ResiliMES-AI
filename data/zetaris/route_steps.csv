@@ -1,7 +1,10 @@
-product_id,step_index,step,capability,process_time_min,setup_family
-PROD-A28,0,LITHO,litho_193nm,90,LITHO_A
-PROD-A28,1,ETCH,etch_dielectric,60,ETCH_D
-PROD-A28,2,CMP,cmp_oxide,45,CMP_OX
-PROD-B14,0,ETCH,etch_metal,60,ETCH_M
-PROD-B14,1,CMP,cmp_oxide,40,CMP_OX
-PROD-C07,0,CMP,cmp_oxide,45,CMP_OX
+product_id,step_index,step,capability,process_time_min,setup_family,step_no,operation,area,recipe,layer,rework
+PROD-A28,0,LITHO,litho_193nm,90,LITHO_A,10,Lithography,Lithography,LITHO_L1,L1,false
+PROD-A28,1,ETCH,etch_dielectric,60,ETCH_D,20,Etch,Etch,ETCH_L1,L1,false
+PROD-A28,2,CMP,cmp_oxide,45,CMP_OX,30,CMP,CMP,CMP_L1,L1,false
+PROD-A28,3,LITHO-L2,litho_193nm,90,LITHO_A,40,Lithography,Lithography,LITHO_L2,L2,false
+PROD-A28,4,ETCH-L2,etch_dielectric,60,ETCH_D,50,Etch,Etch,ETCH_L2,L2,false
+PROD-A28,5,CMP-L2,cmp_oxide,45,CMP_OX,60,CMP,CMP,CMP_L2,L2,false
+PROD-B14,0,ETCH,etch_metal,60,ETCH_M,10,Etch,Etch,ETCH_M1,M1,false
+PROD-B14,1,CMP,cmp_oxide,40,CMP_OX,20,CMP,CMP,CMP_M1,M1,false
+PROD-C07,0,CMP,cmp_oxide,45,CMP_OX,10,CMP,CMP,CMP_SNS,,false

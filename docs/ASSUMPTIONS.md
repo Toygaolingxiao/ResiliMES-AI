@@ -94,3 +94,20 @@ Not built: the reference TypeScript conformance runner and the marker strings in
 - Priority weights are 8, 4, 2, and 1 for priorities 1 through 4.
 
 The litho headline (83.3% → 100% on-time, weighted tardiness 840 → 0) depends on the 600-minute revised ETA in the machine-breakdown scenario. The maintenance log's older estimate of 180 minutes is not what that scenario uses. The narrative says the ETA was revised.
+
+One L1 reticle can sit on one lithography tool at a time. The sample books therefore run PROD-A28 lithography in series behind the lot already on LITHO-01. That is why the rush lot finishes 1 h 10 min late, and why the 15-minute queue-time scenario holds both LOT-1003 and LOT-1006. A lot may not start before `release_min`. The sample value is 0. An inhibit row keeps a product or a recipe off one tool; the seed rows do not remove a tool the current books use.
+
+## Production would add
+
+These are real fab constraints and they are out of this demo:
+
+- Batch formation for furnaces
+- Transfer and AMHS capacity
+- Conditioning dummy wafers
+- Cumulative maintenance counters
+- Interval setups
+- Tact time
+- Implant gas type
+- Cross-fab flow restrictions
+- Pilot and split lots
+- MES-specific compliance checks

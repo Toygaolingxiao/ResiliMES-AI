@@ -10,12 +10,15 @@ from typing import Any
 
 from .models import (
     Equipment,
+    Inhibit,
     Job,
     MaintenanceEvent,
     MaterialStock,
     Operator,
     Plant,
     Product,
+    QTimeRule,
+    Reticle,
 )
 
 UNAVAILABLE = {"DOWN", "MAINTENANCE"}
@@ -47,6 +50,17 @@ def load_sample(data_dir: Path, horizon: datetime) -> Plant:
     materials_doc = _read_json(data_dir / "materials.json")
     operators_doc = _read_json(data_dir / "operators.json")
     maintenance = _read_maintenance(data_dir / "maintenance_logs.csv")
+    qtime_doc = (
+        _read_json(data_dir / "qtime_rules.json")
+        if (data_dir / "qtime_rules.json").exists()
+        else {}
+    )
+    reticle_doc = (
+        _read_json(data_dir / "reticle.json") if (data_dir / "reticle.json").exists() else {}
+    )
+    inhibit_doc = (
+        _read_json(data_dir / "inhibit.json") if (data_dir / "inhibit.json").exists() else {}
+    )
     plant = Plant(
         plant_id=str(equipment_doc.get("plant_id") or jobs_doc.get("plant_id") or "FAB-A"),
         horizon=horizon,
@@ -57,6 +71,9 @@ def load_sample(data_dir: Path, horizon: datetime) -> Plant:
         materials=[MaterialStock.model_validate(row) for row in materials_doc.get("materials", [])],
         operators=[Operator.model_validate(row) for row in operators_doc.get("operators", [])],
         maintenance=maintenance,
+        qtime_rules=[QTimeRule.model_validate(row) for row in qtime_doc.get("rules", [])],
+        reticles=[Reticle.model_validate(row) for row in reticle_doc.get("reticles", [])],
+        inhibits=[Inhibit.model_validate(row) for row in inhibit_doc.get("inhibits", [])],
         source="sample",
     )
     _validate(plant)
@@ -77,6 +94,9 @@ def plant_from_rows(
     operator_rows: list[dict[str, Any]],
     maintenance_rows: list[dict[str, Any]],
     source: str,
+    qtime_rows: list[dict[str, Any]] | None = None,
+    reticle_rows: list[dict[str, Any]] | None = None,
+    inhibit_rows: list[dict[str, Any]] | None = None,
 ) -> Plant:
     """Build a plant from flat relational rows (the Zetaris table shape)."""
     products = _products_from_rows(product_rows, route_rows, bom_rows)
@@ -90,6 +110,9 @@ def plant_from_rows(
         materials=[_material_from_row(row) for row in material_rows],
         operators=[_operator_from_row(row) for row in operator_rows],
         maintenance=[_maintenance_from_row(row) for row in maintenance_rows],
+        qtime_rules=[_qtime_from_row(row) for row in (qtime_rows or [])],
+        reticles=[_reticle_from_row(row) for row in (reticle_rows or [])],
+        inhibits=[_inhibit_from_row(row) for row in (inhibit_rows or [])],
         source=source,
     )
     _validate(plant)
@@ -195,6 +218,11 @@ def _job(row: dict[str, Any]) -> Job:
         preferred_equipment=[str(item) for item in preferred]
         if isinstance(preferred, list)
         else [],
+        released_through=_optional_str(row.get("released_through")),
+        rework_of=_optional_str(row.get("rework_of")),
+        rework_count=int(row.get("rework_count") or 0),
+        rework_limit=int(row.get("rework_limit") or 1),
+        release_min=int(row.get("release_min") or 0),
     )
 
 
@@ -248,6 +276,11 @@ def _job_from_row(row: dict[str, Any]) -> Job:
         process_time_min=int(row.get("process_time_min") or 0),
         remaining_steps=_split_list(row.get("remaining_steps")),
         preferred_equipment=_split_list(row.get("preferred_equipment")),
+        released_through=_optional_str(row.get("released_through")),
+        rework_of=_optional_str(row.get("rework_of")),
+        rework_count=int(row.get("rework_count") or 0),
+        rework_limit=int(row.get("rework_limit") or 1),
+        release_min=int(row.get("release_min") or 0),
     )
 
 
@@ -270,12 +303,19 @@ def _products_from_rows(
             Product(
                 product_id=product_id,
                 name=str(row.get("name") or product_id),
+                route_id=str(row.get("route_id") or ""),
                 route=[
                     {
                         "step": str(step["step"]),
                         "capability": str(step["capability"]),
                         "process_time_min": int(step["process_time_min"]),
                         "setup_family": str(step["setup_family"]),
+                        "step_no": int(step.get("step_no") or 0),
+                        "operation": str(step.get("operation") or step["step"]),
+                        "area": str(step.get("area") or ""),
+                        "recipe": str(step.get("recipe") or step["setup_family"]),
+                        "layer": str(step.get("layer") or ""),
+                        "rework": str(step.get("rework") or "").lower() in {"1", "true", "yes"},
                     }
                     for step in ordered
                 ],
@@ -289,6 +329,34 @@ def _products_from_rows(
             )
         )
     return products
+
+
+def _qtime_from_row(row: dict[str, Any]) -> QTimeRule:
+    return QTimeRule(
+        rule_id=str(row["rule_id"]),
+        product_id=str(row["product_id"]),
+        from_step=str(row["from_step"]),
+        to_step=str(row["to_step"]),
+        max_min=int(row["max_min"]),
+    )
+
+
+def _reticle_from_row(row: dict[str, Any]) -> Reticle:
+    return Reticle(
+        reticle_id=str(row["reticle_id"]),
+        product_id=str(row.get("product_id") or ""),
+        layer=str(row.get("layer") or ""),
+        step=str(row.get("step") or ""),
+    )
+
+
+def _inhibit_from_row(row: dict[str, Any]) -> Inhibit:
+    return Inhibit(
+        inhibit_id=str(row["inhibit_id"]),
+        equipment_id=str(row["equipment_id"]),
+        product_id=str(row.get("product_id") or ""),
+        recipe=str(row.get("recipe") or ""),
+    )
 
 
 def _material_from_row(row: dict[str, Any]) -> MaterialStock:
