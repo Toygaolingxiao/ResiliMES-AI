@@ -179,6 +179,8 @@ def _held_bars(plant: Plant, schedule: Schedule, equipment_id: str) -> list[dict
                 "rework": False,
                 "held": True,
                 "reason": item.reason,
+                "code": item.code,
+                "params": dict(item.params),
                 "moved": False,
                 "fresh": False,
             }

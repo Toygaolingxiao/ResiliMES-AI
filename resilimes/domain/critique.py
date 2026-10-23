@@ -77,6 +77,8 @@ def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
                     severity="high",
                     detail=f"Unknown destination equipment {target}.",
                     fix_hint="Choose an equipment_id that exists in the plant.",
+                    code="unknown_dest",
+                    params={"tool": target or ""},
                 )
             )
             continue
@@ -92,6 +94,13 @@ def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
                         f"{action.job_id} cannot start at t={action.start_min}."
                     ),
                     fix_hint="Wait for the repair ETA or move the lot to an up tool.",
+                    code="equipment_maint" if machine.status == "MAINTENANCE" else "equipment_down",
+                    params={
+                        "tool": target,
+                        "until_at": machine.available_at_min,
+                        "lot": action.job_id,
+                        "start_at": action.start_min,
+                    },
                 )
             )
         elif machine.status in UNAVAILABLE and action.start_min is None:
@@ -101,6 +110,10 @@ def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
                     severity="high",
                     detail=f"{target} is {machine.status}; cannot accept {action.job_id} now.",
                     fix_hint="Choose an IDLE or RUNNING tool with the same capability.",
+                    code="equipment_blocked_maint"
+                    if machine.status == "MAINTENANCE"
+                    else "equipment_blocked_down",
+                    params={"tool": target, "lot": action.job_id},
                 )
             )
         if (
@@ -129,6 +142,15 @@ def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
                             f"(limit {rule.max_min} min)."
                         ),
                         fix_hint="Start the next step inside the queue-time window, or hold the lot.",
+                        code="qtime_block",
+                        params={
+                            "from_step": rule.from_step,
+                            "anchor_at": action.anchor_end_min,
+                            "lot": action.job_id,
+                            "step": action.step,
+                            "start_at": action.start_min,
+                            "limit_min": rule.max_min,
+                        },
                     )
                 )
         if job is not None and action.step:
@@ -141,6 +163,12 @@ def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
                         severity="high",
                         detail=(f"{target} cannot run {action.step} (needs {needed.capability})."),
                         fix_hint="Route the step to a tool that lists that capability.",
+                        code="cannot_run",
+                        params={
+                            "tool": target,
+                            "step": action.step,
+                            "capability": needed.capability,
+                        },
                     )
                 )
         if (
@@ -158,6 +186,8 @@ def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
                         severity="high",
                         detail=(f"{job.job_id} is already running on {job.assigned_equipment}."),
                         fix_hint="Leave the running lot in place and reschedule queued work.",
+                        code="already_running",
+                        params={"lot": job.job_id, "tool": job.assigned_equipment},
                     )
                 )
         if action.type == "expedite" and job is not None:
@@ -175,6 +205,13 @@ def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
                                 f"{job.job_id} needs {need.qty_per_lot}."
                             ),
                             fix_hint="Hold the lot or allocate substitute stock before dispatch.",
+                            code="material_need",
+                            params={
+                                "material": need.material_id,
+                                "have": on_hand,
+                                "lot": job.job_id,
+                                "qty": need.qty_per_lot,
+                            },
                         )
                     )
         violations.extend(extra_action_violations(plant, action))
@@ -189,6 +226,7 @@ def _summarize(violations: list[Violation], *, held: bool) -> Critique:
             score=0.25,
             violations=violations,
             rationale="Hard constraints failed. The proposal is not safe to commit.",
+            rationale_code="rationale_hard",
             confidence=0.95,
         )
     if violations or held:
@@ -200,6 +238,7 @@ def _summarize(violations: list[Violation], *, held: bool) -> Critique:
                 "No hard constraint failed. Some lots are held or carry residual risk; "
                 "review them before publishing the schedule to the floor."
             ),
+            rationale_code="rationale_conditional",
             confidence=0.9,
         )
     return Critique(
@@ -207,5 +246,6 @@ def _summarize(violations: list[Violation], *, held: bool) -> Critique:
         score=0.93,
         violations=[],
         rationale="Due dates, capability, setup, staffing, WIP, and tool status all hold.",
+        rationale_code="rationale_accept",
         confidence=0.95,
     )
