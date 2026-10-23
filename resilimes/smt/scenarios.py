@@ -29,11 +29,11 @@ from resilimes.smt.tight import (
     DIELECTRIC_FAMILY,
     DIELECTRIC_MTTR_MIN,
     TIGHT_HORIZON_SEC,
+    apply_setup_rows,
     apply_tight,
     apply_xfactor,
-    first_lot_at,
     read_benchmark,
-    refuse_down_start,
+    refusal_from_trace,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,8 +119,15 @@ SCENARIOS: dict[str, SmtScenario] = {
     "qtime": SmtScenario(
         id="qtime",
         title="Queue time",
-        summary=("Published CQT limits. ResiliMES adds PED risk. FIFO does not."),
-        incident="Q-time: published CQT limits are active across the fab.",
+        summary=(
+            "Published CQT limits. ResiliMES adds PED risk and holds an adjacent "
+            "Wet_Etch step when the next tool cannot start inside the window. "
+            "That gate fired 0 times on the stored seeds. FIFO does not use the gate."
+        ),
+        incident=(
+            "Q-time: published CQT limits are active. ResiliMES adds PED risk and "
+            "the Wet_Etch gate. The gate fired 0 times on the stored seeds."
+        ),
         before_policy="fifo",
         after_policy="resilimes",
         kind="qtime",
@@ -151,18 +158,17 @@ SCENARIOS: dict[str, SmtScenario] = {
         id="xfactor",
         title="X-factor dues",
         summary=(
-            "48 h, 87 lots, five seeds. On-time is the same at every repair length. "
-            "ResiliMES 87/87, 83/87, 86/87, 87/87, 81/87 (mean 97.47%). "
-            "EDD 87/87, 86/87, 86/87, 87/87, 87/87 (mean 99.54%). "
-            "FIFO 20.7%, CR 71.7%. Re-cleans 38 vs 56. Q-time violations 430 vs 452. "
-            "Versus EDD this gives up about 2 of 87 lots: seed 2 is three lots at "
-            "Diffusion_BE_123; seed 5 is five lots at Dielectric_BE_28 plus one wet-etch lot. "
-            "Init_Lot_2_23 is on time under EDD and late here on seeds 5 and 6."
+            "This run is seed 1, 48 h, 87 lots due. Both policies are 87/87 on time. "
+            "Re-cleans are 24 under EDD and 31 under ResiliMES. "
+            "Q-time violations are 428 under EDD and 418 under ResiliMES. "
+            "Five-seed mean, not this click: re-cleans 38 vs 55.6, Q-time 430 vs 451.6. "
+            "That mean is ResiliMES 97.47% and EDD 99.54% on time, FIFO 20.7%, CR 71.7%. "
+            "Versus EDD the five-seed mean gives up about 2 of 87 lots."
         ),
         incident=(
-            "Litho_FE_92-1 down for 600 minutes. Dues are 2.75 times the remaining process time. "
-            "ResiliMES beats FIFO and CR. Versus EDD it gives up about 2 of 87 lots "
-            "and runs fewer re-cleans and fewer Q-time violations."
+            "Litho_FE_92-1 down for 600 minutes. This click is seed 1: both policies "
+            "87/87 on time, re-cleans 24 to 31, Q-time 428 to 418. "
+            "The five-seed mean is a separate study."
         ),
         before_policy="edd",
         after_policy="resilimes",
@@ -204,6 +210,15 @@ def scenario_payload(fab: Fab | None = None) -> dict[str, Any]:
     }
 
 
+def scout_provider_mode(settings: Settings) -> str:
+    """Nightshift when live mode or a configured token says so. Mock otherwise.
+
+    ``RESILIMES_MODE=live`` without a token raises ``ConfigError`` from
+    ``use_nightshift``. Mock mode never selects Nightshift.
+    """
+    return "nightshift" if settings.use_nightshift else "mock"
+
+
 def run_smt(
     settings: Settings,
     scenario_id: str,
@@ -230,7 +245,7 @@ def run_smt(
         horizon = horizon_sec
     scout = default_scout(
         signing_secret=settings.scout_signing_secret,
-        provider_mode="mock",
+        provider_mode=scout_provider_mode(settings),
         ttl_seconds=settings.scout_ttl_seconds,
     )
     decision = scout.decide(
@@ -266,6 +281,12 @@ def run_smt(
             "query": READ_QUERY,
         }
     benchmark = read_benchmark(settings, fab)
+    setup_rows = list(benchmark.pop("setup_rows", []) or [])
+    applied = 0
+    if setup_rows and not benchmark.get("error"):
+        fab, applied = apply_setup_rows(fab, setup_rows)
+    benchmark["setup_rows_applied"] = applied
+    benchmark["dispatcher_input"] = "resilimes.setup_matrix" if applied else ""
     _emit(
         on_event,
         "query",
@@ -285,7 +306,7 @@ def run_smt(
     )
     _emit(on_event, "sim", "dispatcher", "Full fab", _count_line(fab), {"lots": len(fab.lot_id)})
     report = simulate_pair(fab, scenario, seed=seed, horizon=horizon)
-    refusal = _refusal(fab, scenario, report)
+    refusal = refusal_from_trace(list(report.get("down_starts") or []))
     report["refusal"] = refusal
     _emit(
         on_event,
@@ -320,7 +341,7 @@ def run_smt(
     report["zetaris"] = benchmark
     report["query"] = benchmark["queries"][0]["sql"] if benchmark["queries"] else READ_QUERY
     report["blocked"] = False
-    report["verdict"] = {"verdict": "accept"}
+    report["verdict"] = {"verdict": "reject" if refusal else "accept"}
     provider_name = str(note.get("provider") or "mock")
     report["mode"] = {
         "label": "NIGHTSHIFT" if provider_name == "nightshift" else "SMT2020",
@@ -522,6 +543,7 @@ def _report(
             "sim_after_s": after.sim_s,
         },
         "board": _board(fab, after),
+        "down_starts": list(before.down_starts) + list(after.down_starts),
         "gantt": {
             "bin_min": 15,
             "before": _bars(fab, before),
@@ -566,15 +588,21 @@ def _report(
                 "placement. Those operation dues are not an input to dpi(). "
                 "Feeding the expose-step due into dpi() was reverted after seeds 9-13."
             ),
-            "pm_avoided": "ResiliMES decisions that refused at least one lot because it would cross a PM.",
-            "pm_overlaps": "Baseline starts whose process overlaps a PM window.",
+            "pm_avoided": (
+                "Decisions, on every policy, that refused at least one lot because "
+                "it would cross a PM."
+            ),
+            "pm_overlaps": "Starts whose process overlaps a PM window.",
             "down_tool_refusal": (
-                "A safety check the event loop never selected. It is not a caught scheduler mistake."
+                "Set only when the event trace contains a start on a tool that is down. "
+                "Otherwise null."
             ),
         },
     }
     if scenario.kind == "litho":
         report["study_note"] = _litho_study_note(before, after, seed, horizon)
+    if scenario.kind == "xfactor":
+        report["study_note"] = _xfactor_study_note(before, after, seed, horizon)
     return report
 
 
@@ -621,6 +649,36 @@ def _litho_study_note(before: RunResult, after: RunResult, seed: int, horizon: f
         + "; ".join(parts)
         + ". That study is not this click."
     )
+
+
+def _xfactor_study_note(before: RunResult, after: RunResult, seed: int, horizon: float) -> str:
+    """The click is one seed. The five-seed means are the study."""
+    click = (
+        f"This run (seed {seed}, {horizon / 3600:.0f} h): "
+        f"{before.policy} {_otd_count(before.on_time_pct, before.due_in_horizon)}/"
+        f"{before.due_in_horizon} on time, re-cleans {before.recleans}, "
+        f"Q-time {before.qtime_violations}. "
+        f"{after.policy} {_otd_count(after.on_time_pct, after.due_in_horizon)}/"
+        f"{after.due_in_horizon} on time, re-cleans {after.recleans}, "
+        f"Q-time {after.qtime_violations}."
+    )
+    path = ROOT / "data" / "smt2020" / "benchmark.json"
+    if not path.is_file():
+        return click + " The five-seed mean is in docs/SMT2020_SCALE.md. It is not this run."
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    block = ((payload.get("xfactor") or {}).get("etas") or {}).get("600.0") or {}
+    parts: list[str] = []
+    for policy in ("edd", "resilimes"):
+        mean = (block.get(policy) or {}).get("mean") or {}
+        if not mean:
+            continue
+        parts.append(
+            f"{policy} on-time {mean.get('on_time_pct')}%, "
+            f"re-cleans {mean.get('recleans')}, Q-time {mean.get('qtime_violations')}"
+        )
+    if not parts:
+        return click
+    return f"{click} Five-seed mean at a 600-minute repair, not this run: " + "; ".join(parts) + "."
 
 
 def _counts(fab: Fab) -> dict[str, int]:
@@ -794,24 +852,14 @@ def _benchmark_summary(benchmark: dict[str, Any]) -> str:
     rendered = ", ".join(f"{name} {value}" for name, value in counts.items())
     sources = ", ".join(benchmark.get("sources") or [])
     if benchmark.get("mode") == "zetaris" and not benchmark.get("error"):
-        return f"Zetaris sources {sources}. Rows: {rendered}."
+        fed = benchmark.get("setup_rows_applied") or 0
+        return (
+            f"Zetaris sources {sources}. Rows: {rendered}. "
+            f"Setup matrix rows applied to the dispatcher: {fed}."
+        )
     if benchmark.get("error"):
         return f"Zetaris query failed. Sources {sources}."
     return f"Local extract. Zetaris was not called. Sources {sources}. Rows: {rendered}."
-
-
-def _refusal(fab: Fab, scenario: SmtScenario, report: dict[str, Any]) -> dict[str, Any] | None:
-    if scenario.kind == "tight":
-        tight = report.get("tight") or {}
-        lot_id = (tight.get("p1_lots") or [None])[0]
-        tool = tight.get("tool")
-        if lot_id and tool:
-            return refuse_down_start(str(tool), str(lot_id), DIELECTRIC_MTTR_MIN)
-    if scenario.kind == "litho":
-        lot_id = first_lot_at(fab, fab.focus_family)
-        if lot_id:
-            return refuse_down_start(fab.tool_name[fab.focus_tool], lot_id, LITHO_MTTR_MIN)
-    return None
 
 
 def _explain(settings: Settings, incident: str, report: dict[str, Any]) -> dict[str, Any]:

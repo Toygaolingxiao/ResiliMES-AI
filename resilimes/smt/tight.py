@@ -38,6 +38,10 @@ COUNT_SQL: tuple[tuple[str, str, str], ...] = (
     ("fab_cmms", "pm_calendar", "SELECT COUNT(*) AS n FROM fab_cmms.pm_calendar"),
     ("fab_erp", "orders", "SELECT COUNT(*) AS n FROM fab_erp.orders"),
 )
+# Dispatcher input. Matching rows replace setup seconds for that run.
+SETUP_SQL = (
+    "SELECT station_group_id, from_recipe, to_recipe, setup_time_sec FROM resilimes.setup_matrix"
+)
 SOURCES = ("resilimes", "fab_cmms", "fab_erp")
 
 
@@ -105,7 +109,7 @@ def apply_tight(fab: Fab, *, horizon: float = TIGHT_HORIZON_SEC) -> TightBook:
 
 
 def refuse_down_start(tool: str, lot_id: str, down_min: float) -> dict[str, Any]:
-    """The critic blocks a start on a tool that is down. It does not move the lot."""
+    """Reject a start the event trace actually committed on a down tool."""
     return {
         "verdict": "reject",
         "constraint": "tool_down",
@@ -113,10 +117,18 @@ def refuse_down_start(tool: str, lot_id: str, down_min: float) -> dict[str, Any]
         "tool": tool,
         "down_min": round(down_min, 2),
         "detail": (
-            f"{lot_id} is not started on {tool}. That tool is down for {down_min:.1f} minutes. "
-            "This is a safety check. The event loop did not select that start."
+            f"{lot_id} started on {tool} while that tool was down for {down_min:.1f} minutes. "
+            "The event trace contains that start. The critic rejects it."
         ),
     }
+
+
+def refusal_from_trace(starts: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """A refusal exists only when the trace contains a start on a down tool."""
+    if not starts:
+        return None
+    first = starts[0]
+    return refuse_down_start(str(first["tool"]), str(first["lot_id"]), float(first["down_min"]))
 
 
 def first_lot_at(fab: Fab, family: int) -> str | None:
@@ -155,18 +167,47 @@ def _count_of(payload: dict[str, Any]) -> int:
     raise ValueError("Zetaris count query returned no numeric column")
 
 
+def apply_setup_rows(fab: Fab, rows: list[dict[str, Any]]) -> tuple[Fab, int]:
+    """Copy the fab and replace setup seconds that match a Zetaris row.
+
+    The cached extract is left unchanged. A row whose family or recipe is not
+    in the extract is skipped. Routes, WIP, and dues are not read from SQL.
+    """
+    plant = copy.copy(fab)
+    matrix = dict(fab.setup)
+    recipe_index = {name: index for index, name in enumerate(fab.recipe_name)}
+    applied = 0
+    for row in rows:
+        family_name = str(row.get("station_group_id", "")).strip()
+        fam = fab.family_index.get(family_name)
+        if fam is None:
+            continue
+        src = recipe_index.get(str(row.get("from_recipe", "")).strip())
+        dst = recipe_index.get(str(row.get("to_recipe", "")).strip())
+        if src is None or dst is None:
+            continue
+        matrix[(fam, src, dst)] = float(row["setup_time_sec"])
+        applied += 1
+    plant.setup = matrix
+    return plant, applied
+
+
 def read_benchmark(
     settings: Settings,
     fab: Fab,
     *,
     runner: Any = None,
 ) -> dict[str, Any]:
-    """Count rows in the three datasources.
+    """Count rows, and when Zetaris is configured read the setup matrix.
 
     Mock and auto-without-credentials report the local extract and say Zetaris
-    was not called. A configured Zetaris client runs the SELECT COUNT statements.
+    was not called. A configured client runs the SELECT COUNT statements and
+    the setup-matrix SELECT. Those setup rows are the dispatcher input.
+    ``called`` is true once a query was attempted, including a failed one.
     """
     queries = [{"source": source, "table": table, "sql": sql} for source, table, sql in COUNT_SQL]
+    if settings.use_zetaris:
+        queries.append({"source": "resilimes", "table": "setup_matrix", "sql": SETUP_SQL})
     if not settings.use_zetaris:
         return {
             "mode": "extract",
@@ -174,6 +215,7 @@ def read_benchmark(
             "sources": list(SOURCES),
             "queries": queries,
             "row_counts": local_counts(fab),
+            "setup_rows": [],
             "error": "",
         }
     run = runner
@@ -185,6 +227,9 @@ def read_benchmark(
     try:
         for _source, table, sql in COUNT_SQL:
             counts[table] = _count_of(run(sql))
+        from agent.tools_zetaris import rows_as_dicts
+
+        setup_rows = rows_as_dicts(run(SETUP_SQL))
     except Exception as exc:
         return {
             "mode": "zetaris",
@@ -192,6 +237,7 @@ def read_benchmark(
             "sources": list(SOURCES),
             "queries": queries,
             "row_counts": counts,
+            "setup_rows": [],
             "error": str(exc)[:240],
         }
     return {
@@ -200,5 +246,6 @@ def read_benchmark(
         "sources": list(SOURCES),
         "queries": queries,
         "row_counts": counts,
+        "setup_rows": setup_rows,
         "error": "",
     }
