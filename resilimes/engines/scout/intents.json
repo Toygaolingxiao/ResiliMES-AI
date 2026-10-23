@@ -131,6 +131,42 @@
       "version": 1
     },
     {
+      "id": "plant.hold_lot",
+      "category": "plant",
+      "description": "Hold one lot. The scheduler keeps it out of the book until it is released.",
+      "parameters": {
+        "job_id": "string"
+      },
+      "capabilities": ["world.query", "world.sync", "schedule.recover", "schedule.commit", "memory.write"],
+      "riskClass": "medium",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin", "operator"],
+      "examples": [
+        "hold lot LOT-1004",
+        "place LOT-1004 on hold",
+        "暂停批次 LOT-1004"
+      ],
+      "version": 1
+    },
+    {
+      "id": "plant.release_lot",
+      "category": "plant",
+      "description": "Release a lot that is on an explicit hold. A down tool does not start the lot.",
+      "parameters": {
+        "job_id": "string"
+      },
+      "capabilities": ["world.query", "world.sync", "schedule.recover", "schedule.commit", "memory.write"],
+      "riskClass": "medium",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin", "operator"],
+      "examples": [
+        "release lot LOT-1004",
+        "release the hold on LOT-1004",
+        "放行批次 LOT-1004"
+      ],
+      "version": 1
+    },
+    {
       "id": "plant.emergency_stop",
       "category": "plant",
       "description": "Stop the whole factory. High risk. Requires an explicit approval.",

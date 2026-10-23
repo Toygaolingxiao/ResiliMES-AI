@@ -10,8 +10,10 @@ from typing import Any, cast
 from pydantic import BaseModel, Field
 
 from resilimes.agents.brief import refusal_brief, schedule_brief, status_brief
+from resilimes.agents.facts import degraded_call, fact_table, narrative_mismatches
 from resilimes.agents.narrative import narrate
 from resilimes.agents.planner import naive_alternative, reject_alternative
+from resilimes.agents.review_panel import run_review_panel
 from resilimes.agents.specialist import gather
 from resilimes.config import Settings
 from resilimes.data.factory import build_source
@@ -87,6 +89,9 @@ class RecoveryReport(BaseModel):
     markovian: dict[str, Any] = Field(default_factory=dict)
     world_model: dict[str, Any] = Field(default_factory=dict)
     provider_call: dict[str, Any] | None = None
+    propose_loop: dict[str, Any] | None = None
+    review_panel: dict[str, Any] | None = None
+    committed_plan: str = "scheduler"
     brief: dict[str, Any] = Field(default_factory=dict)
     checks: list[dict[str, str]] = Field(default_factory=list)
     validation: dict[str, Any] | None = None
@@ -155,7 +160,7 @@ def run_recovery(
             "prompt": incident,
             "surface": "mes_console",
             "user": {"id": request.actor_id, "role": request.actor_role},
-        }
+        },
     )
     trace: list[dict[str, Any]] = [
         _trace(
@@ -398,6 +403,39 @@ def run_recovery(
                 "checkpoints": 5,
             },
         )
+        try:
+            bundle["review_panel"] = run_review_panel(
+                provider,
+                plants.after,
+                bundle["after"],
+                committed,
+                allow_model=not provider.mocked and kind != "scale",
+            )
+        except Exception as exc:
+            logger.warning("review panel failed", extra={"fields": {"error": str(exc)}})
+            bundle["review_panel"] = {
+                "reviewers": [],
+                "agreement": "split",
+                "recommendation": "approve-with-changes",
+                "source": "deterministic-fallback",
+                "request_ids": [],
+                "note": "Qualitative review failed closed and did not change the book.",
+                "fallback_reason": str(exc),
+            }
+        panel = bundle["review_panel"]
+        emit(
+            "review",
+            "review-panel",
+            "Qualitative review",
+            f"{panel.get('agreement')} {panel.get('recommendation')}.",
+            [],
+            {
+                "agreement": panel.get("agreement"),
+                "recommendation": panel.get("recommendation"),
+                "source": panel.get("source"),
+                "request_ids": panel.get("request_ids") or [],
+            },
+        )
         state = dict(carry.get("state") or {})
         state["verdict"] = committed.verdict
         issues = [item.constraint for item in rejected.violations]
@@ -426,37 +464,69 @@ def run_recovery(
             committed=bundle["committed"],
             rejected=bundle["rejected"],
         )
-        result = provider.complete(
-            [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are the ResiliMES explainer. Rewrite the narrative for a "
-                        "production supervisor. Do not invent equipment, lots, or numbers. "
-                        'Return JSON {"narrative": "..."}.'
-                    ),
-                },
-                {"role": "user", "content": json.dumps({"deterministic_narrative": text})},
-            ],
-            lane="explainer",
-            temperature=0.2,
+        facts_for_narrative = fact_table(
+            plant=plants.after,
+            before=before_kpi,
+            after=after_kpi,
+            outcomes=outcomes,
+            narrative=text,
         )
-        bundle["provider_call"] = result.model_dump()
-        spoken = _narrative_from_model(result.content, text)
+        result = None
+        try:
+            result = provider.complete(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are the ResiliMES explainer. Rewrite the narrative for a "
+                            "production supervisor. Do not invent equipment, lots, or numbers. "
+                            'Return JSON {"narrative": "..."}.'
+                        ),
+                    },
+                    {"role": "user", "content": json.dumps({"deterministic_narrative": text})},
+                ],
+                lane="explainer",
+                temperature=0.2,
+            )
+            candidate = _narrative_from_model(result.content, text)
+            misses = narrative_mismatches(candidate, facts_for_narrative)
+            if misses:
+                bundle["provider_call"] = degraded_call(
+                    provider.name,
+                    provider.mocked,
+                    "; ".join(misses),
+                    meterless_request_id=result.meterless_request_id,
+                    completion_id=result.completion_id,
+                    provider_model=result.provider_model,
+                )
+                spoken = text
+            else:
+                bundle["provider_call"] = result.model_dump()
+                spoken = candidate
+        except Exception as exc:
+            bundle["provider_call"] = degraded_call(provider.name, provider.mocked, str(exc))
+            spoken = text
+        call = bundle["provider_call"]
+        summary = (
+            call_summary(result)
+            if result is not None and not call.get("narrative_degraded")
+            else "Deterministic narrative kept."
+        )
         emit(
             "explain",
             "nightshift",
             "Explain",
-            call_summary(result),
+            summary,
             [],
             {
-                "provider": result.provider,
-                "model": result.model,
-                "mocked": result.mocked,
-                "latency_ms": result.latency_ms,
-                "completion_id": result.completion_id,
-                "meterless_request_id": result.meterless_request_id,
-                "provider_model": result.provider_model,
+                "provider": call.get("provider"),
+                "model": call.get("model"),
+                "mocked": call.get("mocked"),
+                "latency_ms": call.get("latency_ms"),
+                "completion_id": call.get("completion_id"),
+                "meterless_request_id": call.get("meterless_request_id"),
+                "provider_model": call.get("provider_model"),
+                "narrative_degraded": bool(call.get("narrative_degraded")),
                 "checkpoint": 4,
                 "checkpoints": 5,
             },
@@ -473,6 +543,30 @@ def run_recovery(
 
     def commit(carry: dict[str, Any]) -> dict[str, Any]:
         world = WorldModel(settings.scout_signing_secret)
+        if bundle["committed"].verdict == "reject":
+            bundle["world"] = world
+            bundle["replay_jobs"] = 0
+            bundle["replayed"] = []
+            bundle["commit_refused"] = True
+            emit(
+                "commit",
+                "world-model",
+                "Commit refused",
+                "Critic verdict reject. Assignments were not written.",
+                [],
+                {"events": 0, "jobs": 0, "refused": True, "checkpoint": 5, "checkpoints": 5},
+            )
+            state = dict(carry.get("state") or {})
+            state["committed_jobs"] = 0
+            return {
+                "decisions": [
+                    *list(carry.get("decisions") or []),
+                    "world-model: commit refused",
+                ],
+                "entities": {"jobs": []},
+                "open_issues": ["commit refused"],
+                "state": state,
+            }
         for equipment in plants.after.equipment:
             world.ingest(
                 event_type="equipment.observed",
@@ -578,8 +672,8 @@ def run_recovery(
                 "markovian",
                 "Bounded chunks",
                 (
-                    f"{len(run.chunks)} chunks, checkpoint tokens {run.input_tokens}, "
-                    f"naive history would be {run.naive_tokens}."
+                    f"{len(run.chunks)} chunks, checkpoint units {run.checkpoint_units}, "
+                    f"replayed history units {run.replayed_history_units}."
                 ),
                 [chunk.marker for chunk in run.chunks],
             ),
@@ -628,6 +722,11 @@ def run_recovery(
         contract=_public_contract(contract),
         verdict=committed.model_dump(),
         rejected_alternative={
+            "label": "safety test",
+            "note": (
+                "Hardcoded alternative the critic refuses. "
+                "Not a Nemotron proposal and not a repair round."
+            ),
             "actions": [item.model_dump() for item in naive_alternative(plants.after, kind)],
             "critique": rejected.model_dump(),
         },
@@ -657,8 +756,10 @@ def run_recovery(
         facts=_public_facts(facts),
         markovian={
             "chunks": len(run.chunks),
-            "input_tokens": run.input_tokens,
-            "naive_tokens": run.naive_tokens,
+            "checkpoint_units": run.checkpoint_units,
+            "replayed_history_units": run.replayed_history_units,
+            "unit": "json_chars_div_4",
+            "note": "Size comparison of checkpoints. Not a model token count.",
             "marker": run.marker,
             "failed_chunks": sum(1 for chunk in run.chunks if not chunk.ok),
         },
@@ -667,8 +768,17 @@ def run_recovery(
             "replay_jobs": bundle["replay_jobs"],
             "replayed": bundle.get("replayed") or [],
             "schema_version": bundle["world"].schema_version,
+            "refused": bool(bundle.get("commit_refused")),
         },
         provider_call=bundle.get("provider_call"),
+        propose_loop={
+            "rounds": [],
+            "note": (
+                "Nemotron does not author the schedule. The refused alternative is a safety test."
+            ),
+        },
+        review_panel=bundle.get("review_panel"),
+        committed_plan="scheduler",
         needs_clarification=decision.needs_clarification,
         brief=schedule_brief(
             kind=kind,

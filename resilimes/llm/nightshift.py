@@ -1,7 +1,8 @@
 """Meterless Nightshift client. OpenAI-compatible, NVIDIA Nemotron behind it.
 
-Nightshift explains. The critic is deterministic code and does not call a model.
-Every lane uses NEMOTRON_MODEL.
+Nemotron turns a sentence into a tool call and writes feedback from the engine
+result. The scheduler and the critic do not call a model. Every lane uses
+NEMOTRON_MODEL.
 
 Retries: 429 and connection / 5xx, with exponential backoff. The token is never logged.
 """

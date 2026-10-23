@@ -10,8 +10,7 @@ from resilimes.engines.contracts import ContractError
 from resilimes.engines.markovian.engine import (
     MarkovianEngine,
     compress,
-    markovian_cumulative_tokens,
-    naive_cumulative_tokens,
+    flat_checkpoint_units,
 )
 from resilimes.engines.scout.engine import default_scout
 from resilimes.engines.world_model.engine import WorldModel
@@ -151,9 +150,12 @@ def test_chunk_failure_is_contained() -> None:
     assert result.final_state["state"]["ok"] is True
 
 
-def test_markovian_token_cost_stays_below_naive_history() -> None:
+def test_checkpoint_size_stays_below_replayed_history() -> None:
+    """A size comparison of JSON checkpoints. Not a model token count."""
+    from resilimes.engines.markovian.engine import replayed_history_units
+
     steps = [120] * 8
-    assert markovian_cumulative_tokens(steps, 40) < naive_cumulative_tokens(steps)
+    assert flat_checkpoint_units(steps, 40) < replayed_history_units(steps)
 
 
 def test_markovian_refuses_a_contract_without_memory_write() -> None:

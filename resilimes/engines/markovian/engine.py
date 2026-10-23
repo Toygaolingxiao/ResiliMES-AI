@@ -1,8 +1,10 @@
 """Markovian chunked reasoning.
 
 Each chunk receives a compressed checkpoint (decisions, entities, structured
-state) instead of the growing transcript. Cost per chunk stays flat. A failed
+state) instead of the growing transcript. The checkpoint size stays flat. A failed
 chunk is contained: later chunks still run on the last good checkpoint.
+The reported units are len(JSON) // 4, a size comparison between non-LLM calls,
+not a model tokenizer and not a token-savings claim.
 
 Marker strings follow the public spec: STATE_CHECKPOINT and TASK_COMPLETE.
 """
@@ -24,7 +26,7 @@ CarryFn = Callable[[dict[str, Any]], dict[str, Any]]
 class ChunkRecord(BaseModel):
     index: int
     ok: bool
-    input_tokens: int
+    checkpoint_units: int
     marker: str
     error: str | None = None
 
@@ -32,8 +34,9 @@ class ChunkRecord(BaseModel):
 class RunResult(BaseModel):
     chunks: list[ChunkRecord] = Field(default_factory=list)
     final_state: dict[str, Any] = Field(default_factory=dict)
-    input_tokens: int = 0
-    naive_tokens: int = 0
+    checkpoint_units: int = 0
+    replayed_history_units: int = 0
+    unit: str = "json_chars_div_4"
     marker: str = "TASK_COMPLETE"
 
 
@@ -77,18 +80,18 @@ class MarkovianEngine:
         outputs: list[int] = []
         for index, step in enumerate(steps[: self.max_chunks]):
             incoming = compress(carry)
-            incoming_tokens = estimate_tokens(incoming)
+            incoming_units = json_units(incoming)
             try:
                 produced = step(incoming)
                 if not isinstance(produced, dict):
                     produced = {"state": {"value": produced}}
                 carry = compress(produced)
-                outputs.append(estimate_tokens(carry))
+                outputs.append(json_units(carry))
                 records.append(
                     ChunkRecord(
                         index=index,
                         ok=True,
-                        input_tokens=incoming_tokens,
+                        checkpoint_units=incoming_units,
                         marker="STATE_CHECKPOINT",
                     )
                 )
@@ -97,7 +100,7 @@ class MarkovianEngine:
                     ChunkRecord(
                         index=index,
                         ok=False,
-                        input_tokens=incoming_tokens,
+                        checkpoint_units=incoming_units,
                         marker="STATE_CHECKPOINT",
                         error=type(exc).__name__,
                     )
@@ -105,12 +108,12 @@ class MarkovianEngine:
         marker = "TASK_COMPLETE" if records and records[-1].ok else "STATE_CHECKPOINT"
         if records and records[-1].ok:
             records[-1].marker = "TASK_COMPLETE"
-        naive = naive_cumulative_tokens(outputs or [estimate_tokens(carry)])
+        replayed = replayed_history_units(outputs or [json_units(carry)])
         return RunResult(
             chunks=records,
             final_state=carry,
-            input_tokens=sum(item.input_tokens for item in records),
-            naive_tokens=naive,
+            checkpoint_units=sum(item.checkpoint_units for item in records),
+            replayed_history_units=replayed,
             marker=marker,
         )
 
@@ -131,25 +134,25 @@ def compress(carry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def estimate_tokens(value: object) -> int:
-    """Rough size, not a model tokenizer: JSON characters divided by 4."""
+def json_units(value: object) -> int:
+    """JSON length divided by 4. This is a size comparison, not a model token count."""
     encoded = json.dumps(value, default=str, sort_keys=True)
     return max(1, len(encoded) // 4)
 
 
-def naive_cumulative_tokens(step_tokens: list[int]) -> int:
-    """Quadratic history: step k re-sends every previous step."""
+def replayed_history_units(step_units: list[int]) -> int:
+    """Size if each chunk resent every earlier chunk. Not a token savings claim."""
     total = 0
     running = 0
-    for count in step_tokens:
+    for count in step_units:
         running += count
         total += running
     return total
 
 
-def markovian_cumulative_tokens(step_tokens: list[int], carry_tokens: int) -> int:
-    """Flat carry: each step pays for its own output plus a fixed checkpoint."""
-    return sum(count + carry_tokens for count in step_tokens)
+def flat_checkpoint_units(step_units: list[int], carry_units: int) -> int:
+    """Size if each chunk pays for its own output plus one fixed checkpoint."""
+    return sum(count + carry_units for count in step_units)
 
 
 def _trim(value: dict[str, Any]) -> dict[str, Any]:
