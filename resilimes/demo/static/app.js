@@ -664,6 +664,10 @@ const state = {
   running: false,
   incidentText: "",
   utilSide: "after",
+  smtGroup: "all",
+  smtStart: 0,
+  smtEnd: 720,
+  smtDrill: "",
 };
 
 const $ = (id) => document.querySelector(id);
@@ -750,17 +754,30 @@ function paint() {
   $("#empty-title").textContent = copy.emptyTitle;
   $("#empty-hint").textContent = copy.emptyHint;
   $("#clock").textContent = `${copy.clock} ${formatClock(state.horizon)} UTC`;
-  const mock = state.health.llm === "mock" && state.health.data === "sample";
+  const source = state.health.data_source || state.health.data || "sample";
+  const mock = state.health.llm === "mock" && source === "sample";
   const badge = $("#mode-badge");
   badge.textContent = mock ? copy.offline : state.health.label;
   badge.className = mock ? "badge" : "badge live";
   const banner = $("#banner");
   banner.hidden = false;
-  banner.textContent = mock ? copy.mock : copy.live;
+  if (source === "smt2020") {
+    const counts = `${state.health.groups || 106} groups · ${state.health.tools || 1313} tools · ${state.health.litho_tools || 102} litho · ${state.health.lots || 2156} lots`;
+    banner.textContent = `data source: smt2020 · ${counts}`;
+    $("#bay-label").textContent = "Tool groups";
+  } else {
+    banner.textContent = `${mock ? copy.mock : copy.live} data source: ${source}`;
+  }
+  const query = $("#query-line");
+  const reportQuery = state.report && state.report.query;
+  const stepQuery = (state.steps || []).find((step) => step.phase === "query" && step.evidence && step.evidence.length);
+  query.hidden = !(reportQuery || stepQuery);
+  query.textContent = reportQuery || (stepQuery ? stepQuery.evidence[0] : "");
   $("#theme").textContent = state.theme === "dark" ? copy.themeDark : copy.themeLight;
   document.querySelectorAll("[data-lang]").forEach((button) => {
     button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
   });
+  if (state.report && state.report.board) state.bay = state.report.board;
   paintTabs();
   paintScenarios();
   paintBay(bayStatus());
@@ -838,6 +855,10 @@ function bayStatus() {
 function paintBay(statusById) {
   const host = $("#bay");
   host.innerHTML = "";
+  if ((state.bay[0] && state.bay[0].kind === "group") || (state.health && state.health.fab === "smt2020" && state.bay.length && state.bay[0].kind === "group")) {
+    paintGroups(host);
+    return;
+  }
   const scaleRows = state.report && state.report.scenario_id === "scale" && state.report.load && state.report.load.after && state.report.load.after.rows;
   if (scaleRows) {
     const counts = {};
@@ -889,8 +910,172 @@ function flash(id) {
   lamp.classList.add("flash");
 }
 
+function paintGroups(host) {
+  const rows = state.bay.slice().sort((a, b) => (b.tools || 0) - (a.tools || 0));
+  for (const item of rows) {
+    const li = document.createElement("li");
+    li.dataset.id = item.id;
+    const down = item.down || item.status === "DOWN";
+    const queue = item.queue == null ? "" : `q ${item.queue}`;
+    const downText = down ? `${item.down || ""} down` : "up";
+    li.innerHTML = `<span class="lamp ${down ? "down" : "up"}"></span><span>${escapeHtml(item.id)}</span><small>${item.tools || ""} · ${escapeHtml(downText)} · ${escapeHtml(queue)}</small>`;
+    li.addEventListener("click", () => {
+      state.smtGroup = state.smtGroup === item.id ? "all" : item.id;
+      if (state.report && state.report.fab === "smt2020") paintSmtCharts(state.report);
+    });
+    host.appendChild(li);
+  }
+}
+
+function paintSmtRecover(report) {
+  $("#empty").hidden = true;
+  $("#story").hidden = false;
+  $("#cards").hidden = !report.kpis;
+  $("#stepper").hidden = false;
+  $("#result").hidden = !report.gantt;
+  const focus = report.focus || {};
+  $("#headline").textContent = report.incident || "";
+  const hot = report.hot_lot || {};
+  const knock = report.scenario_id === "litho_down"
+    ? `${focus.tool} in ${focus.family} (${focus.tools_in_family} tools) is down ${focus.down_min} min. Sibling starts ${focus.sibling_starts_before} → ${focus.sibling_starts_after}. Family queue peak ${focus.queue_max_before} → ${focus.queue_max_after}. Downstream queue peak ${focus.downstream_queue_max_before} → ${focus.downstream_queue_max_after}.`
+    : report.scenario_id === "hot_lot"
+      ? `${hot.lot_id} (${hot.product}) steps ${hot.steps_before} → ${hot.steps_after}. Scanner start ${hot.scanner_start_min_before ?? "—"} → ${hot.scanner_start_min_after ?? "—"} min.`
+      : report.scenario_id === "pm_avoid"
+        ? `${(report.pm && report.pm.calendar) || "PM"} shifted ${report.pm && report.pm.shift_h} h so the published window opens inside this run.`
+        : "";
+  $("#refusal").textContent = knock;
+  if (report.kpis) renderSmtCards(report);
+  paintStepper();
+  paintSmtCharts(report);
+}
+
+function renderSmtCards(report) {
+  const host = $("#cards");
+  host.innerHTML = "";
+  const before = report.kpis.before;
+  const after = report.kpis.after;
+  const rows = [
+    ["On time", `${before.on_time_pct}%`, `${after.on_time_pct}%`, `${before.due_in_horizon} lots due in horizon, ${before.already_late} already late at the snapshot`],
+    ["Weighted tardiness", `${before.weighted_tardiness_min} min`, `${after.weighted_tardiness_min} min`, "Open lots are censored at the horizon"],
+    ["Cycle time", before.cycle_time_h == null ? "—" : `${before.cycle_time_h} h`, after.cycle_time_h == null ? "—" : `${after.cycle_time_h} h`, `${after.completed_routes} routes finished on the recovery book`],
+    ["Litho utilization", `${before.litho_util_pct}%`, `${after.litho_util_pct}%`, "102 Litho_* tools. Scanner util is separate in the timing line"],
+    ["Q-time violations", String(before.qtime_violations), String(after.qtime_violations), "Published CQT"],
+    ["PM interruptions avoided", String(before.pm_avoided), String(after.pm_avoided), `Baseline overlaps ${before.pm_overlaps} → ${after.pm_overlaps}`],
+  ];
+  for (const [label, left, right, note] of rows) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.innerHTML = `<p>${escapeHtml(label)}</p><strong>${escapeHtml(left)} → ${escapeHtml(right)}</strong><small>${escapeHtml(note)}</small>`;
+    host.appendChild(card);
+  }
+  const timing = report.timing || {};
+  const line = document.createElement("p");
+  line.className = "smt-timing";
+  line.textContent = `Dispatch p50 ${timing.dispatch_p50_ms} ms, p95 ${timing.dispatch_p95_ms} ms, ${timing.dispatch_decisions} decisions. Macro APS ${timing.aps_ms} ms (${timing.scanner_steps} scanner steps). Simulation ${timing.sim_before_s}s / ${timing.sim_after_s}s. Policies ${report.policies.before} → ${report.policies.after}. Seed ${report.seed}, horizon ${report.horizon_h} h.`;
+  host.appendChild(line);
+}
+
+function paintSmtCharts(report) {
+  const gantt = report.gantt;
+  if (!gantt) return;
+  ensureSmtControls();
+  renderVirtualGantt($("#gantt-before"), gantt.before || [], report);
+  renderVirtualGantt($("#gantt-after"), gantt.after || [], report);
+}
+
+function ensureSmtControls() {
+  const tools = document.querySelector(".chart-tools");
+  if (!tools || tools.querySelector(".smt-controls")) return;
+  const bar = document.createElement("div");
+  bar.className = "smt-controls";
+  bar.innerHTML = `<label>From <input id="smt-start" type="number" min="0" step="15" value="${state.smtStart}"> min</label><label>To <input id="smt-end" type="number" min="15" step="15" value="${state.smtEnd}"> min</label><button type="button" id="smt-window">Window</button><button type="button" id="smt-clear">All groups</button>`;
+  tools.appendChild(bar);
+  bar.querySelector("#smt-window").addEventListener("click", () => {
+    state.smtStart = Number(bar.querySelector("#smt-start").value) || 0;
+    state.smtEnd = Number(bar.querySelector("#smt-end").value) || 720;
+    if (state.report) paintSmtCharts(state.report);
+  });
+  bar.querySelector("#smt-clear").addEventListener("click", () => {
+    state.smtGroup = "all";
+    state.smtDrill = "";
+    if (state.report) paintSmtCharts(state.report);
+  });
+}
+
+function renderVirtualGantt(host, rows, report) {
+  const group = state.smtGroup;
+  let visible = rows.filter((row) => group === "all" || row.group === group);
+  if (state.smtDrill) {
+    const focus = report.focus || {};
+    if (state.smtDrill === focus.family && report.gantt && host.id === "gantt-after") {
+      const byTool = {};
+      for (const bar of report.gantt.focus_bars || []) {
+        (byTool[bar.tool] || (byTool[bar.tool] = [])).push(bar);
+      }
+      visible = Object.keys(byTool).sort().map((tool) => ({
+        id: tool,
+        group: focus.group,
+        bars: byTool[tool].map((bar) => ({ s: bar.s, e: bar.e, n: 1 })),
+      }));
+    }
+  }
+  host.innerHTML = "";
+  const view = document.createElement("div");
+  view.className = "vscroll";
+  const spacer = document.createElement("div");
+  const inner = document.createElement("div");
+  inner.className = "vrows";
+  view.appendChild(spacer);
+  view.appendChild(inner);
+  host.appendChild(view);
+  const rowHeight = 28;
+  const startMin = state.smtStart;
+  const endMin = Math.max(startMin + 15, state.smtEnd);
+  const span = endMin - startMin;
+  function draw() {
+    const height = view.clientHeight || 440;
+    spacer.style.height = `${visible.length * rowHeight}px`;
+    const first = Math.max(0, Math.floor(view.scrollTop / rowHeight) - 2);
+    const count = Math.ceil(height / rowHeight) + 6;
+    inner.style.transform = `translateY(${first * rowHeight}px)`;
+    inner.replaceChildren();
+    for (const row of visible.slice(first, first + count)) {
+      const line = document.createElement("div");
+      line.className = "smt-row" + (row.scanner ? " scanner" : "");
+      const label = document.createElement("button");
+      label.type = "button";
+      label.className = "smt-label";
+      label.textContent = row.id;
+      label.addEventListener("click", () => {
+        state.smtDrill = state.smtDrill === row.id ? "" : row.id;
+        paintSmtCharts(report);
+      });
+      const track = document.createElement("div");
+      track.className = "smt-track";
+      for (const bar of row.bars || []) {
+        if (bar.e <= startMin || bar.s >= endMin) continue;
+        const left = Math.max(0, (Math.max(bar.s, startMin) - startMin) / span);
+        const right = Math.min(1, (Math.min(bar.e, endMin) - startMin) / span);
+        const mark = document.createElement("i");
+        mark.style.left = `${left * 100}%`;
+        mark.style.width = `${Math.max(0.4, (right - left) * 100)}%`;
+        mark.title = `${row.id} ${bar.s}–${bar.e} min · ${bar.n} tools`;
+        track.appendChild(mark);
+      }
+      line.append(label, track);
+      inner.appendChild(line);
+    }
+  }
+  view.addEventListener("scroll", draw);
+  requestAnimationFrame(draw);
+}
+
 function paintRecover() {
   const report = state.report;
+  if (report && report.fab === "smt2020") {
+    paintSmtRecover(report);
+    return;
+  }
   const empty = $("#empty");
   const story = $("#story");
   const cards = $("#cards");

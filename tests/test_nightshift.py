@@ -139,6 +139,7 @@ def test_explain_step_slots_carry_the_request_id() -> None:
 
     settings = Settings(
         mode="auto",
+        fab="sample",
         horizon=HORIZON,
         scout_signing_secret="id-secret",
         meterless_runtime_token="real-token",

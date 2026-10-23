@@ -6,7 +6,15 @@ A production supervisor gets a line-down, a rush order, a material shortage, a l
 
 **Primary track: Track 03 — Reasoning Architecture.** The product turns fragmented factory data, a signed intent contract, a world-model event log, and bounded agent steps into a schedule a supervisor can commit. Explainability is part of that decision, not a separate product. See [why this track](#track).
 
-## What a disruption changes
+## Default console: SMT2020 LV/HM
+
+`make demo` opens the full SMT2020 fab, not the six-lot bay. The extract is 106 station families, 1,313 tools, 102 `Litho_*` tools (82 expose scanners and 20 `Litho_REG`), 10 products, and 2,156 initial WIP lots. The banner reads `data source: smt2020`. The lithography scenario holds `Litho_FE_92-1` for the published 705.59-minute lithography repair. Tool state is aggregated by station group; the Gantt is virtualized to the selected group and time window.
+
+A click simulates 12 hours so the page returns quickly. The five-seed, 48-hour comparison against EDD, FIFO, and CR is in [docs/SMT2020_SCALE.md](docs/SMT2020_SCALE.md). On that study, dispatch p50/p95 for ResiliMES is 0.004 ms / 0.138 ms, macro APS is 312.8 ms for 30,625 scanner steps, and one 48-hour ResiliMES run is about 1.4 seconds. On-time on the steady book is 57.14% for both ResiliMES and EDD, on 56 lots due inside the horizon (10 of them already late at the snapshot). FIFO is 25.36%. ResiliMES weighted tardiness is 22,264 minutes against EDD 21,611, FIFO 53,890, and CR 23,366. Those are censored at the horizon. ResiliMES does not win every column. The scale doc has the rest, including Q-time, litho utilization, the PM shift, and the hot lot `Init_Lot_10_11`.
+
+`make demo-bay` is the six-lot sample used by the unit tests below.
+
+## Sample bay (unit tests)
 
 Sample fab FAB-A, scenario clock 22 Oct 2026 06:30 UTC. Machine breakdown (`litho_down`):
 

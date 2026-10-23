@@ -192,6 +192,26 @@ h3 { font-size: var(--text-title); }
   50% { transform: scale(1.45); }
 }
 .bay small { color: var(--muted); font-family: var(--font); font-size: var(--text-label); }
+.query-line {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.smt-timing { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+.smt-controls { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.smt-controls input { width: 72px; }
+.vscroll { position: relative; max-height: 440px; overflow: auto; border-top: 1px solid var(--line); }
+.vrows { position: absolute; left: 0; right: 0; top: 0; }
+.smt-row { display: grid; grid-template-columns: 168px 1fr; height: 28px; align-items: center; gap: 6px; }
+.smt-row.scanner .smt-label { color: var(--accent); }
+.smt-label {
+  border: 0; background: transparent; text-align: left; font-family: var(--mono);
+  font-size: 11px; padding: 0; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.smt-track { position: relative; height: 16px; background: var(--wash, rgba(0,0,0,0.04)); border-radius: 3px; }
+.smt-track i { position: absolute; top: 2px; height: 12px; background: var(--accent); border-radius: 2px; opacity: 0.8; }
 .custom-wrap { color: var(--muted); font-size: 14px; }
 .custom-wrap summary { cursor: pointer; }
 textarea {

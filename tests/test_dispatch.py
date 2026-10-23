@@ -15,7 +15,9 @@ from resilimes.txn.store import InMemoryStateStore
 
 
 def _settings() -> Settings:
-    return Settings(mode="mock", horizon=HORIZON, scout_signing_secret="intent-secret")
+    return Settings(
+        mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="intent-secret"
+    )
 
 
 def _plant(settings: Settings | None = None) -> Plant:

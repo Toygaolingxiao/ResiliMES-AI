@@ -61,7 +61,11 @@ The client is the scaffold in `agent/tools_zetaris.py`:
 
 `resilimes/data/zetaris_source.py` issues one `SELECT` per table from `resilimes/data/sql_catalog.py` and builds the same `Plant` the scheduler uses. The schema identifier is validated so it cannot carry a second statement.
 
-`data/sql/seed.sql` and `data/zetaris/*.csv` are generated from `data/sample` by `python scripts/export_zetaris_sql.py`. `tests/test_sql_export.py` fails if those files drift. `scripts/zetaris_setup.sh` loads that seed, plus `data/sql/kernel.sql` when it exists, into Postgres and registers datasources `resilimes`, `fab_cmms`, and `fab_erp`. `scripts/load_zetaris.py` only points at that script.
+`data/sql/seed.sql` and `data/zetaris/*.csv` are generated from `data/sample` by `python scripts/export_zetaris_sql.py`. `tests/test_sql_export.py` fails if those files drift. `scripts/zetaris_setup.sh` loads that seed, plus `data/sql/kernel.sql` when it exists, into Postgres and registers datasources `resilimes` (MES, including lots, operations, and the setup matrix), `fab_cmms` (maintenance logs and the PM calendar), and `fab_erp` (BOM, materials, orders). `scripts/load_zetaris.py` only points at that script.
+
+The default console does not send those reads through Zetaris. It loads `data/smt2020` in process: `tool.txt.1l`, `WIP.txt`, `route_1.txt`–`route_10.txt`, `setup.txt`, `pmcal.txt`, `attach.txt`, and `downcal.txt`. The banner and the log line say `data source: smt2020`, and the query line names those files. A live Zetaris round-trip per dispatch would dominate the latency the scale study measures, and this repository does not assume the platform container is up. The federated sample query in `resilimes.data.zetaris_layout.FEDERATED_SQL` joins `resilimes.equipment`, `fab_cmms.maintenance_logs`, `resilimes.wip_jobs`, `fab_erp.bom`, and `fab_erp.materials`. That query is for the sample catalog. It is not what the full-fab simulator executes.
+
+Assumption to check on the owner's platform: `scripts/zetaris_setup.sh` still registers those three datasources, `POST /sql-editor/sqls/run-query` still returns string cells, and `X-Org-ID` is still required. The full-fab numbers in [SMT2020_SCALE.md](SMT2020_SCALE.md) do not depend on that call.
 
 In mock mode the specialist still records those SQL strings and answers them from the sample files. The trace labels the mode `sample-equivalent`, so a recording does not imply a live warehouse call. `tests/test_recovery.py::test_zetaris_headers_and_row_shape` checks the bearer token, org header, request id, URL, and the `headers` + `data` row shape, including a body wrapped in `result`.
 
@@ -87,6 +91,20 @@ Mock mode uses `MockProvider` with the same `complete()` signature. The report f
 ## Cursor
 
 The scaffold (`agent/`, `prompts/`, the original sample files, `smoke_test.py`) and this completion were written in Cursor. Cursor's agent mode produced the scheduler, the three engines, the console, the test suite, CI, and the submission docs in this branch. The team should say that on the slide and in the HackOS sponsor field: Cursor was the build environment, not a runtime dependency of the fab.
+
+## Full SMT2020 fab
+
+The working feature on `make demo` is dispatch of the SMT2020 LV/HM fab. Scout still classifies the scenario sentence and signs the contract before the run. The test that proves Scout is `tests/test_scout_engine.py`. The test that proves the fab counts and a short full-tool dispatch is `tests/test_smt_fab.py`.
+
+Nightshift remains the only model provider. Base URL `METERLESS_BASE_URL`, default `http://127.0.0.1:8088/v1`. The model id is `nvidia/nemotron-3.5-lightning-30b-a3b`. On the sample-bay path it rewrites the supervisor note and the tool-call text. The full-fab book does not call it. A live request id appears in the sample-bay console when a runtime token is set (`provider_call.meterless_request_id` and the Nightshift step). The full-fab schedule is the dispatcher.
+
+Measured means for five seeds and a 48-hour horizon are in [SMT2020_SCALE.md](SMT2020_SCALE.md). Dispatch p50/p95 on the ResiliMES steady book: 0.004 ms / 0.138 ms. Macro APS: 312.8 ms. One 48-hour simulation: about 1.4 s.
+
+## Pre-existing code declaration
+
+The build window opens 2026-10-22 00:00 UTC (2026-10-22 09:00 JST) and closes 2026-10-27 23:45 UTC (2026-10-28 08:45 JST). That window is in [hackathon/HACKATHON_RULES.md](hackathon/HACKATHON_RULES.md).
+
+`git log --reverse` shows the first commit at 2026-10-22 22:22 UTC (`83f37fc`, "Initial commit"). There is no commit before the window opened. There is no separate pre-window product in this repository. The scaffold, the six-lot sample bay, Scout, World Model, Markovian, the Nightshift client, and the sample console were all written after that first commit and inside the window. This branch adds the SMT2020 kernel tables, the Zetaris datasource layout, the optional Redis state store, and the full-fab simulator.
 
 ## What is unusual about the combination
 

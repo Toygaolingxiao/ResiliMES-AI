@@ -33,6 +33,8 @@ from resilimes.domain.scenarios import list_scenarios
 from resilimes.engines.contracts import ContractError
 from resilimes.llm.nightshift import probe_nightshift
 from resilimes.logging_config import configure_logging
+from resilimes.smt.scenarios import SCENARIOS as SMT_SCENARIOS
+from resilimes.smt.scenarios import run_smt, scenario_payload
 from resilimes.txn.engine import InMemoryEngine, LockError
 from resilimes.txn.store import build_store
 
@@ -63,26 +65,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         cfg: Settings = app.state.settings
         try:
             llm = "nightshift" if cfg.use_nightshift else "mock"
-            data = "zetaris" if cfg.use_zetaris else "sample"
+            data = "smt2020" if cfg.fab == "smt2020" else "zetaris" if cfg.use_zetaris else "sample"
         except ConfigError as exc:
             return {"status": "misconfigured", "detail": str(exc), "version": __version__}
-        return {
+        body: dict[str, object] = {
             "status": "ok",
             "version": __version__,
             "mode": cfg.mode,
+            "fab": cfg.fab,
             "llm": llm,
             "data": data,
-            "label": "OFFLINE MOCK" if llm == "mock" and data == "sample" else llm.upper(),
+            "data_source": data,
+            "label": "SMT2020"
+            if data == "smt2020"
+            else ("OFFLINE MOCK" if llm == "mock" and data == "sample" else llm.upper()),
             "nightshift_configured": cfg.token_configured,
             "zetaris_configured": cfg.zetaris_configured,
             "nemotron_model": cfg.nemotron_model if cfg.token_configured else None,
             "engines": ["scout-intent", "world-model", "markovian"],
             "horizon": cfg.horizon.strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
+        if cfg.fab == "smt2020":
+            from resilimes.smt.fab import load_fab
+
+            fab = load_fab()
+            body["groups"] = len(fab.families)
+            body["tools"] = len(fab.tool_name)
+            body["litho_tools"] = fab.litho_tools
+            body["lots"] = len(fab.lot_id)
+        return body
 
     @app.get("/api/scenarios")
     def scenarios() -> dict[str, object]:
         cfg: Settings = app.state.settings
+        if cfg.fab == "smt2020":
+            return scenario_payload()
         try:
             plant, _records = build_source(cfg).load_plant(cfg.horizon)
         except (ConfigError, ZetarisDataError, PlantDataError) as exc:
@@ -128,6 +145,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/recover")
     def recover(body: RecoverBody) -> dict[str, object]:
+        if _smt_request(app.state.settings, body.scenario):
+            try:
+                return run_smt(
+                    app.state.settings,
+                    body.scenario or "",
+                    actor_role=body.actor_role,
+                    actor_id=body.actor_id,
+                )
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+        _guard_fab(app.state.settings, body.scenario)
         try:
             report = run_recovery(
                 app.state.settings,
@@ -160,7 +188,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
             def work() -> None:
                 try:
-                    report = run_recovery(
+                    if _smt_request(app.state.settings, body.scenario):
+                        report = run_smt(
+                            app.state.settings,
+                            body.scenario or "",
+                            actor_role=body.actor_role,
+                            actor_id=body.actor_id,
+                            on_event=on_event,
+                        )
+                        events.put(("report", report))
+                        return
+                    _guard_fab(app.state.settings, body.scenario)
+                    sample = run_recovery(
                         app.state.settings,
                         RecoverInput(
                             scenario=body.scenario,
@@ -170,7 +209,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         ),
                         on_event=on_event,
                     )
-                    events.put(("report", report.model_dump()))
+                    events.put(("report", sample.model_dump()))
                 except KeyError as exc:
                     events.put(("error", {"status": 404, "detail": str(exc)}))
                 except ValueError as exc:
@@ -213,6 +252,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return FileResponse(_STATIC / "index.html")
 
     return app
+
+
+def _smt_request(settings: Settings, scenario: str | None) -> bool:
+    return settings.fab == "smt2020" and scenario in SMT_SCENARIOS
+
+
+def _guard_fab(settings: Settings, scenario: str | None) -> None:
+    if settings.fab == "smt2020" and scenario not in SMT_SCENARIOS:
+        raise ValueError(
+            "The SMT2020 console runs litho_down, hot_lot, pm_avoid, wip_threshold, and qtime."
+        )
 
 
 def _pace_ms(settings: Settings, requested: int | None) -> int:

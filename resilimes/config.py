@@ -2,7 +2,9 @@
 
 `RESILIMES_MODE=auto` (the default) uses Nightshift and Zetaris when their
 credentials are present and the offline twins otherwise. `make demo` forces
-`mock` so a fresh machine never needs credentials.
+`mock` so a fresh machine never needs a model token. The console fab defaults
+to the full SMT2020 extract (`RESILIMES_FAB=smt2020`). `RESILIMES_FAB=sample`
+is the six-lot bay used by unit tests.
 """
 
 from __future__ import annotations
@@ -41,6 +43,7 @@ def _env(name: str, default: str = "") -> str:
 
 class Settings(BaseModel):
     mode: str = "auto"
+    fab: str = "smt2020"
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "INFO"
@@ -109,6 +112,9 @@ def load_settings() -> Settings:
     mode = _env("RESILIMES_MODE", "auto").lower() or "auto"
     if mode not in {"auto", "mock", "live"}:
         raise ConfigError("RESILIMES_MODE must be auto, mock, or live")
+    fab = _env("RESILIMES_FAB", "smt2020").lower() or "smt2020"
+    if fab not in {"smt2020", "sample"}:
+        raise ConfigError("RESILIMES_FAB must be smt2020 or sample")
     horizon_raw = _env("RESILIMES_HORIZON")
     horizon = HORIZON
     if horizon_raw:
@@ -123,6 +129,7 @@ def load_settings() -> Settings:
     timeout_raw = _env("ZETARIS_TIMEOUT_S", "30") or "30"
     return Settings(
         mode=mode,
+        fab=fab,
         host=_env("RESILIMES_HOST", "0.0.0.0"),
         port=int(_env("RESILIMES_PORT", "8000") or "8000"),
         log_level=_env("RESILIMES_LOG_LEVEL", "INFO"),
