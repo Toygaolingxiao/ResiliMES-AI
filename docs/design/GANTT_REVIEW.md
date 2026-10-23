@@ -148,3 +148,21 @@ Role A signs. The window is the work, Now is the left edge, the late lithography
 Role B signs. One type size, one window, ticks on the instants they name, ids inside the row, due words under the clock, and the frame does not scroll.
 
 Role C signs. The lithography pair shows the lot leaving the down scanner and the book ending before the old makespan. The other four scenarios use the width for the lots that moved, the hold, or the rework stripe. The refusal and the three numbers are still the sentence. The chart now agrees with it.
+
+## Round 3 — fill the card, keep every id off the edges
+
+The signed frames still left the bottom of each chart card empty, and several ids sat on a bar edge or on the Now line. Lithography's 1001 on LITHO-02 and on ETCH-01, the 1002 at the left of a row, and the CMP captions were the examples.
+
+Role A: the window stays as signed. Taller rows make the down hatch and the moved bars easier to read during recovery. A by-lot book with seven rows has to stay inside the same 1920×1080 frame.
+
+Role B: the row height is the card height divided by the row count, clamped between 48px and 112px. At this frame the clamp does not bind, so six tool rows are 90px and the axis is flush with the bottom of the card, 6px under the last row. The bar grows with the row and keeps an 18px caption band above it. An id is drawn inside the bar only when 4px remains on both sides and the glyphs clear the Now line. Otherwise it sits 7px to the right of the bar. Otherwise it sits in the caption rail, which ends 4px above the bar and starts 6px clear of Now. Two ids never share a rectangle.
+
+Role C: the empty card made the recovery look small on a recording. The taller bars are the picture. No new color, no new row.
+
+Measured at 1920×1080 after the change. `scrollHeight` 1080, recover panel overflow 0, legend bottom 1058. Tool rows are 90px on lithography, rush, shortage, and queue time, and 93px on rework. Slack under the axis is 0. Rush by lot is 6 rows at 90px beside 7 rows at 76px, and that frame still does not scroll. Glyph rectangles do not intersect a bar edge, the Now line, or another id, on every scenario in both views.
+
+Role A signs. The scale, the late bar, the hatch, and the dues are unchanged, and the rows now use the card.
+
+Role B signs. The axis is in the same place on both charts, the ids are inside a bar, just to its right, or in the rail, and nothing touches an edge.
+
+Role C signs. The move is the tall object in the card, and the frame is still one screen.

@@ -1482,7 +1482,8 @@ function renderGantt(host, gantt, horizon, scale, draw) {
       axis.appendChild(tick);
     }
   }
-  host.append(wrap, axis);
+  wrap.appendChild(axis);
+  host.appendChild(wrap);
   wrap.querySelectorAll(".track").forEach((track) => {
     layoutTrack(track, scale);
     if (track.dataset.links === "1") drawLinks(track);
@@ -1492,7 +1493,7 @@ function renderGantt(host, gantt, horizon, scale, draw) {
 
 function drawDues(wrap, gantt, scale) {
   const track = wrap.querySelector(".track");
-  const axis = wrap.nextElementSibling;
+  const axis = wrap.querySelector(".axis");
   const span = scale.end_min - scale.start_min;
   if (!track || !axis || !span) return;
   const wrapBox = wrap.getBoundingClientRect();
@@ -1516,6 +1517,7 @@ function drawDues(wrap, gantt, scale) {
     mark.className = "due-line";
     const pct = ((due.due_min - scale.start_min) / span) * 100;
     mark.style.left = `${origin + (pct / 100) * width}px`;
+    mark.style.bottom = `${axis.offsetHeight + 4}px`;
     wrap.appendChild(mark);
     cap.style.left = `${pct}%`;
     if (pct > 88) cap.style.transform = "translateX(-100%)";
@@ -1607,6 +1609,7 @@ function layoutTrack(track, scale) {
   const origin = scale.start_min;
   const span = scale.end_min - origin;
   if (!width || !span) return;
+  track.querySelectorAll(".rail-label, .side-label").forEach((node) => node.remove());
   const items = [...track.querySelectorAll(".bar")]
     .map((node) => ({ node, start: Number(node.dataset.start), end: Number(node.dataset.end) }))
     .sort((a, b) => a.start - b.start);
@@ -1624,7 +1627,11 @@ function layoutTrack(track, scale) {
     item.lane = lane;
   });
   const laneCount = Math.max(1, laneEnds.length);
-  if (laneCount > 1) track.style.height = `${4 + laneCount * 34}px`;
+  const inset = 4;
+  const nowClear = 6;
+  const gap = 4;
+  const rails = [];
+  const sides = [];
   items.forEach((item) => {
     const later = items.filter((other) => other.lane === item.lane && other.left > item.left + 0.5);
     const nextLeft = later.length ? Math.min(...later.map((other) => other.left)) : width;
@@ -1635,40 +1642,56 @@ function layoutTrack(track, scale) {
     item.node.style.width = `${item.draw}px`;
     if (laneCount > 1) {
       item.node.style.top = `${2 + item.lane * 34}px`;
+      item.node.style.height = "30px";
       item.node.classList.add("stacked");
     } else {
       item.node.style.top = "";
+      item.node.style.height = "";
       item.node.classList.remove("stacked");
     }
     const label = item.node.querySelector(".bar-label");
     const text = label ? label.textContent : "";
     const need = textWidth(text);
     item.node.classList.remove("lane-above", "lane-below", "silent");
-    item.need = need;
-    item.text = text;
-    if (!text || item.draw >= need) return;
+    if (label) label.style.paddingLeft = "";
+    if (!text) {
+      item.node.classList.add("silent");
+      return;
+    }
+    const padLeft = Math.max(inset, item.left < nowClear ? nowClear - item.left : inset);
+    if (!item.node.classList.contains("stacked") && padLeft + need + inset <= item.draw) {
+      label.style.paddingLeft = `${padLeft}px`;
+      return;
+    }
     item.node.classList.add("silent");
-    item.caption = track.dataset.links !== "1" && !item.node.classList.contains("stacked");
-  });
-  const captions = items.filter((item) => item.caption);
-  captions.sort((a, b) => {
-    const rank = (item) => (item.node.classList.contains("moved") || item.node.classList.contains("fresh") ? 0 : 1);
-    return rank(a) - rank(b) || a.left - b.left;
-  });
-  const placed = [];
-  captions.forEach((item) => {
-    let left = item.left;
-    if (left + item.need > width) left = Math.max(0, width - item.need);
-    const right = left + item.need;
-    if (right > width + 1) return;
-    if (placed.some((span) => left < span[1] + 2 && right > span[0] - 2)) return;
-    placed.push([left, right]);
+    if (item.node.classList.contains("stacked")) return;
+    const sideLeft = item.left + item.draw + gap;
+    const sideLimit = nextLeft >= width - 0.5 ? width : nextLeft - gap;
+    if (sideLeft >= nowClear && sideLeft + need <= sideLimit && !hits(sides, sideLeft, sideLeft + need, gap)) {
+      sides.push([sideLeft, sideLeft + need]);
+      const cap = document.createElement("span");
+      cap.className = "side-label";
+      cap.textContent = text;
+      cap.style.left = `${sideLeft}px`;
+      track.appendChild(cap);
+      return;
+    }
+    if (track.dataset.links === "1") return;
+    let railLeft = Math.max(item.left, nowClear);
+    if (railLeft + need > width) railLeft = Math.max(nowClear, width - need);
+    const railRight = railLeft + need;
+    if (railLeft < nowClear || railRight > width + 1 || hits(rails, railLeft, railRight, gap)) return;
+    rails.push([railLeft, railRight]);
     const cap = document.createElement("span");
     cap.className = "rail-label";
-    cap.textContent = item.text;
-    cap.style.left = `${left}px`;
+    cap.textContent = text;
+    cap.style.left = `${railLeft}px`;
     track.appendChild(cap);
   });
+}
+
+function hits(placed, left, right, gap) {
+  return placed.some((span) => left < span[1] + gap && right > span[0] - gap);
 }
 
 function textWidth(text) {
@@ -1681,6 +1704,7 @@ function textWidth(text) {
     document.body.appendChild(probe);
     textWidth.probe = probe;
   }
+  textWidth.probe.style.padding = "0";
   textWidth.probe.textContent = text;
   return textWidth.probe.offsetWidth;
 }
