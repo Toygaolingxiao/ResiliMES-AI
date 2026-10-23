@@ -3,67 +3,81 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23141a16'/%3E%3Crect x='3' y='4' width='10' height='2' fill='%233ecf8e'/%3E%3Crect x='3' y='8' width='6' height='2' fill='%23f0b429'/%3E%3C/svg%3E" />
-    <title>ResiliMES — recovery console</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%23e4eaeb'/%3E%3Crect x='3' y='3' width='3' height='10' rx='1' fill='%231d6b45'/%3E%3Crect x='7' y='6' width='3' height='7' rx='1' fill='%238a5a00'/%3E%3Crect x='11' y='9' width='2' height='4' rx='1' fill='%23b4332a'/%3E%3C/svg%3E" />
+    <title>ResiliMES — recovery</title>
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
     <header class="top">
       <div class="brand">
-        <span class="mark" aria-hidden="true"></span>
+        <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
         <div>
-          <p class="eyebrow">FAB-A · Track 03 Reasoning Architecture</p>
           <h1>ResiliMES</h1>
+          <p id="scope" class="scope"></p>
         </div>
       </div>
       <div class="top-meta">
-        <p id="clock" class="clock">Scenario clock —</p>
-        <span id="mode-badge" class="badge">…</span>
+        <p id="clock" class="clock"></p>
+        <div class="langs" role="group" aria-labelledby="lang-label">
+          <span id="lang-label" class="lang-label"></span>
+          <button type="button" data-lang="en">English</button>
+          <button type="button" data-lang="zh">中文</button>
+          <button type="button" data-lang="ja">日本語</button>
+        </div>
+        <span id="mode-badge" class="badge"></span>
       </div>
     </header>
     <p id="banner" class="banner" hidden></p>
     <main class="layout">
       <aside class="rail">
-        <h2>Disruption</h2>
+        <h2 id="disruption-label"></h2>
         <div id="scenarios" class="scenario-list"></div>
-        <label class="custom" for="incident">Or describe one</label>
-        <textarea id="incident" rows="4" placeholder="Machine Litho-02 Down, repair ETA 600 minutes"></textarea>
-        <button id="run" class="run" type="button">Run recovery</button>
-        <p id="status" class="status" role="status">Select a disruption.</p>
+        <h2 id="bay-label"></h2>
+        <ul id="bay" class="bay"></ul>
+        <label class="custom" id="describe-label" for="incident"></label>
+        <textarea id="incident" rows="3"></textarea>
+        <button id="run" class="run" type="button"></button>
+        <p id="status" class="status" role="status"></p>
       </aside>
-      <section class="workspace" id="workspace">
-        <div id="empty" class="empty">
-          <h2>A line-down should not wait for a planner to rebuild the shift by hand.</h2>
-          <p>
-            ResiliMES reads the plant, classifies the disruption, reschedules around
-            capability, setup, staffing and material, and refuses plans that break those constraints.
-          </p>
+      <section class="workspace">
+        <div id="finding" class="finding">
+          <h2 id="headline"></h2>
+          <ul id="points"></ul>
+          <details id="detail">
+            <summary id="detail-summary"></summary>
+            <p id="detail-body"></p>
+          </details>
+        </div>
+        <div id="kpis" class="kpi-strip" hidden></div>
+        <div class="loop" aria-live="polite">
+          <ol id="agents" class="agents"></ol>
+          <p id="agent-line" class="agent-line"></p>
+          <p id="agent-evidence" class="agent-evidence"></p>
         </div>
         <div id="result" hidden>
-          <p id="narrative" class="narrative"></p>
-          <div id="kpis" class="kpis"></div>
           <div class="charts">
             <article>
-              <header><h3 id="before-label">Before</h3></header>
+              <header><h3 id="before-label"></h3></header>
               <div id="gantt-before"></div>
             </article>
             <article>
-              <header><h3 id="after-label">After</h3></header>
+              <header><h3 id="after-label"></h3></header>
               <div id="gantt-after"></div>
             </article>
           </div>
+          <ul id="legend" class="legend"></ul>
           <div class="split">
             <article>
-              <header><h3>Lots</h3></header>
+              <header><h3 id="lots-label"></h3></header>
               <div class="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Lot</th>
-                      <th>Pri</th>
-                      <th>Before</th>
-                      <th>After</th>
-                      <th>Tardiness</th>
+                      <th id="th-lot"></th>
+                      <th id="th-pri" class="num"></th>
+                      <th id="th-before"></th>
+                      <th id="th-after"></th>
+                      <th id="th-tardy" class="num"></th>
                     </tr>
                   </thead>
                   <tbody id="lots"></tbody>
@@ -71,17 +85,14 @@
               </div>
             </article>
             <article>
-              <header><h3>Why the critic committed this</h3></header>
+              <header><h3 id="critic-label"></h3></header>
               <div id="decision" class="decision"></div>
             </article>
           </div>
-          <article class="trace-card">
-            <header><h3>Agent trace</h3></header>
-            <ol id="trace" class="trace"></ol>
-          </article>
         </div>
       </section>
     </main>
+    <div id="tip" class="tip" hidden></div>
     <script src="/assets/app.js"></script>
   </body>
 </html>

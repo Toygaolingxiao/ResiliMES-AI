@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import json
+import queue
+import threading
+import time
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -27,6 +33,7 @@ class RecoverBody(BaseModel):
     incident: str | None = None
     actor_id: str = "planner.ops"
     actor_role: str = Field(default="planner", max_length=40)
+    pace_ms: int | None = Field(default=None, ge=0, le=2000)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -87,6 +94,56 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         return report.model_dump()
 
+    @app.post("/api/recover/stream")
+    def recover_stream(body: RecoverBody) -> StreamingResponse:
+        pace = _pace_ms(app.state.settings, body.pace_ms)
+
+        def generate() -> Iterator[bytes]:
+            events: queue.Queue[tuple[str, dict[str, Any]] | None] = queue.Queue()
+
+            def on_event(event: dict[str, Any]) -> None:
+                events.put(("step", event))
+
+            def work() -> None:
+                try:
+                    report = run_recovery(
+                        app.state.settings,
+                        RecoverInput(
+                            scenario=body.scenario,
+                            incident=body.incident,
+                            actor_id=body.actor_id,
+                            actor_role=body.actor_role,
+                        ),
+                        on_event=on_event,
+                    )
+                    events.put(("report", report.model_dump()))
+                except KeyError as exc:
+                    events.put(("error", {"status": 404, "detail": str(exc)}))
+                except ValueError as exc:
+                    events.put(("error", {"status": 422, "detail": str(exc)}))
+                except ContractError as exc:
+                    events.put(("error", {"status": 409, "detail": str(exc)}))
+                except (ConfigError, ZetarisDataError, PlantDataError) as exc:
+                    events.put(("error", {"status": 503, "detail": str(exc)}))
+                finally:
+                    events.put(None)
+
+            threading.Thread(target=work, daemon=True).start()
+            while True:
+                item = events.get()
+                if item is None:
+                    break
+                kind, payload = item
+                yield _sse(kind, payload)
+                if kind == "step" and pace > 0:
+                    time.sleep(pace / 1000)
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     @app.post("/api/providers/probe")
     def probe() -> dict[str, object]:
         cfg: Settings = app.state.settings
@@ -102,3 +159,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return FileResponse(_STATIC / "index.html")
 
     return app
+
+
+def _pace_ms(settings: Settings, requested: int | None) -> int:
+    if requested is not None:
+        return requested
+    if settings.mode == "live":
+        return 0
+    if settings.mode == "auto" and settings.token_configured:
+        return 0
+    return 680
+
+
+def _sse(event: str, payload: dict[str, Any]) -> bytes:
+    data = json.dumps(payload, separators=(",", ":"), default=str)
+    return f"event: {event}\ndata: {data}\n\n".encode()

@@ -39,6 +39,9 @@ src = ["resilimes", "agent", "tests"]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"resilimes/agents/brief.py" = ["RUF001"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["resilimes", "agent"]
 
