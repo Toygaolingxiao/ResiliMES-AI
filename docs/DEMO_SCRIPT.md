@@ -36,7 +36,7 @@ Press **Run** on **Machine breakdown**. That row is the only one that turns acti
 
 When the headline lands, stay on Recover. Read the sentence, then the refusal under it, then the three cards, then both charts. Everything is above the fold.
 
-"LOT-1001 leaves LITHO-02. The refused move was starting that lot on LITHO-02 at time zero. The tool is down until minute 600. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 12 hours 24 minutes to zero. Lots at risk go from one to zero."
+"LOT-1001 leaves LITHO-02. The refused move was starting that lot on LITHO-02 at time zero. The tool is down until minute 600. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 12 hours 24 minutes to zero. Lots at risk go from one to zero. The badge on the chart row says the list scheduler is within 0% of optimal, proved."
 
 The `?` on a card states the formula. **Details** opens Analyze. Do not click it yet.
 
@@ -94,7 +94,7 @@ If you have the live clip, cut it here for five seconds: the JSON `provider` and
 
 Press **Run** on **Scale**. Stay on Recover. Do not scroll. This frame is a tool strip, not a lot Gantt.
 
-"A thousand lots, 36 tools, one scanner down. The left strip is EDD dispatch: it already meets every due date, and the 24 priority-1 lots are on scanners that are up. Priority recovery matches on-time delivery, weighted tardiness, and lots at risk. All three stay at 100%, zero, and zero. The hatch is the down scanner. Schedule and critic, under a second."
+"A thousand lots, 36 tools, one scanner down. The left strip is EDD dispatch: it already meets every due date, and the 24 priority-1 lots are on scanners that are up. Priority recovery matches on-time delivery, weighted tardiness, and lots at risk. All three stay at 100%, zero, and zero. The hatch is the down scanner. Schedule and critic, under a second. The badge on the chart row is the CP-SAT neighborhood. The three cards stay on the list schedule."
 
 Point at the chart title "vs. EDD dispatch". Point at the stat line: schedule, critic, 1,000 lots, 36 tools, 3,426 steps, 14 passed. The three cards are flat. The strip is the first 12 hours. CMP stays the bottleneck, about 84.7%. The refused line names LITHO-03 down until minute 600.
 
@@ -108,7 +108,7 @@ Stop. Do not add a chatbot ending.
 
 Press **Run** on **Overlay rework**. Stay on Recover.
 
-"LOT-1004 re-measures after overlay. The measure failed, so the book strips on the wet bench, re-exposes once, and measures again. The limit is one. The striped bar is the re-measure. On-time delivery stays 100 percent. Makespan grows from 5 h 28 min to 7 h 19 min."
+"LOT-1004 re-measures after overlay. The measure failed, so the book strips on the wet bench, re-exposes once, and measures again. The limit is one. The striped bar is the re-measure. On-time delivery stays 100 percent. Makespan grows from 5 h 28 min to 7 h 19 min. The badge says weighted tardiness matches optimal and the reference makespan is 36 minutes shorter. Analyze lists the steps that differ. The committed chart stays the list schedule."
 
 Open **Verify** only if you also want the queue-time row. That row is the next preset, not this one.
 
