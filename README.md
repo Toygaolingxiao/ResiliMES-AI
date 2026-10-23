@@ -122,6 +122,31 @@ python smoke_test.py
 
 Mask the token if you film that command. The console never prints it. A recovery report includes the model id, lane, and latency, and only a 12-character prefix of the contract HMAC.
 
+## Troubleshooting
+
+### Windows reserved ports
+
+On Windows with Hyper-V, WSL, or Docker, Windows may reserve TCP port ranges. Check them with:
+
+```bat
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+The range 8001–8100 is common. Nightshift's default 8088 can then fail with `listen EACCES ... 127.0.0.1:8088` in `%LOCALAPPDATA%\ai.meterless.runtime\logs\engine-0.log`.
+
+Nightshift rewrites `config.toml` on every start, and its Console has no port setting. From an elevated (Administrator) PowerShell, reserve the default ports so Hyper-V and WSL dynamic reservations leave them free:
+
+```powershell
+net stop winnat
+netsh int ipv4 add excludedportrange protocol=tcp startport=8088 numberofports=1 store=persistent
+netsh int ipv4 add excludedportrange protocol=tcp startport=11435 numberofports=1 store=persistent
+net start winnat
+```
+
+That keeps 8088 (the public API) and 11435 (Nightshift's internal fabric port) as administered exclusions. Restart Nightshift after the commands finish.
+
+ResiliMES probes the one base URL in `METERLESS_BASE_URL`. The default is `http://127.0.0.1:8088/v1`. If Nightshift listens on a different port, set `METERLESS_BASE_URL` to that origin plus `/v1`.
+
 ## Usage
 
 The console is the product. Five presets:
