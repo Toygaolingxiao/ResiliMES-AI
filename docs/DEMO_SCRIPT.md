@@ -2,7 +2,7 @@
 
 Target length: 3 minutes 20 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
 
-Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks them as hours and days: 840 minutes is 14 h, 17280 minutes is 12 d, 120 minutes is 2 h.
+Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks them as hours and days: 840 minutes is 14 h, 17280 minutes is 12 d, 560 minutes is 9 h 20 min.
 
 The Recover tab is the filmed frame. Do not scroll it. Idle shows one empty state, not a row of Waiting cards. No scenario is marked active until you press Run.
 
@@ -52,7 +52,7 @@ Leave the theme on Light. Dark is the control next to the languages, for a secon
 
 Open **Verify**.
 
-"The pill says accepted. The table is one row per constraint. Equipment status is refused, because the alternative started LOT-1001 on a down scanner. The solver commits. The model does not."
+"The pill says accepted. Each row is one registered check. Tool calendar passed on the committed book. Open that row for the refused plan that started LOT-1001 on the down scanner. Open Reticle for the same plan: the mask is on LITHO-01 until the running lot finishes. The solver commits. The model does not."
 
 Back on **Recover**, hover Nightshift. In this recording the tip reads `mock · resilimes-mock`.
 
@@ -70,7 +70,7 @@ Return to **Recover** before the next disruption.
 
 Press **Run** on **Rush order**. After the stepper:
 
-"LOT-2001 finishes 15 minutes late. The dashed tick on the after chart is its due, three hours out. On-time delivery falls from 100 to 85.7 percent. Weighted tardiness rises by 2 hours. Lots at risk go from zero to one. Pulling a running lot off its tool was refused: LOT-1002 is already running on LITHO-01. LOT-2001 is a new lot, so it is not in Lots moved."
+"LOT-2001 finishes 1 hour 10 minutes late. The dashed tick on the after chart is its due, three hours out. The reticle stays on LITHO-01 with the running lot, so the hot lot takes that scanner next and finishes at 4 h 10 min. On-time delivery falls from 100 to 85.7 percent. Weighted tardiness rises by 9 h 20 min. Lots at risk go from zero to one. Pulling a running lot off its tool was refused: LOT-1002 is already running on LITHO-01. LOT-2001 is a new lot, so it is not in Lots moved."
 
 Hover Scout on the stepper if you want the confidence. The canned rush sentence clears 92 percent.
 
@@ -108,9 +108,9 @@ Open **Verify** only if you also want the queue-time row. That row is the next p
 
 Press **Run** on **Queue time**.
 
-"LOT-1003 misses the etch queue time. Etch finished before 06:30, and CMP had 15 minutes. The book holds the lot. On-time delivery goes from 100 to 83.3 percent. Weighted tardiness goes from zero to 2 days. The refused plan started CMP at minute 120."
+"LOT-1003 misses the etch queue time. Etch finished before 06:30, and CMP had 15 minutes. The book holds LOT-1003 and LOT-1006: one reticle serializes lithography, so CMP is no longer free inside that window. On-time delivery goes from 100 to 66.7 percent. Weighted tardiness goes from zero to 4 days. The refused plan started CMP at minute 120."
 
-On **Verify**, the queue-time row says Refused. On **Analyze**, compliance goes from 100 percent to 80, with one hold.
+On **Verify**, queue time passed on the committed book. Open the row for the refused plan that started CMP after the window. On **Analyze**, compliance goes from 100 percent to 60, with two holds.
 
 ## Judging map
 

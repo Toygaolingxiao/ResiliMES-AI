@@ -35,6 +35,8 @@ class SampleSource:
             "route": sum(1 for product in plant.products if product.route_id),
             "route_steps": sum(len(product.route) for product in plant.products),
             "qtime_rule": len(plant.qtime_rules),
+            "reticle": len(plant.reticles),
+            "inhibit": len(plant.inhibits),
             "bom": sum(len(product.materials) for product in plant.products),
             "materials": len(plant.materials),
             "operators": len(plant.operators),

@@ -544,9 +544,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-weight: 650;
   background: var(--sheet);
 }
-.pill.pass { background: var(--good-wash); color: var(--good); }
-.pill.fail, .pill.reject { background: var(--alarm-wash); color: var(--alarm); }
+.pill.pass, .pill.passed { background: var(--good-wash); color: var(--good); }
+.pill.fail, .pill.failed, .pill.reject { background: var(--alarm-wash); color: var(--alarm); }
 .pill.rejected { background: var(--amber-wash); color: var(--amber); }
+.pill.skipped { background: var(--sheet); color: var(--muted); }
+table.checks th, table.checks td { padding: 4px 8px; }
+.check-reasons { font-size: 14px; }
+.check-reasons summary { cursor: pointer; color: var(--muted); }
+.check-reasons ul { margin: 4px 0 0; padding-left: 1.1em; }
 .down-note { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
 
 .note, .tip, .route {

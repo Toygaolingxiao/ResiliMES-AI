@@ -163,7 +163,15 @@ const COPY = {
     check: "Check",
     result: "Result",
     reason: "Reason",
-    verifyLead: "One row per constraint.",
+    verifyLead: "One row per registered check. Open a row for the reason.",
+    category: "Category",
+    checkStatus: "Status",
+    violations: "Violations",
+    passed: "Passed",
+    failed: "Failed",
+    skipped: "Skipped",
+    refusedPlan: "Refused plan",
+    categories: { equipment: "Equipment", lot: "Lot", process: "Process", material: "Material", time: "Time" },
     figures: "Figures",
     figuresNote: "Gray is not a direction. A hold cannot turn a shorter book green.",
     utilNote: "Highest share of up-time first.",
@@ -319,7 +327,15 @@ const COPY = {
     check: "检查",
     result: "结果",
     reason: "原因",
-    verifyLead: "一行一条约束。",
+    verifyLead: "每一条已登记的检查。打开一行看原因。",
+    category: "类别",
+    checkStatus: "状态",
+    violations: "违反",
+    passed: "通过",
+    failed: "失败",
+    skipped: "跳过",
+    refusedPlan: "被拒绝的方案",
+    categories: { equipment: "设备", lot: "批次", process: "工艺", material: "物料", time: "时间" },
     figures: "指标",
     figuresNote: "灰色不是方向。暂停不能把更短的账涂成改善。",
     utilNote: "可用时间占比从高到低。",
@@ -475,7 +491,15 @@ const COPY = {
     check: "検査",
     result: "結果",
     reason: "理由",
-    verifyLead: "制約ごとに一行。",
+    verifyLead: "登録された検査が一行。開くと理由。",
+    category: "分類",
+    checkStatus: "状態",
+    violations: "違反",
+    passed: "合格",
+    failed: "不合格",
+    skipped: "対象外",
+    refusedPlan: "拒否した案",
+    categories: { equipment: "装置", lot: "ロット", process: "工程", material: "資材", time: "時間" },
     figures: "指標",
     figuresNote: "灰色は方向ではない。保留で短い帳票を改善色にしない。",
     utilNote: "上がっている時間の割合が高い順。",
@@ -1129,6 +1153,48 @@ function paintVerify() {
     summary.append(document.createTextNode(` ${report.verdict.rationale}`));
   }
   card.appendChild(summary);
+  const validation = report.validation;
+  if (!validation || !validation.details) {
+    card.appendChild(legacyChecks(report, copy));
+    host.appendChild(card);
+    return;
+  }
+  const counts = document.createElement("p");
+  counts.className = "note-inline";
+  counts.textContent = `${validation.passed} ${copy.passed} · ${validation.failed} ${copy.failed} · ${validation.skipped} ${copy.skipped}`;
+  card.appendChild(counts);
+  const table = document.createElement("table");
+  table.className = "checks";
+  table.innerHTML = `<thead><tr><th>${escapeHtml(copy.check)}</th><th>${escapeHtml(copy.category)}</th><th>${escapeHtml(copy.checkStatus)}</th><th class="num">${escapeHtml(copy.violations)}</th><th>${escapeHtml(copy.reason)}</th></tr></thead>`;
+  const body = document.createElement("tbody");
+  const lang = state.lang || "en";
+  for (const row of validation.details) {
+    const tr = document.createElement("tr");
+    const name = (row.name && (row.name[lang] || row.name.en)) || row.id;
+    const category = (copy.categories && copy.categories[row.category]) || row.category;
+    const status = copy[row.status] || row.status;
+    const reasons = checkReasons(report, row, copy);
+    const reasonCell = reasons.length
+      ? `<details class="check-reasons"><summary>${escapeHtml(copy.reason)}</summary><ul>${reasons.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></details>`
+      : "—";
+    tr.innerHTML = `<td>${escapeHtml(name)}</td><td>${escapeHtml(category)}</td><td><span class="pill ${escapeHtml(row.status)}">${escapeHtml(status)}</span></td><td class="num">${(row.violations || []).length}</td><td>${reasonCell}</td>`;
+    body.appendChild(tr);
+  }
+  table.appendChild(body);
+  card.appendChild(table);
+  host.appendChild(card);
+}
+
+function checkReasons(report, row, copy) {
+  const reasons = (row.violations || []).map((item) => item.detail).filter(Boolean);
+  const legacy = (report.checks || []).find((item) => item.constraint === row.constraint || item.constraint === row.id);
+  if (legacy && legacy.result === "rejected" && legacy.reason && !reasons.includes(legacy.reason)) {
+    reasons.push(`${copy.refusedPlan}: ${legacy.reason}`);
+  }
+  return reasons;
+}
+
+function legacyChecks(report, copy) {
   const table = document.createElement("table");
   table.innerHTML = `<thead><tr><th>${escapeHtml(copy.check)}</th><th>${escapeHtml(copy.result)}</th><th>${escapeHtml(copy.reason)}</th></tr></thead>`;
   const body = document.createElement("tbody");
@@ -1140,8 +1206,7 @@ function paintVerify() {
     body.appendChild(tr);
   }
   table.appendChild(body);
-  card.appendChild(table);
-  host.appendChild(card);
+  return table;
 }
 
 function cardHead(title, note) {

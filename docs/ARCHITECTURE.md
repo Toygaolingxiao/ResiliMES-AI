@@ -32,17 +32,29 @@ erDiagram
     string to_step
     int max_min
   }
+  PRODUCT ||--o{ RETICLE : uses
+  PRODUCT ||--o{ INHIBIT : excludes
   WIP_JOB {
     string released_through
     string rework_of
     int rework_count
     int rework_limit
+    int release_min
+  }
+  RETICLE {
+    string reticle_id
+    string layer
+    string step
+  }
+  INHIBIT {
+    string equipment_id
+    string recipe
   }
 ```
 
 A queue-time rule says the start of `to_step` must be within `max_min` of the end of `from_step`. The sample uses etch to CMP, which is the handoff this bay actually runs. The same shape covers a clean-to-furnace limit. There is no furnace in this six-tool bay, so the seed does not invent one.
 
-The sample limit is 1100 minutes. Waiting out the scanner repair still places every lot, and LOT-1003, whose etch finished before 06:30, sits past 80 percent of that limit. The queue-time scenario tightens the B14 rule to 15 minutes. The Zetaris tables are `route`, `route_steps`, and `qtime_rule`, plus release and rework columns on `wip_jobs`. `data/sql/seed.sql` is generated from `data/sample`.
+The sample limit is 1100 minutes. Waiting out the scanner repair still places every lot, and LOT-1003, whose etch finished before 06:30, sits past 80 percent of that limit. The queue-time scenario tightens the B14 rule to 15 minutes. RET-A28-L1 is the L1 lithography mask and can be on one scanner at a time, so those lots run in series. A recipe or a product can be inhibited on a tool. A lot's `release_min` is the earliest it may start; the sample is released at 0. The Zetaris tables add `reticle` and `inhibit`, plus `release_min` on `wip_jobs`. `data/sql/seed.sql` is generated from `data/sample`.
 
 - `SampleSource` reads `data/sample` and records the SQL that Zetaris would have run.
 - `ZetarisSource` runs that SQL through `agent.tools_zetaris.run_sql` and folds the rows with `plant_from_rows`.
@@ -59,13 +71,15 @@ The schema name is checked against `^[A-Za-z_][A-Za-z0-9_]*$` before it is inter
 4. Dispatch by priority, then due time, then whether the step is in the bottleneck or feeds it, then ready time, then lot id.
 5. For each step, pick the qualified tool that minimizes estimated priority-weighted tardiness, then finish time, then setup. If the queue-time window is open and every feasible start misses it, the lot is held and the reason starts with `Q-time`. The book does not place a violating operation.
 6. Charge setup only when the setup family changes. The family on a tool at the horizon is unknown, so the first lot on a tool pays no setup.
-7. A tool runs one lot at a time. Operator demand across overlapping operations cannot exceed the pool. Material is consumed when a not-yet-started lot is dispatched. Short material holds the lot instead of driving stock negative.
+7. A tool runs one lot at a time. Operator demand across overlapping operations cannot exceed the pool. Material is consumed when a not-yet-started lot is dispatched. Short material holds the lot instead of driving stock negative. A lithography reticle is reserved with the lot and is not placed on a second tool during that interval. A lot waits until `release_min`. An inhibit row drops that tool from the flexible candidates. A frozen assignment is left on its tool.
 
 `frozen` keeps the current assignment of the current step, which is how "wait for repair" is modeled: LOT-1001 stays on LITHO-02 until `available_at_min`. `recover` may move blocked and queued lots to any qualified tool.
 
 ## Critic
 
-`critique_schedule` re-checks the committed schedule: calendar, capability, overlap, simultaneous WIP, operators, material, precedence, preemption, and queue time. A placed pair whose gap exceeds the rule is a high violation. A held lot is not a queue-time failure; the hold is how the book keeps the rule. High violations reject. Holds without a hard violation are conditional. The naive alternative (start on a down tool, preempt a running lot, expedite without resist, or start CMP after the etch window) goes through `critique_actions` and is what the console shows as rejected.
+The critic is a registry of small checks. Each one names itself in English, 中文, and 日本語, states the category (equipment, lot, process, material, or time), and lists the fields it reads. `validate` runs every check and returns passed, failed, skipped, an overall result, and the violations (`lot_id`, `tool_id`, `detail`). A check is skipped when its data is absent. Hard failures reject. Holds are a row of their own and do not reject the book, so a queue-time hold stays conditional.
+
+`critique_schedule` still walks the hard checks in the same order as before: calendar, capability, overlap, simultaneous WIP, operators, material, precedence, preemption, queue time, then rework limit, reticle, inhibit, and release time. A placed pair whose gap exceeds the rule is a high violation. A held lot is not a queue-time failure; the hold is how the book keeps the rule. The naive alternative (start on a down tool, preempt a running lot, expedite without resist, or start CMP after the etch window) goes through `critique_actions`. New action checks are appended after those, so the first refusal on the litho plan is still the down tool. The reticle refusal is the next line: RET-A28-L1 is on LITHO-01 with LOT-1002.
 
 When a recovery assigns or moves a lot onto the bottleneck area, the action reason says so, and the brief adds one sentence to its last point. Dispatch already prefers that area, and the step that feeds it, ahead of other work at the same priority and due time.
 
@@ -107,7 +121,7 @@ The explainer calls `LlmProvider.complete` once per recovery. In mock mode that 
 
 FastAPI serves `/` and `/api/*`. The page is static HTML, CSS, and JS with no build step and no external font or script host, so `make demo` works offline. `POST /api/recover/stream` emits each real step (alert, Scout, contract, Zetaris read, sense, plan, critique, explain, commit) as server-sent events while `run_recovery` is still running, then the same report as `POST /api/recover`. Mock mode inserts a 680 ms gap between those events so the console can be filmed. The gap is delivery pacing; `elapsed_ms` on each event is the compute time. `pace_ms: 0` skips it. Live mode does not pace.
 
-The Recover tab is the filmed frame: one headline, the critic's refusal, three numbers (on-time delivery, weighted tardiness, lots at risk), a slim loop stepper, and the before/after Gantt. Analyze holds the rest of the board, including a queue-time card (compliance, violations, at-risk) and the bottleneck card. Verify lists each constraint check as pass, fail, or refused, including queue time. The Gantt uses one time scale for both charts. Down time is the hatched band. A bar outline marks a lot whose tool changed. A rework bar adds a diagonal stripe on top of the area color. The bottleneck area has a mark on the tool label. A dashed tick marks a priority-1 due. KPI color comes from `tones` on the report: up or down only when the two books are comparable, otherwise flat. A stockout that holds lots out of the after book keeps makespan, lead time, X-factor, and changeovers flat. Durations on screen are hours and days; the API still speaks minutes.
+The Recover tab is the filmed frame: one headline, the critic's refusal, three numbers (on-time delivery, weighted tardiness, lots at risk), a slim loop stepper, and the before/after Gantt. Analyze holds the rest of the board, including a queue-time card (compliance, violations, at-risk) and the bottleneck card. Verify renders the registry: check, category, status, violation count, and an expander. A committed pass can still open onto the refused plan. The Gantt uses one time scale for both charts. Down time is the hatched band. A bar outline marks a lot whose tool changed. A rework bar adds a diagonal stripe on top of the area color. The bottleneck area has a mark on the tool label. A dashed tick marks a priority-1 due. KPI color comes from `tones` on the report: up or down only when the two books are comparable, otherwise flat. A stockout that holds lots out of the after book keeps makespan, lead time, X-factor, and changeovers flat. Durations on screen are hours and days; the API still speaks minutes.
 
 ## Failure behavior
 

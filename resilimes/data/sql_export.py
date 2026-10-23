@@ -18,6 +18,8 @@ TABLES = (
     "route",
     "route_steps",
     "qtime_rule",
+    "reticle",
+    "inhibit",
     "bom",
     "materials",
     "operators",
@@ -33,6 +35,8 @@ def table_rows() -> dict[str, list[dict[str, str]]]:
     materials = _read(SAMPLE / "materials.json")["materials"]
     operators = _read(SAMPLE / "operators.json")["operators"]
     rules = _read(SAMPLE / "qtime_rules.json")["rules"]
+    reticles = _read(SAMPLE / "reticle.json")["reticles"]
+    inhibits = _read(SAMPLE / "inhibit.json")["inhibits"]
     return {
         "equipment": [_equipment(row) for row in equipment],
         "wip_jobs": [_job(row) for row in jobs],
@@ -47,6 +51,8 @@ def table_rows() -> dict[str, list[dict[str, str]]]:
         "route": [_route(row) for row in _list(bom.get("routes"))],
         "route_steps": _routes(products),
         "qtime_rule": [_qtime(row) for row in rules],
+        "reticle": [_reticle(row) for row in reticles],
+        "inhibit": [_inhibit(row) for row in inhibits],
         "bom": _bom(products),
         "materials": [
             {
@@ -140,6 +146,7 @@ def _job(row: dict[str, Any]) -> dict[str, str]:
         "rework_of": _s(row.get("rework_of")),
         "rework_count": _s(row.get("rework_count") or 0),
         "rework_limit": _s(row.get("rework_limit") or 1),
+        "release_min": _s(row.get("release_min") or 0),
     }
 
 
@@ -158,6 +165,24 @@ def _qtime(row: dict[str, Any]) -> dict[str, str]:
         "from_step": _s(row["from_step"]),
         "to_step": _s(row["to_step"]),
         "max_min": _s(row["max_min"]),
+    }
+
+
+def _reticle(row: dict[str, Any]) -> dict[str, str]:
+    return {
+        "reticle_id": _s(row["reticle_id"]),
+        "product_id": _s(row.get("product_id")),
+        "layer": _s(row.get("layer")),
+        "step": _s(row.get("step")),
+    }
+
+
+def _inhibit(row: dict[str, Any]) -> dict[str, str]:
+    return {
+        "inhibit_id": _s(row["inhibit_id"]),
+        "product_id": _s(row.get("product_id")),
+        "recipe": _s(row.get("recipe")),
+        "equipment_id": _s(row["equipment_id"]),
     }
 
 

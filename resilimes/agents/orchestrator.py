@@ -15,6 +15,7 @@ from resilimes.agents.planner import naive_alternative, reject_alternative
 from resilimes.agents.specialist import gather
 from resilimes.config import Settings
 from resilimes.data.factory import build_source
+from resilimes.domain.checks import validate
 from resilimes.domain.critique import constraint_checks, critique_schedule
 from resilimes.domain.gantt import annotate_moves, build_gantt
 from resilimes.domain.kpis import (
@@ -81,6 +82,7 @@ class RecoveryReport(BaseModel):
     provider_call: dict[str, Any] | None = None
     brief: dict[str, Any] = Field(default_factory=dict)
     checks: list[dict[str, str]] = Field(default_factory=list)
+    validation: dict[str, Any] | None = None
     steps: list[dict[str, Any]] = Field(default_factory=list)
 
 
@@ -596,6 +598,7 @@ def run_recovery(
         gantt=_gantt_pair(plants.before, bundle["before"], plants.after, bundle["after"]),
         trace=trace,
         checks=constraint_checks(committed, rejected),
+        validation=validate(plants.after, bundle["after"]),
         narrative=str(bundle.get("narrative") or ""),
         facts=_public_facts(facts),
         markovian={

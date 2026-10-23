@@ -1,0 +1,16 @@
+{
+  "inhibits": [
+    {
+      "inhibit_id": "INH-C07-LITHO01",
+      "product_id": "PROD-C07",
+      "recipe": "",
+      "equipment_id": "LITHO-01"
+    },
+    {
+      "inhibit_id": "INH-L2-LITHO02",
+      "product_id": "",
+      "recipe": "LITHO_L2",
+      "equipment_id": "LITHO-02"
+    }
+  ]
+}

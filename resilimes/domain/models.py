@@ -43,6 +43,28 @@ class QTimeRule(BaseModel):
     max_min: int
 
 
+class Reticle(BaseModel):
+    """One lithography mask for a product layer. It can sit on one tool at a time."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    reticle_id: str
+    product_id: str
+    layer: str = ""
+    step: str
+
+
+class Inhibit(BaseModel):
+    """A lot or a recipe that must not run on one tool."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    inhibit_id: str
+    equipment_id: str
+    product_id: str = ""
+    recipe: str = ""
+
+
 class Product(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -123,6 +145,7 @@ class Job(BaseModel):
     rework_of: str | None = None
     rework_count: int = 0
     rework_limit: int = 1
+    release_min: int = 0
 
 
 class Plant(BaseModel):
@@ -138,6 +161,8 @@ class Plant(BaseModel):
     operators: list[Operator] = Field(default_factory=list)
     maintenance: list[MaintenanceEvent] = Field(default_factory=list)
     qtime_rules: list[QTimeRule] = Field(default_factory=list)
+    reticles: list[Reticle] = Field(default_factory=list)
+    inhibits: list[Inhibit] = Field(default_factory=list)
     source: str = "sample"
 
     def equipment_map(self) -> dict[str, Equipment]:
@@ -173,6 +198,7 @@ class StepWork(BaseModel):
     consumes_material: bool = False
     area: str = ""
     feeds: str = ""
+    recipe: str = ""
     rework: bool = False
     qtime_from: str = ""
     qtime_anchor: int | None = None

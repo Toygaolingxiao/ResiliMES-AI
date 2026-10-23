@@ -247,6 +247,16 @@ def _queue(
     constraint: str,
 ) -> dict[Lang, tuple[str, list[str], str]]:
     job = held[0].job_id if held else "The lot"
+    extra = len(held) > 1
+    hold_en = (
+        f"The book holds {len(held)} lots, including {job}." if extra else f"The book holds {job}."
+    )
+    hold_zh = f"账上暂扣 {len(held)} 个批次，包括 {job}。" if extra else f"账上暂扣 {job}。"
+    hold_ja = (
+        f"帳票は {len(held)} ロットを保留する。{job} を含む。"
+        if extra
+        else f"帳票は {job} を保留する。"
+    )
     otd_b, otd_a = _pct(before, after)
     tard_b = human_minutes(before.weighted_tardiness_min, "en")
     tard_a = human_minutes(after.weighted_tardiness_min, "en")
@@ -259,7 +269,7 @@ def _queue(
             f"{job} misses the etch queue time",
             [
                 "Etch finished before the clock. CMP had to start within 15 min.",
-                f"The book holds {job}. On-time delivery {otd_b} → {otd_a}.",
+                f"{hold_en} On-time delivery {otd_b} → {otd_a}.",
                 f"The verdict is {_verdict(verdict, 'en')}. {_refusal(constraint, 'en')}",
             ],
             (
@@ -271,7 +281,7 @@ def _queue(
             f"{job} 错过了刻蚀后的队列时间",
             [
                 "刻蚀在时钟之前已经结束。CMP 必须在 15 分钟内开工。",
-                f"账上暂扣 {job}。准时交付 {otd_b} → {otd_a}。",
+                f"{hold_zh}准时交付 {otd_b} → {otd_a}。",
                 f"评审结果{_verdict(verdict, 'zh')}。{_refusal(constraint, 'zh')}",
             ],
             (
@@ -283,7 +293,7 @@ def _queue(
             f"{job} はエッチ後の待ち時間を外した",
             [
                 "エッチは時計の前に終わっている。CMP は 15 分以内に始める。",
-                f"帳票は {job} を保留する。納期遵守 {otd_b} → {otd_a}。",
+                f"{hold_ja}納期遵守 {otd_b} → {otd_a}。",
                 f"批評は{_verdict(verdict, 'ja')}。{_refusal(constraint, 'ja')}",
             ],
             (
