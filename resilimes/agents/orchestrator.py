@@ -17,7 +17,7 @@ from resilimes.config import Settings
 from resilimes.data.factory import build_source
 from resilimes.domain.checks import validate
 from resilimes.domain.critique import constraint_checks, critique_schedule
-from resilimes.domain.gantt import annotate_moves, build_gantt
+from resilimes.domain.gantt import annotate_moves, build_gantt, shared_window
 from resilimes.domain.kpis import (
     bottleneck_report,
     compare_load,
@@ -632,7 +632,11 @@ def _gantt_pair(before_plant: Any, before: Any, after_plant: Any, after: Any) ->
     before_gantt = build_gantt(before_plant, before)
     after_gantt = build_gantt(after_plant, after)
     annotate_moves(before_gantt, after_gantt)
-    return {"before": before_gantt, "after": after_gantt}
+    return {
+        "before": before_gantt,
+        "after": after_gantt,
+        "window": shared_window(before_gantt, after_gantt),
+    }
 
 
 def _kind_for(intent_id: str) -> str:

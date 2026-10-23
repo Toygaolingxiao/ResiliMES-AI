@@ -57,6 +57,43 @@ def build_gantt(plant: Plant, schedule: Schedule) -> dict[str, object]:
     return {"rows": rows, "dues": dues}
 
 
+# At most nine labels (span / step <= 8). 15/30/60 stay readable on a short book.
+# A 16-hour lithography book steps up to 180 so the labels do not collide.
+_STEPS = (15, 30, 60, 120, 180, 240)
+_MAX_SPAN_PER_STEP = 8
+
+
+def choose_step(span: int) -> int:
+    """Smallest nice step that keeps the axis labels from crowding."""
+    for step in _STEPS:
+        if span <= step * _MAX_SPAN_PER_STEP:
+            return step
+    return _STEPS[-1]
+
+
+def shared_window(before: dict[str, object], after: dict[str, object]) -> dict[str, int]:
+    """One time window for both charts, from the work itself.
+
+    The origin stays at the scenario clock so the Now line is the left edge.
+    Down time, maintenance, and priority-1 dues do not stretch the axis: a
+    block past the window is clipped, and a due past the window is an edge chip.
+    """
+    end = _work_end(before, after)
+    padded = end + max(end // 20, 10)
+    step = choose_step(padded)
+    snapped = ((padded + step - 1) // step) * step
+    return {"start_min": 0, "end_min": snapped, "step_min": step}
+
+
+def _work_end(*gantts: dict[str, object]) -> int:
+    end = 0
+    for gantt in gantts:
+        for row in _rows(gantt):
+            for bar in _bars(row):
+                end = max(end, int(str(bar["end_min"])))
+    return end if end > 0 else 60
+
+
 def annotate_moves(before: dict[str, object], after: dict[str, object]) -> None:
     """Mark after-bars that changed tool or start, and the before-bars they left."""
     prior: dict[tuple[str, str], tuple[str, int]] = {}

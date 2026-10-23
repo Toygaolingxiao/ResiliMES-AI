@@ -1401,9 +1401,11 @@ function paintViews() {
 function renderGantt(host, gantt, horizon, scale, draw) {
   host.innerHTML = "";
   if (!gantt) return;
+  const origin = scale.start_min;
+  const span = scale.end_min - origin;
   const wrap = document.createElement("div");
-  wrap.className = "gantt" + (draw ? " draw" : "");
-  wrap.dataset.scale = String(scale);
+  wrap.className = "gantt" + (draw ? " draw" : "") + (state.view === "lot" ? " lot" : "");
+  wrap.dataset.scale = String(scale.end_min);
   const rows = state.view === "lot" ? lotRows(gantt) : gantt.rows;
   for (const row of rows) {
     const line = document.createElement("div");
@@ -1418,12 +1420,19 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     const track = document.createElement("div");
     track.className = "track";
     if (state.view === "lot") track.dataset.links = "1";
-    if (state.view !== "lot" && row.available_at_min > 0) {
-      const shade = document.createElement("div");
-      shade.className = row.status === "MAINTENANCE" ? "shade maint" : "shade down";
-      shade.style.left = "0";
-      shade.style.width = `${(row.available_at_min / scale) * 100}%`;
-      track.appendChild(shade);
+    if (state.view !== "lot" && row.available_at_min > 0 && span > 0) {
+      const visStart = Math.max(0, origin);
+      const visEnd = Math.min(row.available_at_min, scale.end_min);
+      if (visEnd > visStart) {
+        const shade = document.createElement("div");
+        shade.className = row.status === "MAINTENANCE" ? "shade maint" : "shade down";
+        shade.style.left = `${((visStart - origin) / span) * 100}%`;
+        shade.style.width = `${((visEnd - visStart) / span) * 100}%`;
+        if (row.available_at_min > scale.end_min) shade.classList.add("continues");
+        const until = formatClock(shift(horizon, row.available_at_min)).slice(11, 16);
+        shade.title = `${row.equipment_id} · ${row.status === "MAINTENANCE" ? t().maint : t().down} · ${until}`;
+        track.appendChild(shade);
+      }
     }
     for (const bar of row.bars) {
       const node = document.createElement("div");
@@ -1455,39 +1464,66 @@ function renderGantt(host, gantt, horizon, scale, draw) {
   }
   const axis = document.createElement("div");
   axis.className = "axis";
-  const step = Math.max(60, Math.round(scale / 4 / 60) * 60);
-  for (let minute = 0; minute <= scale; minute += step) {
-    const tick = document.createElement("span");
-    tick.textContent = minute === 0 ? t().now : formatClock(shift(horizon, minute)).slice(11, 16);
-    if (minute === 0) tick.className = "now-tick";
-    axis.appendChild(tick);
+  if (span > 0) {
+    for (let minute = origin; minute <= scale.end_min; minute += scale.step_min) {
+      const tick = document.createElement("span");
+      const atStart = minute === origin;
+      const atEnd = minute === scale.end_min;
+      tick.textContent = atStart ? t().now : formatClock(shift(horizon, minute)).slice(11, 16);
+      tick.style.left = `${((minute - origin) / span) * 100}%`;
+      if (atStart) {
+        tick.className = "now-tick";
+        tick.style.transform = "translateX(0)";
+      } else if (atEnd) {
+        tick.style.transform = "translateX(-100%)";
+      } else {
+        tick.style.transform = "translateX(-50%)";
+      }
+      axis.appendChild(tick);
+    }
   }
   host.append(wrap, axis);
   wrap.querySelectorAll(".track").forEach((track) => {
     layoutTrack(track, scale);
     if (track.dataset.links === "1") drawLinks(track);
   });
-  if (state.view !== "lot") drawDues(wrap, gantt, scale);
+  drawDues(wrap, gantt, scale);
 }
 
 function drawDues(wrap, gantt, scale) {
   const track = wrap.querySelector(".track");
-  if (!track || !scale) return;
+  const axis = wrap.nextElementSibling;
+  const span = scale.end_min - scale.start_min;
+  if (!track || !axis || !span) return;
   const wrapBox = wrap.getBoundingClientRect();
   const trackBox = track.getBoundingClientRect();
   const origin = trackBox.left - wrapBox.left;
   const width = trackBox.width;
+  let any = false;
   for (const due of gantt.dues || []) {
-    if (due.due_min < 0 || due.due_min > scale) continue;
-    const mark = document.createElement("div");
-    mark.className = "due-line";
-    mark.style.left = `${origin + (due.due_min / scale) * width}px`;
+    if (due.due_min < scale.start_min) continue;
+    any = true;
     const cap = document.createElement("span");
+    cap.className = "due-tick";
     cap.textContent = `${shortLot(due.job_id)} ${t().due}`;
     bindTip(cap, t().dueTip);
-    mark.appendChild(cap);
+    if (due.due_min > scale.end_min) {
+      cap.classList.add("edge");
+      axis.appendChild(cap);
+      continue;
+    }
+    const mark = document.createElement("div");
+    mark.className = "due-line";
+    const pct = ((due.due_min - scale.start_min) / span) * 100;
+    mark.style.left = `${origin + (pct / 100) * width}px`;
     wrap.appendChild(mark);
+    cap.style.left = `${pct}%`;
+    if (pct > 88) cap.style.transform = "translateX(-100%)";
+    else if (pct < 6) cap.style.transform = "translateX(0)";
+    else cap.style.transform = "translateX(-50%)";
+    axis.appendChild(cap);
   }
+  if (any) axis.classList.add("with-due");
 }
 
 function lotRows(gantt) {
@@ -1568,13 +1604,15 @@ function closeRoute() {
 
 function layoutTrack(track, scale) {
   const width = track.clientWidth;
-  if (!width || !scale) return;
+  const origin = scale.start_min;
+  const span = scale.end_min - origin;
+  if (!width || !span) return;
   const items = [...track.querySelectorAll(".bar")]
     .map((node) => ({ node, start: Number(node.dataset.start), end: Number(node.dataset.end) }))
     .sort((a, b) => a.start - b.start);
   items.forEach((item) => {
-    item.left = (item.start / scale) * width;
-    item.raw = ((item.end - item.start) / scale) * width;
+    item.left = ((item.start - origin) / span) * width;
+    item.raw = ((item.end - item.start) / span) * width;
   });
   const laneEnds = [];
   items.forEach((item) => {
@@ -1586,7 +1624,7 @@ function layoutTrack(track, scale) {
     item.lane = lane;
   });
   const laneCount = Math.max(1, laneEnds.length);
-  if (laneCount > 1) track.style.height = `${8 + laneCount * 22}px`;
+  if (laneCount > 1) track.style.height = `${4 + laneCount * 34}px`;
   items.forEach((item) => {
     const later = items.filter((other) => other.lane === item.lane && other.left > item.left + 0.5);
     const nextLeft = later.length ? Math.min(...later.map((other) => other.left)) : width;
@@ -1596,36 +1634,40 @@ function layoutTrack(track, scale) {
     item.node.style.left = `${item.left}px`;
     item.node.style.width = `${item.draw}px`;
     if (laneCount > 1) {
-      item.node.style.top = `${4 + item.lane * 22}px`;
+      item.node.style.top = `${2 + item.lane * 34}px`;
       item.node.classList.add("stacked");
     } else {
       item.node.style.top = "";
       item.node.classList.remove("stacked");
     }
-  });
-  const lanes = { above: [], below: [] };
-  items.forEach((item, index) => {
     const label = item.node.querySelector(".bar-label");
     const text = label ? label.textContent : "";
     const need = textWidth(text);
     item.node.classList.remove("lane-above", "lane-below", "silent");
-    if (!text || item.draw >= need || item.node.classList.contains("stacked")) return;
-    const labelLeft = item.left;
-    const labelRight = item.left + Math.max(0, need - 8);
-    const prefer = index % 2 === 0 ? "above" : "below";
-    const order = prefer === "above" ? ["above", "below"] : ["below", "above"];
-    let lane = "";
-    for (const candidate of order) {
-      const hit = lanes[candidate].some((span) => labelLeft < span[1] + 2 && labelRight > span[0] - 2);
-      if (!hit && labelRight <= width + 1) {
-        lane = candidate;
-        lanes[candidate].push([labelLeft, labelRight]);
-        break;
-      }
-    }
-    if (lane === "above") item.node.classList.add("lane-above");
-    else if (lane === "below") item.node.classList.add("lane-below");
-    else item.node.classList.add("silent");
+    item.need = need;
+    item.text = text;
+    if (!text || item.draw >= need) return;
+    item.node.classList.add("silent");
+    item.caption = track.dataset.links !== "1" && !item.node.classList.contains("stacked");
+  });
+  const captions = items.filter((item) => item.caption);
+  captions.sort((a, b) => {
+    const rank = (item) => (item.node.classList.contains("moved") || item.node.classList.contains("fresh") ? 0 : 1);
+    return rank(a) - rank(b) || a.left - b.left;
+  });
+  const placed = [];
+  captions.forEach((item) => {
+    let left = item.left;
+    if (left + item.need > width) left = Math.max(0, width - item.need);
+    const right = left + item.need;
+    if (right > width + 1) return;
+    if (placed.some((span) => left < span[1] + 2 && right > span[0] - 2)) return;
+    placed.push([left, right]);
+    const cap = document.createElement("span");
+    cap.className = "rail-label";
+    cap.textContent = item.text;
+    cap.style.left = `${left}px`;
+    track.appendChild(cap);
   });
 }
 
@@ -1700,16 +1742,32 @@ function hideTip() {
 }
 
 function scaleOf(report) {
-  let max = 240;
+  const shared = report.gantt && report.gantt.window;
+  if (shared && Number(shared.end_min) > Number(shared.start_min || 0)) {
+    return {
+      start_min: Number(shared.start_min) || 0,
+      end_min: Number(shared.end_min),
+      step_min: Number(shared.step_min) || 60,
+    };
+  }
+  let end = 0;
   for (const side of [report.gantt && report.gantt.before, report.gantt && report.gantt.after]) {
     if (!side) continue;
-    for (const due of side.dues || []) max = Math.max(max, due.due_min || 0);
     for (const row of side.rows || []) {
-      max = Math.max(max, row.available_at_min || 0);
-      for (const bar of row.bars) max = Math.max(max, bar.end_min);
+      for (const bar of row.bars || []) end = Math.max(end, bar.end_min || 0);
     }
   }
-  return Math.ceil(max / 60) * 60;
+  if (end <= 0) end = 60;
+  const padded = end + Math.max(Math.floor(end / 20), 10);
+  const steps = [15, 30, 60, 120, 180, 240];
+  let step = 240;
+  for (const candidate of steps) {
+    if (padded <= candidate * 8) {
+      step = candidate;
+      break;
+    }
+  }
+  return { start_min: 0, end_min: Math.ceil(padded / step) * step, step_min: step };
 }
 
 function shortLot(jobId) {

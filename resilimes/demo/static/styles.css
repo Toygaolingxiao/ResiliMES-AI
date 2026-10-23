@@ -373,7 +373,7 @@ textarea {
 .gantt-label small { display: block; color: var(--muted); font-family: var(--font); font-size: var(--text-label); }
 .track {
   position: relative;
-  height: 36px;
+  height: 48px;
   background: var(--track);
   border-radius: 4px;
   overflow: hidden;
@@ -389,6 +389,15 @@ textarea {
   z-index: 2;
 }
 .shade { position: absolute; top: 0; bottom: 0; }
+.shade.continues::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  background: linear-gradient(90deg, transparent, rgba(28, 36, 48, 0.45));
+}
 .shade.down {
   background: repeating-linear-gradient(-45deg, rgba(180, 35, 24, 0.28) 0 4px, transparent 4px 8px);
 }
@@ -397,11 +406,25 @@ textarea {
 }
 .bar {
   position: absolute;
-  top: 8px;
-  height: 20px;
+  top: 16px;
+  height: 30px;
   border-radius: 3px;
   z-index: 1;
   overflow: hidden;
+}
+.rail-label {
+  position: absolute;
+  top: 0;
+  height: 16px;
+  padding: 0 1px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 16px;
+  color: var(--ink);
+  white-space: nowrap;
+  z-index: 4;
+  pointer-events: none;
 }
 .bar.rework {
   background-image: repeating-linear-gradient(-45deg, transparent 0 4px, var(--rework-ink) 4px 6px);
@@ -411,27 +434,15 @@ textarea {
 }
 .bar-label {
   display: block;
-  padding: 0 4px;
+  padding: 0 1px;
   font-family: var(--mono);
   font-size: 14px;
   font-weight: 650;
-  line-height: 20px;
+  line-height: 30px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.bar.lane-above, .bar.lane-below { overflow: visible; }
-.bar.lane-above .bar-label, .bar.lane-below .bar-label {
-  position: absolute;
-  left: 0;
-  padding: 0;
-  line-height: 14px;
-  font-size: 14px;
-  color: var(--ink);
-  overflow: visible;
-}
-.bar.lane-above .bar-label { top: -14px; }
-.bar.lane-below .bar-label { top: 20px; }
 .bar.silent .bar-label { visibility: hidden; }
 .bar.moved {
   box-shadow: inset 0 0 0 3px var(--ink);
@@ -448,27 +459,36 @@ textarea {
   z-index: 4;
   pointer-events: none;
 }
-.due-line span {
-  position: absolute;
-  top: 0;
-  left: 4px;
-  pointer-events: auto;
-  font-size: var(--text-label);
-  font-weight: 650;
+.axis.with-due { height: 32px; }
+.axis .due-tick {
+  top: 16px;
+  height: 16px;
+  line-height: 16px;
   color: var(--accent);
+  font-weight: 650;
   white-space: nowrap;
-  background: var(--sheet);
-  padding: 0 3px;
-  border-radius: 2px;
+  z-index: 1;
+}
+.axis .due-tick.edge {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 .links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; color: var(--violet); }
 .axis {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 18px;
   margin: 2px 0 0 102px;
   color: var(--muted);
   font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
+}
+.axis span {
+  position: absolute;
+  top: 0;
+  height: 16px;
+  line-height: 16px;
+  white-space: nowrap;
 }
 .axis .now-tick { color: var(--alarm); font-weight: 650; }
 .legend {
