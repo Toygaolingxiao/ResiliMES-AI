@@ -44,6 +44,7 @@ from resilimes.engines.markovian.engine import MarkovianEngine
 from resilimes.engines.scout.engine import Decision, default_scout
 from resilimes.engines.world_model.engine import WorldModel
 from resilimes.llm.factory import build_provider
+from resilimes.llm.nightshift import call_summary
 from resilimes.logging_config import get_logger
 
 logger = get_logger("resilimes.recover")
@@ -446,13 +447,16 @@ def run_recovery(
             "explain",
             "nightshift",
             "Explain",
-            f"{result.provider} · {result.model} · {int(result.latency_ms)} ms.",
+            call_summary(result),
             [],
             {
                 "provider": result.provider,
                 "model": result.model,
                 "mocked": result.mocked,
                 "latency_ms": result.latency_ms,
+                "completion_id": result.completion_id,
+                "meterless_request_id": result.meterless_request_id,
+                "provider_model": result.provider_model,
                 "checkpoint": 4,
                 "checkpoints": 5,
             },

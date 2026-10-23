@@ -34,7 +34,7 @@ Confirmed from the Meterless provider contract published on the engines page and
 - First-call timeout of 180 seconds, because a model load can be slow.
 - 429 retries with backoff. This client uses 0.5s, 1s, and 2s across three attempts.
 
-Assumption: the Nemotron id installed for the hackathon is passed in `NEMOTRON_MODEL`. The default `nvidia/NVIDIA-Nemotron-Nano-9B-v2` matches the scaffold. The Meterless model library also lists Nemotron 3.5 Lightning and Nemotron 3 Nano. Use whichever id your Nightshift `/v1/models` list actually serves. We do not call `integrate.api.nvidia.com` directly. NVIDIA is reached through Nightshift, which is what the Academy FAQ requires.
+Assumption: the Nemotron id installed for the hackathon is passed in `NEMOTRON_MODEL`. The default `nvidia/nemotron-3.5-lightning-30b-a3b` is the Nightshift id that answers on this machine. `NEMOTRON_MAX_TOKENS` defaults to 4096, and an empty body is retried once at twice that budget. Use whichever id your Nightshift `/v1/models` list actually serves. We do not call `integrate.api.nvidia.com` directly. NVIDIA is reached through Nightshift, which is what the Academy FAQ requires.
 
 Assumption: unknown JSON fields are not sent. Nightshift explains. The critic is deterministic code in `resilimes.domain.critique` and does not call a model, so there is no critic-model setting.
 

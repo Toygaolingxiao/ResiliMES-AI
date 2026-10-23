@@ -12,3 +12,6 @@ class LlmResult(BaseModel):
     lane: str
     latency_ms: float
     mocked: bool
+    completion_id: str = ""
+    meterless_request_id: str = ""
+    provider_model: str = ""

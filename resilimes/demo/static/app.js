@@ -1602,7 +1602,13 @@ function stepOutput(phase, slots, copy) {
   if (phase === "critique") return String((copy.verdicts && copy.verdicts[slots.verdict]) || slots.verdict || "");
   if (phase === "explain") {
     const model = String(slots.model || "").split("/").pop();
-    return [slots.provider, model].filter(Boolean).join(" · ");
+    return [
+      slots.provider,
+      model,
+      slots.completion_id,
+      slots.meterless_request_id,
+      slots.provider_model,
+    ].filter(Boolean).join(" · ");
   }
   if (phase === "commit") return `${slots.events ?? 0} ${copy.events}`;
   return "";
