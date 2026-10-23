@@ -24,6 +24,45 @@ def critique_schedule(plant: Plant, schedule: Schedule) -> Critique:
     return _summarize(violations, held=bool(schedule.unscheduled))
 
 
+_CHECK_ORDER = (
+    "equipment_status",
+    "capability",
+    "overlap",
+    "wip",
+    "operators",
+    "material",
+    "precedence",
+    "preemption",
+)
+
+
+def constraint_checks(committed: Critique, rejected: Critique) -> list[dict[str, str]]:
+    """One row per constraint family for the committed book and the refused alternative.
+
+    ``pass`` means the committed schedule cleared it. ``fail`` means the
+    committed schedule did not. ``rejected`` means the committed schedule
+    cleared it and the alternative the critic refused did not.
+    """
+    names = list(_CHECK_ORDER)
+    for critique in (committed, rejected):
+        for item in critique.violations:
+            if item.constraint not in names:
+                names.append(item.constraint)
+    rows: list[dict[str, str]] = []
+    for name in names:
+        committed_hit = next(
+            (item for item in committed.violations if item.constraint == name), None
+        )
+        rejected_hit = next((item for item in rejected.violations if item.constraint == name), None)
+        if committed_hit is not None:
+            rows.append({"constraint": name, "result": "fail", "reason": committed_hit.detail})
+        elif rejected_hit is not None:
+            rows.append({"constraint": name, "result": "rejected", "reason": rejected_hit.detail})
+        else:
+            rows.append({"constraint": name, "result": "pass", "reason": ""})
+    return rows
+
+
 def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
     """Check a proposed action list that may not be a full schedule."""
     equipment = plant.equipment_map()

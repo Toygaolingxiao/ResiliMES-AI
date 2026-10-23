@@ -1,23 +1,13 @@
-"""ResiliMES multi-agent package: Planner, Specialist, Evaluator."""
+"""Live connectors used by the recovery path: Nightshift chat and the Zetaris client.
+
+The recovery loop does not import a planner or an evaluator from this package.
+Planning is `resilimes.domain.schedule`. The critic is `resilimes.domain.critique`.
+Nightshift only explains.
+"""
 
 from .llm import chat_completion, get_openai_client
 
 __all__ = [
     "chat_completion",
-    "evaluate_plan",
     "get_openai_client",
-    "plan_incident",
 ]
-
-
-def __getattr__(name: str) -> object:
-    # Lazy exports avoid runpy warnings for `python -m agent.planner|evaluator`.
-    if name == "plan_incident":
-        from .planner import plan_incident
-
-        return plan_incident
-    if name == "evaluate_plan":
-        from .evaluator import evaluate_plan
-
-        return evaluate_plan
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

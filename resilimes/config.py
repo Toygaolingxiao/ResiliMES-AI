@@ -58,7 +58,6 @@ class Settings(BaseModel):
     meterless_app_id: str = "resilimes"
     meterless_timeout_s: float = 180.0
     nemotron_model: str = "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
-    nemotron_critic_model: str = ""
     llm_max_retries: int = 3
 
     @property
@@ -108,7 +107,6 @@ def load_settings() -> Settings:
     if horizon_raw:
         horizon = datetime.fromisoformat(horizon_raw.replace("Z", "+00:00"))
     data_dir = Path(_env("RESILIMES_DATA_DIR", str(ROOT / "data" / "sample")))
-    critic = _env("NEMOTRON_CRITIC_MODEL")
     return Settings(
         mode=mode,
         host=_env("RESILIMES_HOST", "0.0.0.0"),
@@ -130,7 +128,6 @@ def load_settings() -> Settings:
         meterless_app_id=_env("METERLESS_APP_ID", "resilimes") or "resilimes",
         meterless_timeout_s=float(_env("METERLESS_TIMEOUT_S", "180") or "180"),
         nemotron_model=_env("NEMOTRON_MODEL", "nvidia/NVIDIA-Nemotron-Nano-9B-v2"),
-        nemotron_critic_model=critic,
         llm_max_retries=int(_env("LLM_MAX_RETRIES", "3") or "3"),
     )
 

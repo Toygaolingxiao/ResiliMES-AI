@@ -15,7 +15,7 @@ from resilimes.agents.planner import naive_alternative, reject_alternative
 from resilimes.agents.specialist import gather
 from resilimes.config import Settings
 from resilimes.data.factory import build_source
-from resilimes.domain.critique import critique_schedule
+from resilimes.domain.critique import constraint_checks, critique_schedule
 from resilimes.domain.gantt import annotate_moves, build_gantt
 from resilimes.domain.kpis import (
     compare_load,
@@ -23,6 +23,7 @@ from resilimes.domain.kpis import (
     flow_metrics,
     job_outcomes,
     lots_moved,
+    metric_tones,
     step_waits,
 )
 from resilimes.domain.scenarios import (
@@ -77,6 +78,7 @@ class RecoveryReport(BaseModel):
     world_model: dict[str, Any] = Field(default_factory=dict)
     provider_call: dict[str, Any] | None = None
     brief: dict[str, Any] = Field(default_factory=dict)
+    checks: list[dict[str, str]] = Field(default_factory=list)
     steps: list[dict[str, Any]] = Field(default_factory=list)
 
 
@@ -591,6 +593,7 @@ def run_recovery(
         outcomes=[row.model_dump() for row in bundle["outcomes"]],
         gantt=_gantt_pair(plants.before, bundle["before"], plants.after, bundle["after"]),
         trace=trace,
+        checks=constraint_checks(committed, rejected),
         narrative=str(bundle.get("narrative") or ""),
         facts=_public_facts(facts),
         markovian={
@@ -642,7 +645,6 @@ def _mode_banner(settings: Settings, mocked: bool, source_name: str) -> dict[str
         "data": source_name,
         "label": "OFFLINE MOCK" if mocked and source_name == "sample" else llm.upper(),
         "nemotron_model": settings.nemotron_model,
-        "critic_model": settings.nemotron_critic_model or settings.nemotron_model,
     }
 
 
@@ -699,6 +701,7 @@ def _comparison_kpis(
         "delta": _delta(before_dump, after_dump),
         "areas": {"before": before_side["areas"], "after": after_side["areas"]},
         "lots_moved": lots_moved(before, after),
+        "tones": metric_tones(before_dump, after_dump),
         "horizon_min": load["horizon_min"],
         "down": {"before": before_side["down"], "after": after_side["down"]},
         "waits": {"before": step_waits(before), "after": step_waits(after)},

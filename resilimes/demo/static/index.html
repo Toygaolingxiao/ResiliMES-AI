@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%23e4eaeb'/%3E%3Crect x='3' y='3' width='3' height='10' rx='1' fill='%231d6b45'/%3E%3Crect x='7' y='6' width='3' height='7' rx='1' fill='%238a5a00'/%3E%3Crect x='11' y='9' width='2' height='4' rx='1' fill='%23b4332a'/%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%234338ca'/%3E%3Crect x='3' y='3' width='3' height='10' rx='1' fill='%23fff'/%3E%3Crect x='7' y='6' width='3' height='7' rx='1' fill='%23e0e7ff'/%3E%3Crect x='11' y='9' width='2' height='4' rx='1' fill='%23c7d2fe'/%3E%3C/svg%3E" />
     <title>ResiliMES — recovery</title>
     <script>
       try {
@@ -16,95 +16,76 @@
   </head>
   <body>
     <div class="shell">
-    <header class="top">
-      <div class="brand">
-        <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <div>
+      <header class="top">
+        <div class="brand">
+          <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
           <h1>ResiliMES</h1>
-          <p id="scope" class="scope"></p>
+          <p id="tagline" class="tagline"></p>
+          <button type="button" id="version" class="chip"></button>
         </div>
-      </div>
-      <div class="top-meta">
-        <p id="clock" class="clock"></p>
-        <button type="button" id="theme" class="theme"></button>
-        <div class="langs" role="group" aria-labelledby="lang-label">
-          <span id="lang-label" class="lang-label"></span>
-          <button type="button" data-lang="en">English</button>
-          <button type="button" data-lang="zh">中文</button>
-          <button type="button" data-lang="ja">日本語</button>
+        <div class="top-meta">
+          <p id="clock" class="clock"></p>
+          <button type="button" id="theme" class="theme"></button>
+          <div class="langs" role="group" aria-labelledby="lang-label">
+            <span id="lang-label" class="lang-label"></span>
+            <button type="button" data-lang="en">English</button>
+            <button type="button" data-lang="zh">中文</button>
+            <button type="button" data-lang="ja">日本語</button>
+          </div>
+          <span id="mode-badge" class="badge"></span>
         </div>
-        <span id="mode-badge" class="badge"></span>
-      </div>
-    </header>
-    <p id="banner" class="banner" hidden></p>
-    <main class="layout">
-      <aside class="rail">
-        <h2 id="disruption-label"></h2>
-        <div id="scenarios" class="scenario-list"></div>
-        <h2 id="bay-label"></h2>
-        <ul id="bay" class="bay"></ul>
-        <label class="custom" id="describe-label" for="incident"></label>
-        <textarea id="incident" rows="3"></textarea>
-        <button id="run" class="run" type="button"></button>
-        <p id="status" class="status" role="status"></p>
-      </aside>
-      <section class="workspace">
-        <div id="finding" class="finding">
-          <h2 id="headline"></h2>
-          <ul id="points"></ul>
-          <details id="detail">
-            <summary id="detail-summary"></summary>
-            <p id="detail-body"></p>
+      </header>
+      <p id="banner" class="banner" hidden></p>
+      <nav id="tabs" class="tabs" role="tablist"></nav>
+      <main class="layout">
+        <aside class="rail">
+          <h2 id="disruption-label"></h2>
+          <div id="scenarios" class="scenario-list"></div>
+          <h2 id="bay-label"></h2>
+          <ul id="bay" class="bay"></ul>
+          <details class="custom-wrap">
+            <summary id="describe-label"></summary>
+            <textarea id="incident" rows="2"></textarea>
+            <button id="run-custom" class="run" type="button"></button>
           </details>
-        </div>
-        <div class="loop" aria-live="polite">
-          <ol id="agents" class="agents"></ol>
-          <p id="agent-line" class="agent-line"></p>
-          <p id="agent-evidence" class="agent-evidence"></p>
-        </div>
-        <div id="kpis" class="board" hidden></div>
-        <div id="result" hidden>
-          <div class="chart-tools">
-            <div id="views" class="views" role="group"></div>
-          </div>
-          <div class="charts">
-            <article>
-              <header><h3 id="before-label"></h3></header>
-              <div id="gantt-before"></div>
-            </article>
-            <article>
-              <header><h3 id="after-label"></h3></header>
-              <div id="gantt-after"></div>
-            </article>
-          </div>
-          <ul id="legend" class="legend"></ul>
-          <div class="split">
-            <article>
-              <header><h3 id="lots-label"></h3></header>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th id="th-lot"></th>
-                      <th id="th-pri" class="num"></th>
-                      <th id="th-before"></th>
-                      <th id="th-after"></th>
-                      <th id="th-tardy" class="num"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="lots"></tbody>
-                </table>
+          <p id="status" class="status" role="status"></p>
+        </aside>
+        <section class="workspace">
+          <div id="panel-recover" class="panel" role="tabpanel">
+            <div id="empty" class="empty">
+              <span class="empty-mark" aria-hidden="true"></span>
+              <p id="empty-title"></p>
+              <p id="empty-hint"></p>
+            </div>
+            <div id="story" hidden>
+              <h2 id="headline"></h2>
+              <p id="refusal"></p>
+            </div>
+            <div id="cards" class="cards" hidden></div>
+            <div id="stepper" class="stepper" hidden></div>
+            <div id="result" hidden>
+              <div class="chart-tools">
+                <div id="views" class="views" role="group"></div>
               </div>
-            </article>
-            <article>
-              <header><h3 id="critic-label"></h3></header>
-              <div id="decision" class="decision"></div>
-            </article>
+              <div class="charts">
+                <article>
+                  <header><h3 id="before-label"></h3></header>
+                  <div id="gantt-before"></div>
+                </article>
+                <article>
+                  <header><h3 id="after-label"></h3></header>
+                  <div id="gantt-after"></div>
+                </article>
+              </div>
+              <ul id="legend" class="legend"></ul>
+            </div>
           </div>
-        </div>
-      </section>
-    </main>
+          <div id="panel-analyze" class="panel scroll" role="tabpanel" hidden></div>
+          <div id="panel-verify" class="panel scroll" role="tabpanel" hidden></div>
+        </section>
+      </main>
     </div>
+    <div id="note" class="note" hidden></div>
     <div id="tip" class="tip" hidden></div>
     <div id="route" class="route" hidden></div>
     <script src="/assets/app.js"></script>

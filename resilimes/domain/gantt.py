@@ -42,7 +42,16 @@ def build_gantt(plant: Plant, schedule: Schedule) -> dict[str, object]:
                 "bars": bars,
             }
         )
-    return {"rows": rows}
+    dues = [
+        {
+            "job_id": job.job_id,
+            "due_min": minutes_between(plant.horizon, job.due_at),
+            "priority": job.priority,
+        }
+        for job in plant.jobs
+        if job.priority == 1
+    ]
+    return {"rows": rows, "dues": dues}
 
 
 def annotate_moves(before: dict[str, object], after: dict[str, object]) -> None:
