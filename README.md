@@ -134,9 +134,18 @@ netsh interface ipv4 show excludedportrange protocol=tcp
 
 The range 8001–8100 is common. Nightshift's default 8088 can then fail with `listen EACCES ... 127.0.0.1:8088` in `%LOCALAPPDATA%\ai.meterless.runtime\logs\engine-0.log`.
 
-Edit `%LOCALAPPDATA%\ai.meterless.runtime\config.toml`. Set `public_listen = "127.0.0.1:8787"`, and move `fabric_listen` out of the reserved ranges as well, for example `127.0.0.1:18435`, since 11435 can also be reserved. Fully restart Nightshift. In `.env`, set `METERLESS_BASE_URL=http://127.0.0.1:8787/v1`.
+Nightshift rewrites `config.toml` on every start, and its Console has no port setting. From an elevated (Administrator) PowerShell, reserve the default ports so Hyper-V and WSL dynamic reservations leave them free:
 
-ResiliMES probes that one configured base URL. The default is `http://127.0.0.1:8088/v1`: `/healthz` on the origin, then `/v1/models` when a runtime token is set.
+```powershell
+net stop winnat
+netsh int ipv4 add excludedportrange protocol=tcp startport=8088 numberofports=1 store=persistent
+netsh int ipv4 add excludedportrange protocol=tcp startport=11435 numberofports=1 store=persistent
+net start winnat
+```
+
+That keeps 8088 (the public API) and 11435 (Nightshift's internal fabric port) as administered exclusions. Restart Nightshift after the commands finish.
+
+ResiliMES probes the one base URL in `METERLESS_BASE_URL`. The default is `http://127.0.0.1:8088/v1`. If Nightshift listens on a different port, set `METERLESS_BASE_URL` to that origin plus `/v1`.
 
 ## Usage
 
