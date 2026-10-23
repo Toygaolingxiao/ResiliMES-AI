@@ -53,7 +53,9 @@ const ANALYZE_KEYS = [
 
 const COPY = {
   en: {
-    tagline: "Recovery for one bay",
+    taglineIdle: "Recovery for this shift",
+    taglineBay: "Recovery for one bay",
+    taglineScale: "Recovery for a 36-tool fab",
     versionNote: "The first frame is the decision: one sentence, the refusal, three numbers, and both books. Analyze holds the rest. Verify lists the critic's checks.",
     lang: "Language",
     disruption: "Disruption",
@@ -236,7 +238,9 @@ const COPY = {
     toolsWord: "tools",
   },
   zh: {
-    tagline: "一个机台的恢复",
+    taglineIdle: "这一班的恢复",
+    taglineBay: "一个机台的恢复",
+    taglineScale: "36 台设备的恢复",
     versionNote: "第一屏是决定：一句话、拒绝理由、三个数字，和两本账。分析页放其余数字。核对页是评审的检查。",
     lang: "语言",
     disruption: "异常",
@@ -412,7 +416,9 @@ const COPY = {
     toolsWord: "设备",
   },
   ja: {
-    tagline: "一つのベイの回復",
+    taglineIdle: "この直の回復",
+    taglineBay: "一つのベイの回復",
+    taglineScale: "36 台の回復",
     versionNote: "最初の画面が判断です。一文、拒否、三つの数字、二つの帳票。分析に残りの数字。検証に批評の検査。",
     lang: "言語",
     disruption: "異常",
@@ -677,10 +683,17 @@ function t() {
   return COPY[state.lang] || COPY.en;
 }
 
+function taglineFor(copy) {
+  const id = (state.report && state.report.scenario_id) || state.activeScenario || "";
+  if (id === "scale") return copy.taglineScale;
+  if (id) return copy.taglineBay;
+  return copy.taglineIdle;
+}
+
 function paint() {
   const copy = t();
   document.documentElement.lang = state.lang === "zh" ? "zh-Hans" : state.lang === "ja" ? "ja" : "en";
-  $("#tagline").textContent = copy.tagline;
+  $("#tagline").textContent = taglineFor(copy);
   $("#version").textContent = state.health && state.health.version ? state.health.version : "";
   $("#note").textContent = copy.versionNote;
   $("#lang-label").textContent = copy.lang;

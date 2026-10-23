@@ -12,7 +12,7 @@ The Recover tab is the filmed frame. Do not scroll it. Idle shows one empty stat
 make demo
 ```
 
-Open http://127.0.0.1:8000. Do not click yet. The ground is flat gray, the cards are white, and indigo is only the accent. The amber banner must be visible in mock mode. The header is one line: ResiliMES, the tagline, and a version chip. The version chip opens a one-line note about this layout. The bay lamps already show Running, Idle, Down, Maintenance, or In stock. Language can stay on English; switch to 中文 or 日本語 only if you want that sentence on camera, then switch back before the numbers.
+Open http://127.0.0.1:8000. Do not click yet. The ground is flat gray, the cards are white, and indigo is only the accent. The amber banner must be visible in mock mode. The header is one line: ResiliMES, the tagline, and a version chip. Idle reads "Recovery for this shift". A six-lot story switches it to "Recovery for one bay". Scale switches it to "Recovery for a 36-tool fab". The version chip opens a one-line note about this layout. The bay lamps already show Running, Idle, Down, Maintenance, or In stock. Language can stay on English; switch to 中文 or 日本語 only if you want that sentence on camera, then switch back before the numbers.
 
 Optional second clip, only if credentials are set: `python -m resilimes recover --scenario litho_down` and show `provider_call.provider` and `provider_call.model` while the token stays off screen.
 
