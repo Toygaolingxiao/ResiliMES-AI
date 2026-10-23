@@ -38,7 +38,7 @@ That registers datasources `resilimes`, `fab_cmms`, and `fab_erp` and loads the 
 
 Idle page. Point at the banner, then at **Tight VIP dues**. Do not press Run yet.
 
-"Dielectric_BE_28-1 is down for the published dielectric repair, six hundred four point eight minutes. Eight VIP lots in that queue are due in eight hours. Thirteen normal lots in the same queue are due forty-eight minutes sooner, so earliest-due serves them first. One of the VIP lots, Init_Lot_2_23, finishes five point two one hours late on that rule."
+"Dielectric_BE_28-1 is down for the published dielectric repair, six hundred four point eight minutes. Eight VIP lots in that queue are due in eight hours. Thirteen normal lots in the same queue are due forty-eight minutes sooner, so earliest-due serves them first. One of the VIP lots, Init_Lot_2_23, finishes five point four three hours late on that rule."
 
 ### 0:25–0:55 — The live read
 
@@ -56,7 +56,7 @@ Stay on the refusal line. Do not move on until the lot id and the tool are visib
 
 Read the on-time, weighted tardiness, and queue-time cards from the screen. They are seed 1 and 24 hours. Then one sentence from the study:
 
-"On this seed, earliest-due is fourteen point two nine percent on time and seven thousand six hundred minutes of weighted tardiness. ResiliMES is nineteen point zero five percent and four thousand two hundred fifty point eight minutes. Queue-time violations fall from four hundred eighteen to one hundred eighty-three. Init_Lot_2_23 is five point two one hours late under earliest-due and on time here. Across five seeds the means are nineteen point zero five percent against twelve point three eight, and four thousand two hundred ninety-three minutes against eight thousand thirteen. FIFO is zero percent on time. Critical ratio is ten point four seven."
+"On this seed, earliest-due is fourteen point two nine percent on time and seven thousand six hundred seventy-nine minutes of weighted tardiness. ResiliMES is nineteen point zero five percent and four thousand forty-four minutes. Queue-time violations fall from four hundred fifteen to one hundred eighty-seven. Init_Lot_2_23 is five point four three hours late under earliest-due and on time here. Those thirteen normal lots give up thirty-one point seven hours in total. Across five seeds the means are nineteen point zero five percent against twelve point three eight, and four thousand three hundred twenty-nine minutes against seven thousand nine hundred eighty-six. FIFO is zero percent on time. Critical ratio is nine point five two. On the X-factor book, earliest-due is slightly ahead. That book is not this shot."
 
 ### 2:05–2:35 — The same fab, one scanner
 

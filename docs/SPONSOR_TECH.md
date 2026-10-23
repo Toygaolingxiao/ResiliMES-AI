@@ -100,7 +100,7 @@ Nightshift remains the only model provider. Base URL `METERLESS_BASE_URL`, defau
 
 When Zetaris credentials are set, the same live path runs `SELECT COUNT(*)` against datasources `resilimes`, `fab_cmms`, and `fab_erp`. The console shows the SQL, those source names, and the row counts. Without credentials the line says the local extract was used and Zetaris was not called.
 
-Measured means are in [SMT2020_SCALE.md](SMT2020_SCALE.md). The lead table is the constructed 24-hour book: ResiliMES on-time 19.05% against EDD 12.38%, weighted tardiness 4,293 minutes against 8,013. Dispatch on that book is 0.005 ms p50 and 0.149 ms p95. The published-due 48-hour book is an appendix: on-time ties EDD at 57.14%, dispatch p50/p95 is 0.004 ms / 0.138 ms, macro APS is 312.8 ms, and one 48-hour ResiliMES run is about 1.4 s.
+Measured means are in [SMT2020_SCALE.md](SMT2020_SCALE.md). The lead table is the constructed 24-hour book: ResiliMES on-time 19.05% against EDD 12.38%, weighted tardiness 4,329 minutes against 7,986. Dispatch on that book is 0.0002 ms p50 and 0.006 ms p95. Seed 1, the 13 normal lots in that queue give up 31.72 hours. The X-factor book (dues at 2.75 times remaining process) is where EDD is slightly ahead, 99.54% on time against 97.47%, and litho utilization stays near 79%. The published-due 48-hour book is an appendix: EDD on-time 56.78% against 56.43%, dispatch p50/p95 is 0.0002 ms / 0.006 ms, macro APS is 286.0 ms, and one 48-hour ResiliMES run is about 2.3 s. The column-by-column map of the extract is [SMT2020_PROVENANCE.md](SMT2020_PROVENANCE.md).
 
 ## Pre-existing code declaration
 

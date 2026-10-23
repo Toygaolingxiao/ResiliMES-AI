@@ -14,4 +14,6 @@ Both books clear the dues. EDD already sends the 24 priority-1 lots to scanners 
 
 On the 1,000-lot fab the two-second CP-SAT neighborhood does not beat the list schedule, so makespan stays 5,116 and the badge says the heuristic was kept.
 
-The SMT2020 comparison, including the constructed book where earliest-due loses and the published-due performance tables, is in [SMT2020_SCALE.md](SMT2020_SCALE.md).
+Ordinary lots carry 14 days of slack (`14 * 24 * 60` minutes past the horizon). `_pin_down_scanner` parks up to 24 priority-1 lots as blocked on LITHO-03 and demotes other lithography lots of those products. That is why this preset ties EDD. It was not retuned, and makespan is not the SMT2020 headline.
+
+The SMT2020 comparison is in [SMT2020_SCALE.md](SMT2020_SCALE.md). Earliest-due loses on the constructed tight VIP book. On the X-factor book (dues at 2.75 times remaining process, 48 hours, five seeds) earliest-due is slightly ahead on on-time delivery. FIFO and critical ratio lose that book. What the extract models and what it does not is in [SMT2020_PROVENANCE.md](SMT2020_PROVENANCE.md).

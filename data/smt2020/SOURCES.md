@@ -48,5 +48,7 @@ TSV export from PySCFabSim-release commit `0dbff6a`, directory
 
 `StepPercent`, `PartInterval`, `fromto` transport, `LTIME` / `ULTIME` (they are
 not added to `PTIME`), fractional `REWORK`, WIP tool assignment (the file has
-none), `SVESTN` / `FORSTEP`, `MINRUN`, and the `Delay_32` station family.
-MIMAC operator groups are not in this extract.
+none), `MINRUN`, and the `Delay_32` station family.
+MIMAC operator groups are not in this extract. `SVESTN` / `FORSTEP` are not
+columns in the kernel SQL. The event simulator does read them: a later litho
+layer stays on the scanner this run chose for the first layer of that chain.
