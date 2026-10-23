@@ -17,6 +17,14 @@ from pydantic import BaseModel, Field
 
 from resilimes import __version__
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
+from resilimes.api.intents import (
+    ConfirmationState,
+    ConfirmBody,
+    IntentBody,
+    UnknownConfirmation,
+    confirm_intent,
+    propose_intent,
+)
 from resilimes.config import ConfigError, Settings, get_settings
 from resilimes.data.factory import build_source
 from resilimes.data.zetaris_source import ZetarisDataError
@@ -25,6 +33,8 @@ from resilimes.domain.scenarios import list_scenarios
 from resilimes.engines.contracts import ContractError
 from resilimes.llm.nightshift import probe_nightshift
 from resilimes.logging_config import configure_logging
+from resilimes.txn.engine import InMemoryEngine, LockError
+from resilimes.txn.store import InMemoryStateStore
 
 _STATIC = Path(__file__).resolve().parents[1] / "demo" / "static"
 
@@ -46,6 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         summary="Autonomous rescheduling and fault recovery for smart manufacturing.",
     )
     app.state.settings = active
+    app.state.engine = InMemoryEngine(InMemoryStateStore())
 
     @app.get("/api/health")
     def health() -> dict[str, object]:
@@ -89,6 +100,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "scenarios": [item.model_dump() for item in list_scenarios()],
             "bay": bay,
         }
+
+    @app.post("/api/intents")
+    def intents(body: IntentBody) -> dict[str, object]:
+        try:
+            return propose_intent(app.state.settings, app.state.engine, body)
+        except (ConfigError, ZetarisDataError, PlantDataError) as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.post("/api/intents/confirm")
+    def intents_confirm(body: ConfirmBody) -> dict[str, object]:
+        try:
+            return confirm_intent(app.state.settings, app.state.engine, body)
+        except UnknownConfirmation as exc:
+            raise HTTPException(status_code=404, detail="Unknown confirmation.") from exc
+        except ConfirmationState as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except LockError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except ContractError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except (ConfigError, ZetarisDataError, PlantDataError) as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     @app.post("/api/recover")
     def recover(body: RecoverBody) -> dict[str, object]:

@@ -43,7 +43,7 @@ They are not extra demos. The recovery refuses to run without them.
 
 **World Model** (`resilimes/engines/world_model/engine.py`) is the plant log. After the critic accepts, each tool observation and each lot assignment is ingested under the Scout contract. `world.sync` is required to observe, `schedule.commit` is required to assign, and a second ingest with the same idempotency key does not duplicate the event. Replay is how the report counts committed jobs. A payload field cannot overwrite the entity type, so a job assignment stays a job. Tests live in `tests/test_engines.py` (`test_ingest_is_idempotent_and_replayable`, `test_world_model_refuses_unsigned_and_out_of_scope`).
 
-**Markovian** (`resilimes/engines/markovian/engine.py`) is the agent loop. Sense, plan, critique, explain, and commit are chunks. Each chunk receives a checkpoint. A raised exception stays inside its chunk. Transcript fields are dropped. The litho run reports checkpoint tokens against the quadratic cost of resending history (about 500 versus about 1600). Tests: `test_compress_drops_transcript_and_keeps_decisions`, `test_chunk_failure_is_contained`, `test_markovian_token_cost_stays_below_naive_history`, `test_markovian_refuses_a_contract_without_memory_write`.
+**Markovian** (`resilimes/engines/markovian/engine.py`) is the agent loop. Sense, plan, critique, explain, and commit are chunks. Each chunk receives a checkpoint. A raised exception stays inside its chunk. Transcript fields are dropped. The litho run reports checkpoint units against the cost of resending history (about 500 versus about 1600). Those units are `len(json) // 4`, not model tokens. Tests: `test_compress_drops_transcript_and_keeps_decisions`, `test_chunk_failure_is_contained`, `test_checkpoint_size_stays_below_replayed_history`, `test_markovian_refuses_a_contract_without_memory_write`. A critic verdict of `reject` commits no assignments.
 
 A read-only "what is the fab status?" contract does not carry `memory.write`, so Markovian will not start a recovery from it.
 
@@ -74,11 +74,11 @@ Nightshift is the only model provider on the live path. The client is `resilimes
 - Base URL normalized to `<origin>/v1`. A pasted `/v1/chat/completions` or `/healthz` does not become `/v1/v1`.
 - `Authorization: Bearer <METERLESS_RUNTIME_TOKEN>`. The placeholder `rt-local` is rejected.
 - `meterless-app: resilimes` and `meterless-scope: user` on chat calls.
-- The explainer calls `NEMOTRON_MODEL`. Nightshift explains. The planner and the critic do not call the model. The critic is `critique_schedule`.
+- Nemotron, via `NEMOTRON_MODEL`, turns dispatcher text into a tool call and writes feedback and the supervisor narrative. The planner and the critic do not call the model. The critic is `critique_schedule`.
 - Timeout defaults to 180 seconds. Rate limits and connection errors retry three times.
 - Logs record lane, model id, and latency. They do not record the token.
 
-The committed schedule does not come from the model. The model rewrites the supervisor narrative from a fact sheet. If it fails or returns an unusable payload, the deterministic narrative stands and the schedule is unchanged. That is a deliberate use of Nemotron: language in the lane where language helps, a solver in the lane where a wrong digit moves a wafer.
+The committed schedule does not come from the model. The model rewrites the supervisor narrative from a fact sheet, and it writes the business note after a confirmed tool call. If it fails, or a number or id is not in the engine result, the deterministic text stands and the schedule is unchanged. That is a deliberate use of Nemotron: language in the lane where language helps, a solver in the lane where a wrong digit moves a wafer. Nightshift can route the same calls to a local model for an on-prem fab by serving that model under `NEMOTRON_MODEL`. This repository does not add a second provider.
 
 Mock mode uses `MockProvider` with the same `complete()` signature. The report field `provider_call.mocked` is true, and the console banner says offline mock. `make demo` forces this mode so a fresh machine can film the product. To film the required live request, set the token and run `python -m resilimes recover --scenario litho_down`. The JSON includes `provider_call.provider = "nightshift"`, the Nemotron model id, and latency. Crop or scroll so `.env` is not on screen.
 

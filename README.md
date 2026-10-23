@@ -43,26 +43,33 @@ flowchart TD
   specialist --> data[Zetaris SQL or sample twin]
   loop --> planner[Deterministic planner]
   planner --> critic[Constraint critic]
-  critic -->|reject unsafe alternative| planner
   critic -->|accept| world[World Model event log]
+  critic -->|reject| refused[Commit refused]
   loop --> explain[Explainer lane]
   nightshift[Meterless Nightshift] --> nemotron[NVIDIA Nemotron]
+  user --> intents[POST /api/intents]
+  intents --> nemotron
+  intents -->|user confirms| txn[Lock, apply, re-dispatch]
   nemotron --> explain
   world --> user
   explain --> user
 ```
 
-The language model explains a schedule it did not invent. The committed plan comes from a list scheduler. CP-SAT scores that same objective, and the critic checks both books. That split is the reliability argument for Track 03.
+Nemotron turns a dispatcher sentence into one tool call, and later turns the engine result into a business note. Every number in that note is checked against the engine. The committed plan comes from a list scheduler. CP-SAT scores that same objective, and the critic checks both books. That split is the reliability argument for Track 03.
 
 | Piece | Role |
 | --- | --- |
 | Scout Intent | Classifies the disruption, checks role, surface, and prompt injection, and signs an execution contract. Downstream engines refuse unsigned, expired, or out-of-scope contracts. |
 | Specialist | Reads equipment, WIP, routes, materials, and maintenance. In live mode those reads are Zetaris SQL. In mock mode the same SQL is recorded and answered from `data/sample`. |
-| Planner | Builds the frozen schedule and the recovered schedule. Also proposes a naive alternative so the critic has something real to reject. |
+| Planner | Builds the frozen schedule and the recovered schedule. A labeled safety-test alternative gives the critic something real to reject. That alternative is not a model proposal. |
 | Critic | A registry of independent checks: tool status, capability, overlap, WIP, operators, material, route order, preemption, queue time, rework limit, reticle, tool inhibit, and lot release. A hold is listed and does not by itself reject the book. |
-| Markovian | Runs sense → plan → critique → explain → commit as bounded chunks. Each chunk sees a checkpoint, not the growing transcript. |
+| Markovian | Runs sense → plan → critique → explain → commit as bounded chunks. Each chunk sees a checkpoint, not the growing transcript. The size comparison is `len(json) // 4`, not a model token count. |
 | World Model | Append-only plant log. Assignments are ingested under the contract and replayed. |
-| Nightshift | OpenAI-compatible hotspot. The explainer calls NVIDIA Nemotron when a runtime token is configured. Nightshift explains. The planner and the critic stay deterministic code. |
+| Nightshift | OpenAI-compatible hotspot. Nemotron parses dispatch intents and writes feedback and the supervisor narrative when a runtime token is configured. The planner and the critic stay deterministic code. A Nightshift outage uses the regex parser and the deterministic narrative, and that fallback is labeled. |
+
+`POST /api/intents` validates the tool call, checks lot and tool ids, and asks Scout to sign. Nothing is applied until `POST /api/intents/confirm`. The confirm path takes a machine `lock_token`, applies the change, and re-dispatches. `check_inventory` runs the BOM check first. `notify_pe` is a trace line for the UI. It does not send email or any other message. The contract for the in-memory store, and for the Redis or database transaction on the scheduling branch, is [docs/API.md](docs/API.md).
+
+Nightshift can point `NEMOTRON_MODEL` at a local on-prem model and keep the same lanes. This repo does not add a second client for that. Nightshift stays the provider.
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Sponsor write-up: [docs/SPONSOR_TECH.md](docs/SPONSOR_TECH.md).
 

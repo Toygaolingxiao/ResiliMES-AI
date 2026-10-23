@@ -49,6 +49,8 @@ _TRIGGERS: dict[str, tuple[str, ...]] = {
     ),
     "plant.explain": (r"\bexplain\b", r"\bwhy\b"),
     "plant.query_status": (r"\bstatus\b", r"\bqueue\b", r"\bwip\b", r"\bwhich tools\b"),
+    "plant.hold_lot": (r"hold lot", r"暂停批次", r"ロット保留"),
+    "plant.release_lot": (r"release lot", r"放行批次", r"ロット解除"),
     "plant.emergency_stop": (
         r"emergency stop",
         r"entire factory",
@@ -69,6 +71,12 @@ _INJECTION = (
     r"\bjailbreak\b",
     r"\bexfiltrate\b",
     r"\bdelete\b.+\bfrom\b",
+    r"忽略.{0,16}指令",
+    r"泄露密钥",
+    r"透露密钥",
+    r"以前の指示を無視",
+    r"指示を無視",
+    r"秘密を教",
 )
 
 _TOOLS: dict[str, list[dict[str, str]]] = {
@@ -83,6 +91,11 @@ _TOOLS: dict[str, list[dict[str, str]]] = {
 }
 
 _EQUIPMENT = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]{2,})-(\d{2})(?!\d)")
+_EQUIPMENT_ID = re.compile(r"^[A-Z][A-Z0-9]*-\d{2}$")
+_MATERIAL_ID = re.compile(r"^[A-Z0-9]+(?:-[A-Z0-9]+)+$")
+_PRODUCT_ID = re.compile(r"^PROD-[A-Z0-9]+$")
+_JOB_ID = re.compile(r"^LOT-\d+$")
+_FAULT_CODE = re.compile(r"^[A-Z][A-Z0-9_]{0,31}$")
 _REPAIR = re.compile(
     r"(\d+)\s*(minutes|minute|mins|min|hours|hour|hrs|hr|分钟|小时|時間|分)",
     re.I,
@@ -142,7 +155,19 @@ class Scout:
             ]
         }
 
-    def decide(self, data: dict[str, Any]) -> Decision:
+    def injection_hit(self, prompt: str) -> str | None:
+        """Regex guard. Callers run this before any model sees the prompt."""
+        return self._injection_hit(prompt)
+
+    @property
+    def intent_ids(self) -> list[str]:
+        return [str(item["id"]) for item in self._intents]
+
+    def decide(
+        self,
+        data: dict[str, Any],
+        model_intent: dict[str, Any] | None = None,
+    ) -> Decision:
         started = self._clock()
         prompt = str(data.get("prompt") or "")
         surface = str(data.get("surface") or "mes_console")
@@ -153,21 +178,37 @@ class Scout:
         if not isinstance(approvals, list):
             approvals = []
 
-        ranked = self._rank(prompt)
-        top_id, top_score = ranked[0]
-        if top_score < 0.35:
-            top_id, top_score = "plant.query_status", max(top_score, 0.2)
-            needs_clarification = True
-        else:
+        injection = self._injection_hit(prompt)
+        accepted: dict[str, Any] | None = None
+        parser_fallback = ""
+        if model_intent and not injection:
+            accepted, parser_fallback = self._accept_model_intent(model_intent)
+        if accepted is not None:
+            top_id = str(accepted["intent"])
+            top_score = float(accepted["confidence"])
+            parameters = dict(accepted["parameters"])
+            parser = "nemotron"
             needs_clarification = top_score < 0.45
+            ranked = self._rank(prompt)
+        else:
+            ranked = self._rank(prompt)
+            top_id, top_score = ranked[0]
+            if top_score < 0.35:
+                top_id, top_score = "plant.query_status", max(top_score, 0.2)
+                needs_clarification = True
+            else:
+                needs_clarification = top_score < 0.45
+            parameters = self._bind(prompt, top_id)
+            parser = "regex"
+        parser_request_id = str((model_intent or {}).get("meterless_request_id") or "")
+        if accepted is not None:
+            parser_request_id = str(accepted.get("request_id") or parser_request_id)
         intent = self._by_id[top_id]
-        parameters = self._bind(prompt, top_id)
         references = _references(parameters)
         flags: list[dict[str, str]] = []
         level = str(intent["riskClass"])
         block_reason: str | None = None
 
-        injection = self._injection_hit(prompt)
         if injection:
             level = "block"
             block_reason = "Prompt injection detected."
@@ -199,7 +240,11 @@ class Scout:
             "references": references,
             "confidence": round(min(1.0, top_score), 4),
             "alternates": alternates,
+            "parser": parser,
+            "parser_request_id": parser_request_id,
         }
+        if parser_fallback:
+            decision_intent["parser_fallback"] = parser_fallback
         if level == "block":
             done = Decision(
                 intent=decision_intent,
@@ -315,6 +360,31 @@ class Scout:
             score = max(score, 0.8)
         return score
 
+    def _accept_model_intent(
+        self, model_intent: dict[str, Any]
+    ) -> tuple[dict[str, Any] | None, str]:
+        """Schema-checked fields only. An invalid payload falls back to regex."""
+        if model_intent.get("schema_error"):
+            return None, str(model_intent["schema_error"])
+        intent_id = str(model_intent.get("intent") or "")
+        if intent_id not in self._by_id:
+            return None, f"Unknown intent {intent_id}."
+        confidence = model_intent.get("confidence")
+        if isinstance(confidence, bool) or not isinstance(confidence, int | float):
+            return None, "Intent confidence is missing."
+        score = float(confidence)
+        if score < 0.35 or score > 1:
+            return None, "Intent confidence is out of range."
+        parameters, errors = _model_parameters(model_intent)
+        if errors:
+            return None, "; ".join(errors)
+        return {
+            "intent": intent_id,
+            "confidence": round(score, 4),
+            "parameters": parameters,
+            "request_id": str(model_intent.get("meterless_request_id") or ""),
+        }, ""
+
     def _bind(self, prompt: str, intent_id: str) -> dict[str, Any]:
         parameters: dict[str, Any] = {}
         match = _EQUIPMENT.search(prompt)
@@ -362,7 +432,7 @@ class Scout:
                         "model": item["model"],
                         "lane": item.get("lane"),
                     }
-        lane = "critic" if intent_id == "plant.explain" else "planner"
+        lane = "explain" if intent_id == "plant.explain" else "propose"
         for item in local:
             if item.get("provider") == "meterless-nightshift" and item.get("lane") == lane:
                 return {
@@ -456,6 +526,34 @@ def _jaccard(left: str, right: str) -> float:
     if not a or not b:
         return 0.0
     return len(a & b) / len(a | b)
+
+
+def _model_parameters(payload: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Keep only fields that match the id shapes the plant uses."""
+    parameters: dict[str, Any] = {}
+    errors: list[str] = []
+    checks: tuple[tuple[str, re.Pattern[str]], ...] = (
+        ("equipment_id", _EQUIPMENT_ID),
+        ("material_id", _MATERIAL_ID),
+        ("product_id", _PRODUCT_ID),
+        ("job_id", _JOB_ID),
+        ("fault_code", _FAULT_CODE),
+    )
+    for key, pattern in checks:
+        value = payload.get(key)
+        if value is None or value == "":
+            continue
+        if not isinstance(value, str) or pattern.fullmatch(value) is None:
+            errors.append(f"{key} failed validation.")
+            continue
+        parameters[key] = value
+    repair = payload.get("repair_min")
+    if repair is not None:
+        if isinstance(repair, bool) or not isinstance(repair, int) or not 0 <= repair <= 10080:
+            errors.append("repair_min failed validation.")
+        else:
+            parameters["repair_min"] = repair
+    return parameters, errors
 
 
 def _references(parameters: dict[str, Any]) -> dict[str, Any]:

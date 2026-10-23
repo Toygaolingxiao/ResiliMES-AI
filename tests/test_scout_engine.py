@@ -173,4 +173,6 @@ def test_live_profile_is_local_nemotron() -> None:
     )
     profile = decision.execution_contract["modelProfile"]  # type: ignore[index]
     assert profile["provider"] == "meterless-nightshift"
-    assert "Nemotron" in profile["model"]
+    assert profile["id"] == "nemotron-propose"
+    assert profile["lane"] == "propose"
+    assert "nemotron" in profile["model"].lower()
