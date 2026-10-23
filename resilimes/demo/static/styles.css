@@ -334,8 +334,20 @@ textarea {
 .progress-label { font-size: var(--text-label); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 #result { min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.chart-tools { display: flex; justify-content: flex-end; }
-.views { display: flex; gap: 4px; }
+.chart-tools { display: flex; justify-content: flex-end; align-items: center; gap: 12px; min-height: 24px; }
+.opt-badge {
+  margin: 0 auto 0 0;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.opt-badge.proved { color: var(--good); }
+.opt-line { margin: 4px 0 8px; font-size: 15px; }
+.opt-line.proved { color: var(--good); }
+.views { display: flex; gap: 4px; flex: 0 0 auto; }
 .views button {
   border: 1px solid var(--line);
   background: var(--card);
