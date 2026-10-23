@@ -36,7 +36,7 @@ Press **Run** on **Machine breakdown**. That row is the only one that turns acti
 
 When the headline lands, stay on Recover. Read the sentence, then the refusal under it, then the three cards, then both charts. Everything is above the fold.
 
-"LOT-1001 leaves LITHO-02. The refused move was starting that lot on LITHO-02 at time zero. The tool is down until minute 600. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 12 hours 24 minutes to zero. Lots at risk go from one to zero. The badge on the chart row says the list scheduler is within 0% of optimal, proved."
+"LOT-1001 leaves LITHO-02. The refused move was starting that lot on LITHO-02 at the shift clock, 06:30. The tool is down until 16:30. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 13 hours 4 minutes to zero. Lots at risk go from one to zero. The badge on the chart row says weighted tardiness matches the proved best."
 
 The `?` on a card states the formula. **Details** opens Analyze. Do not click it yet.
 
@@ -94,7 +94,7 @@ If you have the live clip, cut it here for five seconds: the JSON `provider` and
 
 Press **Run** on **Scale**. Stay on Recover. Do not scroll. This frame is a tool strip, not a lot Gantt.
 
-"A thousand lots, 36 tools, one scanner down. The left strip is EDD dispatch: it already meets every due date, and the 24 priority-1 lots are on scanners that are up. Priority recovery matches on-time delivery, weighted tardiness, and lots at risk. All three stay at 100%, zero, and zero. The hatch is the down scanner. Schedule and critic, under a second. The badge says no improvement, heuristic kept. The three cards stay on the list schedule."
+"A thousand lots, 36 tools, one scanner down. The left strip is EDD dispatch: it already meets every due date, and the 24 priority-1 lots are on scanners that are up. Priority recovery matches on-time delivery, weighted tardiness, and lots at risk. All three stay at 100%, zero, and zero. The hatch is the down scanner. Schedule and critic, under a second. The badge says no shorter plan was found, so this schedule stays. The three cards stay on the list schedule."
 
 Point at the chart title "vs. EDD dispatch". Point at the stat line: schedule, critic, 1,000 lots, 36 tools, 3,426 steps, 14 passed. The three cards are flat. The strip is the first 12 hours. CMP stays the bottleneck, about 84.7%. The refused line names LITHO-03 down until minute 600.
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from resilimes.domain.models import Critique, JobOutcome, KpiReport
+from resilimes.i18n import phrase
 
 Lang = Literal["en", "zh", "ja"]
 LANGS: tuple[Lang, ...] = ("en", "zh", "ja")
@@ -127,7 +128,7 @@ def refusal_brief(reason: str, *, approval: bool = False) -> dict[str, dict[str,
                 "High-risk intents stay unsigned for execution until an approval is attached.",
             ),
             "zh": (
-                "这个停机需要批准",
+                "这次停机需要批准",
                 [
                     "Scout 签了高风险合同，但没有执行。",
                     "没有设备被停下，也没有写入排程。",
@@ -136,7 +137,7 @@ def refusal_brief(reason: str, *, approval: bool = False) -> dict[str, dict[str,
                 "高风险意图在附上批准之前不会执行。",
             ),
             "ja": (
-                "この停止には承認が要る",
+                "この停止には承認が必要です",
                 [
                     "Scout は高リスクの契約に署名し、実行はしていない。",
                     "装置は止まっておらず、日程も書いていない。",
@@ -157,22 +158,22 @@ def refusal_brief(reason: str, *, approval: bool = False) -> dict[str, dict[str,
                 reason,
             ),
             "zh": (
-                "Scout 拒绝了这个请求",
+                "请求未执行",
                 [
-                    reason,
-                    "没有写入排程。",
-                    "在制批次保持原样。",
+                    "这句描述不能执行。",
+                    "没有改写排程。",
+                    "在制品保持原样。",
                 ],
-                reason,
+                "这句描述不能执行。没有改写排程。",
             ),
             "ja": (
-                "Scout がこの依頼を拒否した",
+                "この依頼は実行されませんでした",
                 [
-                    reason,
-                    "日程は書いていない。",
-                    "仕掛ロットはそのまま。",
+                    "この内容では実行できません。",
+                    "計画は書き換えていません。",
+                    "仕掛はそのままです。",
                 ],
-                reason,
+                "この内容では実行できません。計画は書き換えていません。",
             ),
         }
     return {
@@ -278,7 +279,7 @@ def _queue(
     otd_b, otd_a = _pct(before, after)
     return {
         "en": (
-            f"{job} misses the clean queue time",
+            phrase("en", "brief.queue_headline", lot=job),
             [
                 "Clean finished before the clock. The next film had to start within 15 min.",
                 f"{hold_en} On-time delivery {otd_b} → {otd_a}.",
@@ -290,7 +291,7 @@ def _queue(
             ),
         ),
         "zh": (
-            f"{job} 错过了清洗后的队列时间",
+            phrase("zh", "brief.queue_headline", lot=job),
             [
                 "清洗在时钟之前已经结束。下一道成膜必须在 15 分钟内开工。",
                 f"{hold_zh}准时交付 {otd_b} → {otd_a}。",
@@ -302,7 +303,7 @@ def _queue(
             ),
         ),
         "ja": (
-            f"{job} は洗浄後の待ち時間を外した",
+            phrase("ja", "brief.queue_headline", lot=job),
             [
                 "洗浄は時計の前に終わっている。次の成膜は 15 分以内に始める。",
                 f"{hold_ja}納期遵守 {otd_b} → {otd_a}。",
@@ -425,9 +426,21 @@ def _named_down(
     span_zh = human_minutes(repair_min, "zh") if repair_min else ""
     span_ja = human_minutes(repair_min, "ja") if repair_min else ""
     otd_b, otd_a = _pct(before, after)
-    title_en = f"{tool} is down for {span_en}" if span_en else f"{tool} is down"
-    title_zh = f"{tool} 宕机 {span_zh}" if span_zh else f"{tool} 宕机"
-    title_ja = f"{tool} は {span_ja}停止" if span_ja else f"{tool} は停止"
+    title_en = (
+        phrase("en", "brief.named_headline", tool=tool, span=span_en)
+        if span_en
+        else phrase("en", "brief.named_headline_bare", tool=tool)
+    )
+    title_zh = (
+        phrase("zh", "brief.named_headline", tool=tool, span=span_zh)
+        if span_zh
+        else phrase("zh", "brief.named_headline_bare", tool=tool)
+    )
+    title_ja = (
+        phrase("ja", "brief.named_headline", tool=tool, span=span_ja)
+        if span_ja
+        else phrase("ja", "brief.named_headline_bare", tool=tool)
+    )
     return {
         "en": (
             title_en,
@@ -465,23 +478,23 @@ def _refusal(constraint: str, lang: Lang) -> str:
     table: dict[str, dict[Lang, str]] = {
         "equipment_status": {
             "en": "Starting the blocked lot on the down tool was refused.",
-            "zh": "在宕机设备上开工被拒绝。",
-            "ja": "停止中の装置で着手する案は拒否された。",
+            "zh": "不允许在宕机装置上开工。",
+            "ja": "停止中の装置への着工は不採用です。",
         },
         "preemption": {
             "en": "Pulling a running lot off its tool was refused.",
-            "zh": "把正在加工的批次撤下设备被拒绝。",
-            "ja": "加工中のロットを装置から外す案は拒否された。",
+            "zh": "不允许把正在加工的批次从装置上撤下。",
+            "ja": "加工中ロットを装置から外す案は不採用です。",
         },
         "material": {
             "en": "Starting lithography without the resist was refused.",
-            "zh": "没有光刻胶就开工被拒绝。",
-            "ja": "レジストなしで露光を始める案は拒否された。",
+            "zh": "没有光刻胶，不允许开工。",
+            "ja": "レジストなしの露光着工は不採用です。",
         },
         "qtime": {
-            "en": "Starting CMP after the queue-time window was refused.",
-            "zh": "超过队列时间再开始 CMP 被拒绝。",
-            "ja": "待ち時間を過ぎて CMP を始める案は拒否された。",
+            "en": "Starting deposition after the queue-time limit was refused.",
+            "zh": "超过等待时限后不允许开始成膜。",
+            "ja": "キュータイムを過ぎた成膜の着工は不採用です。",
         },
     }
     if constraint in table:
@@ -532,7 +545,7 @@ def _scale(
     )
     return {
         "en": (
-            "EDD dispatch already meets the dues",
+            phrase("en", "brief.scale_headline"),
             [
                 (
                     f"LITHO-03 is down for 600 minutes. EDD dispatch puts {count} "
@@ -544,18 +557,24 @@ def _scale(
             detail,
         ),
         "zh": (
-            "EDD 派工已经满足交期",
+            phrase("zh", "brief.scale_headline"),
             [
-                f"LITHO-03 宕机 600 分钟。EDD 派工把 {count} 个优先 1 的批次放到可用光刻机，优先级恢复保持原机。",
+                (
+                    f"LITHO-03 宕机 {human_minutes(600, 'zh')}。"
+                    f"EDD 把 {count} 个优先 1 的批次放在可用光刻机上，按优先级重排后仍留在原机。"
+                ),
                 f"准时交付 {otd_b} → {otd_a}。风险批次 {before.lots_at_risk} → {after.lots_at_risk}。",
                 f"加权拖期 {tardy_zh} → {human_minutes(after.weighted_tardiness_min, 'zh')}。",
             ],
             detail,
         ),
         "ja": (
-            "EDD 差し立てで納期は守れている",
+            phrase("ja", "brief.scale_headline"),
             [
-                f"LITHO-03 は 600 分停止。EDD は優先 1 の {count} ロットを稼働中のスキャナーへ置き、優先度回復はそこを維持する。",
+                (
+                    f"LITHO-03 は {human_minutes(600, 'ja')}停止。"
+                    f"EDD は優先度 1 の {count} ロットを稼働中のスキャナーに置き、優先度を見た計画でもそのまま。"
+                ),
                 f"納期遵守 {otd_b} → {otd_a}。リスクロット {before.lots_at_risk} → {after.lots_at_risk}。",
                 f"加重遅延 {tardy_ja} → {human_minutes(after.weighted_tardiness_min, 'ja')}。",
             ],
@@ -586,7 +605,7 @@ def _move(
         wait_ja = f"{origin} は停止のまま。{lead.job_id} の {step} はそこにあった。"
     return {
         "en": (
-            f"{lead.job_id} leaves {origin}",
+            phrase("en", "brief.move_headline", lot=lead.job_id, tool=origin),
             [
                 wait_en,
                 (
@@ -607,7 +626,7 @@ def _move(
             ),
         ),
         "zh": (
-            f"{lead.job_id} 离开 {origin}",
+            phrase("zh", "brief.move_headline", lot=lead.job_id, tool=origin),
             [
                 wait_zh,
                 (
@@ -628,7 +647,7 @@ def _move(
             ),
         ),
         "ja": (
-            f"{lead.job_id} が {origin} を離れる",
+            phrase("ja", "brief.move_headline", lot=lead.job_id, tool=origin),
             [
                 wait_ja,
                 (
@@ -672,7 +691,7 @@ def _rush(
     delta_ja = human_minutes(after.weighted_tardiness_min - before.weighted_tardiness_min, "ja")
     return {
         "en": (
-            f"{job} finishes {late} late",
+            phrase("en", "brief.rush_headline", lot=job, late=late),
             [
                 f"{job} is due in 3 h and finishes at {finish} on {tool}.",
                 f"On-time delivery {otd_b} → {otd_a}. Weighted tardiness rises by {delta}.",
@@ -684,7 +703,7 @@ def _rush(
             ),
         ),
         "zh": (
-            f"{job} 晚 {late_zh} 完工",
+            phrase("zh", "brief.rush_headline", lot=job, late=late_zh),
             [
                 f"{job} 要求 3 小时内交货，在 {tool} 上 {finish_zh} 完工。",
                 f"准时交付 {otd_b} → {otd_a}。加权拖期增加 {delta_zh}。",
@@ -696,7 +715,7 @@ def _rush(
             ),
         ),
         "ja": (
-            f"{job} は {late_ja}遅れで終わる",
+            phrase("ja", "brief.rush_headline", lot=job, late=late_ja),
             [
                 f"{job} の納期は 3 時間後。{tool} で {finish_ja} に終わる。",
                 f"納期遵守 {otd_b} → {otd_a}。加重遅延は {delta_ja} 増える。",

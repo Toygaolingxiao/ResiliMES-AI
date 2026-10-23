@@ -23,14 +23,13 @@ function areaTone(area) {
   return table[area] || table.Deposition;
 }
 
-const NODES = [
-  ["scout", "nodeScout"],
-  ["query", "nodeZetaris"],
-  ["sense", "nodeSense"],
-  ["plan", "nodePlan"],
-  ["critique", "nodeCritic"],
-  ["explain", "nodeExplain"],
-  ["commit", "nodeCommit"],
+const STEPS = [
+  ["detect", ["scout", "contract"], "stepDetect"],
+  ["data", ["query", "sense"], "stepData"],
+  ["plan", ["plan"], "stepPlan"],
+  ["check", ["critique"], "stepCheck"],
+  ["explain", ["explain"], "stepExplain"],
+  ["save", ["commit"], "stepSave"],
 ];
 
 const KEY_CARDS = [
@@ -51,595 +50,7 @@ const ANALYZE_KEYS = [
   ["lots_at_risk", "kpiRisk", "", 0, "riskTip"],
 ];
 
-const COPY = {
-  en: {
-    taglineIdle: "Recovery for this shift",
-    taglineBay: "Recovery for one bay",
-    taglineScale: "Recovery for a 36-tool fab",
-    versionNote: "The first frame is the decision: one sentence, the refusal, three numbers, and both books. Analyze holds the rest. Verify lists the critic's checks.",
-    lang: "Language",
-    disruption: "Disruption",
-    bay: "Bay",
-    describe: "Or describe one",
-    placeholder: "Litho-02 is down, repair in 10 hours",
-    run: "Run",
-    runLong: "Run recovery",
-    refused: "Request refused.",
-    refusedLine: "Refused:",
-    idle: "Choose a disruption.",
-    working: "Running the recovery.",
-    emptyTitle: "Which disruption should the bay recover?",
-    emptyHint: "Click Run on a disruption. The books stay off this frame until the critic commits.",
-    mock: "Offline mock. The schedule, the critic, and the engines are real. Nightshift and Zetaris are not called. Secrets stay off this screen.",
-    live: "Live path. Data and the explainer use the credentials in the environment. Secrets stay off this screen.",
-    offline: "Offline mock",
-    clock: "Scenario clock",
-    tabRecover: "Recover",
-    tabAnalyze: "Analyze",
-    tabVerify: "Verify",
-    details: "Details",
-    now: "Now",
-    due: "due",
-    moved: "Moved",
-    fresh: "New",
-    down: "Down",
-    maint: "Maintenance",
-    held: "held",
-    heldAside: "held lots excluded",
-    lots: "Lots",
-    lot: "Lot",
-    pri: "Pri",
-    step: "Step",
-    from: "From",
-    to: "To",
-    before: "Before",
-    after: "After",
-    tardy: "Tardiness",
-    change: "Change",
-    verified: "contract verified",
-    explainer: "Explainer",
-    checkpoint: "Checkpoint",
-    of: "of",
-    computed: "computed",
-    nodeScout: "Scout",
-    nodeZetaris: "Zetaris",
-    nodePlant: "Plant read",
-    nodeSense: "Sense",
-    nodePlan: "Plan",
-    nodeCritic: "Critic",
-    nodeExplain: "Nightshift",
-    nodeExplainer: "Explainer",
-    nodeCommit: "Commit",
-    wait: "Waiting",
-    runState: "Running",
-    done: "Done",
-    reads: "reads",
-    facts: "facts",
-    ops: "operations",
-    holds: "holds",
-    events: "events",
-    loopLabel: "Recovery loop",
-    byArea: "Utilization by area",
-    kpiOtd: "On-time delivery",
-    kpiTardy: "Weighted tardiness",
-    kpiSpan: "Makespan",
-    kpiUtil: "Utilization",
-    kpiChange: "Changeovers",
-    kpiRisk: "Lots at risk",
-    kpiMoved: "Lots moved",
-    kpiLead: "Mean lead time",
-    kpiWait: "Mean wait",
-    kpiX: "X-factor",
-    otdTip: "Lots finished by their due time, divided by lots on the book.",
-    tardyTip: "Sum of lateness, weighted by priority. A lot with no finish time is charged 24 hours.",
-    riskTip: "Lots that miss their due time, including lots the book could not place.",
-    spanTip: "Finish of the last operation on that book.",
-    leadTip: "Mean time from the scenario clock to completion, for lots the book finishes. Held lots are omitted.",
-    waitTip: "Mean gap between consecutive steps of the same lot.",
-    utilTip: "One window for both books: the longer makespan. Busy time divided by the time tools are up. Down time is excluded and listed here, so a shorter book cannot raise this number.",
-    xTip: "Mean completion time divided by raw process time. 1.0 is all processing. Held lots are omitted.",
-    changeTip: "Setups charged because the recipe family changed.",
-    qtimeTitle: "Queue time",
-    qtimeNote: "End of one step to the start of the next.",
-    qtimeTip: "Pairs that start inside the limit, including pairs past 80 percent of it. Holds and violations are the misses.",
-    violationTip: "Placed pairs whose gap is longer than the limit.",
-    atRiskTip: "Placed pairs still inside the limit, past 80 percent of it.",
-    bottleneckTitle: "Bottleneck",
-    bottleneckNote: "Most remaining minutes per up-tool minute, over one day. Down tools add no time.",
-    bottleneckTip: "Same-priority work in this area, and the step that feeds it, is dispatched first.",
-    compliance: "Compliance",
-    violations: "Violations",
-    atRisk: "At risk",
-    rework: "Rework",
-    reticle: "Reticle",
-    areaTip: "Busy time in this area divided by up-time in this area, on the shared window.",
-    waitPair: "Mean gap from {from} to {to} on the after book, across {n} lots.",
-    tardyCellTip: "Lateness before, then after. A lot with no finish time is charged 24 hours.",
-    movedTip: "Lots whose tool changed on a step that exists in both books.",
-    downTip: "Minutes down or in maintenance inside the shared window. Left out of the utilization denominator.",
-    progressTip: "Stations finished, out of the seven in the recovery loop.",
-    dueTip: "Due time of a priority-1 lot, on the same scale as the bars.",
-    heldOut: "Held lots left this figure. It is not a win.",
-    downWindow: "Down in this window",
-    byTool: "By tool",
-    byLot: "By lot",
-    whereWait: "Where the wait is",
-    route: "Route",
-    waitGap: "wait",
-    themeLight: "Light",
-    themeDark: "Dark",
-    pass: "Pass",
-    fail: "Fail",
-    rejected: "Refused",
-    check: "Check",
-    result: "Result",
-    reason: "Reason",
-    verifyLead: "One row per registered check. Open a row for the reason.",
-    category: "Category",
-    checkStatus: "Status",
-    violations: "Violations",
-    passed: "Passed",
-    failed: "Failed",
-    skipped: "Skipped",
-    refusedPlan: "Refused plan",
-    categories: { equipment: "Equipment", lot: "Lot", process: "Process", material: "Material", time: "Time" },
-    figures: "Figures",
-    figuresNote: "Gray is not a direction. A hold cannot turn a shorter book green.",
-    utilNote: "Highest share of up-time first.",
-    waitNote: "Largest gaps on the after book.",
-    lotNote: "The step whose tool changed. First tool if the lot did not move.",
-    lotNoteScale: "Steps whose tool differs from EDD dispatch. First 12.",
-    intents: {
-      machine_down: "machine down",
-      rush_order: "rush order",
-      material_shortage: "material shortage",
-      query_status: "status",
-      explain: "explain",
-      emergency_stop: "emergency stop",
-      rework: "rework",
-      qtime: "queue time",
-    },
-    verdicts: { accept: "accepted", conditional: "conditional", reject: "rejected" },
-    checks: {
-      equipment_status: "Tool calendar",
-      capability: "Capability",
-      overlap: "Overlap",
-      wip: "WIP",
-      operators: "Operators",
-      material: "Material",
-      precedence: "Route order",
-      preemption: "Preemption",
-      qtime: "Queue time",
-      other: "Other",
-    },
-    status: { IDLE: "Idle", RUNNING: "Running", DOWN: "Down", MAINTENANCE: "Maintenance", ok: "In stock", short: "Short" },
-    areas: {
-      Lithography: "Lithography",
-      Etch: "Etch",
-      CMP: "CMP",
-      Deposition: "Deposition",
-      Metrology: "Metrology",
-      Clean: "Clean",
-    },
-    scenarios: {
-      litho_down: ["Machine breakdown", "LITHO-02 is down for 10 h. LOT-1001 is blocked, due 18:00 UTC."],
-      rush_order: ["Rush order", "A hot lot is due in 3 h. Running lots stay on their tools."],
-      material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
-      rework: ["Overlay rework", "LOT-1004 overlay failed at measure. Strip, re-expose, re-measure once."],
-      qtime: ["Queue time", "Clean already finished. The next film must start within 15 min."],
-      scale: ["Scale", "1,000 lots, 36 tools. One scanner is down for 10 h."],
-    },
-    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time", scale: "vs. EDD dispatch" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time", scale: "Priority recovery" },
-    scaleWindow: "First 12 hours",
-    scaleNote: "Busy share of each tool, by hour. A hatch means the tool is down.",
-    scheduleWord: "Schedule",
-    criticWord: "Critic",
-    stepsWord: "steps",
-    toolsWord: "tools",
-    optTitle: "Optimality gap",
-    optNote: "The committed book stays the list scheduler. This is the CP-SAT reference for the same rules.",
-    optProvedZero: "Heuristic within 0% of optimal (proved)",
-    optProvedTardy: "CP-SAT improves weighted tardiness by {delta} (proved)",
-    optProvedSpan: "Weighted tardiness matches optimal. Makespan is {delta} shorter (proved)",
-    optFeasible: "Heuristic within {gap}% of the bound (feasible)",
-    optLnsTardy: "Neighborhood search cut weighted tardiness by {delta} in {seconds} s",
-    optLnsSpan: "Neighborhood search cut makespan by {delta} in {seconds} s",
-    optKept: "No improvement in {seconds} s. Heuristic kept.",
-    optHeuristic: "Heuristic",
-    optBest: "CP-SAT",
-    optBound: "Lower bound",
-    optChanged: "Steps that differ in the reference",
-    optStart: "Start",
-  },
-  zh: {
-    taglineIdle: "这一班的恢复",
-    taglineBay: "一个机台的恢复",
-    taglineScale: "36 台设备的恢复",
-    versionNote: "第一屏是决定：一句话、拒绝理由、三个数字，和两本账。分析页放其余数字。核对页是评审的检查。",
-    lang: "语言",
-    disruption: "异常",
-    bay: "机台",
-    describe: "或自己描述",
-    placeholder: "光刻机 02 宕机，维修 10 小时",
-    run: "开始",
-    runLong: "开始恢复",
-    refused: "请求被拒绝。",
-    refusedLine: "拒绝：",
-    idle: "选择一个异常。",
-    working: "正在恢复。",
-    emptyTitle: "这一班要先恢复哪一件异常？",
-    emptyHint: "在异常上点开始。评审提交之前，账不出现在这一屏。",
-    mock: "离线样例。排程、评审和引擎是真的。没有调用 Nightshift 和 Zetaris。密钥不出现在这屏。",
-    live: "在线路径。数据和说明使用环境里的凭据。密钥不出现在这屏。",
-    offline: "离线样例",
-    clock: "场景时钟",
-    tabRecover: "恢复",
-    tabAnalyze: "分析",
-    tabVerify: "核对",
-    details: "详情",
-    now: "现在",
-    due: "交期",
-    moved: "已移动",
-    fresh: "新增",
-    down: "宕机",
-    maint: "维护",
-    held: "暂停",
-    heldAside: "不含暂扣",
-    lots: "批次",
-    lot: "批次",
-    pri: "优先",
-    step: "工序",
-    from: "从",
-    to: "到",
-    before: "之前",
-    after: "之后",
-    tardy: "拖期",
-    change: "变化",
-    verified: "合同已核验",
-    explainer: "说明",
-    checkpoint: "检查点",
-    of: "/",
-    computed: "计算",
-    nodeScout: "Scout",
-    nodeZetaris: "Zetaris",
-    nodePlant: "产线读取",
-    nodeSense: "感知",
-    nodePlan: "计划",
-    nodeCritic: "评审",
-    nodeExplain: "Nightshift",
-    nodeExplainer: "说明",
-    nodeCommit: "提交",
-    wait: "等待",
-    runState: "进行中",
-    done: "完成",
-    reads: "次读取",
-    facts: "条事实",
-    ops: "道工序",
-    holds: "个暂停",
-    events: "条事件",
-    loopLabel: "恢复回路",
-    byArea: "各区域利用率",
-    kpiOtd: "准时交付",
-    kpiTardy: "加权拖期",
-    kpiSpan: "总工期",
-    kpiUtil: "利用率",
-    kpiChange: "换型",
-    kpiRisk: "风险批次",
-    kpiMoved: "移动批次",
-    kpiLead: "平均前置时间",
-    kpiWait: "平均等待",
-    kpiX: "X 因子",
-    otdTip: "在交期前完工的批次，除以账上的批次数。",
-    tardyTip: "拖期按优先级加权求和。没有完工时间的批次按 24 小时计。",
-    riskTip: "错过交期的批次，包括账上排不下的批次。",
-    spanTip: "这本账最后一道工序的完工时间。",
-    leadTip: "从场景时钟到完工的平均时间，只算这本账完工的批次。暂停的批次不计入。",
-    waitTip: "同一批次相邻工序之间的平均间隔。",
-    utilTip: "两本账用同一个窗口，取较长的总工期。忙时除以设备可用的时间。宕机时间不进分母，列在这里，所以较短的账不会把这个数抬高。",
-    xTip: "完工时间除以纯加工时间的平均。1.0 表示全是加工。暂停的批次不计入。",
-    changeTip: "因配方族变化而发生的换型次数。",
-    qtimeTitle: "队列时间",
-    qtimeNote: "上一道结束到下一道开始。",
-    qtimeTip: "在时限内开工的配对，包括已过时限八成的。暂扣和超时是未遵守。",
-    violationTip: "已经排上、间隔超过时限的配对。",
-    atRiskTip: "已经排上、仍在时限内、但已过时限八成的配对。",
-    bottleneckTitle: "瓶颈",
-    bottleneckNote: "一天里，剩余加工分钟除以可用设备分钟。宕机设备不贡献时间。",
-    bottleneckTip: "同优先级时，这个区域和给它供料的工序先派工。",
-    compliance: "遵守率",
-    violations: "超时",
-    atRisk: "临近",
-    rework: "返工",
-    reticle: "光罩",
-    areaTip: "该区域的忙时，除以该区域在共享窗口内的可用时间。",
-    waitPair: "恢复后从 {from} 到 {to} 的平均间隔，共 {n} 个批次。",
-    tardyCellTip: "移动前的拖期，然后是移动后。没有完工时间按 24 小时计。",
-    movedTip: "两本账都有的工序换了设备的批次。",
-    downTip: "共享窗口内的宕机或维护分钟。不进入利用率的分母。",
-    progressTip: "已经完成的站，共七站。",
-    dueTip: "优先级 1 的交期，和条形用同一时间尺。",
-    heldOut: "暂停的批次离开了这个数。它不是改善。",
-    downWindow: "这个窗口内的停机",
-    byTool: "按设备",
-    byLot: "按批次",
-    whereWait: "等待在哪",
-    route: "路线",
-    waitGap: "等待",
-    themeLight: "浅色",
-    themeDark: "深色",
-    pass: "通过",
-    fail: "失败",
-    rejected: "已拒绝",
-    check: "检查",
-    result: "结果",
-    reason: "原因",
-    verifyLead: "每一条已登记的检查。打开一行看原因。",
-    category: "类别",
-    checkStatus: "状态",
-    violations: "违反",
-    passed: "通过",
-    failed: "失败",
-    skipped: "跳过",
-    refusedPlan: "被拒绝的方案",
-    categories: { equipment: "设备", lot: "批次", process: "工艺", material: "物料", time: "时间" },
-    figures: "指标",
-    figuresNote: "灰色不是方向。暂停不能把更短的账涂成改善。",
-    utilNote: "可用时间占比从高到低。",
-    waitNote: "恢复后最大的间隔。",
-    lotNote: "换了设备的那道工序。没移动的批次显示第一台设备。",
-    lotNoteScale: "与 EDD 派工不同的工序。前 12 条。",
-    intents: {
-      machine_down: "设备宕机",
-      rush_order: "急单",
-      material_shortage: "缺料",
-      query_status: "状态",
-      explain: "说明",
-      emergency_stop: "紧急停止",
-      rework: "返工",
-      qtime: "队列时间",
-    },
-    verdicts: { accept: "接受", conditional: "有条件", reject: "拒绝" },
-    checks: {
-      equipment_status: "设备日历",
-      capability: "能力",
-      overlap: "重叠",
-      wip: "在制",
-      operators: "人员",
-      material: "物料",
-      precedence: "工艺顺序",
-      preemption: "抢占",
-      qtime: "队列时间",
-      other: "其他",
-    },
-    status: { IDLE: "空闲", RUNNING: "加工", DOWN: "宕机", MAINTENANCE: "维护", ok: "有库存", short: "短缺" },
-    areas: { Lithography: "光刻", Etch: "刻蚀", CMP: "抛光", Deposition: "沉积", Metrology: "量测", Clean: "清洗" },
-    scenarios: {
-      litho_down: ["设备故障", "光刻机 02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
-      rush_order: ["急单", "一个热批次 3 小时内要交。正在加工的批次留在原设备。"],
-      material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
-      rework: ["套刻返工", "LOT-1004 量测套刻失败。去胶、再曝光、再量一次。"],
-      qtime: ["队列时间", "清洗已经结束。下一道成膜必须在 15 分钟内开工。"],
-      scale: ["规模", "1000 个批次、36 台设备。一台光刻机宕机 10 小时。"],
-    },
-    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列", scale: "对比 EDD 派工" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列", scale: "优先级恢复" },
-    scaleWindow: "前 12 小时",
-    scaleNote: "每台设备每小时的忙碌占比。斜线表示宕机。",
-    scheduleWord: "排程",
-    criticWord: "评审",
-    stepsWord: "工序",
-    toolsWord: "设备",
-    optTitle: "最优差距",
-    optNote: "提交的账仍是列表排程。这一行是同一约束的 CP-SAT 参考。",
-    optProvedZero: "启发式在最优的 0% 以内（已证明）",
-    optProvedTardy: "CP-SAT 将加权拖期缩短 {delta}（已证明）",
-    optProvedSpan: "加权拖期与最优相同。工期短 {delta}（已证明）",
-    optFeasible: "启发式在下界的 {gap}% 以内（可行）",
-    optLnsTardy: "邻域搜索在 {seconds} 秒内将加权拖期缩短 {delta}",
-    optLnsSpan: "邻域搜索在 {seconds} 秒内将工期缩短 {delta}",
-    optKept: "{seconds} 秒内没有改进。保留启发式。",
-    optHeuristic: "启发式",
-    optBest: "CP-SAT",
-    optBound: "下界",
-    optChanged: "参考账中不同的工序",
-    optStart: "开工",
-  },
-  ja: {
-    taglineIdle: "この直の回復",
-    taglineBay: "一つのベイの回復",
-    taglineScale: "36 台の回復",
-    versionNote: "最初の画面が判断です。一文、拒否、三つの数字、二つの帳票。分析に残りの数字。検証に批評の検査。",
-    lang: "言語",
-    disruption: "異常",
-    bay: "装置",
-    describe: "または自分で書く",
-    placeholder: "リソグラフィ 02 が停止、修理 10 時間",
-    run: "実行",
-    runLong: "回復を実行",
-    refused: "要求は拒否された。",
-    refusedLine: "拒否：",
-    idle: "異常を選ぶ。",
-    working: "回復を実行中。",
-    emptyTitle: "この直で、どの異常から回復するか？",
-    emptyHint: "異常の実行を押す。批評が確定するまで帳票はこの画面に出さない。",
-    mock: "オフラインの見本。日程、批評、エンジンは本物。Nightshift と Zetaris は呼ばない。秘密はこの画面に出さない。",
-    live: "ライブ経路。データと説明は環境の資格情報を使う。秘密はこの画面に出さない。",
-    offline: "オフライン見本",
-    clock: "シナリオ時刻",
-    tabRecover: "回復",
-    tabAnalyze: "分析",
-    tabVerify: "検証",
-    details: "詳細",
-    now: "現在",
-    due: "納期",
-    moved: "移動",
-    fresh: "新規",
-    down: "停止",
-    maint: "保全",
-    held: "保留",
-    heldAside: "保留は含めない",
-    lots: "ロット",
-    lot: "ロット",
-    pri: "優先",
-    step: "工程",
-    from: "から",
-    to: "へ",
-    before: "前",
-    after: "後",
-    tardy: "遅延",
-    change: "変化",
-    verified: "契約を検証",
-    explainer: "説明",
-    checkpoint: "チェックポイント",
-    of: "/",
-    computed: "計算",
-    nodeScout: "Scout",
-    nodeZetaris: "Zetaris",
-    nodePlant: "ライン読取",
-    nodeSense: "検知",
-    nodePlan: "計画",
-    nodeCritic: "批評",
-    nodeExplain: "Nightshift",
-    nodeExplainer: "説明",
-    nodeCommit: "確定",
-    wait: "待機",
-    runState: "実行中",
-    done: "完了",
-    reads: "件の読取",
-    facts: "件の事実",
-    ops: "工程",
-    holds: "件の保留",
-    events: "件の事象",
-    loopLabel: "回復ループ",
-    byArea: "エリア別稼働率",
-    kpiOtd: "納期遵守",
-    kpiTardy: "加重遅延",
-    kpiSpan: "総所要",
-    kpiUtil: "稼働率",
-    kpiChange: "段取り",
-    kpiRisk: "危険ロット",
-    kpiMoved: "移動ロット",
-    kpiLead: "平均リードタイム",
-    kpiWait: "平均待ち",
-    kpiX: "X ファクタ",
-    otdTip: "納期までに完了したロットを、帳票上のロット数で割る。",
-    tardyTip: "遅延を優先度で加重した合計。完了時刻がないロットは 24 時間とする。",
-    riskTip: "納期に遅れるロット。帳票に置けなかったロットを含む。",
-    spanTip: "その帳票の最後の工程の完了時刻。",
-    leadTip: "シナリオ時刻から完了までの平均。帳票が終えるロットだけ。保留は除く。",
-    waitTip: "同じロットの連続する工程の間の平均。",
-    utilTip: "二つの帳票は同じ窓。長い方の総所要を使う。稼働時間を、装置が上がっている時間で割る。停止時間は分母に入れずここに示す。短い帳票だから割合は上がらない。",
-    xTip: "完了時間を純加工時間で割った平均。1.0 は加工だけ。保留は除く。",
-    changeTip: "レシピ族が変わって発生した段取り。",
-    qtimeTitle: "待ち時間",
-    qtimeNote: "前工程の終わりから次工程の開始まで。",
-    qtimeTip: "制限内に始まった組。制限の 8 割を過ぎた組も含む。保留と超過は未達。",
-    violationTip: "計画に入り、間隔が制限を超えた組。",
-    atRiskTip: "計画に入り、制限内だが 8 割を過ぎた組。",
-    bottleneckTitle: "ボトルネック",
-    bottleneckNote: "一日あたり、残加工分を稼働装置分で割った最大。停止装置は分を出さない。",
-    bottleneckTip: "同じ優先度では、このエリアとそこへ送る工程を先に流す。",
-    compliance: "遵守率",
-    violations: "超過",
-    atRisk: "危険",
-    rework: "再加工",
-    reticle: "レチクル",
-    areaTip: "このエリアの稼働時間を、共有の窓で上がっている時間で割る。",
-    waitPair: "回復後の {from} から {to} までの平均間隔。{n} ロット。",
-    tardyCellTip: "移動前の遅延、その後が移動後。完了時刻がなければ 24 時間。",
-    movedTip: "両方の帳票にある工程で装置が変わったロット。",
-    downTip: "共有の窓で停止または保全だった分。稼働率の分母に入れない。",
-    progressTip: "終わった工程。回復ループは七つ。",
-    dueTip: "優先度 1 の納期。バーと同じ時間軸。",
-    heldOut: "保留ロットがこの数字から外れた。改善ではない。",
-    downWindow: "この窓の停止",
-    byTool: "装置別",
-    byLot: "ロット別",
-    whereWait: "待ちの場所",
-    route: "経路",
-    waitGap: "待ち",
-    themeLight: "ライト",
-    themeDark: "ダーク",
-    pass: "合格",
-    fail: "不合格",
-    rejected: "拒否",
-    check: "検査",
-    result: "結果",
-    reason: "理由",
-    verifyLead: "登録された検査が一行。開くと理由。",
-    category: "分類",
-    checkStatus: "状態",
-    violations: "違反",
-    passed: "合格",
-    failed: "不合格",
-    skipped: "対象外",
-    refusedPlan: "拒否した案",
-    categories: { equipment: "装置", lot: "ロット", process: "工程", material: "資材", time: "時間" },
-    figures: "指標",
-    figuresNote: "灰色は方向ではない。保留で短い帳票を改善色にしない。",
-    utilNote: "上がっている時間の割合が高い順。",
-    waitNote: "回復後の大きい間隔。",
-    lotNote: "装置が変わった工程。移動していないロットは最初の装置。",
-    lotNoteScale: "EDD 差し立てと装置が違う工程。先頭 12 件。",
-    intents: {
-      machine_down: "装置停止",
-      rush_order: "特急",
-      material_shortage: "資材不足",
-      query_status: "状態",
-      explain: "説明",
-      emergency_stop: "緊急停止",
-      rework: "再加工",
-      qtime: "待ち時間",
-    },
-    verdicts: { accept: "受理", conditional: "条件付き", reject: "却下" },
-    checks: {
-      equipment_status: "装置カレンダー",
-      capability: "能力",
-      overlap: "重複",
-      wip: "仕掛",
-      operators: "人員",
-      material: "資材",
-      precedence: "工程順",
-      preemption: "割り込み",
-      qtime: "待ち時間",
-      other: "その他",
-    },
-    status: { IDLE: "空き", RUNNING: "加工", DOWN: "停止", MAINTENANCE: "保全", ok: "在庫あり", short: "不足" },
-    areas: { Lithography: "リソ", Etch: "エッチ", CMP: "CMP", Deposition: "成膜", Metrology: "測定", Clean: "洗浄" },
-    scenarios: {
-      litho_down: ["装置故障", "リソ 02 が 10 時間停止。LOT-1001 が詰まり、納期 18:00 UTC。"],
-      rush_order: ["特急", "ホットロットの納期は 3 時間。加工中のロットは装置に残す。"],
-      material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
-      rework: ["重ね合わせ再加工", "LOT-1004 は測定で不良。剥離し、再露光し、再測定する。"],
-      qtime: ["待ち時間", "洗浄は終了済み。次の成膜は 15 分以内に始める。"],
-      scale: ["規模", "1000 ロット、36 台。スキャナー 1 台が 10 時間停止。"],
-    },
-    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間", scale: "EDD 差し立てとの比較" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分", scale: "優先度の回復" },
-    scaleWindow: "最初の 12 時間",
-    scaleNote: "装置ごとの 1 時間の稼働割合。斜線は停止。",
-    scheduleWord: "計画",
-    criticWord: "批評",
-    stepsWord: "工程",
-    toolsWord: "装置",
-    optTitle: "最適との差",
-    optNote: "確定する帳票はリスト計画のまま。この行は同じ制約の CP-SAT 参照です。",
-    optProvedZero: "ヒューリスティックは最適の 0% 以内（証明済み）",
-    optProvedTardy: "CP-SAT が加重遅延を {delta} 短縮（証明済み）",
-    optProvedSpan: "加重遅延は最適と同じ。工期は {delta} 短い（証明済み）",
-    optFeasible: "ヒューリスティックは下界の {gap}% 以内（実行可能）",
-    optLnsTardy: "近傍探索が {seconds} 秒で加重遅延を {delta} 短縮",
-    optLnsSpan: "近傍探索が {seconds} 秒で工期を {delta} 短縮",
-    optKept: "{seconds} 秒で改善なし。ヒューリスティックを維持。",
-    optHeuristic: "ヒューリスティック",
-    optBest: "CP-SAT",
-    optBound: "下界",
-    optChanged: "参照帳票で異なる工程",
-    optStart: "開始",
-  },
-};
-
+let COPY = { en: {}, zh: {}, ja: {} };
 const ALERT = {
   litho_down: "LITHO-02",
   rush_order: "LITHO-01",
@@ -660,6 +71,7 @@ const state = {
   horizon: "",
   health: null,
   bay: [],
+  overview: null,
   scenarioItems: [],
   running: false,
   incidentText: "",
@@ -671,11 +83,13 @@ const $ = (id) => document.querySelector(id);
 document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
+  COPY = await getJson("/assets/i18n.json");
   state.health = await getJson("/api/health");
   state.horizon = state.health.horizon;
   const payload = await getJson("/api/scenarios");
   state.scenarioItems = payload.scenarios;
   state.bay = payload.bay || [];
+  state.overview = payload.overview || null;
   applyTheme();
   paint();
   $("#theme").addEventListener("click", () => {
@@ -731,7 +145,7 @@ function t() {
 function taglineFor(copy) {
   const id = (state.report && state.report.scenario_id) || state.activeScenario || "";
   if (id === "scale") return copy.taglineScale;
-  if (id) return copy.taglineBay;
+  if (id && copy.scenarios && copy.scenarios[id]) return copy.scenarios[id][0];
   return copy.taglineIdle;
 }
 
@@ -743,43 +157,40 @@ function paint() {
   $("#note").textContent = copy.versionNote;
   $("#lang-label").textContent = copy.lang;
   $("#disruption-label").textContent = copy.disruption;
-  $("#bay-label").textContent = copy.bay;
+  $("#tools-label").textContent = copy.toolsLabel;
+  $("#materials-label").textContent = copy.materialsLabel;
   $("#describe-label").textContent = copy.describe;
   $("#incident").placeholder = copy.placeholder;
   $("#run-custom").textContent = copy.runLong;
-  $("#empty-title").textContent = copy.emptyTitle;
-  $("#empty-hint").textContent = copy.emptyHint;
   $("#clock").textContent = `${copy.clock} ${formatClock(state.horizon)} UTC`;
-  const mock = state.health.llm === "mock" && state.health.data === "sample";
-  const badge = $("#mode-badge");
-  badge.textContent = mock ? copy.offline : state.health.label;
-  badge.className = mock ? "badge" : "badge live";
+  paintMode(copy);
   const banner = $("#banner");
-  banner.hidden = false;
-  banner.textContent = mock ? copy.mock : copy.live;
+  banner.hidden = true;
   $("#theme").textContent = state.theme === "dark" ? copy.themeDark : copy.themeLight;
   document.querySelectorAll("[data-lang]").forEach((button) => {
     button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
   });
   paintTabs();
   paintScenarios();
-  paintBay(bayStatus());
+  paintBay();
   paintRecover();
   paintAnalyze();
   paintVerify();
   if (state.running && !state.report) $("#status").textContent = copy.working;
-  else if (!state.running && !state.report) $("#status").textContent = copy.idle;
+  else if (!state.running && !state.report) $("#status").textContent = "";
 }
 
 function paintTabs() {
   const copy = t();
   const host = $("#tabs");
   host.innerHTML = "";
+  const tips = { recover: copy.tabRecoverTip, analyze: copy.tabAnalyzeTip, verify: copy.tabVerifyTip };
   for (const [id, label] of [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify]]) {
     const button = document.createElement("button");
     button.type = "button";
     button.setAttribute("role", "tab");
     button.setAttribute("aria-selected", state.tab === id ? "true" : "false");
+    button.title = tips[id] || "";
     button.textContent = label;
     button.addEventListener("click", () => {
       state.tab = id;
@@ -802,15 +213,19 @@ function paintScenarios() {
   const host = $("#scenarios");
   const copy = t();
   host.innerHTML = "";
+  const recommended = (state.overview && state.overview.recommended) || "litho_down";
   for (const item of state.scenarioItems || []) {
     const text = copy.scenarios[item.id] || [item.title, item.summary];
+    const primary = item.id === recommended;
     const row = document.createElement("div");
-    row.className = "scenario" + (item.id === state.activeScenario ? " active" : "");
+    row.className = "scenario" + (item.id === state.activeScenario ? " active" : "") + (primary ? " recommended" : "");
     const words = document.createElement("div");
-    words.innerHTML = `<strong>${escapeHtml(text[0])}</strong><span>${escapeHtml(text[1])}</span>`;
+    const mark = primary ? `<em>${escapeHtml(copy.recommended)}</em>` : "";
+    const impact = scenarioImpact(item.id, copy);
+    words.innerHTML = `<strong>${mark}${escapeHtml(text[0])}</strong><span>${escapeHtml(impact || text[1])}</span>`;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "run";
+    button.className = primary ? "run" : "run quiet";
     button.textContent = copy.run;
     button.disabled = state.running;
     button.addEventListener("click", () => {
@@ -821,6 +236,22 @@ function paintScenarios() {
     host.appendChild(row);
   }
   $("#run-custom").disabled = state.running;
+  $("#run-custom").className = "run quiet";
+}
+
+function scenarioImpact(id, copy) {
+  const impacts = state.overview && state.overview.impacts;
+  const row = impacts && impacts[id];
+  if (!row) return id === "scale" ? copy.impactScale : "";
+  const otd = fill(copy.impactOtd, {
+    before: `${Number(row.otd_before).toFixed(1)}%`,
+    after: `${Number(row.otd_after).toFixed(1)}%`,
+  });
+  const tardy = fill(copy.impactTardy, {
+    before: formatDuration(row.tardy_before),
+    after: formatDuration(row.tardy_after),
+  });
+  return `${otd} · ${tardy}`;
 }
 
 function bayStatus() {
@@ -835,11 +266,24 @@ function bayStatus() {
   return status;
 }
 
-function paintBay(statusById) {
-  const host = $("#bay");
-  host.innerHTML = "";
+function paintBay() {
+  const copy = t();
+  const tools = $("#tools");
+  const materials = $("#materials");
+  const legend = $("#bay-legend");
+  tools.innerHTML = "";
+  materials.innerHTML = "";
+  legend.innerHTML = "";
+  for (const [klass, label] of [["up", copy.legendUp], ["down", copy.legendDown], ["maint", copy.legendMaint]]) {
+    const li = document.createElement("li");
+    li.innerHTML = `<i class="swatch ${klass}"></i><span>${escapeHtml(label)}</span>`;
+    legend.appendChild(li);
+  }
   const scaleRows = state.report && state.report.scenario_id === "scale" && state.report.load && state.report.load.after && state.report.load.after.rows;
+  const materialHost = $("#materials-label");
   if (scaleRows) {
+    materialHost.hidden = true;
+    materials.hidden = true;
     const counts = {};
     const down = {};
     for (const row of scaleRows) {
@@ -851,20 +295,66 @@ function paintBay(statusById) {
       if (!counts[area]) continue;
       const li = document.createElement("li");
       const status = down[area] ? "DOWN" : "IDLE";
-      const name = (t().areas && t().areas[area]) || area;
+      const name = (copy.areas && copy.areas[area]) || area;
       li.innerHTML = `<span class="lamp ${lampClass(status, "tool")}"></span><span>${escapeHtml(name)}</span><small>${counts[area]}</small>`;
-      host.appendChild(li);
+      tools.appendChild(li);
     }
     return;
   }
-  const rows = state.bay.length ? state.bay : [];
-  for (const item of rows) {
+  materialHost.hidden = false;
+  materials.hidden = false;
+  for (const tool of currentTools()) {
+    const li = document.createElement("li");
+    li.dataset.id = tool.id;
+    const detail = toolDetail(tool, copy);
+    li.innerHTML = `<span class="lamp ${lampClass(tool.status, "tool")}"></span><span>${escapeHtml(tool.id)}</span><small>${escapeHtml(detail)}</small>`;
+    li.title = `${tool.id} · ${detail}`;
+    tools.appendChild(li);
+  }
+  for (const item of currentMaterials()) {
     const li = document.createElement("li");
     li.dataset.id = item.id;
-    const status = statusById[item.id] || item.status;
-    li.innerHTML = `<span class="lamp ${lampClass(status, item.kind)}"></span><span>${escapeHtml(item.id)}</span><small>${escapeHtml(statusLabel(status))}</small>`;
-    host.appendChild(li);
+    const qty = fill(copy.onHand, { qty: item.on_hand, unit: item.unit || "" });
+    li.innerHTML = `<span class="lamp ${lampClass(item.status, "material")}"></span><span>${escapeHtml(item.id)}</span><small>${escapeHtml(qty)}</small>`;
+    materials.appendChild(li);
   }
+}
+
+function currentTools() {
+  const gantt = state.report && state.report.gantt && state.report.gantt.after;
+  if (gantt && gantt.rows) return gantt.rows.map(toolFromRow);
+  return (state.overview && state.overview.tools) || [];
+}
+
+function toolFromRow(row) {
+  const bars = (row.bars || []).filter((bar) => !bar.held);
+  const now = bars.find((bar) => bar.start_min <= 0 && bar.end_min > 0);
+  const nxt = !now && bars.length ? bars.slice().sort((a, b) => a.start_min - b.start_min)[0] : null;
+  return {
+    id: row.equipment_id,
+    status: row.status,
+    lot: now ? now.job_id : "",
+    eta_min: now ? now.end_min : null,
+    next_lot: nxt ? nxt.job_id : "",
+    next_min: nxt ? nxt.start_min : null,
+    down_until_min: row.status === "DOWN" || row.status === "MAINTENANCE" ? row.available_at_min : null,
+  };
+}
+
+function currentMaterials() {
+  const rows = (state.overview && state.overview.materials) || [];
+  if (state.report && state.report.scenario_id === "material_shortage") {
+    return rows.map((item) => item.id === "RESIST-UV" ? { ...item, on_hand: 0, status: "short" } : item);
+  }
+  return rows;
+}
+
+function toolDetail(tool, copy) {
+  if (tool.status === "DOWN") return fill(copy.downUntil, { time: shiftClock(tool.down_until_min) });
+  if (tool.status === "MAINTENANCE") return fill(copy.maintUntil, { time: shiftClock(tool.down_until_min) });
+  if (tool.lot) return fill(copy.runningLot, { lot: shortLot(tool.lot), time: shiftClock(tool.eta_min) });
+  if (tool.next_lot) return fill(copy.nextLot, { lot: shortLot(tool.next_lot), time: shiftClock(tool.next_min) });
+  return copy.idleTool;
 }
 
 function lampClass(status, kind) {
@@ -898,6 +388,7 @@ function paintRecover() {
   const result = $("#result");
   const showStory = Boolean(report) || state.running;
   empty.hidden = showStory;
+  if (!showStory) paintOverview();
   story.hidden = !showStory;
   cards.hidden = !report || !report.kpis;
   stepper.hidden = !showStory;
@@ -918,8 +409,7 @@ function paintRecover() {
 function refusalLine(report) {
   const rejected = report.rejected_alternative && report.rejected_alternative.critique;
   const violation = rejected && rejected.violations && rejected.violations[0];
-  if (!violation) return "";
-  return `${t().refusedLine} ${violation.detail}`;
+  return formatFinding(violation);
 }
 
 function renderCards(report) {
@@ -970,31 +460,31 @@ function paintStepper() {
   const seen = new Map(state.steps.map((step) => [step.phase, step]));
   let active = "";
   for (const step of state.steps) {
-    if (NODES.some(([phase]) => phase === step.phase)) active = step.phase;
+    if (STEPS.some(([, phases]) => phases.includes(step.phase))) active = step.phase;
   }
   const list = document.createElement("ol");
   let done = 0;
-  for (const [phase, key] of NODES) {
-    const step = seen.get(phase);
+  for (const [, phases, key] of STEPS) {
+    const step = phases.map((phase) => seen.get(phase)).filter(Boolean).pop();
     if (step) done += 1;
-    const running = Boolean(step) && phase === active && state.running;
+    const running = Boolean(step) && phases.includes(active) && state.running;
     const li = document.createElement("li");
     li.className = running ? "on" : step ? "done" : "";
     li.textContent = nodeLabel(key);
     if (step) {
-      const text = `${nodeLabel(key)} · ${stepOutput(phase, step.slots || {}, copy)} · ${step.summary || ""} · ${step.elapsed_ms} ms`;
+      const text = `${nodeLabel(key)} · ${stepOutput(step.phase, step.slots || {}, copy)}`;
       li.addEventListener("pointerenter", (event) => showPlainTip(event, text));
       li.addEventListener("pointerleave", hideTip);
     }
     list.appendChild(li);
   }
-  const pct = Math.round((100 * done) / NODES.length);
+  const pct = Math.round((100 * done) / STEPS.length);
   const side = document.createElement("div");
   side.innerHTML = `<div class="meter-line"><i style="width:${pct}%"></i></div>`;
   const label = document.createElement("div");
   label.className = "progress-label";
-  const current = NODES.find(([phase]) => phase === active);
-  label.textContent = state.running && current ? `${pct}% · ${nodeLabel(current[1])}` : `${pct}%`;
+  const current = STEPS.find(([, phases]) => phases.includes(active));
+  label.textContent = state.running && current ? `${pct}% · ${nodeLabel(current[2])}` : `${pct}%`;
   bindTip(label, copy.progressTip);
   const stack = document.createElement("div");
   stack.append(side, label);
@@ -1066,7 +556,7 @@ function paintAnalyze() {
   host.innerHTML = "";
   const report = state.report;
   if (!report || !report.kpis) {
-    host.appendChild(emptyLine(copy.emptyHint));
+    host.appendChild(emptyLine(copy.analyzeEmpty));
     return;
   }
   const wrap = document.createElement("div");
@@ -1364,7 +854,7 @@ function paintVerify() {
   host.innerHTML = "";
   const report = state.report;
   if (!report) {
-    host.appendChild(emptyLine(copy.emptyHint));
+    host.appendChild(emptyLine(copy.verifyEmpty));
     return;
   }
   const card = document.createElement("article");
@@ -1377,8 +867,9 @@ function paintVerify() {
   pill.className = `pill ${verdict}`;
   pill.textContent = (copy.verdicts && copy.verdicts[verdict]) || verdict;
   summary.appendChild(pill);
-  if (report.verdict && verdict !== "accept" && report.verdict.rationale) {
-    summary.append(document.createTextNode(` ${report.verdict.rationale}`));
+  if (report.verdict && verdict !== "accept") {
+    const why = rationaleText(report.verdict);
+    if (why) summary.append(document.createTextNode(` ${why}`));
   }
   card.appendChild(summary);
   const validation = report.validation;
@@ -1414,10 +905,12 @@ function paintVerify() {
 }
 
 function checkReasons(report, row, copy) {
-  const reasons = (row.violations || []).map((item) => item.detail).filter(Boolean);
-  const legacy = (report.checks || []).find((item) => item.constraint === row.constraint || item.constraint === row.id);
-  if (legacy && legacy.result === "rejected" && legacy.reason && !reasons.includes(legacy.reason)) {
-    reasons.push(`${copy.refusedPlan}: ${legacy.reason}`);
+  const reasons = (row.violations || []).map((item) => formatFinding(item)).filter(Boolean);
+  const rejected = report.rejected_alternative && report.rejected_alternative.critique;
+  for (const item of (rejected && rejected.violations) || []) {
+    if (item.constraint !== row.constraint && item.constraint !== row.id) continue;
+    const line = formatFinding(item);
+    if (line && !reasons.includes(line)) reasons.push(`${copy.refusedPlan}: ${line}`);
   }
   return reasons;
 }
@@ -1543,7 +1036,7 @@ async function run(body) {
     const report = state.report;
     $("#status").textContent = report && report.blocked
       ? t().refused
-      : `${report && report.verdict ? report.verdict.verdict : "done"} · ${report && report.mode ? report.mode.label : ""}`;
+      : doneStatus(report);
   } catch (error) {
     $("#status").textContent = error.message;
   } finally {
@@ -1596,7 +1089,10 @@ function stepOutput(phase, slots, copy) {
     const conf = typeof slots.confidence === "number" ? ` · ${Math.round(slots.confidence * 100)}%` : "";
     return `${label}${conf}`;
   }
-  if (phase === "query") return `${slots.reads ?? 0} ${copy.reads}`;
+  if (phase === "query") {
+    const source = slots.source === "zetaris" ? copy.sourceZetaris : copy.sourceSample;
+    return `${source} · ${slots.reads ?? 0} ${copy.reads}`;
+  }
   if (phase === "sense") return `${slots.facts ?? 0} ${copy.facts}`;
   if (phase === "plan") return `${slots.operations ?? 0} ${copy.ops} · ${slots.holds ?? 0} ${copy.holds}`;
   if (phase === "critique") return String((copy.verdicts && copy.verdicts[slots.verdict]) || slots.verdict || "");
@@ -1743,24 +1239,26 @@ function renderGantt(host, gantt, horizon, scale, draw) {
   if (!gantt) return;
   const origin = scale.start_min;
   const span = scale.end_min - origin;
+  const byLot = host.id !== "gantt-now" && state.view === "lot";
   const wrap = document.createElement("div");
-  wrap.className = "gantt" + (draw ? " draw" : "") + (state.view === "lot" ? " lot" : "");
+  wrap.className = "gantt" + (draw ? " draw" : "") + (byLot ? " lot" : "");
   wrap.dataset.scale = String(scale.end_min);
-  const rows = state.view === "lot" ? lotRows(gantt) : gantt.rows;
+  const rows = byLot ? lotRows(gantt) : gantt.rows;
   for (const row of rows) {
     const line = document.createElement("div");
-    line.className = "gantt-row" + (row.bottleneck && state.view !== "lot" ? " bottleneck" : "");
+    const downRow = row.status === "DOWN" || row.status === "MAINTENANCE";
+    line.className = "gantt-row" + (row.bottleneck && !byLot ? " bottleneck" : "") + (downRow ? " down-row" : "");
     const label = document.createElement("div");
     label.className = "gantt-label";
-    if (state.view === "lot") {
+    if (byLot) {
       label.innerHTML = `${escapeHtml(row.job_id)}<small>P${row.priority}</small>`;
     } else {
       label.textContent = row.equipment_id;
     }
     const track = document.createElement("div");
     track.className = "track";
-    if (state.view === "lot") track.dataset.links = "1";
-    if (state.view !== "lot" && row.available_at_min > 0 && span > 0) {
+    if (byLot) track.dataset.links = "1";
+    if (!byLot && row.available_at_min > 0 && span > 0) {
       const visStart = Math.max(0, origin);
       const visEnd = Math.min(row.available_at_min, scale.end_min);
       if (visEnd > visStart) {
@@ -1785,11 +1283,11 @@ function renderGantt(host, gantt, horizon, scale, draw) {
         node.style.backgroundColor = tone.fill;
         node.style.color = tone.ink;
       }
-      node.title = bar.held ? (bar.reason || bar.job_id) : bar.job_id;
+      node.title = bar.held ? (formatFinding(bar) || bar.job_id) : bar.job_id;
       const name = document.createElement("span");
       name.className = "bar-label";
       name.textContent = bar.held
-        ? (state.view === "lot" ? t().held : `${shortLot(bar.job_id)} ${t().held}`)
+        ? (byLot ? t().held : `${shortLot(bar.job_id)} ${t().held}`)
         : shortLot(bar.job_id);
       node.appendChild(name);
       const toolId = bar.equipment_id || row.equipment_id;
@@ -2189,6 +1687,135 @@ function formatMeasure(value, kind, digits) {
 function signedMeasure(value, kind, digits) {
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
   return `${sign}${formatMeasure(Math.abs(value), kind, digits)}`;
+}
+
+function paintMode(copy) {
+  const health = state.health || {};
+  const mock = health.llm === "mock" && health.data === "sample";
+  const badge = $("#mode-badge");
+  const detail = $("#mode-detail");
+  const model = String(health.nemotron_model || "").split("/").pop();
+  const dataName = health.data === "zetaris" ? copy.dataZetaris : copy.dataSample;
+  badge.textContent = mock ? copy.offline : (copy.badgeLive || "Nightshift");
+  badge.className = mock ? "badge" : "badge live";
+  detail.textContent = mock
+    ? copy.modeDetailMock
+    : fill(copy.modeDetailLive, { model: model || copy.badgeLive, data: dataName });
+  const tip = mock
+    ? copy.modeTipMock
+    : fill(copy.modeTipLive, { model: model || copy.badgeLive, data: dataName });
+  badge.title = tip;
+  detail.title = tip;
+}
+
+function paintOverview() {
+  const copy = t();
+  const overview = state.overview;
+  const line = $("#product-line");
+  if (line) line.textContent = copy.productLine;
+  const kpis = $("#shift-kpis");
+  if (!kpis) return;
+  kpis.innerHTML = "";
+  const values = overview && overview.kpis;
+  const cards = [
+    ["kpiOtd", values ? `${Number(values.on_time_delivery_pct).toFixed(1)}%` : "—", "otdTip"],
+    ["kpiRisk", values ? String(values.lots_at_risk) : "—", "riskTip"],
+    ["kpiWip", values ? String(values.wip) : "—", "wipTip"],
+    ["kpiUtil", values ? `${Number(values.utilization_pct).toFixed(1)}%` : "—", "utilTip"],
+  ];
+  for (const [label, value, tip] of cards) {
+    const article = document.createElement("article");
+    article.innerHTML = `<div class="title">${escapeHtml(copy[label])}</div><div class="value">${escapeHtml(value)}</div>`;
+    bindTip(article, copy[tip]);
+    kpis.appendChild(article);
+  }
+  const down = (overview && overview.down_tools) || [];
+  const plan = $("#plan-label");
+  if (plan) {
+    plan.textContent = down.length ? fill(copy.planTitle, { tool: down.join(", ") }) : copy.planTitleUp;
+  }
+  const legend = $("#plan-legend");
+  if (legend) {
+    legend.innerHTML = "";
+    for (const [klass, label] of [["up", copy.legendUp], ["down", copy.legendDown], ["maint", copy.legendMaint]]) {
+      const li = document.createElement("li");
+      li.innerHTML = `<i class="swatch ${klass}"></i><span>${escapeHtml(label)}</span>`;
+      legend.appendChild(li);
+    }
+  }
+  if (overview && overview.gantt && overview.window) {
+    renderGantt($("#gantt-now"), overview.gantt, state.horizon, overview.window, false);
+  }
+  const recommend = $("#recommend");
+  if (!recommend) return;
+  recommend.innerHTML = "";
+  const id = (overview && overview.recommended) || "litho_down";
+  const text = (copy.scenarios && copy.scenarios[id]) || ["", ""];
+  const words = document.createElement("div");
+  const impact = scenarioImpact(id, copy);
+  words.innerHTML = `<strong><em>${escapeHtml(copy.recommended)}</em>${escapeHtml(text[0])}</strong><span>${escapeHtml(impact || text[1])}</span>`;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "run";
+  button.id = "run-recommended";
+  button.textContent = copy.runRecommended;
+  button.disabled = state.running;
+  button.addEventListener("click", () => run({ scenario: id }));
+  recommend.append(words, button);
+}
+
+function doneStatus(report) {
+  const copy = t();
+  const verdict = report && report.verdict && report.verdict.verdict;
+  const word = (copy.verdicts && copy.verdicts[verdict]) || copy.done;
+  const data = report && report.mode && report.mode.data === "zetaris" ? copy.sourceZetaris : copy.sourceSample;
+  return `${word} · ${data}`;
+}
+
+function formatFinding(item) {
+  if (!item) return "";
+  const template = item.code && t().messages && t().messages[item.code];
+  if (template) return fill(template, item.params || {});
+  if ((state.lang || "en") === "en") return item.detail || "";
+  return "";
+}
+
+function rationaleText(verdict) {
+  if (!verdict) return "";
+  const template = verdict.rationale_code && t().messages && t().messages[verdict.rationale_code];
+  if (template) return fill(template, {});
+  if ((state.lang || "en") === "en") return verdict.rationale || "";
+  return "";
+}
+
+function fill(template, params) {
+  let text = String(template || "");
+  for (const [key, value] of Object.entries(params || {})) {
+    if (value == null) continue;
+    let shown = String(value);
+    if (key.endsWith("_at")) shown = shiftClock(value);
+    else if (key.endsWith("_min")) shown = formatDuration(value);
+    const name = key.endsWith("_at") || key.endsWith("_min") ? key.replace(/_(at|min)$/, "") : key;
+    text = text.split(`{${name}}`).join(shown);
+  }
+  return text;
+}
+
+function shiftClock(min) {
+  if (min == null || min === "") return "";
+  const base = Date.parse(state.horizon);
+  if (!Number.isFinite(base)) return formatDuration(min);
+  const when = new Date(base + Number(min) * 60000);
+  const hh = String(when.getUTCHours()).padStart(2, "0");
+  const mm = String(when.getUTCMinutes()).padStart(2, "0");
+  const origin = new Date(base);
+  const same = when.getUTCFullYear() === origin.getUTCFullYear()
+    && when.getUTCMonth() === origin.getUTCMonth()
+    && when.getUTCDate() === origin.getUTCDate();
+  if (same) return `${hh}:${mm}`;
+  const mo = String(when.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(when.getUTCDate()).padStart(2, "0");
+  return `${mo}/${dd} ${hh}:${mm}`;
 }
 
 function formatDuration(minutes) {
