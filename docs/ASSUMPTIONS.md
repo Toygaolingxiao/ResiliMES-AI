@@ -101,6 +101,8 @@ Each PROD-A28 layer is deposition, one lithography step (coat, expose, and devel
 
 The Scale preset is a seeded synthetic fab (`seed` 20261022), not a second copy of the six-lot bay. It has 1,000 lots and 36 tools, one operator per tool, so staffing does not search. A lot is released only through the end of its current layer. The same catalog columns are written to `data/sql/scale_seed.sql`. Furnace batching, implant, metal PVD, and AMHS stay out of scope on this fab too.
 
+The scale baseline is EDD dispatch, not a frozen wait on the down scanner. It orders ready steps by due date, then by the minute they become ready, and places each step on the qualified tool that can start soonest. It does not use priority weights or the bottleneck. On the seeded book that rule already finishes every lot on time (on-time delivery 100%, weighted tardiness 0, lots at risk 0). Priority recovery matches those three figures. It cuts mean inter-step wait from 392 minutes to 129 and lengthens makespan from 4,511 minutes to 4,974. The hero scenarios still compare a frozen book with the recovery.
+
 ## Production would add
 
 These are real fab constraints and they are out of this demo:

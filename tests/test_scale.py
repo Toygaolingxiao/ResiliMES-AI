@@ -18,7 +18,7 @@ from resilimes.domain.critique import critique_schedule
 from resilimes.domain.kpis import evaluate, job_outcomes
 from resilimes.domain.loadmap import load_map
 from resilimes.domain.scale_fab import SCALE_DOWN_TOOL, SCALE_LOTS, build_scale_plant
-from resilimes.domain.schedule import POLICY_FROZEN, POLICY_RECOVER, schedule_plant
+from resilimes.domain.schedule import POLICY_EDD, POLICY_RECOVER, schedule_plant
 
 HORIZON = datetime(2026, 10, 22, 6, 30, tzinfo=UTC)
 
@@ -52,7 +52,7 @@ def test_scale_plant_is_deterministic_and_covers_the_loop() -> None:
 def test_scale_smoke_moves_hot_lots_off_the_down_scanner() -> None:
     plant = build_scale_plant(HORIZON, lots=40)
     started = time.perf_counter()
-    before = schedule_plant(plant, POLICY_FROZEN)
+    before = schedule_plant(plant, POLICY_EDD)
     after = schedule_plant(plant, POLICY_RECOVER)
     committed = critique_schedule(plant, after)
     rejected = reject_alternative(plant, naive_alternative(plant, "scale"))
@@ -60,31 +60,26 @@ def test_scale_smoke_moves_hot_lots_off_the_down_scanner() -> None:
     elapsed = time.perf_counter() - started
     assert elapsed < 1.5
     assert not after.unscheduled
+    assert not before.unscheduled
     before_kpi = evaluate(plant, before)
     after_kpi = evaluate(plant, after)
     assert after_kpi.on_time_delivery_pct >= before_kpi.on_time_delivery_pct
     assert after_kpi.lots_at_risk <= before_kpi.lots_at_risk
-    assert after_kpi.weighted_tardiness_min < before_kpi.weighted_tardiness_min
+    assert after_kpi.weighted_tardiness_min <= before_kpi.weighted_tardiness_min
     assert committed.verdict == "accept"
     assert checked["failed"] == 0
+    assert validate(plant, before)["failed"] == 0
     assert rejected.violations
     assert rejected.violations[0].constraint == "equipment_status"
     assert "LITHO-03" in rejected.violations[0].detail
-    frozen = {(op.job_id, op.step): op.equipment_id for op in before.operations}
-    moved = [
-        op
-        for op in after.operations
-        if frozen.get((op.job_id, op.step)) == SCALE_DOWN_TOOL
-        and op.equipment_id != SCALE_DOWN_TOOL
+    early_down = [
+        op for op in before.operations if op.equipment_id == SCALE_DOWN_TOOL and op.start_min < 600
     ]
-    assert moved
+    assert not early_down
     heatmap = load_map(plant, after, 12 * 60)
     assert len(heatmap["rows"]) == 36
     assert heatmap["buckets"] == 12
     outcomes = job_outcomes(plant, before, plant, after)
-    hot = {
-        row.job_id for row in outcomes if row.moved_from == SCALE_DOWN_TOOL and row.priority == 1
-    }
     brief = schedule_brief(
         kind="scale",
         outcomes=outcomes,
@@ -93,9 +88,9 @@ def test_scale_smoke_moves_hot_lots_off_the_down_scanner() -> None:
         rejected=rejected,
         verdict=committed.verdict,
     )
-    assert hot
-    assert brief["en"]["headline"] == f"{len(hot)} lots leave LITHO-03"
-    assert f"{len(hot)} priority-1 lots were blocked" in brief["en"]["points"][0]
+    assert brief["en"]["headline"] == "EDD dispatch already meets the dues"
+    assert "EDD dispatch" in brief["en"]["points"][0]
+    assert "100.0%" in brief["en"]["points"][1]
 
 
 def test_scale_seed_matches_the_generator() -> None:
@@ -119,7 +114,7 @@ def test_thousand_lot_recover_is_under_three_seconds() -> None:
         pytest.skip("set RESILIMES_BENCHMARK=1 to time the 1000-lot recover")
     plant = build_scale_plant(HORIZON)
     started = time.perf_counter()
-    before = schedule_plant(plant, POLICY_FROZEN)
+    before = schedule_plant(plant, POLICY_EDD)
     after = schedule_plant(plant, POLICY_RECOVER)
     critique_schedule(plant, after)
     reject_alternative(plant, naive_alternative(plant, "scale"))

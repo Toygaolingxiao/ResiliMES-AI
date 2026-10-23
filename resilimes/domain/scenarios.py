@@ -107,10 +107,10 @@ SCENARIOS: dict[str, Scenario] = {
         ),
         summary=(
             "A 36-tool fab with 1,000 lots. LITHO-03 is down for 10 hours. "
-            "Priority-1 lots blocked on it move to the scanners that are up."
+            "The baseline is EDD dispatch onto qualified tools. Recovery adds priority."
         ),
-        before_label="Wait for the scanner",
-        after_label="Other scanners",
+        before_label="vs. EDD dispatch",
+        after_label="Priority recovery",
         kind="scale",
     ),
 }

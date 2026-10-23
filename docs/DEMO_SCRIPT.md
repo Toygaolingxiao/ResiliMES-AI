@@ -94,9 +94,9 @@ If you have the live clip, cut it here for five seconds: the JSON `provider` and
 
 Press **Run** on **Scale**. Stay on Recover. Do not scroll. This frame is a tool strip, not a lot Gantt.
 
-"A thousand lots, 36 tools, one scanner down. Twenty-four priority-1 lots leave LITHO-03. On-time delivery 97.6 to 100. The hatch is the down scanner. Schedule and critic, under a second."
+"A thousand lots, 36 tools, one scanner down. The left strip is EDD dispatch: it already meets every due date, and the 24 priority-1 lots are on scanners that are up. Priority recovery matches on-time delivery, weighted tardiness, and lots at risk. All three stay at 100%, zero, and zero. The hatch is the down scanner. Schedule and critic, under a second."
 
-Point at the stat line: schedule, critic, 1,000 lots, 36 tools, 3,426 steps, 14 passed. The three cards read 97.6% to 100%, 139 d 7 h to zero, and 24 lots at risk to zero. The strip is the first 12 hours. The legend's area percents barely move. CMP stays the bottleneck. The refused line names LITHO-03 down until minute 600.
+Point at the chart title "vs. EDD dispatch". Point at the stat line: schedule, critic, 1,000 lots, 36 tools, 3,426 steps, 14 passed. The three cards are flat. The strip is the first 12 hours. CMP stays the bottleneck, about 87%. The refused line names LITHO-03 down until minute 600.
 
 ### 3:15–3:30 — Close (Impact, Demo)
 

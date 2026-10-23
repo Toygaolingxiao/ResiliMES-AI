@@ -15,6 +15,8 @@ Assumptions (also listed in docs/ASSUMPTIONS.md):
   of `to_step`. Steps may sit between them. The scheduler takes a slot inside
   the window, or holds the lot.
 - Same-priority lots that feed the bottleneck area are dispatched first.
+  The EDD policy ignores priority and the bottleneck: it dispatches by due
+  date, then release, onto the qualified tool that can start soonest.
 - An overlay fail inserts a wet strip, one re-expose, and one re-measure,
   and stops when `rework_count` has reached `rework_limit`.
 - A lithography reticle is on one tool at a time. The same tool may use it
@@ -44,7 +46,9 @@ from .plant import minutes_between
 
 POLICY_FROZEN = "frozen"
 POLICY_RECOVER = "recover"
+POLICY_EDD = "edd"
 UNAVAILABLE = {"DOWN", "MAINTENANCE"}
+_POLICIES = {POLICY_FROZEN, POLICY_RECOVER, POLICY_EDD}
 
 
 @dataclass
@@ -141,7 +145,7 @@ class _Board:
 
 
 def schedule_plant(plant: Plant, policy: str) -> Schedule:
-    if policy not in {POLICY_FROZEN, POLICY_RECOVER}:
+    if policy not in _POLICIES:
         raise ValueError(f"Unknown scheduling policy: {policy}")
     board = _board(plant)
     work = _expand(plant, board.rules)
@@ -170,7 +174,7 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
     heap: list[tuple[int, int, int, int, str, str, int, StepWork]] = []
     sequence = 0
     for step in queue:
-        sequence = _push(heap, step, bottleneck, sequence)
+        sequence = _push(heap, step, bottleneck, sequence, policy)
     while heap:
         step = heapq.heappop(heap)[-1]
         placed, reason = _place_flexible(step, plant, policy, board, inventory, consumed)
@@ -181,7 +185,7 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
         opened: list[StepWork] = []
         _arm_after(step, placed.end_min, work, plant, opened, board)
         for nxt in opened:
-            sequence = _push(heap, nxt, bottleneck, sequence)
+            sequence = _push(heap, nxt, bottleneck, sequence, policy)
 
     operations.sort(key=lambda op: (op.start_min, op.equipment_id, op.job_id))
     return Schedule(
@@ -382,11 +386,15 @@ def _push(
     step: StepWork,
     bottleneck: str,
     sequence: int,
+    policy: str,
 ) -> int:
-    feeds = bool(bottleneck) and (step.area == bottleneck or step.feeds == bottleneck)
-    heapq.heappush(
-        heap,
-        (
+    if policy == POLICY_EDD:
+        # Due date, then the moment the step is ready. Priority and the
+        # bottleneck do not change who goes next.
+        key = (step.due_min, step.ready_at, 0, 0, step.job_id, step.step, sequence, step)
+    else:
+        feeds = bool(bottleneck) and (step.area == bottleneck or step.feeds == bottleneck)
+        key = (
             step.priority,
             step.due_min,
             0 if feeds else 1,
@@ -395,8 +403,8 @@ def _push(
             step.step,
             sequence,
             step,
-        ),
-    )
+        )
+    heapq.heappush(heap, key)
     return sequence + 1
 
 
@@ -569,11 +577,15 @@ def _place_flexible(
         if step.qtime_latest is not None and placed.start_min > step.qtime_latest:
             qtime_missed = True
             continue
-        weight = {1: 8, 2: 4, 3: 2, 4: 1}.get(step.priority, 1)
-        later = _later_process(step, plant)
-        estimate = placed.end_min + later
-        tardiness = max(0, estimate - step.due_min)
-        score = (tardiness * weight, placed.end_min, placed.setup_min, equipment.equipment_id)
+        if policy == POLICY_EDD:
+            # The tool that can start this step soonest. No remaining-route estimate.
+            score = (placed.start_min, placed.end_min, placed.setup_min, equipment.equipment_id)
+        else:
+            weight = {1: 8, 2: 4, 3: 2, 4: 1}.get(step.priority, 1)
+            later = _later_process(step, plant)
+            estimate = placed.end_min + later
+            tardiness = max(0, estimate - step.due_min)
+            score = (tardiness * weight, placed.end_min, placed.setup_min, equipment.equipment_id)
         if best is None or score < best[0]:
             best = (score, placed)
     if best is None:

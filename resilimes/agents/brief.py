@@ -509,41 +509,53 @@ def _scale(
     verdict: str,
     constraint: str,
 ) -> dict[Lang, tuple[str, list[str], str]]:
-    moved = {row.job_id for row in outcomes if row.moved_from == "LITHO-03" and row.priority == 1}
-    count = len(moved)
+    same = [
+        row
+        for row in outcomes
+        if row.priority == 1
+        and row.before_equipment
+        and row.before_equipment == row.after_equipment
+        and str(row.before_equipment).startswith("LITHO")
+        and row.before_equipment != "LITHO-03"
+    ]
+    count = len(same)
     otd_b, otd_a = _pct(before, after)
     tardy_b = human_minutes(before.weighted_tardiness_min, "en")
     tardy_zh = human_minutes(before.weighted_tardiness_min, "zh")
     tardy_ja = human_minutes(before.weighted_tardiness_min, "ja")
+    tardy_a = human_minutes(after.weighted_tardiness_min, "en")
     detail = (
         f"Verdict {verdict}. Refused alternative failed {constraint or 'no check'}. "
-        f"On-time delivery {otd_b} → {otd_a}. "
-        f"Weighted tardiness {tardy_b} → {human_minutes(after.weighted_tardiness_min, 'en')}. "
+        f"Baseline is EDD dispatch. On-time delivery {otd_b} → {otd_a}. "
+        f"Weighted tardiness {tardy_b} → {tardy_a}. "
         f"Lots at risk {before.lots_at_risk} → {after.lots_at_risk}."
     )
     return {
         "en": (
-            f"{count} lots leave LITHO-03",
+            "EDD dispatch already meets the dues",
             [
-                f"LITHO-03 is down for 600 minutes. {count} priority-1 lots were blocked on it.",
+                (
+                    f"LITHO-03 is down for 600 minutes. EDD dispatch puts {count} "
+                    "priority-1 lots on up scanners, and priority recovery keeps them there."
+                ),
                 f"On-time delivery {otd_b} → {otd_a}. Lots at risk {before.lots_at_risk} → {after.lots_at_risk}.",
-                f"Weighted tardiness {tardy_b} → {human_minutes(after.weighted_tardiness_min, 'en')}.",
+                f"Weighted tardiness {tardy_b} → {tardy_a}.",
             ],
             detail,
         ),
         "zh": (
-            f"{count} 个批次离开 LITHO-03",
+            "EDD 派工已经满足交期",
             [
-                f"LITHO-03 宕机 600 分钟。{count} 个优先 1 的批次被挡在上面。",
+                f"LITHO-03 宕机 600 分钟。EDD 派工把 {count} 个优先 1 的批次放到可用光刻机，优先级恢复保持原机。",
                 f"准时交付 {otd_b} → {otd_a}。风险批次 {before.lots_at_risk} → {after.lots_at_risk}。",
                 f"加权拖期 {tardy_zh} → {human_minutes(after.weighted_tardiness_min, 'zh')}。",
             ],
             detail,
         ),
         "ja": (
-            f"{count} ロットが LITHO-03 を離れる",
+            "EDD 差し立てで納期は守れている",
             [
-                f"LITHO-03 は 600 分停止。優先 1 の {count} ロットがそこに止まっていた。",
+                f"LITHO-03 は 600 分停止。EDD は優先 1 の {count} ロットを稼働中のスキャナーへ置き、優先度回復はそこを維持する。",
                 f"納期遵守 {otd_b} → {otd_a}。リスクロット {before.lots_at_risk} → {after.lots_at_risk}。",
                 f"加重遅延 {tardy_ja} → {human_minutes(after.weighted_tardiness_min, 'ja')}。",
             ],

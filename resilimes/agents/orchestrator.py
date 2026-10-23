@@ -37,7 +37,7 @@ from resilimes.domain.scenarios import (
     get_scenario,
     plants_for_scenario,
 )
-from resilimes.domain.schedule import POLICY_FROZEN, POLICY_RECOVER, schedule_plant
+from resilimes.domain.schedule import POLICY_EDD, POLICY_FROZEN, POLICY_RECOVER, schedule_plant
 from resilimes.engines.contracts import verify_contract
 from resilimes.engines.markovian.engine import MarkovianEngine
 from resilimes.engines.scout.engine import Decision, default_scout
@@ -301,7 +301,12 @@ def run_recovery(
         plants = apply_free_text(base, incident, intent_id, parameters)
         kind = _kind_for(intent_id)
 
-    before_policy = POLICY_FROZEN if kind in {"frozen_vs_recover", "scale"} else POLICY_RECOVER
+    if kind == "scale":
+        before_policy = POLICY_EDD
+    elif kind == "frozen_vs_recover":
+        before_policy = POLICY_FROZEN
+    else:
+        before_policy = POLICY_RECOVER
     bundle: dict[str, Any] = {"queries": queries, "plants": plants, "kind": kind}
 
     def sense(carry: dict[str, Any]) -> dict[str, Any]:

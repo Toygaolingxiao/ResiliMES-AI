@@ -185,6 +185,7 @@ const COPY = {
     utilNote: "Highest share of up-time first.",
     waitNote: "Largest gaps on the after book.",
     lotNote: "The step whose tool changed. First tool if the lot did not move.",
+    lotNoteScale: "Steps whose tool differs from EDD dispatch. First 12.",
     intents: {
       machine_down: "machine down",
       rush_order: "rush order",
@@ -225,8 +226,8 @@ const COPY = {
       qtime: ["Queue time", "Clean already finished. The next film must start within 15 min."],
       scale: ["Scale", "1,000 lots, 36 tools. One scanner is down for 10 h."],
     },
-    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time", scale: "Wait for the scanner" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time", scale: "Other scanners" },
+    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time", scale: "vs. EDD dispatch" },
+    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time", scale: "Priority recovery" },
     scaleWindow: "First 12 hours",
     scaleNote: "Busy share of each tool, by hour. A hatch means the tool is down.",
     scheduleWord: "Schedule",
@@ -367,6 +368,7 @@ const COPY = {
     utilNote: "可用时间占比从高到低。",
     waitNote: "恢复后最大的间隔。",
     lotNote: "换了设备的那道工序。没移动的批次显示第一台设备。",
+    lotNoteScale: "与 EDD 派工不同的工序。前 12 条。",
     intents: {
       machine_down: "设备宕机",
       rush_order: "急单",
@@ -400,8 +402,8 @@ const COPY = {
       qtime: ["队列时间", "清洗已经结束。下一道成膜必须在 15 分钟内开工。"],
       scale: ["规模", "1000 个批次、36 台设备。一台光刻机宕机 10 小时。"],
     },
-    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列", scale: "等待光刻机" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列", scale: "其余光刻机" },
+    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列", scale: "对比 EDD 派工" },
+    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列", scale: "优先级恢复" },
     scaleWindow: "前 12 小时",
     scaleNote: "每台设备每小时的忙碌占比。斜线表示宕机。",
     scheduleWord: "排程",
@@ -542,6 +544,7 @@ const COPY = {
     utilNote: "上がっている時間の割合が高い順。",
     waitNote: "回復後の大きい間隔。",
     lotNote: "装置が変わった工程。移動していないロットは最初の装置。",
+    lotNoteScale: "EDD 差し立てと装置が違う工程。先頭 12 件。",
     intents: {
       machine_down: "装置停止",
       rush_order: "特急",
@@ -575,8 +578,8 @@ const COPY = {
       qtime: ["待ち時間", "洗浄は終了済み。次の成膜は 15 分以内に始める。"],
       scale: ["規模", "1000 ロット、36 台。スキャナー 1 台が 10 時間停止。"],
     },
-    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間", scale: "スキャナーを待つ" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分", scale: "他のスキャナー" },
+    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間", scale: "EDD 差し立てとの比較" },
+    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分", scale: "優先度の回復" },
     scaleWindow: "最初の 12 時間",
     scaleNote: "装置ごとの 1 時間の稼働割合。斜線は停止。",
     scheduleWord: "計画",
@@ -1178,13 +1181,13 @@ function lotsCard(report) {
   const copy = t();
   const card = document.createElement("article");
   card.className = "card wide";
-  card.appendChild(cardHead(copy.lots, copy.lotNote));
+  const note = report.scenario_id === "scale" ? copy.lotNoteScale : copy.lotNote;
+  card.appendChild(cardHead(copy.lots, note));
   const table = document.createElement("table");
   table.innerHTML = `<thead><tr><th>${escapeHtml(copy.lot)}</th><th class="num">${escapeHtml(copy.pri)}</th><th>${escapeHtml(copy.step)}</th><th>${escapeHtml(copy.from)}</th><th>${escapeHtml(copy.to)}</th><th class="num">${escapeHtml(copy.tardy)}</th></tr></thead>`;
   const body = document.createElement("tbody");
-  const outcomeRows = report.scenario_id === "scale"
-    ? (report.outcomes || []).filter((row) => row.moved_from === "LITHO-03" && row.priority === 1)
-    : (report.outcomes || []);
+  const changed = (report.outcomes || []).filter((row) => row.moved_from && row.moved_to && row.moved_from !== row.moved_to);
+  const outcomeRows = report.scenario_id === "scale" ? changed.slice(0, 12) : (report.outcomes || []);
   for (const row of outcomeRows) {
     const from = row.moved_from || row.before_equipment || "—";
     const to = row.moved_to || row.after_equipment || copy.held;
