@@ -263,7 +263,7 @@ def _guard_fab(settings: Settings, scenario: str | None) -> None:
     if settings.fab == "smt2020" and scenario not in SMT_SCENARIOS:
         raise ValueError(
             "The SMT2020 console runs litho_down, hot_lot, pm_avoid, "
-            "wip_threshold, qtime, and tight_p1."
+            "wip_threshold, qtime, tight_p1, and xfactor."
         )
 
 

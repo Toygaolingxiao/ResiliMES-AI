@@ -19,6 +19,7 @@ from typing import Any
 
 from resilimes.config import ROOT, Settings
 from resilimes.smt.fab import Fab
+from resilimes.smt.simulate import X_FACTOR
 
 DIELECTRIC_FAMILY = "Dielectric_BE_28"
 # BREAK_Dielectric in data/smt2020/downcal.txt. Minutes.
@@ -51,6 +52,16 @@ class TightBook:
     @property
     def watch(self) -> tuple[int, ...]:
         return self.p1 + self.decoy
+
+
+def apply_xfactor(fab: Fab, factor: float = X_FACTOR) -> Fab:
+    """Due = remaining process times factor. Routes and priorities stay published."""
+    plant = copy.copy(fab)
+    plant.lot_due = [
+        fab.routes[route_i].remain[step] * factor
+        for route_i, step in zip(fab.lot_route, fab.lot_step, strict=True)
+    ]
+    return plant
 
 
 def cohort(fab: Fab) -> tuple[list[int], list[int]]:

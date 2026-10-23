@@ -5,8 +5,14 @@ and only at a bounded look-ahead inside that queue. Breakdown clocks are
 exponential MTTF/MTTR from ``downcal.txt``, one clock per tool. ResiliMES
 refuses a start that would run across the next PM. EDD, FIFO, and CR do not.
 
-Transport (``fromto``), operators, and fractional rework are not in this loop.
-A lot becomes ready for the next step when the current step ends.
+Transport (``fromto`` is one Fab-to-Fab row), operators, reticle copies, and
+the published fractional rework probability are not in this loop. A litho
+layer with ``SVESTN`` / ``FORSTEP`` stays on the scanner that ran the first
+layer of that chain, once this run has chosen it. WIP does not name a tool,
+so a lot that starts mid-chain is not pinned until then. A lot in process
+when a tool breaks keeps the remaining process, waits 15 minutes, and
+resumes on that same tool. A lot becomes ready for the next step when the
+current step ends.
 """
 
 from __future__ import annotations
@@ -15,6 +21,7 @@ import heapq
 import random
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 from resilimes.kernel.score import dynamic_priority, ped_risk
 from resilimes.smt.fab import (
@@ -31,6 +38,11 @@ _DOWN_END = 2
 _WAKE = 3
 _BIN_SEC = 900.0
 _WAFERS = 25
+# Not an SMT2020 column. Interrupted work waits this long, and only the
+# process completed before the breakdown counts.
+DISPOSITION_SEC = 15.0 * 60.0
+# Due dates in the X-factor book. Middle of the 2.5-3 range.
+X_FACTOR = 2.75
 
 
 @dataclass
@@ -65,6 +77,41 @@ class RunResult:
     occupancy: list[list[float]] = field(default_factory=list)
     focus_bars: list[dict[str, float | str]] = field(default_factory=list)
     watched_late_h: dict[str, float] = field(default_factory=dict)
+    mean_x_factor: float | None = None
+    qtime_gates: int = 0
+    recleans: int = 0
+
+
+def interrupt_remaining(started: float, moment: float, proc: float) -> tuple[float, float]:
+    """Process left after a breakdown, and the earliest restart.
+
+    Elapsed time stops at the breakdown. It is not extended to the horizon.
+    The second value is the breakdown time plus disposition.
+    """
+    elapsed = max(0.0, moment - started)
+    remain = max(0.0, proc - elapsed)
+    return remain, moment + DISPOSITION_SEC
+
+
+def price_paid(
+    before: RunResult,
+    after: RunResult,
+    lot_ids: list[str],
+) -> dict[str, Any]:
+    """Non-hot lots that finish later under the recovery than under the baseline."""
+    worse: list[tuple[float, str]] = []
+    for lot_id in lot_ids:
+        delta = after.watched_late_h.get(lot_id, 0.0) - before.watched_late_h.get(lot_id, 0.0)
+        if delta > 0.05:
+            worse.append((delta, lot_id))
+    worse.sort(reverse=True)
+    return {
+        "lots": len(worse),
+        "extra_h": round(sum(item[0] for item in worse), 2),
+        "worst": [
+            {"lot_id": lot_id, "extra_h": round(delta, 2)} for delta, lot_id in worse[:5]
+        ],
+    }
 
 
 def setup_seconds(fab: Fab, family: int, current: int, recipe: int) -> float:
@@ -276,6 +323,19 @@ class _Sim:
         self.trace = trace
         self.focus_down_until = focus_down_until
         self.watch = watch
+        self.partial = [0.0] * len(fab.lot_id)
+        self.bound_tool = [-1] * len(fab.lot_id)
+        self.dedicate_tool = [-1] * len(fab.lot_id)
+        self.rework = [0] * len(fab.lot_id)
+        self.cqt_from = [-1] * len(fab.lot_id)
+        self.piece_started = [0.0] * len(fab.tool_name)
+        self.piece_proc = [0.0] * len(fab.tool_name)
+        self.raw_remain = [
+            fab.routes[route_i].remain[step]
+            for route_i, step in zip(fab.lot_route, fab.lot_step, strict=True)
+        ]
+        self.gated = 0
+        self.recleans = 0
         self.n = len(fab.lot_id)
         self.tools = len(fab.tool_name)
         self.step = list(fab.lot_step)
@@ -378,9 +438,18 @@ class _Sim:
                 self.wip_replans += 1
         elif self.depth[fam] <= self.threshold[fam]:
             self.seen_over[fam] = False
-        if self.idle[fam]:
-            tool = self.idle[fam].pop()
-            self.try_start(tool, moment)
+        self.wake_family(fam)
+
+    def wake_family(self, fam: int) -> None:
+        """Every idle tool in the family gets one look.
+
+        A lot pinned to one scanner has to be seen by that scanner. Trying
+        only the first idle tool leaves it queued while its scanner sits idle.
+        """
+        pending = list(self.idle[fam])
+        self.idle[fam].clear()
+        for tool in pending:
+            self.try_start(tool, self.clock)
 
     def note_depth(self, fam: int) -> None:
         if fam == self.focus_fam and self.depth[fam] > self.focus_queue_max:
@@ -396,10 +465,16 @@ class _Sim:
     def choose(self, tool: int, moment: float) -> tuple[list[int], float | None]:
         t0 = time.perf_counter()
         fam = self.fab.tool_family[tool]
-        pool = self.live(fam)
+        pool = [lot for lot in self.live(fam) if self.eligible(lot, tool)]
         if not pool:
             self.samples.append(time.perf_counter() - t0)
             return [], None
+        ready_pool = [lot for lot in pool if self.ready[lot] <= moment + 1e-6]
+        if not ready_pool:
+            wake = min(self.ready[lot] for lot in pool)
+            self.samples.append(time.perf_counter() - t0)
+            return [], wake
+        pool = ready_pool
         limit = (
             8 if self.policy == "resilimes" and self.depth[fam] > self.threshold[fam] else LOOKAHEAD
         )
@@ -412,27 +487,37 @@ class _Sim:
         pm_start = self.next_pm_start(tool, moment) if self.policy == "resilimes" else None
         feasible: list[int] = []
         skipped = False
+        gated = False
+        gate_wake: float | None = None
         for lot in pool:
-            route = self.fab.routes[self.fab.lot_route[lot]]
-            index = self.step[lot]
-            proc = route.cycle[index] + setup_seconds(
-                self.fab, fam, self.tool_recipe[tool], route.recipe[index]
-            )
+            proc = self.piece_seconds(lot, tool)
             if self.policy == "resilimes" and pm_start is not None and moment + proc > pm_start:
                 skipped = True
                 continue
+            if self.policy == "resilimes":
+                opened = self.downstream_ready(lot, moment, proc)
+                if opened is not None and opened > moment + proc + self._open_limit(lot):
+                    gated = True
+                    when = max(moment + 60.0, opened - proc - self._open_limit(lot))
+                    if gate_wake is None or when < gate_wake:
+                        gate_wake = when
+                    continue
             feasible.append(lot)
+        if gated:
+            self.gated += 1
         if skipped:
             # One refused start per decision. The same lot can be seen again later.
             self.pm_avoided += 1
         if not feasible:
             self.samples.append(time.perf_counter() - t0)
-            return [], pm_start
+            return [], gate_wake if gate_wake is not None else pm_start
         singles: list[int] = []
         batches: list[int] = []
         for lot in feasible:
             route = self.fab.routes[self.fab.lot_route[lot]]
-            if route.batch_max[self.step[lot]] > 0:
+            if self.partial[lot] > 0 or self.bound_tool[lot] >= 0:
+                singles.append(lot)
+            elif route.batch_max[self.step[lot]] > 0:
                 batches.append(lot)
             else:
                 singles.append(lot)
@@ -446,6 +531,59 @@ class _Sim:
             wake_at = min(self.ready[lot] for lot in batches) + BATCH_MAX_WAIT_SEC
         self.samples.append(time.perf_counter() - t0)
         return chosen, wake_at
+
+    def eligible(self, lot: int, tool: int) -> bool:
+        """Same tool after a breakdown, and the dedicated scanner after layer 1."""
+        bound = self.bound_tool[lot]
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        root = route.dedicate_root[self.step[lot]]
+        pinned = self.dedicate_tool[lot]
+        on_bound = bound < 0 or bound == tool
+        on_scanner = root < 0 or pinned < 0 or pinned == tool
+        return on_bound and on_scanner
+
+    def piece_seconds(self, lot: int, tool: int) -> float:
+        """Remaining process. A resumed lot does not pay setup a second time."""
+        if self.partial[lot] > 0:
+            return self.partial[lot]
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        index = self.step[lot]
+        fam = self.fab.tool_family[tool]
+        setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[index])
+        return route.cycle[index] + setup
+
+    def _open_limit(self, lot: int) -> float:
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        index = self.step[lot]
+        if route.cqt_target[index] != index + 1:
+            return 0.0
+        return route.cqt_limit[index]
+
+    def downstream_ready(self, lot: int, moment: float, proc: float) -> float | None:
+        """Earliest downstream start for an adjacent Wet_Etch queue-time pair.
+
+        Returns None when this step does not open that kind of window.
+        The extract has no clean-to-deposition pair. Wet_Etch is the clean
+        side of the published adjacent CQT rows.
+        """
+        limit = self._open_limit(lot)
+        if limit <= 0:
+            return None
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        index = self.step[lot]
+        if self.fab.families[route.family[index]].group != "Wet_Etch":
+            return None
+        target = route.family[index + 1]
+        family = self.fab.families[target]
+        earliest: float | None = None
+        for tool in range(family.tool0, family.tool0 + family.tools):
+            free = max(moment + proc, self.busy_until[tool])
+            covered = _covering(self.downs[tool], free)
+            if covered is not None:
+                free = covered[1]
+            if earliest is None or free < earliest:
+                earliest = free
+        return earliest
 
     def pick_batch(self, lots: list[int], moment: float) -> list[int]:
         grouped: dict[int, list[int]] = {}
@@ -557,11 +695,11 @@ class _Sim:
             return
         route = self.fab.routes[self.fab.lot_route[chosen[0]]]
         index = self.step[chosen[0]]
-        setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[index])
-        proc = route.cycle[index]
         started: list[int] = []
         for lot in chosen:
             if not self.waiting[lot] or self.step[lot] != index:
+                continue
+            if self._reclean(lot, fam, moment):
                 continue
             if self.cqt_at[lot] == index and self.deadline[lot] > 0 and moment > self.deadline[lot]:
                 self.violations += 1
@@ -578,14 +716,46 @@ class _Sim:
         self.running[tool] = started[0]
         self.on_tool[tool] = started
         self.tool_recipe[tool] = route.recipe[index]
-        finish = moment + setup + proc
-        if self.policy != "resilimes" and self.overlaps_pm(tool, moment, setup + proc):
+        piece = self.piece_seconds(started[0], tool)
+        for lot in started:
+            self.partial[lot] = 0.0
+            if route.dedicate_root[index] >= 0 and self.dedicate_tool[lot] < 0:
+                self.dedicate_tool[lot] = tool
+        finish = moment + piece
+        self.piece_started[tool] = moment
+        self.piece_proc[tool] = piece
+        if self.policy != "resilimes" and self.overlaps_pm(tool, moment, piece):
             self.pm_overlaps += 1
         self.push(finish, _DONE, tool, self.tool_gen[tool])
         self.busy_until[tool] = finish
         self.busy_litho[tool] = self.fab.families[fam].litho
         self.busy_scanner[tool] = self.fab.families[fam].scanner
         self.account(tool, fam, moment, finish, started)
+
+    def _reclean(self, lot: int, fam: int, moment: float) -> bool:
+        """One re-clean. The lot is not held. A second miss just counts."""
+        index = self.step[lot]
+        if self.cqt_at[lot] != index or self.deadline[lot] <= 0 or moment <= self.deadline[lot]:
+            return False
+        origin = self.cqt_from[lot]
+        if origin < 0 or self.rework[lot] >= 1:
+            return False
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        if self.fab.families[route.family[origin]].group != "Wet_Etch":
+            return False
+        self.violations += 1
+        self.recleans += 1
+        self.rework[lot] += 1
+        self.cqt_at[lot] = -1
+        self.deadline[lot] = 0.0
+        self.waiting[lot] = False
+        self.depth[fam] = max(0, self.depth[fam] - 1)
+        if lot in self.queues[fam]:
+            self.queues[fam].remove(lot)
+        self.step[lot] = origin
+        self.partial[lot] = 0.0
+        self.enqueue(lot, moment)
+        return True
 
     def account(
         self,
@@ -638,12 +808,14 @@ class _Sim:
         index = self.step[lot]
         self.step_cycle += max(0.0, moment - self.ready[lot])
         self.steps_done += 1
+        self.bound_tool[lot] = -1
         if lot == self.hot_lot:
             self.hot_steps += 1
         if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
             self.deadline[lot] = moment + route.cqt_limit[index]
             self.cqt_limit[lot] = route.cqt_limit[index]
             self.cqt_at[lot] = route.cqt_target[index]
+            self.cqt_from[lot] = index
         nxt = index + 1
         if nxt >= len(route.family):
             self.step[lot] = max(index, 0)
@@ -667,8 +839,16 @@ class _Sim:
                 if self.busy_scanner[tool]:
                     self.scanner_busy -= leftover
                 self.busy_until[tool] = moment
+            remain, ready = interrupt_remaining(
+                self.piece_started[tool], moment, self.piece_proc[tool]
+            )
             for lot in lots:
-                self.enqueue(lot, moment)
+                if remain <= 1e-6:
+                    self.finish_lot(lot, moment)
+                    continue
+                self.partial[lot] = remain
+                self.bound_tool[lot] = tool
+                self.enqueue(lot, ready)
         end_at = None
         for start_at, stop in self.downs[tool]:
             if start_at <= moment < stop:
@@ -701,6 +881,12 @@ class _Sim:
             if self.cqt_at[lot] >= 0 and 0 < self.deadline[lot] <= self.horizon:
                 self.violations += 1
         denom = len(due_lots)
+        xs = [
+            self.finished_at[lot] / self.raw_remain[lot]
+            for lot in range(self.n)
+            if self.finished_at[lot] >= 0 and self.raw_remain[lot] > 1e-6
+        ]
+        mean_x = round(sum(xs) / len(xs), 3) if xs else None
         watched: dict[str, float] = {}
         for lot in self.watch:
             end = self.finished_at[lot]
@@ -751,4 +937,7 @@ class _Sim:
             occupancy=self.occupancy,
             focus_bars=self.focus_bars,
             watched_late_h=watched,
+            mean_x_factor=mean_x,
+            qtime_gates=self.gated,
+            recleans=self.recleans,
         )

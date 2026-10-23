@@ -68,6 +68,9 @@ class Route:
     cqt_target: list[int]
     remain: list[float]
     step_index: dict[int, int]
+    # Step index of the first litho layer that chose the scanner, or -1.
+    # SVESTN/FORSTEP. Same station family, and the pointer is forward.
+    dedicate_root: list[int]
 
 
 @dataclass
@@ -209,6 +212,7 @@ def _routes(
         route_id = part["ROUTE"].strip()
         steps = list(_rows(path / part["ROUTEFILE"]))
         by_number = {int(step["STEP"]): pos for pos, step in enumerate(steps)}
+        dedicate_root = _dedicate_root(steps, by_number)
         family: list[int] = []
         cycle: list[float] = []
         recipe: list[int] = []
@@ -261,9 +265,45 @@ def _routes(
                 cqt_target=cqt_target,
                 remain=remain,
                 step_index={int(step["STEP"]): pos for pos, step in enumerate(steps)},
+                dedicate_root=dedicate_root,
             )
         )
     return routes, index
+
+
+def _dedicate_root(steps: list[dict[str, str]], by_number: dict[int, int]) -> list[int]:
+    """First step that chose the scanner for this layer.
+
+    ``SVESTN=yes`` and ``FORSTEP`` point forward, inside one station family.
+    A later layer has to use that scanner. The extract has no reticle id,
+    no stocker, and no per-scanner qualification beyond the station family.
+    """
+    count = len(steps)
+    nxt = [-1] * count
+    for pos, step in enumerate(steps):
+        if step["SVESTN"].strip().lower() != "yes" or not step["FORSTEP"].strip():
+            continue
+        target = by_number.get(int(float(step["FORSTEP"])))
+        if target is None or target <= pos:
+            continue
+        if steps[target]["STNFAM"].strip() != step["STNFAM"].strip():
+            continue
+        nxt[pos] = target
+    prev = [-1] * count
+    for pos, target in enumerate(nxt):
+        if target >= 0 and prev[target] < 0:
+            prev[target] = pos
+    root = [-1] * count
+    for pos in range(count):
+        if nxt[pos] < 0 and prev[pos] < 0:
+            continue
+        cursor = pos
+        guard = 0
+        while prev[cursor] >= 0 and guard < count:
+            cursor = prev[cursor]
+            guard += 1
+        root[pos] = cursor
+    return root
 
 
 def _setups(

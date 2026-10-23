@@ -15,10 +15,12 @@ from resilimes.engines.scout.engine import default_scout
 from resilimes.llm.factory import build_provider
 from resilimes.smt.fab import DATA_SOURCE, LITHO_MTTR_MIN, READ_QUERY, Fab, initial_queues, load_fab
 from resilimes.smt.simulate import (
+    X_FACTOR,
     RunResult,
     macro_aps_ms,
     pm_shift_to_open,
     pm_windows,
+    price_paid,
     run_policy,
     sample_downs,
 )
@@ -26,6 +28,7 @@ from resilimes.smt.tight import (
     DIELECTRIC_MTTR_MIN,
     TIGHT_HORIZON_SEC,
     apply_tight,
+    apply_xfactor,
     first_lot_at,
     read_benchmark,
     refuse_down_start,
@@ -133,6 +136,21 @@ SCENARIOS: dict[str, SmtScenario] = {
         after_policy="resilimes",
         kind="tight",
     ),
+    "xfactor": SmtScenario(
+        id="xfactor",
+        title="X-factor dues",
+        summary=(
+            "Published routes. Each due is remaining process time x 2.75. "
+            "Litho_FE_92-1 is down for 600 minutes. The baseline is EDD."
+        ),
+        incident=(
+            "Litho_FE_92-1 down for 600 minutes. Dues are 2.75 times the "
+            "remaining process time."
+        ),
+        before_policy="edd",
+        after_policy="resilimes",
+        kind="xfactor",
+    ),
 }
 
 
@@ -184,7 +202,13 @@ def run_smt(
         raise KeyError(scenario_id)
     fab = load_fab()
     if horizon_sec is None:
-        horizon = TIGHT_HORIZON_SEC if scenario.kind == "tight" else INTERACTIVE_HORIZON_SEC
+        horizon = (
+            TIGHT_HORIZON_SEC
+            if scenario.kind == "tight"
+            else STUDY_HORIZON_SEC
+            if scenario.kind == "xfactor"
+            else INTERACTIVE_HORIZON_SEC
+        )
     else:
         horizon = horizon_sec
     scout = default_scout(
@@ -311,8 +335,15 @@ def simulate_pair(
 ) -> dict[str, Any]:
     book = apply_tight(fab, horizon=horizon) if scenario.kind == "tight" else None
     plant = book.fab if book is not None else fab
-    forced_tool = fab.focus_tool if scenario.kind == "litho" else None
-    forced_until = LITHO_MTTR_MIN * 60.0 if scenario.kind == "litho" else 0.0
+    if scenario.kind == "xfactor":
+        plant = apply_xfactor(fab)
+    forced_tool = fab.focus_tool if scenario.kind in {"litho", "xfactor"} else None
+    if scenario.kind == "litho":
+        forced_until = LITHO_MTTR_MIN * 60.0
+    elif scenario.kind == "xfactor":
+        forced_until = 600.0 * 60.0
+    else:
+        forced_until = 0.0
     shift = pm_shift_to_open(fab, fab.pm_calendar, PM_OPEN_SEC) if scenario.kind == "pm" else 0.0
     downs = sample_downs(
         plant,
@@ -325,7 +356,14 @@ def simulate_pair(
         downs[book.down_tool].append((0.0, min(book.down_until, horizon)))
     pm = pm_windows(plant, horizon, shift_sec=shift)
     hot = fab.hot_lot if scenario.kind == "hot" else None
-    watch = book.watch if book is not None else ()
+    if book is not None:
+        watch: tuple[int, ...] = book.watch
+    elif scenario.kind == "xfactor":
+        watch = tuple(
+            index for index, due in enumerate(plant.lot_due) if due <= horizon and fab.lot_class[index] != "VIP"
+        )
+    else:
+        watch = ()
     # The before book keeps the lot at its published priority.
     before = run_policy(
         plant,
@@ -357,6 +395,20 @@ def simulate_pair(
     report = _report(fab, scenario, before, after, seed, horizon, aps_ms, scanner_steps, shift)
     if book is not None:
         report["tight"] = _tight_public(fab, book, before, after)
+        report["price"] = price_paid(
+            before, after, [fab.lot_id[index] for index in book.decoy]
+        )
+    if scenario.kind == "xfactor":
+        report["xfactor"] = {
+            "factor": X_FACTOR,
+            "down_min": 600,
+            "tool": fab.tool_name[fab.focus_tool],
+            "mean_x_before": before.mean_x_factor,
+            "mean_x_after": after.mean_x_factor,
+            "gates": after.qtime_gates,
+            "recleans": after.recleans,
+        }
+        report["price"] = price_paid(before, after, [fab.lot_id[index] for index in watch])
     return report
 
 

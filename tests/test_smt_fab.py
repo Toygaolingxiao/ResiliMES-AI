@@ -7,10 +7,24 @@ from fastapi.testclient import TestClient
 from resilimes.api.app import create_app
 from resilimes.config import Settings
 from resilimes.domain.scenarios import SAMPLE_BAY
-from resilimes.smt.fab import LITHO_MTTR_MIN, load_fab
+from resilimes.smt.fab import LITHO_MTTR_MIN, Fab, Family, Route, load_fab
 from resilimes.smt.scenarios import SCENARIOS, run_smt, simulate_pair
-from resilimes.smt.simulate import macro_aps_ms, pm_windows, run_policy, sample_downs
-from resilimes.smt.tight import TIGHT_HORIZON_SEC, apply_tight, local_counts, read_benchmark
+from resilimes.smt.simulate import (
+    X_FACTOR,
+    interrupt_remaining,
+    macro_aps_ms,
+    pm_windows,
+    run_policy,
+    sample_downs,
+    setup_seconds,
+)
+from resilimes.smt.tight import (
+    TIGHT_HORIZON_SEC,
+    apply_tight,
+    apply_xfactor,
+    local_counts,
+    read_benchmark,
+)
 
 
 def test_extract_counts_match_the_published_fab() -> None:
@@ -88,6 +102,7 @@ def test_api_default_lists_the_full_fab_scenarios() -> None:
         "wip_threshold",
         "qtime",
         "tight_p1",
+        "xfactor",
     }
     assert all(item["kind"] == "group" for item in payload["bay"])
     assert "LITHO-02" not in {item["id"] for item in payload["bay"]}
@@ -150,6 +165,129 @@ def test_mock_run_shows_sql_and_rejects_the_down_tool() -> None:
     assert report["refusal"]["lot_id"]
     assert report["explain"]["mocked"] is True
     assert report["explain"]["meterless_request_id"] == ""
+
+
+def test_litho_dedication_follows_forward_same_family_links() -> None:
+    fab = load_fab()
+    covered = 0
+    later = 0
+    for route in fab.routes:
+        assert len(route.dedicate_root) == len(route.family)
+        for index, root in enumerate(route.dedicate_root):
+            if root < 0:
+                continue
+            covered += 1
+            assert route.family[root] == route.family[index]
+            assert root <= index
+            if root != index:
+                later += 1
+    assert covered == 99
+    assert later == 73
+
+
+def _two_scanner_fab(dedicate_root: list[int]) -> Fab:
+    family = Family(
+        name="Litho_FE_92", group="Litho", tools=2, tool0=0, litho=True, scanner=True
+    )
+    route = Route(
+        route_id="r",
+        family=[0, 0],
+        cycle=[1000.0, 100.0],
+        recipe=[0, 0],
+        batch_min=[0, 0],
+        batch_max=[0, 0],
+        cqt_limit=[0.0, 0.0],
+        cqt_target=[-1, -1],
+        remain=[1100.0, 100.0],
+        step_index={1: 0, 2: 1},
+        dedicate_root=dedicate_root,
+    )
+    return Fab(
+        families=[family],
+        family_index={"Litho_FE_92": 0},
+        tool_family=[0, 0],
+        tool_name=["Litho_FE_92-1", "Litho_FE_92-2"],
+        routes=[route],
+        route_index={"r": 0},
+        lot_id=["L1"],
+        lot_product=["p"],
+        lot_route=[0],
+        lot_step=[0],
+        lot_due=[10_000.0],
+        lot_value=[1.0],
+        lot_class=["normal"],
+        lot_priority=[10],
+        recipe_name=[""],
+        setup={},
+        down_mttf={},
+        down_mttr={},
+        pm=[],
+        focus_family=0,
+        focus_tool=0,
+        hot_lot=0,
+        pm_calendar="",
+        group_names=["Litho"],
+    )
+
+
+def test_interrupted_lot_resumes_on_the_same_scanner() -> None:
+    fab = _two_scanner_fab([-1, -1])
+    result = run_policy(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=4000,
+        downs=[[(100.0, 500.0)], []],
+        pm=[[], []],
+        trace=True,
+    )
+    bars = result.focus_bars
+    # The interrupted 1000 s piece resumes on scanner 1 after disposition.
+    # The next layer is not dedicated, so scanner 2 may run that layer.
+    assert any(bar["tool"] == "Litho_FE_92-1" and float(bar["s"]) >= 15 for bar in bars)
+    assert all(float(bar["s"]) >= 30 for bar in bars if bar["tool"] == "Litho_FE_92-2")
+    assert result.completed_routes == 1
+
+
+def test_later_litho_layer_waits_for_the_scanner_that_ran_the_first() -> None:
+    fab = _two_scanner_fab([0, 0])
+    result = run_policy(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=2000,
+        downs=[[(1000.0, 5000.0)], []],
+        pm=[[], []],
+        trace=True,
+    )
+    assert {bar["tool"] for bar in result.focus_bars} == {"Litho_FE_92-1"}
+    assert result.completed_routes == 0
+
+
+def test_xfactor_dues_are_remaining_process_times_the_factor() -> None:
+    fab = load_fab()
+    plant = apply_xfactor(fab)
+    assert plant is not fab
+    assert plant.lot_due is not fab.lot_due
+    for index, (route_i, step) in enumerate(zip(fab.lot_route, fab.lot_step, strict=True)):
+        assert plant.lot_due[index] == fab.routes[route_i].remain[step] * X_FACTOR
+        if index > 20:
+            break
+
+
+def test_scanner_families_have_no_setup_and_a_breakdown_stops_the_clock() -> None:
+    fab = load_fab()
+    for family in fab.families:
+        if not family.scanner:
+            continue
+        for key, seconds in fab.setup.items():
+            assert key[0] != fab.family_index[family.name] or seconds == 0
+    assert setup_seconds(fab, fab.focus_family, 0, 1) == 0
+    remain, ready = interrupt_remaining(0.0, 100.0, 400.0)
+    assert remain == 300.0
+    assert ready == 100.0 + 15.0 * 60.0
+    done, _ready = interrupt_remaining(0.0, 400.0, 400.0)
+    assert done == 0.0
 
 
 def test_viewer_is_blocked_before_the_sim() -> None:
