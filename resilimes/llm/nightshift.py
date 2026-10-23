@@ -99,6 +99,7 @@ class NightshiftProvider:
             if content or index == 1:
                 break
         elapsed = (time.perf_counter() - started) * 1000
+        completion_id, meterless_request_id, provider_model = _response_ids(response)
         logger.info(
             "nightshift completion",
             extra={
@@ -107,6 +108,9 @@ class NightshiftProvider:
                     "model": model,
                     "latency_ms": round(elapsed, 1),
                     "empty": content == "",
+                    "completion_id": completion_id,
+                    "meterless_request_id": meterless_request_id,
+                    "provider_model": provider_model,
                 }
             },
         )
@@ -117,6 +121,9 @@ class NightshiftProvider:
             lane=lane,
             latency_ms=elapsed,
             mocked=False,
+            completion_id=completion_id,
+            meterless_request_id=meterless_request_id,
+            provider_model=provider_model,
         )
 
     def _create(
@@ -177,6 +184,42 @@ def probe_nightshift(settings: Settings, timeout_s: float = 3.0) -> dict[str, An
         "models_status": models_status,
         "base_url": base,
     }
+
+
+def call_summary(result: LlmResult) -> str:
+    """One line for the explain step: provider, model, latency, and request ids."""
+    parts = [result.provider, result.model, f"{int(result.latency_ms)} ms"]
+    if result.completion_id:
+        parts.append(result.completion_id)
+    if result.meterless_request_id:
+        parts.append(result.meterless_request_id)
+    if result.provider_model:
+        parts.append(result.provider_model)
+    return " · ".join(parts)
+
+
+def _response_ids(response: Any) -> tuple[str, str, str]:
+    completion_id = str(getattr(response, "id", "") or "")
+    meterless = getattr(response, "meterless", None)
+    dumped: dict[str, Any] = {}
+    dump = getattr(response, "model_dump", None)
+    if callable(dump):
+        raw = dump()
+        if isinstance(raw, dict):
+            dumped = raw
+    if not completion_id:
+        completion_id = str(dumped.get("id") or "")
+    if meterless is None:
+        meterless = dumped.get("meterless")
+    extra = getattr(response, "model_extra", None)
+    if meterless is None and isinstance(extra, dict):
+        meterless = extra.get("meterless")
+    request_id = ""
+    provider_model = str(dumped.get("provider_model") or "")
+    if isinstance(meterless, dict):
+        request_id = str(meterless.get("request_id") or "")
+        provider_model = str(meterless.get("provider_model") or provider_model)
+    return completion_id, request_id, provider_model
 
 
 def _message_text(response: Any) -> str:

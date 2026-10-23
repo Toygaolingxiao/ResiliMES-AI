@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from fastapi.testclient import TestClient
+
 from resilimes.agents.orchestrator import _narrative_from_model
-from resilimes.config import Settings
-from resilimes.llm.nightshift import NightshiftProvider, strip_reasoning
+from resilimes.api.app import create_app
+from resilimes.config import HORIZON, Settings
+from resilimes.llm.base import LlmResult
+from resilimes.llm.nightshift import NightshiftProvider, call_summary, strip_reasoning
 
 
 def _settings(**overrides: object) -> Settings:
@@ -81,3 +86,82 @@ def test_empty_reply_after_retry_keeps_the_deterministic_narrative() -> None:
     spoken = _narrative_from_model(result.content, "LOT-1001 leaves LITHO-02.")
     assert spoken == "LOT-1001 leaves LITHO-02."
     assert provider._client.chat.completions.create.call_count == 2
+
+
+def test_response_ids_are_kept_and_shown_on_the_explain_line() -> None:
+    class Reply:
+        id = "chatcmpl-abc"
+
+        def __init__(self) -> None:
+            self.choices = [SimpleNamespace(message=SimpleNamespace(content="The lot moves."))]
+
+        def model_dump(self) -> dict[str, object]:
+            return {
+                "id": "chatcmpl-abc",
+                "meterless": {
+                    "request_id": "req-42",
+                    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+                },
+            }
+
+    provider = _provider()
+    provider._client.chat.completions.create = MagicMock(return_value=Reply())
+    result = provider.complete([{"role": "user", "content": "explain"}], lane="explainer")
+    assert result.completion_id == "chatcmpl-abc"
+    assert result.meterless_request_id == "req-42"
+    assert result.provider_model == "nvidia/nemotron-3.5-lightning-30b-a3b"
+    line = call_summary(result)
+    assert "chatcmpl-abc" in line
+    assert "req-42" in line
+    assert "nvidia/nemotron-3.5-lightning-30b-a3b" in line
+
+
+def test_explain_step_slots_carry_the_request_id() -> None:
+    def fake(
+        self: NightshiftProvider,
+        messages: list[dict[str, str]],
+        *,
+        lane: str,
+        temperature: float = 0.2,
+    ) -> LlmResult:
+        del self, messages, temperature
+        return LlmResult(
+            content='{"narrative": "LOT-1001 leaves LITHO-02."}',
+            model="nvidia/nemotron-3.5-lightning-30b-a3b",
+            provider="nightshift",
+            lane=lane,
+            latency_ms=42,
+            mocked=False,
+            completion_id="chatcmpl-demo",
+            meterless_request_id="req-demo",
+            provider_model="nvidia/nemotron-3.5-lightning-30b-a3b",
+        )
+
+    settings = Settings(
+        mode="auto",
+        horizon=HORIZON,
+        scout_signing_secret="id-secret",
+        meterless_runtime_token="real-token",
+    )
+    with patch.object(NightshiftProvider, "complete", fake):
+        client = TestClient(create_app(settings))
+        with client.stream(
+            "POST",
+            "/api/recover/stream",
+            json={"scenario": "litho_down", "pace_ms": 0},
+        ) as response:
+            raw = response.read().decode()
+    explain = None
+    for block in raw.split("\n\n"):
+        data = next((line[6:] for line in block.split("\n") if line.startswith("data: ")), "")
+        if not data:
+            continue
+        payload = json.loads(data)
+        if payload.get("phase") == "explain":
+            explain = payload
+            break
+    assert explain is not None
+    assert explain["slots"]["completion_id"] == "chatcmpl-demo"
+    assert explain["slots"]["meterless_request_id"] == "req-demo"
+    assert "chatcmpl-demo" in explain["summary"]
+    assert "req-demo" in explain["summary"]
