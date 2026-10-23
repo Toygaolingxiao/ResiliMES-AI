@@ -57,7 +57,7 @@ class Settings(BaseModel):
     meterless_runtime_token: str = ""
     meterless_app_id: str = "resilimes"
     meterless_timeout_s: float = 180.0
-    nemotron_model: str = "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
+    nemotron_model: str = "nvidia/nemotron-3.5-lightning-30b-a3b"
     nemotron_max_tokens: int = 4096
     llm_max_retries: int = 3
 
@@ -128,7 +128,7 @@ def load_settings() -> Settings:
         meterless_runtime_token=_env("METERLESS_RUNTIME_TOKEN"),
         meterless_app_id=_env("METERLESS_APP_ID", "resilimes") or "resilimes",
         meterless_timeout_s=float(_env("METERLESS_TIMEOUT_S", "180") or "180"),
-        nemotron_model=_env("NEMOTRON_MODEL", "nvidia/NVIDIA-Nemotron-Nano-9B-v2"),
+        nemotron_model=_env("NEMOTRON_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b"),
         nemotron_max_tokens=int(_env("NEMOTRON_MAX_TOKENS", "4096") or "4096"),
         llm_max_retries=int(_env("LLM_MAX_RETRIES", "3") or "3"),
     )

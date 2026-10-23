@@ -36,6 +36,11 @@ def _provider(settings: Settings | None = None) -> NightshiftProvider:
     return provider
 
 
+def test_default_model_is_nemotron_lightning() -> None:
+    assert Settings().nemotron_model == "nvidia/nemotron-3.5-lightning-30b-a3b"
+    assert Settings().nemotron_max_tokens == 4096
+
+
 def test_strip_reasoning_drops_think_blocks_and_a_leaked_prefix() -> None:
     leaked = "planning the sentence\n</think>\n\nLOT-1001 moves to LITHO-01."
     assert strip_reasoning(leaked) == "LOT-1001 moves to LITHO-01."

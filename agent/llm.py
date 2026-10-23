@@ -25,7 +25,7 @@ from resilimes.llm.urls import normalize_base_url
 load_dotenv()
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8088/v1"
-DEFAULT_MODEL = "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
+DEFAULT_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
 DEFAULT_APP_ID = "resilimes"
 DEFAULT_TIMEOUT_S = 180.0
 
