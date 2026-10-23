@@ -13,7 +13,7 @@ from .schedule import POLICY_FROZEN, schedule_plant
 LITHO_REPAIR_MIN = 600
 RUSH_DUE_MIN = 180
 QTIME_TIGHT_MIN = 15
-QTIME_TIGHT_RULE = "QT-B14-ETCH-CMP"
+QTIME_TIGHT_RULE = "QT-B14-CLEAN-DEP"
 
 
 class Scenario(BaseModel):
@@ -70,24 +70,29 @@ SCENARIOS: dict[str, Scenario] = {
     ),
     "rework": Scenario(
         id="rework",
-        title="Lithography rework",
+        title="Overlay rework",
         incident=(
-            "Rework: LOT-1004 overlay failed at lithography. "
-            "Strip and re-expose once. Rework limit is 1."
+            "Rework: LOT-1004 overlay failed at metrology. "
+            "Strip, re-expose, and re-measure once. Rework limit is 1."
         ),
-        summary="Overlay failed on LOT-1004. Strip the resist and re-expose once.",
+        summary=(
+            "Overlay failed on LOT-1004 at measure. Strip the resist, "
+            "re-expose once, and measure again."
+        ),
         before_label="No rework",
-        after_label="Strip and re-expose",
+        after_label="Strip, expose, measure",
         kind="rework",
     ),
     "qtime": Scenario(
         id="qtime",
         title="Queue time",
         incident=(
-            "Q-time: etch to CMP must start within 15 minutes. "
-            "The naive plan starts CMP after the window."
+            "Q-time: clean to deposition must start within 15 minutes. "
+            "The naive plan starts deposition after the window."
         ),
-        summary="Etch on LOT-1003 finished before the clock. CMP must start within 15 min.",
+        summary=(
+            "Clean on LOT-1003 finished before the clock. The next film must start within 15 min."
+        ),
         before_label="8 h queue time",
         after_label="15 min queue time",
         kind="qtime",
@@ -276,7 +281,7 @@ def _add_rush(plant: Plant) -> Plant:
             due_at=due,
             started_at=None,
             process_time_min=90,
-            remaining_steps=["LITHO", "ETCH", "CMP"],
+            remaining_steps=["DEP", "LITHO", "MEAS", "ETCH", "CLEAN", "CMP"],
             preferred_equipment=["LITHO-01", "LITHO-02"],
             released_through="CMP",
         )
@@ -288,14 +293,14 @@ def _mark_rework(plant: Plant) -> Plant:
     copied = plant.model_copy(deep=True)
     for job in copied.jobs:
         if job.job_id == "LOT-1004":
-            job.rework_of = "LITHO"
+            job.rework_of = "MEAS"
             job.rework_count = 0
             job.rework_limit = 1
     return copied
 
 
 def _tighten_qtime(plant: Plant) -> Plant:
-    """Close the etch-to-CMP window that LOT-1003 already missed."""
+    """Close the clean-to-film window that LOT-1003 already missed."""
     copied = plant.model_copy(deep=True)
     for rule in copied.qtime_rules:
         if rule.rule_id == QTIME_TIGHT_RULE:

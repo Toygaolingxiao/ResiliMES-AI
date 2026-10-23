@@ -276,38 +276,38 @@ def _queue(
     otd_b, otd_a = _pct(before, after)
     return {
         "en": (
-            f"{job} misses the etch queue time",
+            f"{job} misses the clean queue time",
             [
-                "Etch finished before the clock. CMP had to start within 15 min.",
+                "Clean finished before the clock. The next film had to start within 15 min.",
                 f"{hold_en} On-time delivery {otd_b} → {otd_a}.",
                 f"The verdict is {_verdict(verdict, 'en')}. {_refusal(constraint, 'en')}",
             ],
             (
-                f"{job} is held because CMP would start after the etch queue time. "
+                f"{job} is held because deposition would start after the clean queue time. "
                 f"{_hold_clock(before, after, 'en')} {_refusal(constraint, 'en')}"
             ),
         ),
         "zh": (
-            f"{job} 错过了刻蚀后的队列时间",
+            f"{job} 错过了清洗后的队列时间",
             [
-                "刻蚀在时钟之前已经结束。CMP 必须在 15 分钟内开工。",
+                "清洗在时钟之前已经结束。下一道成膜必须在 15 分钟内开工。",
                 f"{hold_zh}准时交付 {otd_b} → {otd_a}。",
                 f"评审结果{_verdict(verdict, 'zh')}。{_refusal(constraint, 'zh')}",
             ],
             (
-                f"{job} 被暂扣，因为 CMP 会在刻蚀队列时间之后才开工。"
+                f"{job} 被暂扣，因为成膜会在清洗后的队列时间之后才开工。"
                 f"{_hold_clock(before, after, 'zh')}{_refusal(constraint, 'zh')}"
             ),
         ),
         "ja": (
-            f"{job} はエッチ後の待ち時間を外した",
+            f"{job} は洗浄後の待ち時間を外した",
             [
-                "エッチは時計の前に終わっている。CMP は 15 分以内に始める。",
+                "洗浄は時計の前に終わっている。次の成膜は 15 分以内に始める。",
                 f"{hold_ja}納期遵守 {otd_b} → {otd_a}。",
                 f"批評は{_verdict(verdict, 'ja')}。{_refusal(constraint, 'ja')}",
             ],
             (
-                f"{job} は、CMP が待ち時間の後に始まるため保留。"
+                f"{job} は、成膜が洗浄後の待ち時間の後に始まるため保留。"
                 f"{_hold_clock(before, after, 'ja')}{_refusal(constraint, 'ja')}"
             ),
         ),
@@ -331,34 +331,34 @@ def _rework(
         close_ja = f"{close_ja}{_refusal(constraint, 'ja')}"
     return {
         "en": (
-            f"{job} re-enters lithography",
+            f"{job} re-measures after overlay",
             [
-                "Overlay failed. Strip, then one re-expose. The limit is 1.",
-                f"Lithography takes the extra pass. On-time delivery {otd_b} → {otd_a}.",
+                "Overlay failed at metrology. Strip, re-expose, then one re-measure. The limit is 1.",
+                f"The scanner and the measure tool take the extra pass. On-time delivery {otd_b} → {otd_a}.",
                 close_en,
             ],
             (
-                f"{job} strips and re-exposes once, then rejoins etch. "
+                f"{job} strips, re-exposes, and measures once. "
                 f"A second loop is not inserted. {close_en}"
             ),
         ),
         "zh": (
-            f"{job} 重新进入光刻",
+            f"{job} 套刻失败后复测",
             [
-                "套刻失败。去胶，再曝光一次。上限是 1。",
-                f"光刻多走一道。准时交付 {otd_b} → {otd_a}。",
+                "量测套刻失败。去胶，再曝光，再量一次。上限是 1。",
+                f"光刻和量测多走一道。准时交付 {otd_b} → {otd_a}。",
                 close_zh,
             ],
-            f"{job} 去胶并再曝光一次，然后回到刻蚀。不会插入第二次。{close_zh}",
+            f"{job} 去胶、再曝光并复测一次。不会插入第二次。{close_zh}",
         ),
         "ja": (
-            f"{job} がリソグラフィに戻る",
+            f"{job} は重ね合わせのあと再測定",
             [
-                "重ね合わせ不良。剥離して、一度だけ再露光。上限は 1。",
-                f"リソが一行程増える。納期遵守 {otd_b} → {otd_a}。",
+                "測定で重ね合わせ不良。剥離し、再露光し、一度だけ再測定。上限は 1。",
+                f"リソと測定が一行程増える。納期遵守 {otd_b} → {otd_a}。",
                 close_ja,
             ],
-            f"{job} は剥離して一度再露光し、エッチに戻る。二度目は入れない。{close_ja}",
+            f"{job} は剥離し、再露光し、一度測定する。二度目は入れない。{close_ja}",
         ),
     }
 

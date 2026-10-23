@@ -90,24 +90,27 @@ Not built: the reference TypeScript conformance runner and the marker strings in
 - Lots running on an up tool are not preempted.
 - Material on the BOM is consumed when a lot that has not started is dispatched. In-progress lots have already consumed theirs.
 - A down tool's `available_at_min` is the repair ETA from the horizon when a scenario sets `eta_from_horizon`. Otherwise it is `down_since + latest maintenance estimate`, or 240 minutes if nothing is known.
-- Unscheduled lots contribute 24 hours of tardiness so a hold is visible and finite.
+- A held lot has no completion. It counts as late for on-time delivery and, at priority 1 or 2, as a lot at risk. Weighted tardiness does not charge it a finish time.
 - Priority weights are 8, 4, 2, and 1 for priorities 1 through 4.
 
-The litho headline (83.3% → 100% on-time, weighted tardiness 840 → 0) depends on the 600-minute revised ETA in the machine-breakdown scenario. The maintenance log's older estimate of 180 minutes is not what that scenario uses. The narrative says the ETA was revised.
+The litho headline (83.3% → 100% on-time, weighted tardiness 744 → 0) depends on the 600-minute revised ETA in the machine-breakdown scenario. The maintenance log's older estimate of 180 minutes is not what that scenario uses. The narrative says the ETA was revised. DEP-01's morning PM is in that log and is complete by 06:20, so the tool is up at the scenario clock and the routes use it.
 
-One L1 reticle can sit on one lithography tool at a time. The sample books therefore run PROD-A28 lithography in series behind the lot already on LITHO-01. That is why the rush lot finishes 1 h 10 min late, and why the 15-minute queue-time scenario holds both LOT-1003 and LOT-1006. A lot may not start before `release_min`. The sample value is 0. An inhibit row keeps a product or a recipe off one tool; the seed rows do not remove a tool the current books use.
+One L1 reticle can sit on one lithography tool at a time. The sample books therefore run PROD-A28 lithography in series behind the lot already on LITHO-01. That is why the rush lot finishes 1 h 13 min late. The 15-minute queue-time scenario holds LOT-1003, whose clean ended before the clock. LOT-1006 still reaches its cap film inside the window. A lot may not start before `release_min`. The sample value is 0. An inhibit row keeps a product or a recipe off one tool. PROD-C07 stays off LITHO-01. The lot on the clock is already at CMP, so that inhibit does not move today's sensor lot.
+
+Each PROD-A28 layer is deposition, one lithography step (coat, expose, and develop), overlay and CD metrology, etch, one wet clean (strip plus rinse), and CMP. L2 repeats the loop. Rework of a failed measure is strip, one re-expose, and one re-measure. The counted pass is the re-measure.
 
 ## Production would add
 
 These are real fab constraints and they are out of this demo:
 
-- Batch formation for furnaces
+- Furnace batching
+- Implant
+- Metal PVD
 - Transfer and AMHS capacity
 - Conditioning dummy wafers
 - Cumulative maintenance counters
 - Interval setups
 - Tact time
-- Implant gas type
 - Cross-fab flow restrictions
 - Pilot and split lots
 - MES-specific compliance checks

@@ -7,3 +7,4 @@ M-9005,LITHO-01,PM_COMPLETE,2026-10-18T08:00:00Z,PM_LITHO,Quarterly optics clean
 M-9006,CMP-01,ALARM,2026-10-21T11:02:00Z,PAD_WEAR,Pad wear near threshold; continue with monitoring,0,system
 M-9007,ETCH-02,FAULT,2026-10-15T09:40:00Z,PUMP_DOWN,Roughing pump failure — repaired and returned to IDLE,360,tech.kim
 M-9008,LITHO-02,FAULT,2026-10-10T16:20:00Z,STAGE_STALL,Wafer stage stall; parts replaced,420,tech.nguyen
+M-9009,DEP-01,PM_COMPLETE,2026-10-22T06:20:00Z,PM_CVD,CVD chamber PM finished; tool is up for the 06:30 clock,0,tech.nguyen

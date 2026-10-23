@@ -166,3 +166,9 @@ Role A signs. The scale, the late bar, the hatch, and the dues are unchanged, an
 Role B signs. The axis is in the same place on both charts, the ids are inside a bar, just to its right, or in the rail, and nothing touches an edge.
 
 Role C signs. The move is the tall object in the card, and the frame is still one screen.
+
+## Per-layer loop — two more tool rows
+
+MEAS-01 and WET-01 join the book, so each chart has eight tool rows. The row rule is unchanged: card height divided by the row count, clamped between 48px and 112px. At 1920×1080 the clamp still does not bind. After-chart rows are 66px on lithography, rush, shortage, queue time, and the etch sentence, and 69px on rework (the rework swatch is in the legend). The axis stays flush with the card. Labels stay 14px. `scrollHeight` 1080, recover panel overflow 0, legend bottom 1058.
+
+Rail and side chips now count their 6px of horizontal padding (`chip = need + 6`) when they decide whether an id fits and whether two ids share a box. Before that, the rush pair 1004 and 1003 overlapped by 1px on the caption rail. After the change, glyph rectangles do not intersect on any of the six scenarios.

@@ -2,7 +2,7 @@
 
 Target length: 3 minutes 20 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
 
-Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks scheduled lateness as hours: 840 minutes is 14 h, 560 minutes is 9 h 20 min. A held lot is not given a finish time, so a stockout does not become a day count.
+Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks scheduled lateness as hours: 744 minutes is 12 h 24 min, 584 minutes is 9 h 44 min. A held lot is not given a finish time, so a stockout does not become a day count.
 
 The Recover tab is the filmed frame. Do not scroll it. Idle shows one empty state, not a row of Waiting cards. No scenario is marked active until you press Run.
 
@@ -36,13 +36,13 @@ Press **Run** on **Machine breakdown**. That row is the only one that turns acti
 
 When the headline lands, stay on Recover. Read the sentence, then the refusal under it, then the three cards, then both charts. Everything is above the fold.
 
-"LOT-1001 leaves LITHO-02. The refused move was starting that lot on LITHO-02 at time zero. The tool is down until minute 600. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 14 hours to zero. Lots at risk go from one to zero."
+"LOT-1001 leaves LITHO-02. The refused move was starting that lot on LITHO-02 at time zero. The tool is down until minute 600. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 12 hours 24 minutes to zero. Lots at risk go from one to zero."
 
 The `?` on a card states the formula. **Details** opens Analyze. Do not click it yet.
 
-Point at the left chart. "The red line is now. The red hatch is the scanner down until the repair. Bar color is the area: indigo lithography, cyan etch, violet CMP, teal deposition. 1001 sits on LITHO-02 and finishes late."
+Point at the left chart. "The red line is now. The red hatch is the scanner down until the repair. Bar color is the area: indigo lithography, cyan etch, violet CMP, teal deposition, amber metrology, blue clean. 1001 sits on LITHO-02 and finishes late."
 
-Point at the right chart. "The outlined bar is a lot whose tool changed. LOT-1001 moves onto LITHO-01. LOT-1004 stays on LITHO-01 for lithography and moves its etch from ETCH-02 to ETCH-01. Both are in Lots moved, on Analyze."
+Point at the right chart. "The outlined bar is a lot whose tool changed. LOT-1001 moves onto LITHO-01. That is the only move. Deposition, measure, etch, clean, and CMP stay on the tools they already had."
 
 Click By lot, then click the LOT-1001 bar. "Each row is one lot. The gap between steps is the wait, and the popover is that lot's route." Switch back to By tool before the next shot.
 
@@ -60,9 +60,9 @@ Back on **Recover**, hover Nightshift. In this recording the tip reads `mock · 
 
 Open **Analyze**. This is the only place that scrolls.
 
-"Makespan goes from 16 h 5 min to 7 h. Mean lead time goes from 12 h 18 min to 4 h 43 min. Mean wait between steps goes from 4 h 37 min to 44 min. X-factor goes from 7.94 to 3.26. Utilization stays 14.9 percent, gray on purpose. Both books share one window, the longer makespan, 16 h 5 min. LITHO-02 is down 10 hours and DEP-01 is in maintenance 4 hours. That time is listed under the figures and is not in the denominator."
+"Makespan goes from 14 h 12 min to 5 h 28 min. Mean lead time goes from 9 h 20 min to 3 h 30 min. Mean wait between steps goes from 2 h 2 min to 24 min. X-factor goes from 4.44 to 1.99. Utilization stays 11.6 percent, gray on purpose. Both books share one window, the longer makespan, 14 h 12 min. LITHO-02 is down 10 hours. That time is listed under the figures and is not in the denominator. DEP-01 is up. Its morning PM is already finished."
 
-The area card has Before and After. The area percents stay flat: Lithography 17.7, Etch 14.2, CMP 23.8, Deposition 0. The wait card shows etch into CMP, about 1 h 16 min on average. The lot table shows LOT-1004 as ETCH, ETCH-02 to ETCH-01. The queue-time card is 100 percent both ways, with one at-risk pair while waiting and none after. The bottleneck card names Lithography. The tool labels on that area carry a small mark.
+The area card has Before and After. The area percents stay flat: Lithography 19.9, Etch 10.9, CMP 13.0, Deposition 10.3, Metrology 7.0, Clean 7.0. The wait card's top row is deposition into etch, about 11 h 27 min while waiting and 2 h 37 min after. The lot table shows LOT-1001 as LITHO, LITHO-02 to LITHO-01. The queue-time card is 100 percent both ways. The bottleneck card names Lithography. The tool labels on that area carry a small mark.
 
 Return to **Recover** before the next disruption.
 
@@ -70,7 +70,7 @@ Return to **Recover** before the next disruption.
 
 Press **Run** on **Rush order**. After the stepper:
 
-"LOT-2001 finishes 1 hour 10 minutes late. The dashed tick on the after chart is its due, three hours out. The reticle stays on LITHO-01 with the running lot, so the hot lot takes that scanner next and finishes at 4 h 10 min. On-time delivery falls from 100 to 85.7 percent. Weighted tardiness rises by 9 h 20 min. Lots at risk go from zero to one. Pulling a running lot off its tool was refused: LOT-1002 is already running on LITHO-01. LOT-2001 is a new lot, so it is not in Lots moved."
+"LOT-2001 finishes 1 hour 13 minutes late. The dashed tick on the after chart is its due, three hours out. The reticle stays on LITHO-01 with the running lot, so the hot lot takes that scanner next and finishes at 4 h 13 min. On-time delivery falls from 100 to 85.7 percent. Weighted tardiness rises by 9 h 44 min. Lots at risk go from zero to one. Pulling a running lot off its tool was refused: LOT-1002 is already running on LITHO-01. LOT-2001 is a new lot, so it is not in Lots moved."
 
 Hover Scout on the stepper if you want the confidence. The canned rush sentence clears 92 percent.
 
@@ -98,9 +98,9 @@ Stop. Do not add a chatbot ending.
 
 ### Optional — Rework, only if the cut is still under four minutes
 
-Press **Run** on **Lithography rework**. Stay on Recover.
+Press **Run** on **Overlay rework**. Stay on Recover.
 
-"LOT-1004 re-enters lithography. Overlay failed, so the book strips and re-exposes once. The limit is one. The striped bar is the re-expose. On-time delivery stays 100 percent. Lithography's share of the window rises."
+"LOT-1004 re-measures after overlay. The measure failed, so the book strips on the wet bench, re-exposes once, and measures again. The limit is one. The striped bar is the re-measure. On-time delivery stays 100 percent. Makespan grows from 5 h 28 min to 7 h 19 min."
 
 Open **Verify** only if you also want the queue-time row. That row is the next preset, not this one.
 
@@ -108,9 +108,9 @@ Open **Verify** only if you also want the queue-time row. That row is the next p
 
 Press **Run** on **Queue time**.
 
-"LOT-1003 misses the etch queue time. Etch finished before 06:30, and CMP had 15 minutes. The book holds LOT-1003 and LOT-1006: one reticle serializes lithography, so CMP is no longer free inside that window. On-time delivery goes from 100 to 66.7 percent. Those holds are not given a finish time, so weighted tardiness does not become a day count. The after chart marks the lots held. The refused plan started CMP at minute 120."
+"LOT-1003 misses the clean queue time. Clean finished before 06:30, and the next film had 15 minutes. The book holds LOT-1003. On-time delivery goes from 100 to 83.3 percent. That hold is not given a finish time, so weighted tardiness stays flat. Lots at risk stay at zero because this lot is priority 3. The after chart marks the lot held. The refused plan started deposition at minute 120."
 
-On **Verify**, queue time passed on the committed book. Open the row for the refused plan that started CMP after the window. On **Analyze**, compliance goes from 100 percent to 60, with two holds.
+On **Verify**, queue time passed on the committed book. Open the row for the refused plan that started the cap film after the window. On **Analyze**, compliance goes from 100 percent to 50, with one hold.
 
 ## Judging map
 

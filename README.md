@@ -13,13 +13,13 @@ Sample fab FAB-A, scenario clock 22 Oct 2026 06:30 UTC. Machine breakdown (`lith
 | KPI | Wait for repair | Rescheduled |
 | --- | ---: | ---: |
 | On-time delivery | 83.3% | 100% |
-| Priority-weighted tardiness | 840 min | 0 min |
-| Makespan | 965 min | 420 min |
+| Priority-weighted tardiness | 744 min | 0 min |
+| Makespan | 852 min | 328 min |
 | Priority-1/2 lots at risk | 1 | 0 |
 
-LOT-1001 is priority 1, blocked on LITHO-02 (laser fault, revised repair 600 minutes), due 18:00 UTC. Waiting finishes it 105 minutes late. The recovery moves it to LITHO-01, which shares `litho_193nm`, the setup family already on the tool, and reticle RET-A28-L1, and finishes it at t=250. A naive plan that starts the lot on the down tool immediately is rejected. That plan also asks for the reticle that is still on LITHO-01.
+LOT-1001 is priority 1, blocked on LITHO-02 (laser fault, revised repair 600 minutes), due 18:00 UTC. Waiting finishes it 93 minutes late. The recovery moves it to LITHO-01, which shares `litho_193nm`, the setup family already on the tool, and reticle RET-A28-L1, and finishes it at t=253. A naive plan that starts the lot on the down tool immediately is rejected. That plan also asks for the reticle that is still on LITHO-01. Lithography stays the bottleneck, and the move keeps it on an up tool.
 
-Four more disruptions are one click away. A three-hour rush order finishes 1 h 10 min late: the running lot is not preempted, and its reticle cannot move to the other scanner until that exposure ends. A photoresist stockout holds the lots which still need lithography. A lithography rework strips LOT-1004 and re-exposes it once, and a second loop is not inserted. A queue-time miss holds LOT-1003 because etch finished before the clock and CMP would start after a 15-minute window; the same reticle queue also holds LOT-1006. The critic refuses that late CMP start.
+Four more disruptions are one click away. A three-hour rush order finishes 1 h 13 min late: the running lot is not preempted, and its reticle cannot move to the other scanner until that exposure ends. A photoresist stockout holds the lots which still need lithography. An overlay fail on LOT-1004 strips the resist, re-exposes once, and measures again. A second loop is not inserted. A queue-time miss holds LOT-1003 because the wet clean finished before the clock and the next film would start after a 15-minute window. The critic refuses that late deposition start.
 
 ## Architecture
 
@@ -115,12 +115,12 @@ Mask the token if you film that command. The console never prints it. A recovery
 The console is the product. Five presets:
 
 - **Machine breakdown** — LITHO-02 down for 10 hours. Compare “wait for repair” with a recovered schedule. Lithography is the bottleneck, and the recovery keeps it on an up tool.
-- **Rush order** — insert priority-1 LOT-2001 due in three hours. Running lots stay put, and the L1 reticle stays with them, so the promise is 1 h 10 min late.
+- **Rush order** — insert priority-1 LOT-2001 due in three hours. Running lots stay put, and the L1 reticle stays with them, so the promise is 1 h 13 min late.
 - **Material shortage** — RESIST-UV on hand is zero. Lots that still need lithography are held. LOT-1002 is already running and keeps its resist.
-- **Lithography rework** — overlay failed on LOT-1004. The book inserts strip and one re-expose. The rework limit is 1. The re-expose bar is striped.
-- **Queue time** — etch to CMP on PROD-B14 must start within 15 minutes. LOT-1003 already missed that window. LOT-1006 misses it too once lithography is serialized on one reticle. A naive start at t=120 is refused.
+- **Overlay rework** — overlay failed on LOT-1004 at metrology. The book strips on the wet bench, re-exposes once, and measures again. The rework limit is 1. The re-measure bar is striped.
+- **Queue time** — clean to the next film on PROD-B14 must start within 15 minutes. LOT-1003 already missed that window. A naive start at t=120 is refused.
 
-PROD-A28's route visits lithography, etch, and CMP on L1 and again on L2. Lots released through CMP stay on the first layer today. Queue time in the seed is 1100 minutes from etch end to CMP start. RET-A28-L1 can be on one lithography tool at a time. Analyze shows compliance and the bottleneck. Verify lists every registered check.
+Each layer of PROD-A28 is deposition, lithography (coat, expose, and develop as one step), overlay and CD metrology, etch, wet clean, and CMP. L2 repeats the six steps. DEP-01 runs the film. MEAS-01 measures. WET-01 strips and cleans. Lots released through CMP stay on the first layer today. Queue time is surface exposure: 480 minutes from clean end to the next deposition. On A28 that next film is DEP-L2, with CMP between them, so the limit covers the polish. The 15-minute scenario tightens the adjacent B14 pair, clean to the cap film. RET-A28-L1 can be on one lithography tool at a time. Analyze shows compliance and the bottleneck. Verify lists every registered check.
 
 Or type an incident. Scout classifies it. A viewer role, or a prompt-injection attempt, is refused before any schedule is written.
 

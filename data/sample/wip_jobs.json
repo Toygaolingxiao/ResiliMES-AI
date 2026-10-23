@@ -12,8 +12,8 @@
       "status": "BLOCKED",
       "due_at": "2026-10-22T18:00:00Z",
       "started_at": "2026-10-22T05:40:00Z",
-      "process_time_min": 90,
-      "remaining_steps": ["ETCH", "CMP"],
+      "process_time_min": 75,
+      "remaining_steps": ["MEAS", "ETCH", "CLEAN", "CMP"],
       "released_through": "CMP"
     },
     {
@@ -25,9 +25,9 @@
       "assigned_equipment": "LITHO-01",
       "status": "RUNNING",
       "due_at": "2026-10-23T02:00:00Z",
-      "started_at": "2026-10-22T05:55:00Z",
-      "process_time_min": 90,
-      "remaining_steps": ["ETCH", "CMP"],
+      "started_at": "2026-10-22T06:25:00Z",
+      "process_time_min": 75,
+      "remaining_steps": ["MEAS", "ETCH", "CLEAN", "CMP"],
       "released_through": "CMP"
     },
     {
@@ -35,13 +35,13 @@
       "product_id": "PROD-B14",
       "priority": 3,
       "qty": 50,
-      "current_step": "ETCH",
-      "assigned_equipment": "ETCH-01",
+      "current_step": "CLEAN",
+      "assigned_equipment": "WET-01",
       "status": "RUNNING",
       "due_at": "2026-10-23T12:00:00Z",
-      "started_at": "2026-10-22T04:10:00Z",
-      "process_time_min": 60,
-      "remaining_steps": ["CMP"]
+      "started_at": "2026-10-22T06:00:00Z",
+      "process_time_min": 12,
+      "remaining_steps": ["DEP-2"]
     },
     {
       "job_id": "LOT-1004",
@@ -53,8 +53,8 @@
       "status": "QUEUED",
       "due_at": "2026-10-23T08:00:00Z",
       "started_at": null,
-      "process_time_min": 90,
-      "remaining_steps": ["LITHO", "ETCH", "CMP"],
+      "process_time_min": 28,
+      "remaining_steps": ["DEP", "LITHO", "MEAS", "ETCH", "CLEAN", "CMP"],
       "preferred_equipment": ["LITHO-01", "LITHO-02"],
       "released_through": "CMP"
     },
@@ -81,8 +81,8 @@
       "status": "QUEUED",
       "due_at": "2026-10-24T00:00:00Z",
       "started_at": null,
-      "process_time_min": 60,
-      "remaining_steps": ["ETCH", "CMP"],
+      "process_time_min": 20,
+      "remaining_steps": ["DEP", "ETCH", "CLEAN", "DEP-2"],
       "preferred_equipment": ["ETCH-01", "ETCH-02"]
     }
   ]

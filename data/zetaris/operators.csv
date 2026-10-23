@@ -1,5 +1,5 @@
 operator_id,name,certified,shift
 OP-01,A. Kim,"litho_193nm,etch_dielectric",A
-OP-02,L. Nguyen,"litho_193nm,cvd_oxide",A
+OP-02,L. Nguyen,"litho_193nm,cvd_oxide,overlay_cd",A
 OP-03,M. Park,"etch_dielectric,etch_metal,cmp_oxide",A
-OP-04,R. Singh,"cmp_oxide,etch_metal",A
+OP-04,R. Singh,"cmp_oxide,etch_metal,wet_clean",A
