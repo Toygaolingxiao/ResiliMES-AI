@@ -113,7 +113,8 @@ def refuse_down_start(tool: str, lot_id: str, down_min: float) -> dict[str, Any]
         "tool": tool,
         "down_min": round(down_min, 2),
         "detail": (
-            f"{lot_id} is not started on {tool}. That tool is down for {down_min:.1f} minutes."
+            f"{lot_id} is not started on {tool}. That tool is down for {down_min:.1f} minutes. "
+            "This is a safety check. The event loop did not select that start."
         ),
     }
 

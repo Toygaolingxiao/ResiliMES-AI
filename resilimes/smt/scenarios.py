@@ -6,11 +6,12 @@ It is not what this module returns.
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from typing import Any
 
-from resilimes.config import Settings
+from resilimes.config import ROOT, Settings
 from resilimes.engines.scout.engine import default_scout
 from resilimes.llm.factory import build_provider
 from resilimes.smt.fab import DATA_SOURCE, LITHO_MTTR_MIN, READ_QUERY, Fab, initial_queues, load_fab
@@ -25,6 +26,7 @@ from resilimes.smt.simulate import (
     sample_downs,
 )
 from resilimes.smt.tight import (
+    DIELECTRIC_FAMILY,
     DIELECTRIC_MTTR_MIN,
     TIGHT_HORIZON_SEC,
     apply_tight,
@@ -102,10 +104,10 @@ SCENARIOS: dict[str, SmtScenario] = {
         id="wip_threshold",
         title="WIP threshold",
         summary=(
-            "When a station family holds more than two lots per tool, ResiliMES "
-            "replans that family only and shortens the look-ahead."
+            "When a station family holds more than two lots per tool, choose() "
+            "keeps eight candidates instead of twenty-four. That counter is not a replan."
         ),
-        incident="WIP over the station-family threshold. Replan that family only.",
+        incident="WIP over the station-family cap. The candidate list shortens. The book is not replanned.",
         before_policy="fifo",
         after_policy="resilimes",
         kind="wip",
@@ -123,14 +125,19 @@ SCENARIOS: dict[str, SmtScenario] = {
         id="tight_p1",
         title="Tight VIP dues",
         summary=(
-            "Constructed dues on the public industry benchmark (SMT2020). "
-            "Eight lots at Dielectric_BE_28 become VIP, due in 8 hours. "
-            "Thirteen normal lots in that queue are due 48 minutes earlier. "
-            "Dielectric_BE_28-1 is down for the published dielectric repair."
+            "Dues rewritten for this stress test. Not the published book. "
+            "21 lots, 24 h, five seeds: ResiliMES 4/21 on every seed (20/105), "
+            "EDD 3/21, 3/21, 2/21, 2/21, 3/21 (13/105). "
+            "Seed 1 weighted tardiness is 7,679.4 under EDD and 4,043.8 under ResiliMES. "
+            "Init_Lot_2_23 is the save here and an X-factor loss on seeds 5 and 6. "
+            "Published dues, 48 h, 56 lots: ResiliMES 31/56, 31/56, 32/56, 32/56, 32/56 "
+            "(mean 56.43%). EDD 31/56, 32/56, 32/56, 32/56, 32/56 (mean 56.78%). "
+            "EDD is slightly ahead on that book."
         ),
         incident=(
-            "Dielectric_BE_28-1 is down. Eight VIP lots in that queue are due "
-            "in 8 hours. Earliest-due serves the normal lots first."
+            "Stress test with dues rewritten. Dielectric_BE_28-1 is down. "
+            "Eight VIP lots are due in 8 hours. Thirteen normal lots in that queue "
+            "are due 48 minutes sooner, so earliest-due serves them first."
         ),
         before_policy="edd",
         after_policy="resilimes",
@@ -140,11 +147,18 @@ SCENARIOS: dict[str, SmtScenario] = {
         id="xfactor",
         title="X-factor dues",
         summary=(
-            "Published routes. Each due is remaining process time x 2.75. "
-            "Litho_FE_92-1 is down for 600 minutes. The baseline is EDD."
+            "48 h, 87 lots, five seeds. On-time is the same at every repair length. "
+            "ResiliMES 87/87, 83/87, 86/87, 87/87, 81/87 (mean 97.47%). "
+            "EDD 87/87, 86/87, 86/87, 87/87, 87/87 (mean 99.54%). "
+            "FIFO 20.7%, CR 71.7%. Re-cleans 38 vs 56. Q-time violations 430 vs 452. "
+            "Versus EDD this gives up about 2 of 87 lots: seed 2 is three lots at "
+            "Diffusion_BE_123; seed 5 is five lots at Dielectric_BE_28 plus one wet-etch lot. "
+            "Init_Lot_2_23 is on time under EDD and late here on seeds 5 and 6."
         ),
         incident=(
-            "Litho_FE_92-1 down for 600 minutes. Dues are 2.75 times the remaining process time."
+            "Litho_FE_92-1 down for 600 minutes. Dues are 2.75 times the remaining process time. "
+            "ResiliMES beats FIFO and CR. Versus EDD it gives up about 2 of 87 lots "
+            "and runs fewer re-cleans and fewer Q-time violations."
         ),
         before_policy="edd",
         after_policy="resilimes",
@@ -365,6 +379,11 @@ def simulate_pair(
         )
     else:
         watch = ()
+    bar_family = None
+    bar_until = None
+    if book is not None:
+        bar_family = fab.family_index[DIELECTRIC_FAMILY]
+        bar_until = horizon
     # The before book keeps the lot at its published priority.
     before = run_policy(
         plant,
@@ -377,6 +396,8 @@ def simulate_pair(
         trace=True,
         focus_down_until=forced_until,
         watch=watch,
+        bar_family=bar_family,
+        bar_until=bar_until,
     )
     after = run_policy(
         plant,
@@ -391,6 +412,8 @@ def simulate_pair(
         trace=True,
         focus_down_until=forced_until,
         watch=watch,
+        bar_family=bar_family,
+        bar_until=bar_until,
     )
     aps_ms, scanner_steps = macro_aps_ms(fab)
     report = _report(fab, scenario, before, after, seed, horizon, aps_ms, scanner_steps, shift)
@@ -423,7 +446,9 @@ def _report(
     shift: float,
 ) -> dict[str, Any]:
     family = fab.families[fab.focus_family]
-    return {
+    if scenario.kind == "tight":
+        family = fab.families[fab.family_index[DIELECTRIC_FAMILY]]
+    report = {
         "fab": DATA_SOURCE,
         "data_source": DATA_SOURCE,
         "query": READ_QUERY,
@@ -437,9 +462,19 @@ def _report(
         "focus": {
             "family": family.name,
             "group": family.group,
-            "tool": fab.tool_name[fab.focus_tool],
+            "tool": (
+                fab.tool_name[fab.families[fab.family_index[DIELECTRIC_FAMILY]].tool0]
+                if scenario.kind == "tight"
+                else fab.tool_name[fab.focus_tool]
+            ),
             "tools_in_family": family.tools,
-            "down_min": round(LITHO_MTTR_MIN, 2) if scenario.kind == "litho" else 0,
+            "down_min": (
+                round(DIELECTRIC_MTTR_MIN, 2)
+                if scenario.kind == "tight"
+                else round(LITHO_MTTR_MIN, 2)
+                if scenario.kind == "litho"
+                else 0
+            ),
             "sibling_starts_before": before.sibling_starts,
             "sibling_starts_after": after.sibling_starts,
             "queue_max_before": before.focus_queue_max,
@@ -470,6 +505,13 @@ def _report(
             "dispatch_p50_ms": after.dispatch_p50_ms,
             "dispatch_p95_ms": after.dispatch_p95_ms,
             "dispatch_decisions": after.dispatch_decisions,
+            "dispatch_busy_p50_ms": after.dispatch_busy_p50_ms,
+            "dispatch_busy_p95_ms": after.dispatch_busy_p95_ms,
+            "dispatch_busy_decisions": after.dispatch_busy_decisions,
+            "latency_note": (
+                "Headline p50/p95 include empty wakes. "
+                "Nonempty-queue p50/p95 count only decisions with a ready lot."
+            ),
             "aps_ms": round(aps_ms, 1),
             "scanner_steps": scanner_steps,
             "sim_before_s": before.sim_s,
@@ -494,10 +536,82 @@ def _report(
             "cycle_time_h": "Mean completion time of lots that finish the route inside the horizon.",
             "litho_util_pct": "Busy time on the 102 Litho_* tools divided by tools times horizon.",
             "qtime_violations": "CQT target started after the limit, or the limit expired inside the horizon.",
+            "recleans": (
+                "One return through the wet step that opened the missed window. "
+                "Not the published rework probability."
+            ),
+            "mean_x_factor": (
+                "Completion time divided by remaining raw process time at the snapshot, "
+                "for lots that finish inside the horizon."
+            ),
+            "candidate_cap": (
+                "The WIP counter in enqueue records that a family exceeded "
+                "max(8, two lots per tool). choose() then keeps 8 candidates "
+                "instead of 24. It does not replan the family."
+            ),
+            "qtime_gate": (
+                "The adjacent Wet_Etch look-ahead is a hold, not a replan. "
+                "On the measured books that gate fired 0 times."
+            ),
+            "macro_aps": (
+                "macro_aps_ms times a backward due and an earliest-free scanner "
+                "placement. Those operation dues are not an input to dpi()."
+            ),
             "pm_avoided": "ResiliMES decisions that refused at least one lot because it would cross a PM.",
             "pm_overlaps": "Baseline starts whose process overlaps a PM window.",
+            "down_tool_refusal": (
+                "A safety check the event loop never selected. It is not a caught scheduler mistake."
+            ),
         },
     }
+    if scenario.kind == "litho":
+        report["study_note"] = _litho_study_note(before, after, seed, horizon)
+    return report
+
+
+def _otd_count(pct: float, denom: int) -> int:
+    return round(pct / 100.0 * denom)
+
+
+def _litho_study_note(before: RunResult, after: RunResult, seed: int, horizon: float) -> str:
+    """The 12 h click is one seed. The five-seed lithography row is the study."""
+    click = (
+        f"This click is seed {seed} and {horizon / 3600:.0f} h: "
+        f"{before.policy} {_otd_count(before.on_time_pct, before.due_in_horizon)}/"
+        f"{before.due_in_horizon} ({before.on_time_pct}%), "
+        f"{after.policy} {_otd_count(after.on_time_pct, after.due_in_horizon)}/"
+        f"{after.due_in_horizon} ({after.on_time_pct}%)."
+    )
+    if before.on_time_pct == after.on_time_pct:
+        click += " The two policies tie on this seed."
+    path = ROOT / "data" / "smt2020" / "benchmark.json"
+    if not path.is_file():
+        return click + " The five-seed lithography study is in docs/SMT2020_SCALE.md."
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    litho = payload.get("litho") or {}
+    parts: list[str] = []
+    denom = None
+    for policy in ("resilimes", "edd"):
+        block = litho.get(policy) or {}
+        seeds = block.get("seeds") or []
+        if not seeds:
+            continue
+        denom = seeds[0].get("due_in_horizon")
+        rendered = ", ".join(
+            f"seed {item['seed']} "
+            f"{_otd_count(float(item['on_time_pct']), int(item['due_in_horizon']))}/"
+            f"{item['due_in_horizon']}"
+            for item in seeds
+        )
+        mean = (block.get("mean") or {}).get("on_time_pct")
+        parts.append(f"{policy} {rendered} (mean {mean}%)")
+    if not parts:
+        return click
+    return (
+        f"{click} Five-seed lithography study, 48 h, {denom} lots due: "
+        + "; ".join(parts)
+        + ". That study is not this click."
+    )
 
 
 def _counts(fab: Fab) -> dict[str, int]:
@@ -525,6 +639,9 @@ def _kpi(result: RunResult) -> dict[str, Any]:
         "litho_util_pct": result.litho_util_pct,
         "scanner_util_pct": result.scanner_util_pct,
         "qtime_violations": result.qtime_violations,
+        "recleans": result.recleans,
+        "mean_x_factor": result.mean_x_factor,
+        "qtime_gates": result.qtime_gates,
         "pm_avoided": result.pm_avoided,
         "pm_overlaps": result.pm_overlaps,
         "wip_replans": result.wip_replans,

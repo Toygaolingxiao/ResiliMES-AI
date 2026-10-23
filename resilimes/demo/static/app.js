@@ -222,15 +222,15 @@ const COPY = {
       Clean: "Clean",
     },
     scenarios: {
-      litho_down: ["Machine breakdown", "LITHO-02 is down for 10 h. LOT-1001 is blocked, due 18:00 UTC."],
+      litho_down: ["Lithography breakdown", "Litho_FE_92-1 is down for the published 705.59 min lithography repair. Snapshot 2018-01-01."],
       rush_order: ["Rush order", "A hot lot is due in 3 h. Running lots stay on their tools."],
       material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
       rework: ["Overlay rework", "LOT-1004 overlay failed at measure. Strip, re-expose, re-measure once."],
-      qtime: ["Queue time", "Clean already finished. The next film must start within 15 min."],
+      qtime: ["Queue time", "Published SMT2020 CQT. The look-ahead is the adjacent 1-hour dry etch to wet etch pairs, not a 15-minute film step."],
       scale: ["Scale", "1,000 lots, 36 tools. One scanner is down for 10 h."],
     },
-    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time", scale: "vs. EDD dispatch" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time", scale: "Priority recovery" },
+    chartBefore: { litho_down: "EDD on this seed", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "FIFO", scale: "vs. EDD dispatch" },
+    chartAfter: { litho_down: "ResiliMES on this seed", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "ResiliMES, published CQT", scale: "Priority recovery" },
     scaleWindow: "First 12 hours",
     scaleNote: "Busy share of each tool, by hour. A hatch means the tool is down.",
     scheduleWord: "Schedule",
@@ -415,15 +415,15 @@ const COPY = {
     status: { IDLE: "空闲", RUNNING: "加工", DOWN: "宕机", MAINTENANCE: "维护", ok: "有库存", short: "短缺" },
     areas: { Lithography: "光刻", Etch: "刻蚀", CMP: "抛光", Deposition: "沉积", Metrology: "量测", Clean: "清洗" },
     scenarios: {
-      litho_down: ["设备故障", "光刻机 02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
+      litho_down: ["光刻故障", "Litho_FE_92-1 按已发表的光刻维修时间 705.59 分钟停机。快照时刻 2018-01-01。"],
       rush_order: ["急单", "一个热批次 3 小时内要交。正在加工的批次留在原设备。"],
       material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
       rework: ["套刻返工", "LOT-1004 量测套刻失败。去胶、再曝光、再量一次。"],
-      qtime: ["队列时间", "清洗已经结束。下一道成膜必须在 15 分钟内开工。"],
+      qtime: ["队列时间", "SMT2020 已发表的 CQT。前瞻是相邻的 1 小时干法刻蚀到湿法刻蚀，不是 15 分钟成膜。"],
       scale: ["规模", "1000 个批次、36 台设备。一台光刻机宕机 10 小时。"],
     },
-    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列", scale: "对比 EDD 派工" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列", scale: "优先级恢复" },
+    chartBefore: { litho_down: "本种子的 EDD", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "FIFO", scale: "对比 EDD 派工" },
+    chartAfter: { litho_down: "本种子的 ResiliMES", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "ResiliMES，已发表 CQT", scale: "优先级恢复" },
     scaleWindow: "前 12 小时",
     scaleNote: "每台设备每小时的忙碌占比。斜线表示宕机。",
     scheduleWord: "排程",
@@ -608,15 +608,15 @@ const COPY = {
     status: { IDLE: "空き", RUNNING: "加工", DOWN: "停止", MAINTENANCE: "保全", ok: "在庫あり", short: "不足" },
     areas: { Lithography: "リソ", Etch: "エッチ", CMP: "CMP", Deposition: "成膜", Metrology: "測定", Clean: "洗浄" },
     scenarios: {
-      litho_down: ["装置故障", "リソ 02 が 10 時間停止。LOT-1001 が詰まり、納期 18:00 UTC。"],
+      litho_down: ["リソグラフィ故障", "Litho_FE_92-1 が公開されたリソグラフィ修理 705.59 分のあいだ停止。スナップショット 2018-01-01。"],
       rush_order: ["特急", "ホットロットの納期は 3 時間。加工中のロットは装置に残す。"],
       material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
       rework: ["重ね合わせ再加工", "LOT-1004 は測定で不良。剥離し、再露光し、再測定する。"],
-      qtime: ["待ち時間", "洗浄は終了済み。次の成膜は 15 分以内に始める。"],
+      qtime: ["待ち時間", "SMT2020 の公開 CQT。見通しは隣接する 1 時間のドライエッチからウェットエッチで、15 分の成膜ではない。"],
       scale: ["規模", "1000 ロット、36 台。スキャナー 1 台が 10 時間停止。"],
     },
-    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間", scale: "EDD 差し立てとの比較" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分", scale: "優先度の回復" },
+    chartBefore: { litho_down: "このシードの EDD", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "FIFO", scale: "EDD 差し立てとの比較" },
+    chartAfter: { litho_down: "このシードの ResiliMES", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "ResiliMES、公開 CQT", scale: "優先度の回復" },
     scaleWindow: "最初の 12 時間",
     scaleNote: "装置ごとの 1 時間の稼働割合。斜線は停止。",
     scheduleWord: "計画",
@@ -677,7 +677,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
   state.health = await getJson("/api/health");
-  state.horizon = state.health.horizon;
+  state.horizon = state.health.fab === "smt2020" ? "2018-01-01T00:00:00Z" : state.health.horizon;
   const payload = await getJson("/api/scenarios");
   state.scenarioItems = payload.scenarios;
   state.bay = payload.bay || [];
@@ -754,7 +754,8 @@ function paint() {
   $("#run-custom").textContent = copy.runLong;
   $("#empty-title").textContent = copy.emptyTitle;
   $("#empty-hint").textContent = copy.emptyHint;
-  $("#clock").textContent = `${copy.clock} ${formatClock(state.horizon)} UTC`;
+  const clockIso = state.health && state.health.fab === "smt2020" ? "2018-01-01T00:00:00Z" : state.horizon;
+  $("#clock").textContent = `${copy.clock} ${formatClock(clockIso)} UTC`;
   const source = state.health.data_source || state.health.data || "sample";
   const mock = state.health.llm === "mock" && source === "sample";
   const badge = $("#mode-badge");
@@ -986,16 +987,18 @@ function renderSmtCards(report) {
   host.innerHTML = "";
   const before = report.kpis.before;
   const after = report.kpis.after;
+  const denom = before.due_in_horizon;
+  const onTime = (row) => `${row.on_time_pct}% (${Math.round(row.on_time_pct / 100 * denom)}/${denom})`;
+  const cycle = (row) => row.cycle_time_h == null ? "—" : `${row.cycle_time_h} h`;
+  const factor = (row) => row.mean_x_factor == null ? "—" : String(row.mean_x_factor);
   const rows = [
-    ["On time", `${before.on_time_pct}%`, `${after.on_time_pct}%`, `${before.due_in_horizon} lots due in horizon, ${before.already_late} already late at the snapshot`],
-    ["Weighted tardiness", `${before.weighted_tardiness_min} min`, `${after.weighted_tardiness_min} min`, "Open lots are censored at the horizon"],
-    ["Cycle time", before.cycle_time_h == null ? "—" : `${before.cycle_time_h} h`, after.cycle_time_h == null ? "—" : `${after.cycle_time_h} h`, `${after.completed_routes} routes finished on the recovery book`],
-    ["Litho utilization", `${before.litho_util_pct}%`, `${after.litho_util_pct}%`, "102 Litho_* tools. Scanner util is separate in the timing line"],
+    ["Re-cleans", String(before.recleans ?? "—"), String(after.recleans ?? "—"), "One wet-step return after a miss. Not the published rework percent."],
     ["Q-time violations", String(before.qtime_violations), String(after.qtime_violations), "Published CQT"],
-    ["PM interruptions avoided", String(before.pm_avoided), String(after.pm_avoided), `Baseline overlaps ${before.pm_overlaps} → ${after.pm_overlaps}`],
+    ["Weighted tardiness", `${before.weighted_tardiness_min} min`, `${after.weighted_tardiness_min} min`, "Open lots are censored at the horizon"],
+    ["X-factor / cycle", `${factor(before)} · ${cycle(before)}`, `${factor(after)} · ${cycle(after)}`, "X-factor is completion over remaining raw process. Cycle is mean hours of finished routes."],
+    ["Litho utilization", `${before.litho_util_pct}%`, `${after.litho_util_pct}%`, "102 Litho_* tools"],
+    ["On time", onTime(before), onTime(after), `Seed ${report.seed}. ${denom} lots due in the horizon, ${before.already_late} already late at the snapshot.`],
   ];
-  const extra = smtReviewCards(report);
-  if (extra.length) rows.splice(3, 0, ...extra);
   for (const [label, left, right, note] of rows) {
     const card = document.createElement("article");
     card.className = "card";
@@ -1005,8 +1008,20 @@ function renderSmtCards(report) {
   const timing = report.timing || {};
   const line = document.createElement("p");
   line.className = "smt-timing";
-  line.textContent = `Dispatch p50 ${timing.dispatch_p50_ms} ms, p95 ${timing.dispatch_p95_ms} ms, ${timing.dispatch_decisions} decisions. Macro APS ${timing.aps_ms} ms (${timing.scanner_steps} scanner steps). Simulation ${timing.sim_before_s}s / ${timing.sim_after_s}s. Policies ${report.policies.before} → ${report.policies.after}. Seed ${report.seed}, horizon ${report.horizon_h} h.`;
+  const busy = timing.dispatch_busy_p50_ms == null
+    ? "Headline p50/p95 include empty wakes."
+    : `Nonempty-queue p50 ${timing.dispatch_busy_p50_ms} ms, p95 ${timing.dispatch_busy_p95_ms} ms (${timing.dispatch_busy_decisions} decisions). Headline p50 ${timing.dispatch_p50_ms} / p95 ${timing.dispatch_p95_ms} includes empty wakes.`;
+  const pm = report.scenario_id === "pm_avoid"
+    ? ` PM avoided ${before.pm_avoided} → ${after.pm_avoided} (baseline overlaps ${before.pm_overlaps} → ${after.pm_overlaps}).`
+    : "";
+  line.textContent = `${busy}${pm} Macro APS ${timing.aps_ms} ms (${timing.scanner_steps} scanner steps) does not feed dpi(). Simulation ${timing.sim_before_s}s / ${timing.sim_after_s}s. Policies ${report.policies.before} → ${report.policies.after}. Seed ${report.seed}, horizon ${report.horizon_h} h.`;
   host.appendChild(line);
+  if (report.study_note) {
+    const study = document.createElement("p");
+    study.className = "smt-timing";
+    study.textContent = report.study_note;
+    host.appendChild(study);
+  }
 }
 
 function paintSmtCharts(report) {

@@ -316,6 +316,88 @@ def _std(runs: list[RunResult], key: str) -> float | None:
     return round(float(pstdev(values)), digits)
 
 
+def _count(pct: float, denom: int) -> int:
+    return round(pct / 100.0 * denom)
+
+
+def _seed_otd(block: dict[str, Any]) -> str:
+    lines = [
+        "Per seed, on time / lots due. Re-cleans, Q-time, and weighted tardiness are that seed.",
+        "",
+        "| Policy | Seed | On time | Q-time | Re-cleans | Weighted tardiness min |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for policy, body in block.items():
+        for item in body.get("seeds") or []:
+            denom = int(item["due_in_horizon"])
+            num = _count(float(item["on_time_pct"]), denom)
+            lines.append(
+                f"| {policy} | {item['seed']} | {num}/{denom} | "
+                f"{item['qtime_violations']} | {item['recleans']} | "
+                f"{item['weighted_tardiness_min']} |"
+            )
+    return "\n".join(lines)
+
+
+def _pooled(block: dict[str, Any], policy: str) -> str:
+    seeds = block[policy]["seeds"]
+    num = sum(_count(float(item["on_time_pct"]), int(item["due_in_horizon"])) for item in seeds)
+    den = sum(int(item["due_in_horizon"]) for item in seeds)
+    rendered = ", ".join(
+        f"{_count(float(item['on_time_pct']), int(item['due_in_horizon']))}/{item['due_in_horizon']}"
+        for item in seeds
+    )
+    return f"{rendered} ({num}/{den} pooled)"
+
+
+def _trade(payload: dict[str, Any]) -> str:
+    """First screen. X-factor, then published dues, then the rewritten tight book."""
+    xf = payload["xfactor"]["etas"]["600.0"]
+    due = payload["xfactor"]["due_in_horizon"]
+    res = xf["resilimes"]["mean"]
+    edd = xf["edd"]["mean"]
+    fifo = xf["fifo"]["mean"]
+    cr = xf["cr"]["mean"]
+    tight_res = payload["tight"]["resilimes"]["seeds"][0]
+    tight_edd = payload["tight"]["edd"]["seeds"][0]
+    published = payload["steady"]
+    return (
+        "## The trade\n\n"
+        f"X-factor dues, 48 hours, {due} lots. On-time is the same at a "
+        "180, 300, 600, or 705.59 minute repair. "
+        f"ResiliMES {_pooled(xf, 'resilimes')}, mean {res['on_time_pct']}%. "
+        f"EDD {_pooled(xf, 'edd')}, mean {edd['on_time_pct']}%. "
+        f"FIFO mean {fifo['on_time_pct']}%. CR mean {cr['on_time_pct']}%. "
+        "ResiliMES beats FIFO and CR by a wide margin. "
+        f"Versus EDD it gives up about 2 of {due} lots, with fewer re-cleans "
+        f"({res['recleans']} vs {round(edd['recleans'])}; means {res['recleans']} and "
+        f"{edd['recleans']}) and fewer Q-time violations "
+        f"({res['qtime_violations']} vs {edd['qtime_violations']}). "
+        "Seed 2 misses are three lots at `Diffusion_BE_123`. "
+        "Seed 5 misses are five lots at `Dielectric_BE_28` "
+        "(`Init_Lot_2_7`, `Init_Lot_2_8`, `Init_Lot_2_13`, `Init_Lot_2_23`, "
+        "`Init_Lot_8_20`) plus `Init_Lot_1_10` at `WE_BE_14`. "
+        "`Init_Lot_2_23` is on time under EDD and late under ResiliMES on "
+        "seeds 5 and 6 (2.67 h and 4.26 h). Seed 6 is outside the five-seed means.\n\n"
+        "Published dues, 48 hours, 56 lots. "
+        f"ResiliMES {_pooled(published, 'resilimes')}, "
+        f"mean {published['resilimes']['mean']['on_time_pct']}%. "
+        f"EDD {_pooled(published, 'edd')}, "
+        f"mean {published['edd']['mean']['on_time_pct']}%. "
+        "EDD is slightly ahead. Seed 1 ties at 31/56.\n\n"
+        "Tight VIP dues rewrites the dues for the stress test. It is not the "
+        "published order book. Denominator 21 lots. "
+        f"ResiliMES {_pooled(payload['tight'], 'resilimes')}. "
+        f"EDD {_pooled(payload['tight'], 'edd')}. "
+        f"FIFO {_pooled(payload['tight'], 'fifo')}. "
+        f"CR {_pooled(payload['tight'], 'cr')}. "
+        f"Seed 1 weighted tardiness is {tight_edd['weighted_tardiness_min']} "
+        f"under EDD and {tight_res['weighted_tardiness_min']} under ResiliMES. "
+        "The 12-hour lithography click is a seed-1 tie, 2/19. "
+        "It is not the 48-hour lithography study in the appendix."
+    )
+
+
 def _markdown(payload: dict[str, Any]) -> str:
     counts = payload["counts"]
     lines = [
@@ -335,6 +417,8 @@ def _markdown(payload: dict[str, Any]) -> str:
         f"{counts['station_groups']} station groups. "
         "`Delay_32` is included (400 tools, 147 route steps).",
         "",
+        _trade(payload),
+        "",
         "The tight VIP table is 24 hours. The appendix is "
         f"{payload['horizon_h']:.0f} hours from 2018-01-01 00:00 UTC. "
         f"Seeds: {', '.join(str(item) for item in payload['seeds'])}. "
@@ -346,7 +430,19 @@ def _markdown(payload: dict[str, Any]) -> str:
         "",
         "Dispatch latency is the time to choose the next lot for one idle tool, "
         "look-ahead 24 (8 when that family's queue exceeds two lots per tool). "
+        "The headline p50/p95 includes empty wakes. "
+        "Nonempty-queue decisions on the X-factor ResiliMES runs, seeds 1-5, "
+        "are p50 0.0090-0.0107 ms and p95 0.244-0.250 ms. "
         "It is not the full simulation time. Simulation time is the whole 48-hour run.",
+        "",
+        "The WIP column is a candidate cap, not a replan. "
+        "`choose()` keeps 8 lots instead of 24 after a family exceeds "
+        "max(8, two lots per tool). "
+        "The adjacent Wet_Etch look-ahead fired 0 times on these books. "
+        "`macro_aps_ms` does not feed `dpi()`. "
+        "A down tool queues the end of every covering window, so a forced outage "
+        "that overlaps an MTTF draw still releases at the later end. "
+        "Seeds 1-5 on-time on the books below match the figures in this file.",
         "",
         "On-time percent uses lots whose due is at or before the horizon. "
         "A lot is on time only if its route finishes at or before the due. "
@@ -393,6 +489,8 @@ def _markdown(payload: dict[str, Any]) -> str:
         "",
         _table(payload["tight"]) if payload.get("tight") else "_Not measured._",
         "",
+        _seed_otd(payload["tight"]) if payload.get("tight") else "",
+        "",
         _tight_price(payload),
         "",
         "## X-factor dues (48 hours)",
@@ -401,11 +499,26 @@ def _markdown(payload: dict[str, Any]) -> str:
         "",
         _xfactor_table(payload),
         "",
+        _seed_otd(payload["xfactor"]["etas"]["600.0"]),
+        "",
+        (
+            "On-time at 180, 300, 600, and 705.59 minutes is the same row for "
+            "ResiliMES and for EDD. Seed 2 misses are three lots at "
+            "`Diffusion_BE_123`. Seed 5 misses are `Init_Lot_2_7`, "
+            "`Init_Lot_2_8`, `Init_Lot_2_13`, `Init_Lot_2_23`, and "
+            "`Init_Lot_8_20` at `Dielectric_BE_28`, plus `Init_Lot_1_10` at "
+            "`WE_BE_14`. `Init_Lot_2_23` is on time under EDD and late under "
+            "ResiliMES on seeds 5 and 6 (2.67 h and 4.26 h). Seed 6 is outside "
+            "the five-seed means."
+        ),
+        "",
         _xfactor_price(payload),
         "",
         "## Appendix: published order book (performance)",
         "",
         _published_lead(payload),
+        "",
+        _seed_otd(payload["steady"]) if payload.get("steady") else "",
         "",
         "### Steady fab (seeded breakdowns, published PM calendar unshifted)",
         "",
@@ -480,7 +593,9 @@ def _litho_note(payload: dict[str, Any]) -> str:
         f"The downstream queue peaks at {res['downstream_queue_max']} under "
         f"ResiliMES and {edd['downstream_queue_max']} under EDD. "
         f"On-time uses {res['due_in_horizon']} lots due inside the horizon, "
-        f"of which {res['already_late']} are already late at the snapshot."
+        f"of which {res['already_late']} are already late at the snapshot. "
+        "The interactive lithography click is 12 hours and seed 1, and the two "
+        "policies tie there at 2/19. That click is not this 48-hour table."
     )
 
 
@@ -622,7 +737,7 @@ def _table(block: dict[str, Any]) -> str:
     header = (
         "| Policy | OTD % | Weighted tardiness min | Cycle h | "
         "Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | "
-        "WIP replans | Dispatch p50 ms | Dispatch p95 ms | Sim s |"
+        "Candidate cap | Dispatch p50 ms | Dispatch p95 ms | Sim s |"
     )
     rule = "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
     lines = [header, rule]

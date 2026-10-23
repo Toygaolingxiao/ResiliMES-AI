@@ -34,37 +34,37 @@ That registers datasources `resilimes`, `fab_cmms`, and `fab_erp` and loads the 
 
 ## Shot list
 
-### 0:00–0:25 — The loss
+### 0:00–0:35 — The trade
 
-Idle page. Point at the banner, then at **Tight VIP dues**. Do not press Run yet.
+Idle page. Point at the banner, then at **X-factor dues**. Do not press Run yet. Do not open Tight VIP dues first.
 
-"Dielectric_BE_28-1 is down for the published dielectric repair, six hundred four point eight minutes. Eight VIP lots in that queue are due in eight hours. Thirteen normal lots in the same queue are due forty-eight minutes sooner, so earliest-due serves them first. One of the VIP lots, Init_Lot_2_23, finishes five point four three hours late on that rule."
+"This book keeps the published routes. Each due is remaining process time times two point seven five. Eighty-seven lots, forty-eight hours, five seeds. ResiliMES beats FIFO and critical ratio by a wide margin: about ninety-seven percent on time, against twenty-one and seventy-two. Against earliest-due it gives up about two of those eighty-seven lots. The misses are one seed at Diffusion_BE_123, three lots, and one seed mostly at Dielectric_BE_28. Re-cleans are thirty-eight against fifty-six. Queue-time violations are four hundred thirty against four hundred fifty-two. On-time does not move if the repair is three hours, five hours, ten hours, or the published lithography repair."
 
-### 0:25–0:55 — The live read
+### 0:35–1:05 — The live read
 
-Press **Run** on **Tight VIP dues**. When the Zetaris node lights, point at the query line under the banner. Leave it on screen.
+Press **Run** on **X-factor dues**. When the Zetaris node lights, point at the query line under the banner. Leave it on screen.
 
-"This is a live Zetaris read. The SQL is five count queries. The sources are resilimes, fab_cmms, and fab_erp. The row counts are on this line. The banner is the public industry benchmark, SMT2020. One hundred six families, one thousand three hundred thirteen tools, two thousand one hundred fifty-six lots."
+"This is a live Zetaris read. The SQL is five count queries. The sources are resilimes, fab_cmms, and fab_erp. The row counts are on this line. The banner is the public industry benchmark, SMT2020. One hundred six families, one thousand three hundred thirteen tools, two thousand one hundred fifty-six lots. The clock is the 2018-01-01 snapshot."
 
-### 0:55–1:25 — The critic
+### 1:05–1:35 — What the cards are
 
-Stay on the refusal line. Do not move on until the lot id and the tool are visible.
+Read re-cleans, Q-time, weighted tardiness, and on-time with the denominator. Then one sentence on the other two books.
 
-"The critic rejects a start of Init_Lot_1_3 on Dielectric_BE_28-1. The tool is down. That plan does not get a slot. The lots that run are placed by the dispatcher, on the two tools in that family that are up."
+"Seed one is eighty-seven of eighty-seven under both rules, so nobody paid on this seed. The nonempty-queue dispatch time is on the timing line. The headline p50 includes empty wakes. The published-due book is fifty-six lots and earliest-due is slightly ahead, thirty-two of fifty-six against thirty-one on four of the five seeds. The tight VIP button rewrites the dues for a stress test. It is not this book."
 
-### 1:25–2:05 — The cards
+### 1:35–2:15 — The stress test, then the critic
 
-Read the on-time, weighted tardiness, and queue-time cards from the screen. They are seed 1 and 24 hours. Then one sentence from the study:
+Press **Run** on **Tight VIP dues**. Point at the refusal line once the lot id and the tool are visible. Open the Dielectric group and click `Dielectric_BE_28` so the three tools draw across the full day.
 
-"On this seed, earliest-due is fourteen point two nine percent on time and seven thousand six hundred seventy-nine minutes of weighted tardiness. ResiliMES is nineteen point zero five percent and four thousand forty-four minutes. Queue-time violations fall from four hundred fifteen to one hundred eighty-seven. Init_Lot_2_23 is five point four three hours late under earliest-due and on time here. Those thirteen normal lots give up thirty-one point seven hours in total. Across five seeds the means are nineteen point zero five percent against twelve point three eight, and four thousand three hundred twenty-nine minutes against seven thousand nine hundred eighty-six. FIFO is zero percent on time. Critical ratio is nine point five two. On the X-factor book, earliest-due is slightly ahead. That book is not this shot."
+"These dues were rewritten. Twenty-one lots. Earliest-due is three of twenty-one on this seed, weighted tardiness seven thousand six hundred seventy-nine point four minutes. ResiliMES is four of twenty-one and four thousand forty-three point eight. Across five seeds that is twenty of one hundred five against thirteen of one hundred five. Init_Lot_2_23 is the save on this book. On the X-factor book, seeds five and six, that same lot is a loss. The critic line is a safety check. The event loop did not select a start on the down tool."
 
-### 2:05–2:35 — The same fab, one scanner
+### 2:15–2:40 — Twelve-hour lithography
 
-Press **Run** on **Lithography breakdown**. Point at the refusal line, then open the Litho group.
+Press **Run** on **Lithography breakdown**. Point at the study line under the cards.
 
-"Same benchmark, different incident. Litho_FE_92-1, an expose scanner, is down for the published lithography repair, seven hundred five point five nine minutes. The critic blocks a lot on that scanner. The other tools in Litho_FE_92 take the work. The Gantt draws the group and the time window in view."
+"Same benchmark, twelve hours, seed one. Both policies are two of nineteen. That is a tie on this click. The five-seed lithography study is forty-eight hours and fifty-six lots, and earliest-due is slightly ahead there. The line under the cards is that study."
 
-### 2:35–3:05 — Nightshift
+### 2:40–3:05 — Nightshift
 
 Hover the Nightshift step. The request id has to be on screen. The model id is `nvidia/nemotron-3.5-lightning-30b-a3b`. The base URL is `http://127.0.0.1:8088/v1`.
 

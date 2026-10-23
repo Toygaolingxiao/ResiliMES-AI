@@ -149,6 +149,15 @@ def test_tight_vip_dues_make_edd_lose_on_seed_one() -> None:
     assert tight["spotlight_late_h_before"] > 5
     assert tight["spotlight_late_h_after"] == 0
     assert "public industry benchmark (SMT2020)" in tight["note"]
+    assert report["focus"]["family"] == "Dielectric_BE_28"
+    assert report["focus"]["tools_in_family"] == 3
+    bars = report["gantt"]["focus_bars"]
+    assert {bar["tool"] for bar in bars} == {
+        "Dielectric_BE_28-1",
+        "Dielectric_BE_28-2",
+        "Dielectric_BE_28-3",
+    }
+    assert any(float(bar["s"]) >= 12 * 60 for bar in bars)
 
 
 def test_mock_run_shows_sql_and_rejects_the_down_tool() -> None:
@@ -163,6 +172,8 @@ def test_mock_run_shows_sql_and_rejects_the_down_tool() -> None:
     assert report["refusal"]["verdict"] == "reject"
     assert report["refusal"]["tool"] == "Litho_FE_92-1"
     assert report["refusal"]["lot_id"]
+    assert "safety check" in report["refusal"]["detail"]
+    assert "event loop" in report["refusal"]["detail"]
     assert report["explain"]["mocked"] is True
     assert report["explain"]["meterless_request_id"] == ""
 
@@ -286,6 +297,112 @@ def test_scanner_families_have_no_setup_and_a_breakdown_stops_the_clock() -> Non
     assert ready == 100.0 + 15.0 * 60.0
     done, _ready = interrupt_remaining(0.0, 400.0, 400.0)
     assert done == 0.0
+
+
+def _one_tool(name: str, cycles: list[float]) -> Fab:
+    family = Family(name=name, group="Litho", tools=1, tool0=0, litho=True, scanner=True)
+    remain = [0.0] * len(cycles)
+    total = 0.0
+    for index in range(len(cycles) - 1, -1, -1):
+        total += cycles[index]
+        remain[index] = total
+    route = Route(
+        route_id="r",
+        family=[0] * len(cycles),
+        cycle=cycles,
+        recipe=[0] * len(cycles),
+        batch_min=[0] * len(cycles),
+        batch_max=[0] * len(cycles),
+        cqt_limit=[0.0] * len(cycles),
+        cqt_target=[-1] * len(cycles),
+        remain=remain,
+        step_index={index + 1: index for index in range(len(cycles))},
+        dedicate_root=[-1] * len(cycles),
+    )
+    return Fab(
+        families=[family],
+        family_index={name: 0},
+        tool_family=[0],
+        tool_name=[f"{name}-1"],
+        routes=[route],
+        route_index={"r": 0},
+        lot_id=["L1"],
+        lot_product=["p"],
+        lot_route=[0],
+        lot_step=[0],
+        lot_due=[100_000.0],
+        lot_value=[1.0],
+        lot_class=["normal"],
+        lot_priority=[10],
+        recipe_name=[""],
+        setup={},
+        down_mttf={},
+        down_mttr={},
+        pm=[],
+        focus_family=0,
+        focus_tool=0,
+        hot_lot=0,
+        pm_calendar="",
+        group_names=["Litho"],
+    )
+
+
+def test_overlapping_down_windows_release_at_the_later_end() -> None:
+    fab = _one_tool("Litho_FE_92", [100.0])
+    result = run_policy(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=1000,
+        downs=[[(0.0, 100.0), (50.0, 400.0)]],
+        pm=[[]],
+        trace=True,
+    )
+    assert result.completed_routes == 1
+    assert result.focus_bars
+    assert min(float(bar["s"]) for bar in result.focus_bars) >= 6.6
+
+
+def test_drill_bars_keep_starts_after_twelve_hours() -> None:
+    fab = _one_tool("Dielectric_BE_28", [13 * 3600.0, 60.0])
+    held = run_policy(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=24 * 3600,
+        downs=[[]],
+        pm=[[]],
+        trace=True,
+    )
+    full = run_policy(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=24 * 3600,
+        downs=[[]],
+        pm=[[]],
+        trace=True,
+        bar_family=0,
+        bar_until=24 * 3600,
+    )
+    assert all(float(bar["s"]) < 12 * 60 for bar in held.focus_bars)
+    assert any(float(bar["s"]) >= 13 * 60 for bar in full.focus_bars)
+
+
+def test_extract_has_forty_four_adjacent_dry_etch_wet_etch_hours() -> None:
+    fab = load_fab()
+    found = 0
+    for route in fab.routes:
+        for index, limit in enumerate(route.cqt_limit):
+            if route.cqt_target[index] != index + 1 or index + 1 >= len(route.family):
+                continue
+            if abs(limit - 3600.0) > 1.0:
+                continue
+            origin = fab.families[route.family[index]].group
+            nxt = fab.families[route.family[index + 1]].group
+            if origin == "Dry_Etch" and nxt == "Wet_Etch":
+                found += 1
+    assert found == 44
 
 
 def test_viewer_is_blocked_before_the_sim() -> None:

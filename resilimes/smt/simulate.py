@@ -23,7 +23,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from resilimes.kernel.score import dynamic_priority, ped_risk
+from resilimes.kernel.score import dispatch_score, dynamic_priority, ped_risk
 from resilimes.smt.fab import (
     BATCH_MAX_WAIT_SEC,
     LOOKAHEAD,
@@ -43,6 +43,11 @@ _WAFERS = 25
 DISPOSITION_SEC = 15.0 * 60.0
 # Due dates in the X-factor book. Middle of the 2.5-3 range.
 X_FACTOR = 2.75
+# Lots at least this tight stay in the candidate list when the family cap is on.
+# Pre-registered for the seeds 9-13 campaign. Not a tuned result.
+SLACK_CANDIDATE_SEC = 7200.0
+# Adjacent Dry_Etch -> Wet_Etch CQT published as 1 hour.
+_HOUR_SEC = 3600.0
 
 
 @dataclass
@@ -80,6 +85,11 @@ class RunResult:
     mean_x_factor: float | None = None
     qtime_gates: int = 0
     recleans: int = 0
+    # Decisions where at least one lot was ready. The headline p50/p95 also
+    # counts empty wakes.
+    dispatch_busy_p50_ms: float = 0.0
+    dispatch_busy_p95_ms: float = 0.0
+    dispatch_busy_decisions: int = 0
 
 
 def interrupt_remaining(started: float, moment: float, proc: float) -> tuple[float, float]:
@@ -234,6 +244,24 @@ def macro_aps_ms(fab: Fab) -> tuple[float, int]:
     return elapsed_ms, len(jobs)
 
 
+def scanner_operation_dues(fab: Fab) -> dict[tuple[int, int], float]:
+    """Finish due of each remaining expose step, walked back from the lot due.
+
+    Same backward pass as ``macro_aps_ms``. The placement in that timer still
+    discards the rows. ``dpi`` uses this map only when the caller passes it.
+    """
+    found: dict[tuple[int, int], float] = {}
+    for lot_i, route_i in enumerate(fab.lot_route):
+        route = fab.routes[route_i]
+        step0 = fab.lot_step[lot_i]
+        cursor = fab.lot_due[lot_i]
+        for index in range(len(route.family) - 1, step0 - 1, -1):
+            if fab.families[route.family[index]].scanner:
+                found[(lot_i, index)] = cursor
+            cursor -= route.cycle[index]
+    return found
+
+
 def run_policy(
     fab: Fab,
     *,
@@ -248,6 +276,11 @@ def run_policy(
     trace: bool = False,
     focus_down_until: float = 0.0,
     watch: tuple[int, ...] = (),
+    bar_family: int | None = None,
+    bar_until: float | None = None,
+    aps_dues: dict[tuple[int, int], float] | None = None,
+    dry_etch_gate: bool = False,
+    keep_slack: bool = False,
 ) -> RunResult:
     if policy not in {"resilimes", "edd", "fifo", "cr"}:
         raise ValueError(f"Unknown policy {policy}")
@@ -264,6 +297,11 @@ def run_policy(
         trace=trace,
         focus_down_until=focus_down_until,
         watch=watch,
+        bar_family=bar_family,
+        bar_until=bar_until,
+        aps_dues=aps_dues,
+        dry_etch_gate=dry_etch_gate,
+        keep_slack=keep_slack,
     )
     return sim.run()
 
@@ -309,6 +347,11 @@ class _Sim:
         trace: bool,
         focus_down_until: float,
         watch: tuple[int, ...] = (),
+        bar_family: int | None = None,
+        bar_until: float | None = None,
+        aps_dues: dict[tuple[int, int], float] | None = None,
+        dry_etch_gate: bool = False,
+        keep_slack: bool = False,
     ) -> None:
         self.fab = fab
         self.policy = policy
@@ -357,6 +400,7 @@ class _Sim:
         self.tool_gen = [0] * self.tools
         self.tool_recipe = [0] * self.tools
         self.samples: list[float] = []
+        self.busy_samples: list[float] = []
         self.heap: list[tuple[float, int, int, int, int]] = []
         self.seq = 0
         self.violations = 0
@@ -377,6 +421,12 @@ class _Sim:
         self.busy_litho = [False] * self.tools
         self.busy_scanner = [False] * self.tools
         self.focus_fam = fab.focus_family
+        self.bar_family = fab.focus_family if bar_family is None else bar_family
+        self.bar_until = 12 * 3600.0 if bar_until is None else bar_until
+        self.bar_cap = 2400 if self.bar_until > 12 * 3600.0 else 400
+        self.aps_dues = aps_dues
+        self.dry_etch_gate = dry_etch_gate
+        self.keep_slack = keep_slack
         self.downstream = _downstream(fab, fab.focus_family)
         self.threshold = [max(WIP_FLOOR, WIP_PER_TOOL * item.tools) for item in fab.families]
         self.bins = int(horizon // _BIN_SEC) + 1 if trace else 0
@@ -430,6 +480,7 @@ class _Sim:
         self.queues[fam].append(lot)
         self.depth[fam] += 1
         self.note_depth(fam)
+        # Counter only. choose() shortens the candidate list. It does not replan.
         if self.policy == "resilimes" and self.depth[fam] > self.threshold[fam]:
             if not self.seen_over[fam]:
                 self.seen_over[fam] = True
@@ -460,28 +511,44 @@ class _Sim:
         self.queues[fam] = rows
         return rows
 
+    def _sample(self, t0: float, nonempty: bool) -> None:
+        elapsed = time.perf_counter() - t0
+        self.samples.append(elapsed)
+        if nonempty:
+            self.busy_samples.append(elapsed)
+
     def choose(self, tool: int, moment: float) -> tuple[list[int], float | None]:
         t0 = time.perf_counter()
         fam = self.fab.tool_family[tool]
         pool = [lot for lot in self.live(fam) if self.eligible(lot, tool)]
         if not pool:
-            self.samples.append(time.perf_counter() - t0)
+            self._sample(t0, False)
             return [], None
         ready_pool = [lot for lot in pool if self.ready[lot] <= moment + 1e-6]
         if not ready_pool:
             wake = min(self.ready[lot] for lot in pool)
-            self.samples.append(time.perf_counter() - t0)
+            self._sample(t0, False)
             return [], wake
         pool = ready_pool
-        limit = (
-            8 if self.policy == "resilimes" and self.depth[fam] > self.threshold[fam] else LOOKAHEAD
-        )
+        over_cap = self.policy == "resilimes" and self.depth[fam] > self.threshold[fam]
+        limit = 8 if over_cap else LOOKAHEAD
         if len(pool) > limit:
-            pool = (
-                pool[:limit]
-                if self.policy == "fifo"
-                else heapq.nsmallest(limit, pool, key=lambda lot: self.cheap(lot, moment))
-            )
+            if self.policy == "fifo":
+                pool = pool[:limit]
+            else:
+
+                def _cheap(lot: int) -> tuple[float, float, int]:
+                    return self.cheap(lot, moment)
+
+                ranked = heapq.nsmallest(limit, pool, key=_cheap)
+                if over_cap and self.keep_slack:
+                    kept = set(ranked)
+                    for lot in pool:
+                        if lot not in kept and self._slack(lot, moment) <= SLACK_CANDIDATE_SEC:
+                            ranked.append(lot)
+                    pool = ranked
+                else:
+                    pool = ranked
         pm_start = self.next_pm_start(tool, moment) if self.policy == "resilimes" else None
         feasible: list[int] = []
         skipped = False
@@ -507,7 +574,7 @@ class _Sim:
             # One refused start per decision. The same lot can be seen again later.
             self.pm_avoided += 1
         if not feasible:
-            self.samples.append(time.perf_counter() - t0)
+            self._sample(t0, True)
             return [], gate_wake if gate_wake is not None else pm_start
         singles: list[int] = []
         batches: list[int] = []
@@ -527,8 +594,12 @@ class _Sim:
         wake_at = None
         if not chosen and batches:
             wake_at = min(self.ready[lot] for lot in batches) + BATCH_MAX_WAIT_SEC
-        self.samples.append(time.perf_counter() - t0)
+        self._sample(t0, True)
         return chosen, wake_at
+
+    def _slack(self, lot: int, moment: float) -> float:
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        return self.due[lot] - moment - route.remain[self.step[lot]]
 
     def eligible(self, lot: int, tool: int) -> bool:
         """Same tool after a breakdown, and the dedicated scanner after layer 1."""
@@ -558,12 +629,15 @@ class _Sim:
         return route.cqt_limit[index]
 
     def downstream_ready(self, lot: int, moment: float, proc: float) -> float | None:
-        """Earliest downstream start for an adjacent Wet_Etch queue-time pair.
+        """Earliest downstream start for the queue-time pair this step opens.
 
-        Returns None when this step does not open that kind of window.
-        The extract has no clean-to-deposition pair. Wet_Etch is the clean
-        side of the published adjacent CQT rows.
+        The default looks at an adjacent Wet_Etch origin. That gate did not
+        fire on the measured books. ``dry_etch_gate`` retargets the same check
+        at adjacent 1-hour Dry_Etch to Wet_Etch pairs and counts lots already
+        queued downstream.
         """
+        if self.dry_etch_gate:
+            return self._dry_etch_ready(lot, moment, proc)
         limit = self._open_limit(lot)
         if limit <= 0:
             return None
@@ -572,16 +646,55 @@ class _Sim:
         if self.fab.families[route.family[index]].group != "Wet_Etch":
             return None
         target = route.family[index + 1]
+        return self._earliest_tool(target, moment + proc)
+
+    def _dry_etch_ready(self, lot: int, moment: float, proc: float) -> float | None:
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        index = self.step[lot]
+        if route.cqt_target[index] != index + 1:
+            return None
+        if abs(route.cqt_limit[index] - _HOUR_SEC) > 1.0:
+            return None
+        if index + 1 >= len(route.family):
+            return None
+        origin = self.fab.families[route.family[index]]
+        target_fam = self.fab.families[route.family[index + 1]]
+        if origin.group != "Dry_Etch" or target_fam.group != "Wet_Etch":
+            return None
+        return self._queued_free(route.family[index + 1], moment + proc)
+
+    def _earliest_tool(self, target: int, arrival: float) -> float | None:
         family = self.fab.families[target]
         earliest: float | None = None
         for tool in range(family.tool0, family.tool0 + family.tools):
-            free = max(moment + proc, self.busy_until[tool])
+            free = max(arrival, self.busy_until[tool])
             covered = _covering(self.downs[tool], free)
             if covered is not None:
                 free = covered[1]
             if earliest is None or free < earliest:
                 earliest = free
         return earliest
+
+    def _queued_free(self, target: int, arrival: float) -> float:
+        """Earliest start after lots already waiting at the downstream family."""
+        family = self.fab.families[target]
+        frees: list[float] = []
+        for tool in range(family.tool0, family.tool0 + family.tools):
+            free = max(arrival, self.busy_until[tool])
+            covered = _covering(self.downs[tool], free)
+            if covered is not None:
+                free = covered[1]
+            frees.append(free)
+        if not frees:
+            return arrival
+        for queued in self.queues[target]:
+            if not self.waiting[queued]:
+                continue
+            route = self.fab.routes[self.fab.lot_route[queued]]
+            proc = route.cycle[self.step[queued]]
+            slot = min(range(len(frees)), key=lambda index: frees[index])
+            frees[slot] += proc
+        return min(frees)
 
     def pick_batch(self, lots: list[int], moment: float) -> list[int]:
         grouped: dict[int, list[int]] = {}
@@ -631,14 +744,21 @@ class _Sim:
         fam = self.fab.tool_family[tool]
         route = self.fab.routes[self.fab.lot_route[lot]]
         setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[self.step[lot]])
-        score = self.dpi(lot, moment) - (setup / 60.0) + self.ped(lot, moment)
+        score = dispatch_score(
+            dpi=self.dpi(lot, moment), setup_sec=setup, ped=self.ped(lot, moment)
+        )
         return (-score, self.ready[lot], lot)
 
     def dpi(self, lot: int, moment: float) -> float:
         route = self.fab.routes[self.fab.lot_route[lot]]
         kind = "VIP" if self.promote_hot and lot == self.hot_lot else self.fab.lot_class[lot]
+        due = self.due[lot]
+        if self.aps_dues:
+            operation = self.aps_dues.get((lot, self.step[lot]))
+            if operation is not None:
+                due = operation
         return dynamic_priority(
-            due_sec=self.due[lot],
+            due_sec=due,
             now_sec=moment,
             remaining_sec=route.remain[self.step[lot]],
             order_class=kind,
@@ -675,8 +795,7 @@ class _Sim:
     def try_start(self, tool: int, moment: float) -> None:
         if moment >= self.horizon or self.running[tool] >= 0:
             return
-        covered = _covering(self.downs[tool], moment)
-        if covered is not None:
+        if self._queue_down_ends(tool, moment):
             return
         if self.policy == "resilimes":
             in_pm = _covering(self.pm[tool], moment)
@@ -782,7 +901,11 @@ class _Sim:
             right = min(finish, self.horizon, (bin_index + 1) * _BIN_SEC)
             if right > left:
                 self.occupancy[fam][bin_index] += right - left
-        if fam == self.focus_fam and moment < 12 * 3600 and len(self.focus_bars) < 400:
+        if (
+            fam == self.bar_family
+            and moment < self.bar_until
+            and len(self.focus_bars) < self.bar_cap
+        ):
             self.focus_bars.append(
                 {
                     "tool": self.fab.tool_name[tool],
@@ -847,13 +970,20 @@ class _Sim:
                 self.partial[lot] = remain
                 self.bound_tool[lot] = tool
                 self.enqueue(lot, ready)
-        end_at = None
-        for start_at, stop in self.downs[tool]:
-            if start_at <= moment < stop:
-                end_at = stop
-                break
-        if end_at is not None:
-            self.push(end_at, _DOWN_END, tool)
+        self._queue_down_ends(tool, moment)
+
+    def _queue_down_ends(self, tool: int, moment: float) -> bool:
+        """Queue a release at every down window that still covers ``moment``.
+
+        A forced outage and an MTTF draw can overlap. Queuing only the first
+        end leaves the tool down after that end, through the rest of the horizon.
+        """
+        covered = False
+        for _start_at, end_at in self.downs[tool]:
+            if _start_at <= moment < end_at:
+                covered = True
+                self.push(end_at, _DOWN_END, tool)
+        return covered
 
     def finish(self, elapsed: float) -> RunResult:
         fab = self.fab
@@ -924,6 +1054,9 @@ class _Sim:
             dispatch_p50_ms=round(_percentile(self.samples, 50) * 1000.0, 4),
             dispatch_p95_ms=round(_percentile(self.samples, 95) * 1000.0, 4),
             dispatch_decisions=len(self.samples),
+            dispatch_busy_p50_ms=round(_percentile(self.busy_samples, 50) * 1000.0, 4),
+            dispatch_busy_p95_ms=round(_percentile(self.busy_samples, 95) * 1000.0, 4),
+            dispatch_busy_decisions=len(self.busy_samples),
             sim_s=round(elapsed, 3),
             focus_queue_max=self.focus_queue_max,
             sibling_starts=self.sibling_starts,
