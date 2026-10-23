@@ -1,8 +1,10 @@
 # Pitch deck outline
 
-Build this in Google Slides or PowerPoint. Twelve slides. The demo video carries the product; the deck carries the judging rubric. Use console screenshots from `make demo` (KPI row, both Gantts, trace). Do not paste tokens.
+Build this in Google Slides or PowerPoint. Twelve slides, plus one labeled backup. The demo video carries the product; the deck carries the judging rubric. Use console screenshots from `make demo` (KPI row, both Gantts, trace). Do not paste tokens.
 
 Suggested file name: `ResiliMES-Track03.pdf`.
+
+The filmed console is the public industry benchmark (SMT2020). Say that name. It is the published dataset, not a recording from a production fab.
 
 ## 1. Title
 
@@ -10,65 +12,73 @@ ResiliMES. Autonomous rescheduling and fault recovery for smart manufacturing.
 
 Track 03 — Reasoning Architecture. Open Agent Hackathon 2026.
 
-Team names. One line: "When a scanner faults, the supervisor gets a schedule they can commit, with the due-date delta and the move that was refused."
+Team names. One line: "On the public SMT2020 benchmark, the supervisor gets a schedule they can commit, with the due-date delta and the reason each move was allowed."
 
-## 2. The user and the cost (Impact — 30)
+## 2. Published dues (Impact — 30)
 
-User: production supervisor on a wafer fab shift.
+Lead with this slide. Horizon 48 hours from the 2018-01-01 snapshot. 56 lots are due inside the horizon. 10 of those lots are already late at the snapshot, so the maximum on-time count is 46/56.
 
-The problem is not a missing chatbot. A priority lot blocked on a down tool misses a due time while the planner is still copying the queue into a spreadsheet. Missed on-time delivery is the customer's scorecard. The sample morning is concrete: LOT-1001, priority 1, due 18:00 UTC, scanner down for 10 hours.
+Five seeds, ResiliMES: 31/56, 31/56, 32/56, 32/56, 32/56 (mean 56.43%).
 
-## 3. What we show them (Impact, Product)
+Five seeds, earliest-due: 31/56, 32/56, 32/56, 32/56, 32/56 (mean 56.78%).
 
-Three disruptions, one console.
+Earliest-due is slightly ahead on on-time delivery and on weighted tardiness (21,526 minutes against 21,988). Seed 1 of this book ties at 31/56.
 
-- Machine breakdown: on-time delivery 83.3% → 100%, weighted tardiness 784 → 0 minutes.
-- Rush order: the hot lot is 36 min late. The running lot is not preempted. A second reticle copy exposes the hot lot on the other scanner, and the rest of the route still misses the due.
-- Material shortage: lots that need photoresist are held, with the stock row as evidence.
+These are the published routes and the published dues. Nothing on this slide was retuned to manufacture a win.
 
-Screenshot: KPI cards plus the two Gantts.
+## 3. Where ResiliMES wins and where it loses
+
+Same fab. Three books. Read them in this order.
+
+- Published dues, above. Earliest-due is slightly ahead. ResiliMES does not win this book.
+- X-factor dues (remaining process time times 2.75, 87 lots, 48 hours). Five-seed mean: ResiliMES 97.47% on time, earliest-due 99.54%. ResiliMES gives up about 2 of 87 lots and beats FIFO (20.7%) and critical ratio (71.7%). Five-seed means for the side metrics: re-cleans 38 vs 55.6, Q-time violations 430 vs 451.6. The console click is seed 1, and the cards on that click are a tie at 87/87, re-cleans 24 to 31, Q-time 428 to 418. Speak the cards. The five-seed mean is the line under the cards.
+- Tight VIP dues. This book rewrites the dues. It is a stress test, not the published order book. 21 lots, 24 hours. ResiliMES is 4/21 on every seed (20/105). Earliest-due is 3/21, 3/21, 2/21, 2/21, 3/21 (13/105). Seed 1 weighted tardiness is 7,679.4 under earliest-due and 4,043.8 under ResiliMES. `Init_Lot_2_23` is the save on this book and an X-factor loss on seeds 5 and 6.
+
+Screenshot: the X-factor cards from seed 1, then the tight VIP cards. The study line under the X-factor cards has to be visible so a judge can see which number is the click and which number is the five-seed mean.
 
 ## 4. Why Track 03
 
 The challenge asks for data, knowledge, memory, and reasoning turned into a reliable decision and action.
 
-- Data: Zetaris tables, or the same SQL against the sample twin.
-- Knowledge: routes, capability, setup family, max WIP, operator pool.
+- Data: the SMT2020 extract in process. Live mode also reads the setup matrix from Zetaris. Mock mode labels the local extract and does not call Zetaris.
+- Knowledge: routes, station-family qualification, setup seconds, published CQT limits, PM windows.
 - Memory: World Model event log and the Markovian checkpoint.
-- Reasoning: Scout contract, then a solver, then a critic.
+- Reasoning: Scout contract, then the event-driven dispatcher, then a critic that speaks only when the trace contains the start it rejects.
 - Decision: the recovered schedule.
 - Action: assignment events the world model can replay.
 
-Track 02's "explain why" is the narrative and the rejected alternative. It supports the decision. It is not a second entry.
+Track 02's "explain why" is the narrative. It supports the decision. It is a second sentence, not a second entry.
 
 ## 5. The loop (Technical — 20)
 
 One diagram. Use the mermaid figure in `docs/ARCHITECTURE.md` or a simplified version:
 
-Disruption → Scout contract → specialist → solver → critic → world model, with Nightshift/Nemotron on the explainer lane only.
+Disruption → Scout contract → specialist → dispatcher → critic → world model, with Nightshift/Nemotron on the explainer lane only.
 
-Say this sentence: "The model does not author the schedule. It explains a schedule that already passed the critic."
+Say this sentence: "The model does not author the schedule. It writes one sentence after a schedule that is already fixed."
 
 ## 6. Reliability (Technical, Innovation — 15)
 
-Four refusals, each with a test name in the speaker notes:
+The critic on the SMT console leaves `refusal` empty when the event trace has no start on the down tool. A reject sentence appears only when that trace contains one. The verdict on a clean run is accept, and it is not paired with a reject sentence.
+
+Four checks that do fire, each with a test name in the speaker notes, live on the six-lot bay and on Scout:
 
 - Start LOT-1001 on a down tool. Critic: `equipment_status`.
 - Preempt a running lot to flatter a rush promise. Critic: `preemption`.
 - Dispatch lithography with zero resist. Critic: `material`.
 - Viewer role, or "ignore previous instructions". Scout: no contract, no commit.
 
-Innovation is the split between a deterministic commit path and a language lane, gated by a signed contract, not a larger prompt.
+Innovation is the split between a deterministic commit path and a language lane, gated by a signed contract.
 
 ## 7. Sponsor stack (Sponsor tech — 10)
 
 | Layer | What we use | What is unique |
 | --- | --- | --- |
-| Zetaris | SQL over equipment, WIP, routes, stock, maintenance | Same queries in live and mock. Mock is labeled. |
-| Scout Intent | The required Meterless engine | Nothing reschedules without a fresh HMAC contract. |
+| Zetaris | In live mode, five `COUNT(*)` queries plus `resilimes.setup_matrix`. Matching setup seconds replace the local matrix for that run. Routes, WIP, and dues stay on the local extract. | Mock mode does not call Zetaris. `zetaris.called` is false, and the query line says so. |
+| Scout Intent | The required Meterless engine | Live mode uses the Nightshift profile. Mock mode stays on the mock profile. Nothing reschedules without a fresh HMAC contract. |
 | World Model | Assignment log | Replay is the commit. |
 | Markovian | The five-step loop | Checkpoint size stays flat. About 500 vs about 1600 on the litho run. Not a model token count. |
-| Nightshift + Nemotron | Intent, feedback, and explainer lanes | Right model in the language lane. Solver stays in the decision lane. |
+| Nightshift + Nemotron | One sentence after the schedule is fixed | The model does not place lots. Without a token the step is the mock narrative and there is no request id. |
 | Cursor | How the team built it | Agent-assisted implementation, tests, and this deck's source docs. |
 
 Speaker note: `pytest tests/test_scout_engine.py` is the test the submission form should name.
@@ -77,33 +87,38 @@ Speaker note: `pytest tests/test_scout_engine.py` is the test the submission for
 
 Screenshot or a 10-second still from the optional live clip.
 
-Show `provider_call.provider = nightshift` and the Nemotron model id. Call out that the token is not on the slide. If you have not run live yet, this slide is a diagram of the same call path plus the sentence "mock mode is what you saw; live mode is this configuration" and a pointer to `.env.example`. Do not fake a live transcript.
+Show `provider_call.provider = nightshift` and the Nemotron model id. Call out that the token is not on the slide. If you have not run live yet, this slide is a diagram of the same call path plus the sentence "mock mode is what you saw; live mode is this configuration" and a pointer to `.env.example`. Do not fake a live transcript, a Zetaris row count, or a Nightshift request id.
 
 ## 9. Product (Product & UX — 10)
 
-What the supervisor does: pick the disruption or type a sentence, read the narrative, compare the Gantts, check the refused alternative.
+What the supervisor does: pick the disruption, read the cards with their denominator, read the study line under the cards, compare the Gantts, and check that a refusal is present only when the trace contains the start.
 
-What we deliberately left out: a general chat box as the product, a schedule the model can silently overwrite, a mock mode that hides itself.
+What we deliberately left out: a general chat box as the product, a schedule the model can silently overwrite, a mock mode that hides itself, and a button whose sentence describes a gate the code no longer runs.
 
 ## 10. Engineering (Technical)
 
-Python 3.11+, typed package, ruff, mypy, pytest, GitHub Actions on 3.11 and 3.12, Dockerfile, `make demo` with no credentials. Structured logs redact secrets. Zetaris schema names are validated. SQL on the read path is `SELECT` only.
+Python 3.11+, typed package, ruff, mypy, pytest, GitHub Actions on 3.11 and 3.12, Dockerfile, `make demo` with no credentials. Structured logs redact secrets. Zetaris schema names are validated. SQL on the read path is `SELECT` only. `smt_rule` is the dataset dispatch cascade from `tool.txt.1l` (`rule_HotLotFIRST` with `rank_HP;rank_RSETUP;rank_CR`, and `rule_LSSU` on Implant_128, Implant_132, and Implant_91). Its rows are whatever `make smt-bench` wrote. They were not tuned after the run.
 
 ## 11. What we would do next
 
-- Point `ZETARIS_SCHEMA` at the plant's real Lightning database and drop the sample overlay.
+- Point the live Zetaris read at the rest of the dispatcher inputs (routes and WIP), once those tables are loaded beside the setup matrix.
 - Add a human approval click for `plant.emergency_stop`, which the contract already requires.
 - Feed the world-model log back as the next shift's prior, so a second disruption replans with `parentId`.
-- Calibrate setup families from the last completed lot instead of treating the horizon family as unknown.
 
 Keep this slide short. Do not promise a second product.
 
 ## 12. Ask
 
-We are submitting to Track 03. The supervisor's decision is the schedule. Scout, Zetaris, Nightshift/Nemotron, and the critic are how that decision stays inspectable.
+We are submitting to Track 03. The supervisor's decision is the schedule on the public SMT2020 benchmark. Scout, Zetaris, Nightshift/Nemotron, and the critic are how that decision stays inspectable.
 
 Team names, repo URL, video link, and the sponsor paragraph from `docs/SPONSOR_TECH.md`.
 
-## Speaker notes for the judges' weights
+## Backup (not the filmed demo): six-lot bay
 
-If a judge only remembers three numbers, they should be 83.3 to 100, 784 to 0, and "the rush lot is 36 min late because we would not preempt." Those three cover impact, the decision, and the refusal.
+`make demo-bay` only. Unit-test fab FAB-A, scenario clock 22 Oct 2026 06:30 UTC. This slide is not the film and it is not the SMT2020 score.
+
+- Machine breakdown: on-time delivery 83.3% to 100%, weighted tardiness 784 minutes (13 hours 4 minutes) to 0.
+- Rush order: the hot lot is 36 min late. The running lot is not preempted.
+- Material shortage: lots that need photoresist are held, with the stock row as evidence.
+
+The SMT2020 lithography and X-factor baselines are earliest-due on the full fab. This bay compares a frozen assignment, and it charges a scanner-family setup and a 5-minute reticle mount the SMT2020 extract does not contain.

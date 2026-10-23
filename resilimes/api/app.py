@@ -90,6 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             from resilimes.smt.fab import load_fab
 
             fab = load_fab()
+            body["horizon"] = fab.snapshot
             body["groups"] = len(fab.families)
             body["tools"] = len(fab.tool_name)
             body["litho_tools"] = fab.litho_tools

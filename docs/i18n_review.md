@@ -45,4 +45,32 @@ Previous ja: 装置故障 / リソ 02 が 10 時間停止。LOT-1001 が詰ま�
 | `chartBefore.qtime` | FIFO |
 | `chartAfter.qtime` | ResiliMES, published CQT |
 
-The scenario clock shows `2018-01-01 00:00` when `health.fab` is `smt2020`. That is a clock value, not a translated sentence.
+The scenario clock shows `2018-01-01 00:00` when `health.fab` is `smt2020`. That is a clock value, not a translated sentence. The API now returns that snapshot as `horizon`. The page no longer overwrites it in JavaScript.
+
+## Round 2 — queue-time button
+
+The previous qtime sentence described a dry-etch look-ahead that the code no longer runs. On the SMT console the button uses the API summary. The copy below is the fallback and must match that summary. Please correct the wording. Do not treat these lines as approved.
+
+### zh
+
+| Key | New string |
+| --- | --- |
+| `scenarios.qtime[0]` | 队列时间 |
+| `scenarios.qtime[1]` | 已发表的 CQT。ResiliMES 增加 PED 风险和湿法刻蚀闸门。该闸门在已存储的种子上触发 0 次。FIFO 不使用该闸门。 |
+
+Previous round-2 zh body: SMT2020 已发表的 CQT。前瞻是相邻的 1 小时干法刻蚀到湿法刻蚀，不是 15 分钟成膜。
+
+### ja
+
+| Key | New string |
+| --- | --- |
+| `scenarios.qtime[0]` | 待ち時間 |
+| `scenarios.qtime[1]` | 公開された CQT。ResiliMES は PED リスクとウェットエッチのゲートを加える。そのゲートは保存済みシードで 0 回だった。FIFO はそのゲートを使わない。 |
+
+Previous round-2 ja body: SMT2020 の公開 CQT。見通しは隣接する 1 時間のドライエッチからウェットエッチで、15 分の成膜ではない。
+
+### en (not for translation review)
+
+| Key | New string |
+| --- | --- |
+| `scenarios.qtime` | Queue time / Published CQT limits. ResiliMES adds PED risk and a Wet_Etch gate. That gate fired 0 times on the stored seeds. FIFO does not use the gate. |

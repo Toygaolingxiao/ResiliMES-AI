@@ -226,7 +226,7 @@ const COPY = {
       rush_order: ["Rush order", "A hot lot is due in 3 h. Running lots stay on their tools."],
       material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
       rework: ["Overlay rework", "LOT-1004 overlay failed at measure. Strip, re-expose, re-measure once."],
-      qtime: ["Queue time", "Published SMT2020 CQT. The look-ahead is the adjacent 1-hour dry etch to wet etch pairs, not a 15-minute film step."],
+      qtime: ["Queue time", "Published CQT limits. ResiliMES adds PED risk and a Wet_Etch gate. That gate fired 0 times on the stored seeds. FIFO does not use the gate."],
       scale: ["Scale", "1,000 lots, 36 tools. One scanner is down for 10 h."],
     },
     chartBefore: { litho_down: "EDD on this seed", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "FIFO", scale: "vs. EDD dispatch" },
@@ -419,7 +419,7 @@ const COPY = {
       rush_order: ["急单", "一个热批次 3 小时内要交。正在加工的批次留在原设备。"],
       material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
       rework: ["套刻返工", "LOT-1004 量测套刻失败。去胶、再曝光、再量一次。"],
-      qtime: ["队列时间", "SMT2020 已发表的 CQT。前瞻是相邻的 1 小时干法刻蚀到湿法刻蚀，不是 15 分钟成膜。"],
+      qtime: ["队列时间", "已发表的 CQT。ResiliMES 增加 PED 风险和湿法刻蚀闸门。该闸门在已存储的种子上触发 0 次。FIFO 不使用该闸门。"],
       scale: ["规模", "1000 个批次、36 台设备。一台光刻机宕机 10 小时。"],
     },
     chartBefore: { litho_down: "本种子的 EDD", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "FIFO", scale: "对比 EDD 派工" },
@@ -612,7 +612,7 @@ const COPY = {
       rush_order: ["特急", "ホットロットの納期は 3 時間。加工中のロットは装置に残す。"],
       material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
       rework: ["重ね合わせ再加工", "LOT-1004 は測定で不良。剥離し、再露光し、再測定する。"],
-      qtime: ["待ち時間", "SMT2020 の公開 CQT。見通しは隣接する 1 時間のドライエッチからウェットエッチで、15 分の成膜ではない。"],
+      qtime: ["待ち時間", "公開された CQT。ResiliMES は PED リスクとウェットエッチのゲートを加える。そのゲートは保存済みシードで 0 回だった。FIFO はそのゲートを使わない。"],
       scale: ["規模", "1000 ロット、36 台。スキャナー 1 台が 10 時間停止。"],
     },
     chartBefore: { litho_down: "このシードの EDD", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "FIFO", scale: "EDD 差し立てとの比較" },
@@ -677,7 +677,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
   state.health = await getJson("/api/health");
-  state.horizon = state.health.fab === "smt2020" ? "2018-01-01T00:00:00Z" : state.health.horizon;
+  state.horizon = state.health.horizon;
   const payload = await getJson("/api/scenarios");
   state.scenarioItems = payload.scenarios;
   state.bay = payload.bay || [];
@@ -754,8 +754,7 @@ function paint() {
   $("#run-custom").textContent = copy.runLong;
   $("#empty-title").textContent = copy.emptyTitle;
   $("#empty-hint").textContent = copy.emptyHint;
-  const clockIso = state.health && state.health.fab === "smt2020" ? "2018-01-01T00:00:00Z" : state.horizon;
-  $("#clock").textContent = `${copy.clock} ${formatClock(clockIso)} UTC`;
+  $("#clock").textContent = `${copy.clock} ${formatClock(state.horizon)} UTC`;
   const source = state.health.data_source || state.health.data || "sample";
   const mock = state.health.llm === "mock" && source === "sample";
   const badge = $("#mode-badge");
@@ -822,7 +821,10 @@ function paintScenarios() {
   const copy = t();
   host.innerHTML = "";
   for (const item of state.scenarioItems || []) {
-    const text = copy.scenarios[item.id] || [item.title, item.summary];
+    const smt = state.health && state.health.fab === "smt2020";
+    const text = smt && item.summary
+      ? [item.title, item.summary]
+      : (copy.scenarios[item.id] || [item.title, item.summary]);
     const row = document.createElement("div");
     row.className = "scenario" + (item.id === state.activeScenario ? " active" : "");
     const words = document.createElement("div");
@@ -987,8 +989,10 @@ function renderSmtCards(report) {
   host.innerHTML = "";
   const before = report.kpis.before;
   const after = report.kpis.after;
-  const denom = before.due_in_horizon;
-  const onTime = (row) => `${row.on_time_pct}% (${Math.round(row.on_time_pct / 100 * denom)}/${denom})`;
+  const onTime = (row) => {
+    const denom = row.due_in_horizon;
+    return `${row.on_time_pct}% (${Math.round(row.on_time_pct / 100 * denom)}/${denom})`;
+  };
   const cycle = (row) => row.cycle_time_h == null ? "—" : `${row.cycle_time_h} h`;
   const factor = (row) => row.mean_x_factor == null ? "—" : String(row.mean_x_factor);
   const rows = [
@@ -997,7 +1001,9 @@ function renderSmtCards(report) {
     ["Weighted tardiness", `${before.weighted_tardiness_min} min`, `${after.weighted_tardiness_min} min`, "Open lots are censored at the horizon"],
     ["X-factor / cycle", `${factor(before)} · ${cycle(before)}`, `${factor(after)} · ${cycle(after)}`, "X-factor is completion over remaining raw process. Cycle is mean hours of finished routes."],
     ["Litho utilization", `${before.litho_util_pct}%`, `${after.litho_util_pct}%`, "102 Litho_* tools"],
-    ["On time", onTime(before), onTime(after), `Seed ${report.seed}. ${denom} lots due in the horizon, ${before.already_late} already late at the snapshot.`],
+    ["On time", onTime(before), onTime(after), before.due_in_horizon === after.due_in_horizon
+      ? `Seed ${report.seed}. ${before.due_in_horizon} lots due in the horizon, ${before.already_late} already late at the snapshot.`
+      : `Seed ${report.seed}. ${before.due_in_horizon} lots due on the left, ${after.due_in_horizon} on the right.`],
   ];
   for (const [label, left, right, note] of rows) {
     const card = document.createElement("article");
@@ -1014,7 +1020,7 @@ function renderSmtCards(report) {
   const pm = report.scenario_id === "pm_avoid"
     ? ` PM avoided ${before.pm_avoided} → ${after.pm_avoided} (baseline overlaps ${before.pm_overlaps} → ${after.pm_overlaps}).`
     : "";
-  line.textContent = `${busy}${pm} Macro APS ${timing.aps_ms} ms (${timing.scanner_steps} scanner steps) does not feed dpi(). Simulation ${timing.sim_before_s}s / ${timing.sim_after_s}s. Policies ${report.policies.before} → ${report.policies.after}. Seed ${report.seed}, horizon ${report.horizon_h} h.`;
+  line.textContent = `${busy}${pm} Macro APS ${timing.scanner_steps} scanner steps (about 0.3 s on the CI VM) does not feed dpi(). Simulation ${timing.sim_before_s}s / ${timing.sim_after_s}s. Policies ${report.policies.before} → ${report.policies.after}. Seed ${report.seed}, horizon ${report.horizon_h} h.`;
   host.appendChild(line);
   if (report.study_note) {
     const study = document.createElement("p");
@@ -2503,7 +2509,7 @@ function smtReviewCopy(report) {
       ? `Non-hot lots delayed by the recovery: ${price.lots}, ${price.extra_h} h extra. Worst ${((price.worst || [])[0] || {}).lot_id || ""}.`
       : "No scored non-hot lot finished later under the recovery.";
   const knock = xf
-    ? `Dues are remaining process x ${xf.factor}. ${xf.tool} is down ${xf.down_min} min. Mean X-factor ${xf.mean_x_before} → ${xf.mean_x_after}. Upstream gates ${xf.gates}. Re-cleans ${xf.recleans}.`
+    ? `Dues are remaining process x ${xf.factor}. ${xf.tool} is down ${xf.down_min} min. Mean X-factor ${xf.mean_x_before} → ${xf.mean_x_after}. Upstream gates ${xf.gates}. Re-cleans ${(report.kpis && report.kpis.before && report.kpis.before.recleans) ?? "—"} → ${(report.kpis && report.kpis.after && report.kpis.after.recleans) ?? xf.recleans}. Q-time ${(report.kpis && report.kpis.before && report.kpis.before.qtime_violations) ?? "—"} → ${(report.kpis && report.kpis.after && report.kpis.after.qtime_violations) ?? "—"}.`
     : "";
   return { paid, knock };
 }
