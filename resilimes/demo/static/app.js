@@ -223,9 +223,16 @@ const COPY = {
       material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
       rework: ["Overlay rework", "LOT-1004 overlay failed at measure. Strip, re-expose, re-measure once."],
       qtime: ["Queue time", "Clean already finished. The next film must start within 15 min."],
+      scale: ["Scale", "1,000 lots, 36 tools. One scanner is down for 10 h."],
     },
-    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time" },
+    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time", scale: "Wait for the scanner" },
+    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time", scale: "Other scanners" },
+    scaleWindow: "First 12 hours",
+    scaleNote: "Busy share of each tool, by hour. A hatch means the tool is down.",
+    scheduleWord: "Schedule",
+    criticWord: "Critic",
+    stepsWord: "steps",
+    toolsWord: "tools",
   },
   zh: {
     tagline: "一个机台的恢复",
@@ -391,9 +398,16 @@ const COPY = {
       material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
       rework: ["套刻返工", "LOT-1004 量测套刻失败。去胶、再曝光、再量一次。"],
       qtime: ["队列时间", "清洗已经结束。下一道成膜必须在 15 分钟内开工。"],
+      scale: ["规模", "1000 个批次、36 台设备。一台光刻机宕机 10 小时。"],
     },
-    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列" },
+    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列", scale: "等待光刻机" },
+    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列", scale: "其余光刻机" },
+    scaleWindow: "前 12 小时",
+    scaleNote: "每台设备每小时的忙碌占比。斜线表示宕机。",
+    scheduleWord: "排程",
+    criticWord: "评审",
+    stepsWord: "工序",
+    toolsWord: "设备",
   },
   ja: {
     tagline: "一つのベイの回復",
@@ -559,9 +573,16 @@ const COPY = {
       material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
       rework: ["重ね合わせ再加工", "LOT-1004 は測定で不良。剥離し、再露光し、再測定する。"],
       qtime: ["待ち時間", "洗浄は終了済み。次の成膜は 15 分以内に始める。"],
+      scale: ["規模", "1000 ロット、36 台。スキャナー 1 台が 10 時間停止。"],
     },
-    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分" },
+    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間", scale: "スキャナーを待つ" },
+    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分", scale: "他のスキャナー" },
+    scaleWindow: "最初の 12 時間",
+    scaleNote: "装置ごとの 1 時間の稼働割合。斜線は停止。",
+    scheduleWord: "計画",
+    criticWord: "批評",
+    stepsWord: "工程",
+    toolsWord: "装置",
   },
 };
 
@@ -756,6 +777,25 @@ function bayStatus() {
 function paintBay(statusById) {
   const host = $("#bay");
   host.innerHTML = "";
+  const scaleRows = state.report && state.report.scenario_id === "scale" && state.report.load && state.report.load.after && state.report.load.after.rows;
+  if (scaleRows) {
+    const counts = {};
+    const down = {};
+    for (const row of scaleRows) {
+      counts[row.area] = (counts[row.area] || 0) + 1;
+      if (row.status === "DOWN" || row.status === "MAINTENANCE") down[row.area] = true;
+    }
+    const order = ["Deposition", "Lithography", "Metrology", "Etch", "Clean", "CMP"];
+    for (const area of order) {
+      if (!counts[area]) continue;
+      const li = document.createElement("li");
+      const status = down[area] ? "DOWN" : "IDLE";
+      const name = (t().areas && t().areas[area]) || area;
+      li.innerHTML = `<span class="lamp ${lampClass(status, "tool")}"></span><span>${escapeHtml(name)}</span><small>${counts[area]}</small>`;
+      host.appendChild(li);
+    }
+    return;
+  }
   const rows = state.bay.length ? state.bay : [];
   for (const item of rows) {
     const li = document.createElement("li");
@@ -800,7 +840,7 @@ function paintRecover() {
   story.hidden = !showStory;
   cards.hidden = !report || !report.kpis;
   stepper.hidden = !showStory;
-  result.hidden = !report || !report.gantt;
+  result.hidden = !report || (!report.gantt && !report.load);
   if (state.running && !report) {
     $("#headline").textContent = state.incidentText;
     $("#refusal").textContent = "";
@@ -811,7 +851,7 @@ function paintRecover() {
   }
   if (report && report.kpis) renderCards(report);
   if (showStory) paintStepper();
-  if (report && report.gantt) renderCharts(report);
+  if (report && (report.gantt || report.load)) renderCharts(report);
 }
 
 function refusalLine(report) {
@@ -901,6 +941,10 @@ function paintStepper() {
 }
 
 function renderCharts(report) {
+  if (report.load) {
+    renderScale(report);
+    return;
+  }
   const copy = t();
   const beforeName = (copy.chartBefore && copy.chartBefore[report.scenario_id]) || report.before_label;
   const afterName = (copy.chartAfter && copy.chartAfter[report.scenario_id]) || report.after_label;
@@ -1138,7 +1182,10 @@ function lotsCard(report) {
   const table = document.createElement("table");
   table.innerHTML = `<thead><tr><th>${escapeHtml(copy.lot)}</th><th class="num">${escapeHtml(copy.pri)}</th><th>${escapeHtml(copy.step)}</th><th>${escapeHtml(copy.from)}</th><th>${escapeHtml(copy.to)}</th><th class="num">${escapeHtml(copy.tardy)}</th></tr></thead>`;
   const body = document.createElement("tbody");
-  for (const row of report.outcomes || []) {
+  const outcomeRows = report.scenario_id === "scale"
+    ? (report.outcomes || []).filter((row) => row.moved_from === "LITHO-03" && row.priority === 1)
+    : (report.outcomes || []);
+  for (const row of outcomeRows) {
     const from = row.moved_from || row.before_equipment || "—";
     const to = row.moved_to || row.after_equipment || copy.held;
     const step = row.moved_step || "—";
@@ -1403,6 +1450,112 @@ function stepOutput(phase, slots, copy) {
   }
   if (phase === "commit") return `${slots.events ?? 0} ${copy.events}`;
   return "";
+}
+
+function renderScale(report) {
+  const copy = t();
+  const beforeName = (copy.chartBefore && copy.chartBefore.scale) || report.before_label;
+  const afterName = (copy.chartAfter && copy.chartAfter.scale) || report.after_label;
+  $("#before-label").textContent = beforeName;
+  $("#after-label").textContent = afterName;
+  const host = $("#views");
+  host.innerHTML = "";
+  const timing = report.timing || {};
+  const seconds = (ms) => `${(Number(ms || 0) / 1000).toFixed(2)} s`;
+  const line = document.createElement("p");
+  line.className = "scale-stat";
+  line.textContent = [
+    `${copy.scheduleWord} ${seconds(timing.schedule_ms)}`,
+    `${copy.criticWord} ${seconds(timing.critic_ms)}`,
+    `${Number(timing.lots || 0).toLocaleString(copy === COPY.zh ? "zh-Hans" : copy === COPY.ja ? "ja" : "en")} ${copy.lots.toLowerCase()}`,
+    `${timing.tools || 0} ${copy.toolsWord}`,
+    `${timing.steps || 0} ${copy.stepsWord}`,
+    `${timing.checks_passed || 0} ${copy.passed.toLowerCase()}`,
+  ].join(" · ");
+  host.appendChild(line);
+  renderHeat($("#gantt-before"), report.load.before, report.horizon);
+  renderHeat($("#gantt-after"), report.load.after, report.horizon);
+  renderScaleLegend(report);
+}
+
+function heatColor(util) {
+  const share = Math.max(0, Math.min(100, Number(util) || 0));
+  return `color-mix(in srgb, var(--accent) ${Math.round(share)}%, var(--track))`;
+}
+
+function renderHeat(host, side, horizon) {
+  host.innerHTML = "";
+  if (!side) return;
+  const wrap = document.createElement("div");
+  wrap.className = "heat";
+  const axis = document.createElement("div");
+  axis.className = "heat-axis";
+  const blank = document.createElement("span");
+  const ticks = document.createElement("div");
+  ticks.className = "heat-ticks";
+  const bucket = Number(side.bucket_min) || 60;
+  for (let index = 0; index < side.buckets; index += 2) {
+    const tick = document.createElement("span");
+    tick.style.gridColumn = `${index + 1} / span 2`;
+    tick.textContent = clockLabel(horizon, index * bucket);
+    ticks.appendChild(tick);
+  }
+  axis.append(blank, ticks);
+  const rows = document.createElement("div");
+  rows.className = "heat-rows";
+  for (const row of side.rows) {
+    const line = document.createElement("div");
+    line.className = "heat-row";
+    const label = document.createElement("div");
+    label.className = "heat-label";
+    label.textContent = row.equipment_id;
+    const tone = areaTone(row.area);
+    label.style.color = tone.ink;
+    const cells = document.createElement("div");
+    cells.className = "heat-cells";
+    cells.style.gridTemplateColumns = `repeat(${side.buckets}, minmax(0, 1fr))`;
+    for (const cell of row.cells) {
+      const mark = document.createElement("i");
+      if (!cell || cell.down || cell.util == null) {
+        mark.className = "heat-cell down";
+      } else {
+        mark.className = "heat-cell";
+        mark.style.background = heatColor(cell.util);
+      }
+      cells.appendChild(mark);
+    }
+    line.append(label, cells);
+    rows.appendChild(line);
+  }
+  wrap.append(axis, rows);
+  host.appendChild(wrap);
+}
+
+function clockLabel(horizon, minutes) {
+  const when = new Date(Date.parse(horizon) + minutes * 60000);
+  const hh = String(when.getUTCHours()).padStart(2, "0");
+  const mm = String(when.getUTCMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function renderScaleLegend(report) {
+  const host = $("#legend");
+  const copy = t();
+  host.innerHTML = "";
+  const note = document.createElement("li");
+  note.textContent = `${copy.scaleWindow}. ${copy.scaleNote}`;
+  host.appendChild(note);
+  const beforeAreas = (report.kpis && report.kpis.areas && report.kpis.areas.before) || [];
+  const afterAreas = (report.kpis && report.kpis.areas && report.kpis.areas.after) || [];
+  const afterPct = {};
+  for (const row of afterAreas) afterPct[row.area] = row.utilization_pct;
+  for (const row of beforeAreas) {
+    const item = document.createElement("li");
+    const name = (copy.areas && copy.areas[row.area]) || row.area;
+    const after = afterPct[row.area];
+    item.textContent = `${name} ${Number(row.utilization_pct).toFixed(0)}% → ${Number(after || 0).toFixed(0)}%`;
+    host.appendChild(item);
+  }
 }
 
 function paintViews() {

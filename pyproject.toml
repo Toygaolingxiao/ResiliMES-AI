@@ -29,6 +29,9 @@ resilimes = "resilimes.__main__:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+  "benchmark: 1000-lot schedule and critic timing. Skip with -m 'not benchmark' if a runner is slow.",
+]
 
 [tool.ruff]
 target-version = "py311"

@@ -24,6 +24,8 @@ Assumptions (also listed in docs/ASSUMPTIONS.md):
 
 from __future__ import annotations
 
+import bisect
+import heapq
 from dataclasses import dataclass, field
 
 from .checks import inhibited, reticle_for
@@ -62,25 +64,87 @@ class _Reservation:
 
 @dataclass
 class _ReticleUse:
-    reticle_id: str
-    tool_id: str
     start: int
     end: int
+    tool_id: str
+
+
+class _Staff:
+    """Operator load by minute. Range add and range max, both O(log minutes)."""
+
+    def __init__(self, minutes: int = 1 << 18) -> None:
+        size = 1
+        while size < minutes:
+            size *= 2
+        self.limit = minutes
+        self._size = size
+        self._max = [0] * (2 * size)
+        self._lazy = [0] * (2 * size)
+
+    def add(self, start: int, end: int, operators: int) -> None:
+        if operators == 0 or start >= end:
+            return
+        self._add(1, 0, self._size, max(0, start), min(self.limit, end), operators)
+
+    def peak(self, start: int, end: int) -> int:
+        if start >= end:
+            return 0
+        return self._peak(1, 0, self._size, max(0, start), min(self.limit, end))
+
+    def covers(self, start: int, end: int) -> bool:
+        return start >= 0 and end <= self.limit
+
+    def _add(self, node: int, lo: int, hi: int, start: int, end: int, operators: int) -> None:
+        if end <= lo or hi <= start:
+            return
+        if start <= lo and hi <= end:
+            self._lazy[node] += operators
+            self._max[node] += operators
+            return
+        self._push(node)
+        mid = (lo + hi) // 2
+        self._add(node * 2, lo, mid, start, end, operators)
+        self._add(node * 2 + 1, mid, hi, start, end, operators)
+        self._max[node] = max(self._max[node * 2], self._max[node * 2 + 1])
+
+    def _peak(self, node: int, lo: int, hi: int, start: int, end: int) -> int:
+        if end <= lo or hi <= start:
+            return 0
+        if start <= lo and hi <= end:
+            return self._max[node]
+        self._push(node)
+        mid = (lo + hi) // 2
+        return max(
+            self._peak(node * 2, lo, mid, start, end),
+            self._peak(node * 2 + 1, mid, hi, start, end),
+        )
+
+    def _push(self, node: int) -> None:
+        lazy = self._lazy[node]
+        if lazy == 0:
+            return
+        for child in (node * 2, node * 2 + 1):
+            self._lazy[child] += lazy
+            self._max[child] += lazy
+        self._lazy[node] = 0
+
+
+@dataclass
+class _Board:
+    machines: dict[str, _Machine]
+    staff: _Staff
+    ends: list[int]
+    masks: dict[str, list[_ReticleUse]]
+    mask_of: dict[tuple[str, str], str]
+    rules: dict[tuple[str, str, str], int]
+    reservations: list[_Reservation] = field(default_factory=list)
 
 
 def schedule_plant(plant: Plant, policy: str) -> Schedule:
     if policy not in {POLICY_FROZEN, POLICY_RECOVER}:
         raise ValueError(f"Unknown scheduling policy: {policy}")
-    work = _expand(plant)
-    machines = {
-        item.equipment_id: _Machine(
-            equipment_id=item.equipment_id,
-            available_at=item.available_at_min,
-        )
-        for item in plant.equipment
-    }
-    reservations: list[_Reservation] = []
-    reticles: list[_ReticleUse] = []
+    board = _board(plant)
+    work = _expand(plant, board.rules)
     inventory = {item.material_id: item.on_hand for item in plant.materials}
     operations: list[ScheduledOp] = []
     unscheduled: list[Unscheduled] = []
@@ -89,7 +153,7 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
     bottleneck = _bottleneck_area(plant, work)
     pinned, queue = _split_pinned(work, plant, policy)
     for step in pinned:
-        placed = _place_pinned(step, plant, machines, reservations, reticles)
+        placed = _place_pinned(step, plant, board)
         if placed is None:
             unscheduled.append(
                 Unscheduled(
@@ -101,19 +165,23 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
             continue
         operations.append(placed)
         _take_material(step, plant, inventory, consumed)
-        _arm_after(step, placed.end_min, work, plant, queue)
+        _arm_after(step, placed.end_min, work, plant, queue, board)
 
-    while queue:
-        queue.sort(key=lambda step: _dispatch_key(step, bottleneck))
-        step = queue.pop(0)
-        placed, reason = _place_flexible(
-            step, plant, policy, machines, reservations, reticles, inventory, consumed
-        )
+    heap: list[tuple[int, int, int, int, str, str, int, StepWork]] = []
+    sequence = 0
+    for step in queue:
+        sequence = _push(heap, step, bottleneck, sequence)
+    while heap:
+        step = heapq.heappop(heap)[-1]
+        placed, reason = _place_flexible(step, plant, policy, board, inventory, consumed)
         if placed is None:
             unscheduled.append(Unscheduled(job_id=step.job_id, step=step.step, reason=reason))
             continue
         operations.append(placed)
-        _arm_after(step, placed.end_min, work, plant, queue)
+        opened: list[StepWork] = []
+        _arm_after(step, placed.end_min, work, plant, opened, board)
+        for nxt in opened:
+            sequence = _push(heap, nxt, bottleneck, sequence)
 
     operations.sort(key=lambda op: (op.start_min, op.equipment_id, op.job_id))
     return Schedule(
@@ -125,16 +193,28 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
     )
 
 
-def _expand(plant: Plant) -> dict[str, list[StepWork]]:
+def _expand(
+    plant: Plant, rules: dict[tuple[str, str, str], int] | None = None
+) -> dict[str, list[StepWork]]:
+    if rules is None:
+        rules = {
+            (item.product_id, item.from_step, item.to_step): item.max_min
+            for item in plant.qtime_rules
+        }
     products = plant.product_map()
     expanded: dict[str, list[StepWork]] = {}
     for job in plant.jobs:
         product = products[job.product_id]
-        expanded[job.job_id] = _job_steps(job, product.route, plant)
+        expanded[job.job_id] = _job_steps(job, product.route, plant, rules)
     return expanded
 
 
-def _job_steps(job: Job, route: list[RouteStep], plant: Plant) -> list[StepWork]:
+def _job_steps(
+    job: Job,
+    route: list[RouteStep],
+    plant: Plant,
+    rules: dict[tuple[str, str, str], int],
+) -> list[StepWork]:
     due_min = minutes_between(plant.horizon, job.due_at)
     route = _released(_with_rework(job, route), job)
     names = [step.step for step in route]
@@ -166,10 +246,10 @@ def _job_steps(job: Job, route: list[RouteStep], plant: Plant) -> list[StepWork]
         else:
             previous = ""
         anchor = carried_anchor if previous == carried_from else None
-        q_from, q_anchor, q_latest = _qtime_window(plant, job, previous, route_step.step, anchor)
+        q_from, q_anchor, q_latest = _qtime_window(rules, job, previous, route_step.step, anchor)
         if carried_from and carried_anchor is not None and carried_from != previous:
             far_from, far_anchor, far_latest = _qtime_window(
-                plant, job, carried_from, route_step.step, carried_anchor
+                rules, job, carried_from, route_step.step, carried_anchor
             )
             if far_latest is not None and (q_latest is None or far_latest < q_latest):
                 q_from, q_anchor, q_latest = far_from, far_anchor, far_latest
@@ -282,29 +362,73 @@ def _released(route: list[RouteStep], job: Job) -> list[RouteStep]:
 
 
 def _qtime_window(
-    plant: Plant, job: Job, previous: str, step: str, carried_anchor: int | None
+    rules: dict[tuple[str, str, str], int],
+    job: Job,
+    previous: str,
+    step: str,
+    carried_anchor: int | None,
 ) -> tuple[str, int | None, int | None]:
     if not previous:
         return "", None, None
-    rule = next(
-        (
-            item
-            for item in plant.qtime_rules
-            if item.product_id == job.product_id
-            and item.from_step == previous
-            and item.to_step == step
-        ),
-        None,
-    )
-    if rule is None:
+    limit = rules.get((job.product_id, previous, step))
+    if limit is None:
         return "", None, None
     anchor = carried_anchor
-    return rule.from_step, anchor, None if anchor is None else anchor + rule.max_min
+    return previous, anchor, None if anchor is None else anchor + limit
 
 
-def _dispatch_key(step: StepWork, bottleneck: str) -> tuple[int, int, int, int, str]:
+def _push(
+    heap: list[tuple[int, int, int, int, str, str, int, StepWork]],
+    step: StepWork,
+    bottleneck: str,
+    sequence: int,
+) -> int:
     feeds = bool(bottleneck) and (step.area == bottleneck or step.feeds == bottleneck)
-    return (step.priority, step.due_min, 0 if feeds else 1, step.ready_at, step.job_id)
+    heapq.heappush(
+        heap,
+        (
+            step.priority,
+            step.due_min,
+            0 if feeds else 1,
+            step.ready_at,
+            step.job_id,
+            step.step,
+            sequence,
+            step,
+        ),
+    )
+    return sequence + 1
+
+
+def _board(plant: Plant) -> _Board:
+    masks: dict[tuple[str, str], str] = {}
+    for item in plant.reticles:
+        masks[(item.product_id, item.step)] = item.reticle_id
+    fallback = {"LITHO-RW": "LITHO", "LITHO-L2-RW": "LITHO-L2"}
+    resolved: dict[tuple[str, str], str] = dict(masks)
+    products = {item.product_id for item in plant.reticles}
+    for product_id in products:
+        for alias, origin in fallback.items():
+            mask = masks.get((product_id, origin))
+            if mask is not None:
+                resolved[(product_id, alias)] = mask
+    return _Board(
+        machines={
+            item.equipment_id: _Machine(
+                equipment_id=item.equipment_id,
+                available_at=item.available_at_min,
+            )
+            for item in plant.equipment
+        },
+        staff=_Staff(),
+        ends=[],
+        masks={},
+        mask_of=resolved,
+        rules={
+            (item.product_id, item.from_step, item.to_step): item.max_min
+            for item in plant.qtime_rules
+        },
+    )
 
 
 def _bottleneck_area(plant: Plant, work: dict[str, list[StepWork]]) -> str:
@@ -360,6 +484,7 @@ def _arm_after(
     work: dict[str, list[StepWork]],
     plant: Plant,
     queue: list[StepWork],
+    board: _Board,
 ) -> None:
     """Open the next step, and arm every later queue-time rule this step starts."""
     steps = work[step.job_id]
@@ -370,48 +495,33 @@ def _arm_after(
         if offset == 0:
             later.ready_at = end_min
             queue.append(later)
-        _bind_qtime(later, step.step, end_min, plant)
+        _bind_qtime(later, step.step, end_min, board)
 
 
-def _bind_qtime(step: StepWork, previous: str, end_min: int, plant: Plant) -> None:
-    rule = next(
-        (
-            item
-            for item in plant.qtime_rules
-            if item.product_id == step.product_id
-            and item.from_step == previous
-            and item.to_step == step.step
-        ),
-        None,
-    )
-    if rule is None:
+def _bind_qtime(step: StepWork, previous: str, end_min: int, board: _Board) -> None:
+    limit = board.rules.get((step.product_id, previous, step.step))
+    if limit is None:
         return
-    latest = end_min + rule.max_min
+    latest = end_min + limit
     if step.qtime_latest is not None and step.qtime_latest <= latest:
         return
-    step.qtime_from = rule.from_step
+    step.qtime_from = previous
     step.qtime_anchor = end_min
     step.qtime_latest = latest
 
 
-def _place_pinned(
-    step: StepWork,
-    plant: Plant,
-    machines: dict[str, _Machine],
-    reservations: list[_Reservation],
-    reticles: list[_ReticleUse],
-) -> ScheduledOp | None:
+def _place_pinned(step: StepWork, plant: Plant, board: _Board) -> ScheduledOp | None:
     equipment_id = step.assigned_equipment
-    if equipment_id is None or equipment_id not in machines:
+    if equipment_id is None or equipment_id not in board.machines:
         return None
     equipment = plant.equipment_map()[equipment_id]
-    machine = machines[equipment_id]
+    machine = board.machines[equipment_id]
     end = step.process_min
     machine.available_at = max(machine.available_at, end)
     machine.last_family = step.setup_family
     machine.jobs.add(step.job_id)
-    reservations.append(_Reservation(start=0, end=end, operators=equipment.operators_required))
-    _remember_reticle(step, plant, equipment_id, 0, end, reticles)
+    _occupy(board, 0, end, equipment.operators_required)
+    _remember_reticle(step, equipment_id, 0, end, board)
     return ScheduledOp(
         job_id=step.job_id,
         product_id=step.product_id,
@@ -433,9 +543,7 @@ def _place_flexible(
     step: StepWork,
     plant: Plant,
     policy: str,
-    machines: dict[str, _Machine],
-    reservations: list[_Reservation],
-    reticles: list[_ReticleUse],
+    board: _Board,
     inventory: dict[str, int],
     consumed: set[str],
 ) -> tuple[ScheduledOp | None, str]:
@@ -454,7 +562,7 @@ def _place_flexible(
     blockers: list[str] = []
     qtime_missed = False
     for equipment in candidates:
-        placed = _try_machine(step, equipment, plant, machines, reservations, reticles)
+        placed = _try_machine(step, equipment, plant, board)
         if placed is None:
             blockers.append(equipment.equipment_id)
             continue
@@ -481,13 +589,13 @@ def _place_flexible(
             )
         return None, f"No feasible tool for {step.job_id} {step.step}."
     placed = best[1]
-    machine = machines[placed.equipment_id]
+    machine = board.machines[placed.equipment_id]
     machine.available_at = placed.end_min
     machine.last_family = placed.setup_family
     machine.jobs.add(step.job_id)
     need = plant.equipment_map()[placed.equipment_id].operators_required
-    reservations.append(_Reservation(start=placed.start_min, end=placed.end_min, operators=need))
-    _remember_reticle(step, plant, placed.equipment_id, placed.start_min, placed.end_min, reticles)
+    _occupy(board, placed.start_min, placed.end_min, need)
+    _remember_reticle(step, placed.equipment_id, placed.start_min, placed.end_min, board)
     _take_material(step, plant, inventory, consumed)
     return placed, ""
 
@@ -496,11 +604,9 @@ def _try_machine(
     step: StepWork,
     equipment: Equipment,
     plant: Plant,
-    machines: dict[str, _Machine],
-    reservations: list[_Reservation],
-    reticles: list[_ReticleUse],
+    board: _Board,
 ) -> ScheduledOp | None:
-    machine = machines[equipment.equipment_id]
+    machine = board.machines[equipment.equipment_id]
     # max_wip is the tool's simultaneous lot limit. The scheduler never overlaps
     # lots on a tool, so any max_wip >= 1 is feasible; a zero cap means "do not use".
     if equipment.max_wip < 1:
@@ -518,13 +624,12 @@ def _try_machine(
             duration,
             equipment.operators_required,
             plant.operator_pool,
-            reservations,
-            earliest + 24 * 60,
+            board,
         )
         if start is None:
             return None
         end = start + duration
-        ready = _reticle_ready(step, plant, equipment.equipment_id, start, end, reticles)
+        ready = _reticle_ready(step, equipment.equipment_id, start, end, board)
         if ready is None:
             return None
         if ready == start:
@@ -555,24 +660,29 @@ def _try_machine(
 
 def _reticle_ready(
     step: StepWork,
-    plant: Plant,
     tool_id: str,
     start: int,
     end: int,
-    uses: list[_ReticleUse],
+    board: _Board,
 ) -> int | None:
     """Earliest start that keeps this mask off every other lithography tool."""
-    reticle_id = reticle_for(plant, step.product_id, step.step)
+    reticle_id = board.mask_of.get((step.product_id, step.step))
     if reticle_id is None:
         return start
+    uses = board.masks.get(reticle_id)
+    if not uses:
+        return start
+    # Uses are sorted by start and do not overlap, so only the tail can hit this window.
     conflict = start
     blocked = False
-    for used in uses:
-        if used.reticle_id != reticle_id or used.tool_id == tool_id:
-            continue
-        if start < used.end and end > used.start:
+    index = bisect.bisect_left(uses, end, key=lambda item: item.start)
+    cursor = index - 1
+    while cursor >= 0 and uses[cursor].end > start:
+        used = uses[cursor]
+        if used.tool_id != tool_id and start < used.end and end > used.start:
             blocked = True
             conflict = max(conflict, used.end)
+        cursor -= 1
     if not blocked:
         return start
     if conflict > start + 24 * 60:
@@ -582,16 +692,27 @@ def _reticle_ready(
 
 def _remember_reticle(
     step: StepWork,
-    plant: Plant,
     tool_id: str,
     start: int,
     end: int,
-    uses: list[_ReticleUse],
+    board: _Board,
 ) -> None:
-    reticle_id = reticle_for(plant, step.product_id, step.step)
+    reticle_id = board.mask_of.get((step.product_id, step.step))
     if reticle_id is None:
         return
-    uses.append(_ReticleUse(reticle_id=reticle_id, tool_id=tool_id, start=start, end=end))
+    uses = board.masks.setdefault(reticle_id, [])
+    bisect.insort(
+        uses,
+        _ReticleUse(start=start, end=end, tool_id=tool_id),
+        key=lambda item: item.start,
+    )
+
+
+def _occupy(board: _Board, start: int, end: int, operators: int) -> None:
+    board.reservations.append(_Reservation(start=start, end=end, operators=operators))
+    if board.staff.covers(start, end):
+        board.staff.add(start, end, operators)
+    bisect.insort(board.ends, end)
 
 
 def _candidates(step: StepWork, plant: Plant, policy: str) -> list[Equipment]:
@@ -670,19 +791,32 @@ def _earliest_staffed(
     duration: int,
     need: int,
     pool: int,
-    reservations: list[_Reservation],
-    latest: int,
+    board: _Board,
 ) -> int | None:
     if need > pool:
         return None
+    latest = earliest + 24 * 60
+    if board.staff.covers(earliest, latest + duration):
+        index = bisect.bisect_right(board.ends, earliest)
+        while True:
+            if _staffed(board, earliest, earliest + duration, need, pool):
+                return earliest
+            if index >= len(board.ends) or board.ends[index] > latest:
+                return None
+            earliest = board.ends[index]
+            index += 1
     points = {earliest}
-    for reservation in reservations:
+    for reservation in board.reservations:
         if earliest < reservation.end <= latest:
             points.add(reservation.end)
     for start in sorted(points):
-        if _staff_ok(start, start + duration, need, pool, reservations):
+        if _staff_ok(start, start + duration, need, pool, board.reservations):
             return start
     return None
+
+
+def _staffed(board: _Board, start: int, end: int, need: int, pool: int) -> bool:
+    return board.staff.peak(start, end) + need <= pool
 
 
 def _staff_ok(

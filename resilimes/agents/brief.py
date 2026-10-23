@@ -84,7 +84,9 @@ def schedule_brief(
         and row.before_completion_min is None
         and row.after_equipment
     ]
-    if kind == "qtime":
+    if kind == "scale":
+        chosen = _scale(outcomes, before, after, verdict, constraint)
+    elif kind == "qtime":
         chosen = _queue(held, before, after, verdict, constraint)
     elif kind == "rework":
         chosen = _rework(before, after, verdict, constraint)
@@ -498,6 +500,56 @@ def _verdict(verdict: str, lang: Lang) -> str:
         "reject": {"en": "rejected", "zh": "拒绝", "ja": "却下"},
     }
     return table.get(verdict, table["accept"])[lang]
+
+
+def _scale(
+    outcomes: list[JobOutcome],
+    before: KpiReport,
+    after: KpiReport,
+    verdict: str,
+    constraint: str,
+) -> dict[Lang, tuple[str, list[str], str]]:
+    moved = {row.job_id for row in outcomes if row.moved_from == "LITHO-03" and row.priority == 1}
+    count = len(moved)
+    otd_b, otd_a = _pct(before, after)
+    tardy_b = human_minutes(before.weighted_tardiness_min, "en")
+    tardy_zh = human_minutes(before.weighted_tardiness_min, "zh")
+    tardy_ja = human_minutes(before.weighted_tardiness_min, "ja")
+    detail = (
+        f"Verdict {verdict}. Refused alternative failed {constraint or 'no check'}. "
+        f"On-time delivery {otd_b} → {otd_a}. "
+        f"Weighted tardiness {tardy_b} → {human_minutes(after.weighted_tardiness_min, 'en')}. "
+        f"Lots at risk {before.lots_at_risk} → {after.lots_at_risk}."
+    )
+    return {
+        "en": (
+            f"{count} lots leave LITHO-03",
+            [
+                f"LITHO-03 is down for 600 minutes. {count} priority-1 lots were blocked on it.",
+                f"On-time delivery {otd_b} → {otd_a}. Lots at risk {before.lots_at_risk} → {after.lots_at_risk}.",
+                f"Weighted tardiness {tardy_b} → {human_minutes(after.weighted_tardiness_min, 'en')}.",
+            ],
+            detail,
+        ),
+        "zh": (
+            f"{count} 个批次离开 LITHO-03",
+            [
+                f"LITHO-03 宕机 600 分钟。{count} 个优先 1 的批次被挡在上面。",
+                f"准时交付 {otd_b} → {otd_a}。风险批次 {before.lots_at_risk} → {after.lots_at_risk}。",
+                f"加权拖期 {tardy_zh} → {human_minutes(after.weighted_tardiness_min, 'zh')}。",
+            ],
+            detail,
+        ),
+        "ja": (
+            f"{count} ロットが LITHO-03 を離れる",
+            [
+                f"LITHO-03 は 600 分停止。優先 1 の {count} ロットがそこに止まっていた。",
+                f"納期遵守 {otd_b} → {otd_a}。リスクロット {before.lots_at_risk} → {after.lots_at_risk}。",
+                f"加重遅延 {tardy_ja} → {human_minutes(after.weighted_tardiness_min, 'ja')}。",
+            ],
+            detail,
+        ),
+    }
 
 
 def _move(

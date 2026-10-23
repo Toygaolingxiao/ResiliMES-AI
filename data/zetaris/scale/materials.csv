@@ -1,0 +1,5 @@
+material_id,name,on_hand,unit
+RESIST-UV,193nm photoresist,4000,L
+WAFER-300,300mm wafer,40000,wafer
+GAS-CF4,CF4 etch gas,20000,L
+SLURRY-OX,Oxide slurry,8000,L

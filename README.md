@@ -19,7 +19,17 @@ Sample fab FAB-A, scenario clock 22 Oct 2026 06:30 UTC. Machine breakdown (`lith
 
 LOT-1001 is priority 1, blocked on LITHO-02 (laser fault, revised repair 600 minutes), due 18:00 UTC. Waiting finishes it 93 minutes late. The recovery moves it to LITHO-01, which shares `litho_193nm`, the setup family already on the tool, and reticle RET-A28-L1, and finishes it at t=253. A naive plan that starts the lot on the down tool immediately is rejected. That plan also asks for the reticle that is still on LITHO-01. Lithography stays the bottleneck, and the move keeps it on an up tool.
 
-Four more disruptions are one click away. A three-hour rush order finishes 1 h 13 min late: the running lot is not preempted, and its reticle cannot move to the other scanner until that exposure ends. A photoresist stockout holds the lots which still need lithography. An overlay fail on LOT-1004 strips the resist, re-exposes once, and measures again. A second loop is not inserted. A queue-time miss holds LOT-1003 because the wet clean finished before the clock and the next film would start after a 15-minute window. The critic refuses that late deposition start.
+A sixth preset, **Scale**, is a separate seeded fab: 1,000 lots and 36 tools across deposition, lithography, metrology, etch, clean, and CMP, on the same per-layer route. The six-lot stories above stay as they are. LITHO-03 is down for 600 minutes, and 24 priority-1 lots are blocked on it.
+
+| KPI | Wait for the scanner | Other scanners |
+| --- | ---: | ---: |
+| On-time delivery | 97.6% | 100% |
+| Priority-weighted tardiness | 200,560 min (139 d 7 h) | 0 min |
+| Priority-1/2 lots at risk | 24 | 0 |
+
+Schedule plus critic is about 0.7 seconds for 3,426 steps. Fourteen checks pass. The refused plan starts a blocked lot on LITHO-03 at time zero. Area utilization over the full horizon barely moves, because the work still runs, so the frame draws the first 12 hours as a per-tool load strip. LITHO-03 is hatched until the repair. CMP stays the bottleneck at 85.7%. The bay is staffed one operator per tool. `python scripts/export_scale_sql.py` writes `data/sql/scale_seed.sql` and `data/zetaris/scale/` for the same Zetaris catalog. The sample seed is unchanged. `pytest` skips the 1,000-lot timer unless `RESILIMES_BENCHMARK=1`. CI runs a 40-lot smoke of the same generator.
+
+The other sample disruptions are one click away. A three-hour rush order finishes 1 h 13 min late: the running lot is not preempted, and its reticle cannot move to the other scanner until that exposure ends. A photoresist stockout holds the lots which still need lithography. An overlay fail on LOT-1004 strips the resist, re-exposes once, and measures again. A second loop is not inserted. A queue-time miss holds LOT-1003 because the wet clean finished before the clock and the next film would start after a 15-minute window. The critic refuses that late deposition start.
 
 ## Architecture
 
@@ -154,7 +164,9 @@ resilimes/            Product: domain, engines, agents, API, console
 agent/                Live connectors only: Nightshift client and Zetaris REST
 data/sample/          Offline plant
 data/sql/seed.sql     Zetaris DDL and inserts, generated from data/sample
-data/zetaris/         CSV twin of the same tables
+data/sql/scale_seed.sql  Same catalog for the 1,000-lot fab
+data/zetaris/         CSV twin of the sample tables
+data/zetaris/scale/   CSV twin of the scale fab
 prompts/              Specialist prompt. The recovery loop does not load it.
 tests/                Unit and API tests
 docs/                 Architecture, sponsor write-up, demo script, pitch, checklist

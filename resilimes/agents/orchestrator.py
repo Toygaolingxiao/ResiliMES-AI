@@ -30,6 +30,7 @@ from resilimes.domain.kpis import (
     qtime_report,
     step_waits,
 )
+from resilimes.domain.loadmap import load_map
 from resilimes.domain.scenarios import (
     Scenario,
     apply_free_text,
@@ -75,6 +76,8 @@ class RecoveryReport(BaseModel):
     kpis: dict[str, Any] | None = None
     outcomes: list[dict[str, Any]] = Field(default_factory=list)
     gantt: dict[str, Any] | None = None
+    timing: dict[str, Any] | None = None
+    load: dict[str, Any] | None = None
     trace: list[dict[str, Any]] = Field(default_factory=list)
     narrative: str = ""
     facts: list[dict[str, Any]] = Field(default_factory=list)
@@ -298,7 +301,7 @@ def run_recovery(
         plants = apply_free_text(base, incident, intent_id, parameters)
         kind = _kind_for(intent_id)
 
-    before_policy = POLICY_FROZEN if kind == "frozen_vs_recover" else POLICY_RECOVER
+    before_policy = POLICY_FROZEN if kind in {"frozen_vs_recover", "scale"} else POLICY_RECOVER
     bundle: dict[str, Any] = {"queries": queries, "plants": plants, "kind": kind}
 
     def sense(carry: dict[str, Any]) -> dict[str, Any]:
@@ -333,8 +336,10 @@ def run_recovery(
         }
 
     def plan(carry: dict[str, Any]) -> dict[str, Any]:
+        started_plan = time.perf_counter()
         before = schedule_plant(plants.before, before_policy)
         after = schedule_plant(plants.after, POLICY_RECOVER)
+        bundle["schedule_ms"] = (time.perf_counter() - started_plan) * 1000
         bundle["before"] = before
         bundle["after"] = after
         emit(
@@ -360,8 +365,10 @@ def run_recovery(
         }
 
     def critique(carry: dict[str, Any]) -> dict[str, Any]:
+        started_critic = time.perf_counter()
         committed = critique_schedule(plants.after, bundle["after"])
         rejected = reject_alternative(plants.after, naive_alternative(plants.after, kind))
+        bundle["critic_ms"] = (time.perf_counter() - started_critic) * 1000
         bundle["committed"] = committed
         bundle["rejected"] = rejected
         refused = rejected.violations[0].constraint if rejected.violations else ""
@@ -587,6 +594,12 @@ def run_recovery(
             }
         },
     )
+    started_validate = time.perf_counter()
+    validated = validate(plants.after, bundle["after"])
+    if kind == "scale":
+        bundle["critic_ms"] = (
+            float(bundle.get("critic_ms") or 0) + (time.perf_counter() - started_validate) * 1000
+        )
     return RecoveryReport(
         scenario_id=scenario.id if scenario else None,
         incident=incident,
@@ -611,10 +624,18 @@ def run_recovery(
             bundle["after"],
         ),
         outcomes=[row.model_dump() for row in bundle["outcomes"]],
-        gantt=_gantt_pair(plants.before, bundle["before"], plants.after, bundle["after"]),
+        gantt=(
+            None
+            if kind == "scale"
+            else _gantt_pair(plants.before, bundle["before"], plants.after, bundle["after"])
+        ),
+        timing=_scale_timing(plants.after, bundle, validated) if kind == "scale" else None,
+        load=_scale_load(plants.before, bundle["before"], plants.after, bundle["after"])
+        if kind == "scale"
+        else None,
         trace=trace,
         checks=constraint_checks(committed, rejected),
-        validation=validate(plants.after, bundle["after"]),
+        validation=validated,
         narrative=str(bundle.get("narrative") or ""),
         facts=_public_facts(facts),
         markovian={
@@ -681,6 +702,31 @@ def _kept_bottleneck(after_plant: Any, before: Any, after: Any) -> str:
         cast(list[dict[str, Any]], before_side["areas"]),
         cast(list[dict[str, Any]], after_side["areas"]),
     )
+
+
+_SCALE_WINDOW_MIN = 12 * 60
+
+
+def _scale_timing(plant: Any, bundle: dict[str, Any], validated: dict[str, Any]) -> dict[str, Any]:
+    schedule = bundle["after"]
+    return {
+        "schedule_ms": round(float(bundle.get("schedule_ms") or 0), 1),
+        "critic_ms": round(float(bundle.get("critic_ms") or 0), 1),
+        "lots": len(plant.jobs),
+        "tools": len(plant.equipment),
+        "steps": len(schedule.operations),
+        "holds": len(schedule.unscheduled),
+        "checks_passed": int(validated.get("passed") or 0),
+        "checks_failed": int(validated.get("failed") or 0),
+    }
+
+
+def _scale_load(before_plant: Any, before: Any, after_plant: Any, after: Any) -> dict[str, Any]:
+    return {
+        "window_min": _SCALE_WINDOW_MIN,
+        "before": load_map(before_plant, before, _SCALE_WINDOW_MIN),
+        "after": load_map(after_plant, after, _SCALE_WINDOW_MIN),
+    }
 
 
 def _focus_equipment(scenario: Scenario | None, decision: Decision) -> str:

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from .models import Action, Job, Plant, Schedule, ScheduledOp, Violation
@@ -214,17 +215,27 @@ def _wip(plant: Plant, schedule: Schedule) -> list[Finding]:
 
 def _operators(plant: Plant, schedule: Schedule) -> list[Finding]:
     equipment = plant.equipment_map()
-    points = sorted({op.start_min for op in schedule.operations} | {0})
-    for point in points:
-        used = 0
-        for op in schedule.operations:
-            if op.start_min <= point < op.end_min:
-                machine = equipment.get(op.equipment_id)
-                used += machine.operators_required if machine else 1
+    events: list[tuple[int, int]] = []
+    for op in schedule.operations:
+        machine = equipment.get(op.equipment_id)
+        need = machine.operators_required if machine else 1
+        events.append((op.start_min, need))
+        events.append((op.end_min, -need))
+    # Ends release the operator before a start at the same minute is counted.
+    events.sort(key=lambda item: (item[0], item[1]))
+    used = 0
+    index = 0
+    while index < len(events):
+        point = events[index][0]
+        while index < len(events) and events[index][0] == point:
+            used += events[index][1]
+            index += 1
         if used > plant.operator_pool:
             return [
                 Finding(
-                    detail=f"Operator demand {used} at t={point} exceeds pool {plant.operator_pool}.",
+                    detail=(
+                        f"Operator demand {used} at t={point} exceeds pool {plant.operator_pool}."
+                    ),
                     fix_hint="Stagger starts or release operators from lower-priority tools.",
                 )
             ]
@@ -758,14 +769,13 @@ def validate(plant: Plant, schedule: Schedule) -> dict[str, Any]:
     }
 
 
-def _running_hold(plant: Plant, job_id: str) -> tuple[str, int] | None:
+def _running_hold(job: Job, horizon: datetime) -> tuple[str, int] | None:
     """Tool and end minute for a lot that is still running at the horizon."""
-    job = plant.job_map().get(job_id)
-    if job is None or job.status != "RUNNING" or not job.assigned_equipment:
+    if job.status != "RUNNING" or not job.assigned_equipment:
         return None
     elapsed = 0
     if job.started_at is not None:
-        elapsed = max(0, minutes_between(job.started_at, plant.horizon))
+        elapsed = max(0, minutes_between(job.started_at, horizon))
     remaining = job.process_time_min - elapsed
     if remaining <= 0:
         return None
@@ -774,7 +784,8 @@ def _running_hold(plant: Plant, job_id: str) -> tuple[str, int] | None:
 
 def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
     """Checks appended after the original action rules, so the first refusal stays put."""
-    job = plant.job_map().get(action.job_id)
+    jobs = plant.job_map()
+    job = jobs.get(action.job_id)
     if job is None or not action.step or not action.to_equipment:
         return []
     found: list[Violation] = []
@@ -783,7 +794,7 @@ def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
         for holder in plant.jobs:
             if holder.job_id == action.job_id:
                 continue
-            held = _running_hold(plant, holder.job_id)
+            held = _running_hold(holder, plant.horizon)
             if held is None:
                 continue
             tool, end = held

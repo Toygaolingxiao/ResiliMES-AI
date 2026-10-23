@@ -1,6 +1,6 @@
 # Demo script
 
-Target length: 3 minutes 20 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
+Target length: 3 minutes 30 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
 
 Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks scheduled lateness as hours: 744 minutes is 12 h 24 min, 584 minutes is 9 h 44 min. A held lot is not given a finish time, so a stockout does not become a day count.
 
@@ -90,7 +90,15 @@ Back on Recover for machine breakdown if you need the contract line again. In mo
 
 If you have the live clip, cut it here for five seconds: the JSON `provider` and `model` fields, token not visible.
 
-### 3:05–3:20 — Close (Impact, Demo)
+### 3:05–3:15 — Scale, ten seconds
+
+Press **Run** on **Scale**. Stay on Recover. Do not scroll. This frame is a tool strip, not a lot Gantt.
+
+"A thousand lots, 36 tools, one scanner down. Twenty-four priority-1 lots leave LITHO-03. On-time delivery 97.6 to 100. The hatch is the down scanner. Schedule and critic, under a second."
+
+Point at the stat line: schedule, critic, 1,000 lots, 36 tools, 3,426 steps, 14 passed. The three cards read 97.6% to 100%, 139 d 7 h to zero, and 24 lots at risk to zero. The strip is the first 12 hours. The legend's area percents barely move. CMP stays the bottleneck. The refused line names LITHO-03 down until minute 600.
+
+### 3:15–3:30 — Close (Impact, Demo)
 
 "The supervisor gets a schedule they can defend: what moved, what was refused, and the due-date delta in hours, not a raw minute count. Next we point the same loop at the plant's Zetaris tables and the team's Nightshift token. The banner already says which path you are on."
 

@@ -99,6 +99,8 @@ One L1 reticle can sit on one lithography tool at a time. The sample books there
 
 Each PROD-A28 layer is deposition, one lithography step (coat, expose, and develop), overlay and CD metrology, etch, one wet clean (strip plus rinse), and CMP. L2 repeats the loop. Rework of a failed measure is strip, one re-expose, and one re-measure. The counted pass is the re-measure.
 
+The Scale preset is a seeded synthetic fab (`seed` 20261022), not a second copy of the six-lot bay. It has 1,000 lots and 36 tools, one operator per tool, so staffing does not search. A lot is released only through the end of its current layer. The same catalog columns are written to `data/sql/scale_seed.sql`. Furnace batching, implant, metal PVD, and AMHS stay out of scope on this fab too.
+
 ## Production would add
 
 These are real fab constraints and they are out of this demo:
