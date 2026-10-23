@@ -1,9 +1,23 @@
-const PRIORITY = {
-  1: { fill: "#f0d7a8", ink: "#3d2a08" },
-  2: { fill: "#c5e4e1", ink: "#0e3d3a" },
-  3: { fill: "#d5e0ea", ink: "#1c3344" },
-  4: { fill: "#e4dfd8", ink: "#3a342e" },
+const AREA_TONE = {
+  light: {
+    Lithography: { fill: "#dbe1fb", ink: "#1e1b4b" },
+    Etch: { fill: "#cff4f6", ink: "#0c4a4e" },
+    CMP: { fill: "#e6d9f7", ink: "#3b0764" },
+    Deposition: { fill: "#d4f3e8", ink: "#064e3b" },
+  },
+  dark: {
+    Lithography: { fill: "#312e81", ink: "#e0e7ff" },
+    Etch: { fill: "#155e75", ink: "#cffafe" },
+    CMP: { fill: "#5b21b6", ink: "#f3e8ff" },
+    Deposition: { fill: "#115e59", ink: "#ccfbf1" },
+  },
 };
+
+function areaTone(area) {
+  const theme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const table = AREA_TONE[theme];
+  return table[area] || table.Deposition;
+}
 
 const NODES = [
   ["scout", "nodeScout"],
@@ -81,10 +95,23 @@ const COPY = {
     kpiOtd: "On-time delivery",
     kpiTardy: "Weighted tardiness",
     kpiSpan: "Makespan",
-    kpiUtil: "Plant utilization",
+    kpiUtil: "Utilization",
     kpiChange: "Changeovers",
     kpiRisk: "Lots at risk",
     kpiMoved: "Lots moved",
+    kpiLead: "Mean lead time",
+    kpiWait: "Mean wait",
+    kpiX: "X-factor",
+    utilTip: "One window for both books: the longer makespan. Busy time divided by the time tools are up. Down time is excluded and listed below, so a shorter book cannot raise this number.",
+    xTip: "Mean time from the scenario clock to completion, divided by raw process time. 1.0 is all processing.",
+    downWindow: "Down in this window",
+    byTool: "By tool",
+    byLot: "By lot",
+    whereWait: "Where the wait is",
+    route: "Route",
+    waitGap: "wait",
+    themeLight: "Light",
+    themeDark: "Dark",
     intents: {
       machine_down: "machine down",
       rush_order: "rush order",
@@ -168,10 +195,23 @@ const COPY = {
     kpiOtd: "准时交付",
     kpiTardy: "加权拖期",
     kpiSpan: "总工期",
-    kpiUtil: "产线利用率",
+    kpiUtil: "利用率",
     kpiChange: "换型",
     kpiRisk: "风险批次",
     kpiMoved: "移动批次",
+    kpiLead: "平均前置时间",
+    kpiWait: "平均等待",
+    kpiX: "X 因子",
+    utilTip: "两本账用同一个窗口，取较长的总工期。忙时除以设备可用的时间。宕机时间不进分母，列在下面，所以较短的账不会把这个数抬高。",
+    xTip: "从场景时钟到完工的平均时间，除以纯加工时间。1.0 表示全是加工。",
+    downWindow: "本窗口宕机",
+    byTool: "按设备",
+    byLot: "按批次",
+    whereWait: "等待在哪",
+    route: "路线",
+    waitGap: "等待",
+    themeLight: "浅色",
+    themeDark: "深色",
     intents: {
       machine_down: "设备宕机",
       rush_order: "急单",
@@ -255,10 +295,23 @@ const COPY = {
     kpiOtd: "納期遵守",
     kpiTardy: "加重遅延",
     kpiSpan: "総所要",
-    kpiUtil: "ライン稼働率",
+    kpiUtil: "稼働率",
     kpiChange: "段取り",
     kpiRisk: "危険ロット",
     kpiMoved: "移動ロット",
+    kpiLead: "平均リードタイム",
+    kpiWait: "平均待ち",
+    kpiX: "X ファクター",
+    utilTip: "二つの帳票は同じ窓。長い方の総所要を使う。稼働時間を、装置が上がっている時間で割る。停止時間は分母に入れず下に示す。短い帳票だから割合は上がらない。",
+    xTip: "シナリオ時計から完了までの平均を、正味加工時間で割る。1.0 は加工だけ。",
+    downWindow: "この窓の停止",
+    byTool: "装置別",
+    byLot: "ロット別",
+    whereWait: "待ちの場所",
+    route: "経路",
+    waitGap: "待ち",
+    themeLight: "ライト",
+    themeDark: "ダーク",
     intents: {
       machine_down: "装置停止",
       rush_order: "特急",
@@ -297,6 +350,9 @@ const ALERT = {
 
 const state = {
   lang: localStorage.getItem("resilimes.lang") || "en",
+  theme: localStorage.getItem("resilimes.theme") === "dark" ? "dark" : "light",
+  view: "tool",
+  routeJob: "",
   scenario: "litho_down",
   report: null,
   steps: [],
@@ -314,6 +370,7 @@ async function init() {
   state.horizon = state.health.horizon;
   const payload = await getJson("/api/scenarios");
   state.scenarioItems = payload.scenarios;
+  applyTheme();
   paintChrome();
   paintBay({});
   paintAgents();
@@ -334,6 +391,27 @@ async function init() {
       paintAgents();
     });
   });
+  $("#theme").addEventListener("click", () => {
+    state.theme = state.theme === "dark" ? "light" : "dark";
+    applyTheme();
+    if (state.report) render(state.report);
+    else paintChrome();
+  });
+  document.addEventListener("click", (event) => {
+    const route = $("#route");
+    if (!route || route.hidden) return;
+    if (event.target.closest && event.target.closest("#route, .bar")) return;
+    closeRoute();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeRoute();
+  });
+}
+
+function applyTheme() {
+  if (state.theme === "dark") document.documentElement.dataset.theme = "dark";
+  else delete document.documentElement.dataset.theme;
+  localStorage.setItem("resilimes.theme", state.theme);
 }
 
 function t() {
@@ -366,6 +444,8 @@ function paintChrome() {
   const banner = $("#banner");
   banner.hidden = false;
   banner.textContent = mock ? copy.mock : copy.live;
+  const theme = $("#theme");
+  if (theme) theme.textContent = state.theme === "dark" ? copy.themeDark : copy.themeLight;
   document.querySelectorAll("[data-lang]").forEach((button) => {
     button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
   });
@@ -594,6 +674,7 @@ function render(report) {
     return;
   }
   result.hidden = false;
+  paintViews();
   const scale = scaleOf(report);
   renderGantt($("#gantt-before"), report.gantt.before, report.horizon, scale, false);
   renderGantt($("#gantt-after"), report.gantt.after, report.horizon, scale, true);
@@ -642,12 +723,15 @@ function renderKpis(report) {
     return;
   }
   const specs = [
-    ["on_time_delivery_pct", copy.kpiOtd, "%", 1, true],
-    ["weighted_tardiness_min", copy.kpiTardy, "dur", 0, false],
-    ["makespan_min", copy.kpiSpan, "dur", 0, false],
-    ["utilization_pct", copy.kpiUtil, "%", 1, null],
-    ["setup_changes", copy.kpiChange, "", 0, false],
-    ["lots_at_risk", copy.kpiRisk, "", 0, false],
+    ["on_time_delivery_pct", copy.kpiOtd, "%", 1, true, ""],
+    ["weighted_tardiness_min", copy.kpiTardy, "dur", 0, false, ""],
+    ["makespan_min", copy.kpiSpan, "dur", 0, false, ""],
+    ["mean_lead_min", copy.kpiLead, "dur", 0, false, ""],
+    ["mean_wait_min", copy.kpiWait, "dur", 0, false, ""],
+    ["mean_x_factor", copy.kpiX, "x", 2, false, copy.xTip],
+    ["utilization_pct", copy.kpiUtil, "%", 1, null, copy.utilTip],
+    ["setup_changes", copy.kpiChange, "", 0, false, ""],
+    ["lots_at_risk", copy.kpiRisk, "", 0, false, ""],
   ];
   const table = document.createElement("table");
   table.className = "compare";
@@ -660,7 +744,8 @@ function renderKpis(report) {
   }
   head.appendChild(headRow);
   const body = document.createElement("tbody");
-  for (const [key, label, kind, digits, upGood] of specs) {
+  for (const [key, label, kind, digits, upGood, tip] of specs) {
+    if (report.kpis.before[key] === undefined) continue;
     const before = report.kpis.before[key];
     const after = report.kpis.after[key];
     const delta = report.kpis.delta[key];
@@ -670,6 +755,8 @@ function renderKpis(report) {
       formatMeasure(after, kind, digits),
       signedMeasure(delta, kind, digits),
       deltaTone(delta, upGood),
+      false,
+      tip,
     ));
   }
   const moved = report.kpis.lots_moved || [];
@@ -682,10 +769,17 @@ function renderKpis(report) {
     true,
   ));
   table.append(head, body);
-  host.append(table, renderAreas(report.kpis.areas || {}, copy));
+  const side = document.createElement("div");
+  side.className = "side";
+  side.append(
+    renderAreas(report.kpis.areas || {}, copy),
+    renderDown(report.kpis.down || {}, copy),
+    renderWaits(report.kpis.waits || {}, copy),
+  );
+  host.append(table, side);
 }
 
-function compareRow(label, before, after, change, tone, ids) {
+function compareRow(label, before, after, change, tone, ids, tip) {
   const tr = document.createElement("tr");
   const values = [label, before, after, change];
   values.forEach((text, index) => {
@@ -694,7 +788,95 @@ function compareRow(label, before, after, change, tone, ids) {
     cell.textContent = text;
     tr.appendChild(cell);
   });
+  if (tip) tr.querySelector("th").append(infoButton(tip));
   return tr;
+}
+
+function infoButton(text) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "info";
+  button.textContent = "i";
+  button.setAttribute("aria-label", text);
+  const tip = document.createElement("span");
+  tip.className = "info-tip";
+  tip.setAttribute("role", "tooltip");
+  tip.textContent = text;
+  const place = () => {
+    const rect = button.getBoundingClientRect();
+    const width = 240;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    tip.style.left = `${left}px`;
+    const below = rect.bottom + 6;
+    tip.style.top = `${below}px`;
+    tip.style.bottom = "auto";
+    const height = tip.offsetHeight || 72;
+    if (below + height > window.innerHeight - 8) {
+      tip.style.top = "auto";
+      tip.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+    }
+  };
+  button.addEventListener("mouseenter", place);
+  button.addEventListener("focus", place);
+  button.appendChild(tip);
+  return button;
+}
+
+function renderDown(down, copy) {
+  const note = document.createElement("p");
+  note.className = "down-note";
+  const before = down.before || [];
+  const after = down.after || [];
+  if (!before.length && !after.length) {
+    note.hidden = true;
+    return note;
+  }
+  const lamp = document.createElement("span");
+  lamp.className = "lamp down";
+  const text = (rows) => rows.map((row) => {
+    const word = row.status === "MAINTENANCE" ? copy.maint : copy.down;
+    return `${row.equipment_id} · ${word} · ${formatDuration(row.down_min)}`;
+  }).join(", ");
+  const same = text(before) === text(after);
+  const label = document.createElement("span");
+  label.textContent = same
+    ? `${copy.downWindow}: ${text(after)}`
+    : `${copy.before} ${text(before)} · ${copy.after} ${text(after)}`;
+  note.append(lamp, label);
+  return note;
+}
+
+function renderWaits(waits, copy) {
+  const wrap = document.createElement("div");
+  wrap.className = "waits";
+  const title = document.createElement("h3");
+  title.textContent = copy.whereWait;
+  wrap.appendChild(title);
+  const after = (waits.after || []).slice(0, 4);
+  if (!after.length) return wrap;
+  const before = new Map((waits.before || []).map((row) => [`${row.from_step}>${row.to_step}`, row]));
+  const peak = Math.max(...after.map((row) => Number(row.avg_min) || 0), 1);
+  for (const row of after) {
+    const line = document.createElement("div");
+    line.className = "wait-row";
+    const name = document.createElement("span");
+    name.textContent = `${row.from_step} → ${row.to_step}`;
+    const bar = document.createElement("span");
+    bar.className = "wait-bar";
+    const fill = document.createElement("i");
+    fill.style.width = `${Math.max(0, Math.min(100, (Number(row.avg_min) / peak) * 100))}%`;
+    bar.appendChild(fill);
+    const fig = document.createElement("span");
+    fig.className = "wait-fig";
+    const prior = before.get(`${row.from_step}>${row.to_step}`);
+    const delta = prior ? Number(row.avg_min) - Number(prior.avg_min) : 0;
+    const tone = prior ? deltaTone(delta, false) : "flat";
+    fig.textContent = formatDuration(row.avg_min);
+    fig.classList.add(tone);
+    line.append(name, bar, fig);
+    wrap.appendChild(line);
+  }
+  return wrap;
 }
 
 function deltaTone(delta, upGood) {
@@ -753,15 +935,21 @@ function renderGantt(host, gantt, horizon, scale, draw) {
   const wrap = document.createElement("div");
   wrap.className = "gantt" + (draw ? " draw" : "");
   wrap.dataset.scale = String(scale);
-  for (const row of gantt.rows) {
+  const rows = state.view === "lot" ? lotRows(gantt) : gantt.rows;
+  for (const row of rows) {
     const line = document.createElement("div");
     line.className = "gantt-row";
     const label = document.createElement("div");
     label.className = "gantt-label";
-    label.innerHTML = `${escapeHtml(row.equipment_id)}<small>${escapeHtml(statusLabel(row.status))}</small>`;
+    if (state.view === "lot") {
+      label.innerHTML = `${escapeHtml(row.job_id)}<small>P${row.priority}</small>`;
+    } else {
+      label.innerHTML = `${escapeHtml(row.equipment_id)}<small>${escapeHtml(statusLabel(row.status))}</small>`;
+    }
     const track = document.createElement("div");
     track.className = "track";
-    if (row.available_at_min > 0) {
+    if (state.view === "lot") track.dataset.links = "1";
+    if (state.view !== "lot" && row.available_at_min > 0) {
       const shade = document.createElement("div");
       shade.className = row.status === "MAINTENANCE" ? "shade maint" : "shade down";
       shade.style.left = "0";
@@ -770,8 +958,9 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     }
     for (const bar of row.bars) {
       const node = document.createElement("div");
-      const tone = PRIORITY[bar.priority] || PRIORITY[4];
+      const tone = areaTone(bar.area || row.area);
       node.className = "bar" + (bar.moved ? " moved" : "") + (bar.fresh ? " fresh" : "") + (bar.moved && !draw ? " leaving" : "");
+      if (state.routeJob === bar.job_id) node.classList.add("selected");
       node.dataset.start = String(bar.start_min);
       node.dataset.end = String(bar.end_min);
       node.style.background = tone.fill;
@@ -781,7 +970,13 @@ function renderGantt(host, gantt, horizon, scale, draw) {
       label.className = "bar-label";
       label.textContent = shortLot(bar.job_id);
       node.appendChild(label);
-      node.addEventListener("pointerenter", (event) => showTip(event, bar, row.equipment_id, horizon));
+      const toolId = bar.equipment_id || row.equipment_id;
+      node.addEventListener("pointerenter", (event) => showTip(event, bar, toolId, horizon));
+      node.addEventListener("click", (event) => {
+        event.stopPropagation();
+        hideTip();
+        openRoute(event, bar.job_id, gantt, horizon);
+      });
       node.addEventListener("pointermove", moveTip);
       node.addEventListener("pointerleave", hideTip);
       track.appendChild(node);
@@ -799,7 +994,115 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     axis.appendChild(tick);
   }
   host.append(wrap, axis);
-  wrap.querySelectorAll(".track").forEach((track) => layoutTrack(track, scale));
+  wrap.querySelectorAll(".track").forEach((track) => {
+    layoutTrack(track, scale);
+    if (track.dataset.links === "1") drawLinks(track);
+  });
+}
+
+function lotRows(gantt) {
+  const lots = new Map();
+  for (const row of gantt.rows) {
+    for (const bar of row.bars) {
+      if (!lots.has(bar.job_id)) {
+        lots.set(bar.job_id, { job_id: bar.job_id, priority: bar.priority, bars: [] });
+      }
+      lots.get(bar.job_id).bars.push({ ...bar, equipment_id: row.equipment_id, area: row.area });
+    }
+  }
+  return [...lots.values()].sort((a, b) => a.priority - b.priority || a.job_id.localeCompare(b.job_id));
+}
+
+function paintViews() {
+  const host = $("#views");
+  if (!host) return;
+  const copy = t();
+  host.setAttribute("aria-label", copy.byTool);
+  host.innerHTML = "";
+  for (const [id, label] of [["tool", copy.byTool], ["lot", copy.byLot]]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.setAttribute("aria-pressed", state.view === id ? "true" : "false");
+    button.addEventListener("click", () => {
+      state.view = id;
+      closeRoute();
+      if (state.report) render(state.report);
+    });
+    host.appendChild(button);
+  }
+}
+
+function drawLinks(track) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "links");
+  const bars = [...track.querySelectorAll(".bar")].sort(
+    (a, b) => Number(a.dataset.start) - Number(b.dataset.start),
+  );
+  for (let index = 0; index < bars.length - 1; index += 1) {
+    const left = bars[index];
+    const right = bars[index + 1];
+    const x1 = left.offsetLeft + left.offsetWidth;
+    const x2 = right.offsetLeft;
+    if (x2 - x1 < 6) continue;
+    const y = left.offsetTop + left.offsetHeight / 2;
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", String(x1));
+    line.setAttribute("y1", String(y));
+    line.setAttribute("x2", String(x2));
+    line.setAttribute("y2", String(y));
+    line.setAttribute("stroke", "currentColor");
+    line.setAttribute("stroke-width", "1");
+    svg.appendChild(line);
+  }
+  track.appendChild(svg);
+}
+
+function openRoute(event, jobId, gantt, horizon) {
+  const copy = t();
+  const steps = [];
+  for (const row of gantt.rows) {
+    for (const bar of row.bars) {
+      if (bar.job_id === jobId) {
+        steps.push({ ...bar, equipment_id: row.equipment_id, area: row.area });
+      }
+    }
+  }
+  steps.sort((a, b) => a.start_min - b.start_min);
+  state.routeJob = jobId;
+  document.querySelectorAll(".bar").forEach((node) => {
+    node.classList.toggle("selected", node.title === jobId);
+  });
+  const host = $("#route");
+  host.innerHTML = "";
+  const title = document.createElement("h3");
+  title.textContent = `${jobId} · ${copy.route}`;
+  const list = document.createElement("ol");
+  steps.forEach((step, index) => {
+    const item = document.createElement("li");
+    const area = (copy.areas && copy.areas[step.area]) || step.area || "";
+    item.textContent = `${step.step} · ${step.equipment_id} · ${area} · ${formatClock(shift(horizon, step.start_min)).slice(11, 16)}–${formatClock(shift(horizon, step.end_min)).slice(11, 16)}`;
+    list.appendChild(item);
+    const next = steps[index + 1];
+    if (next && next.start_min > step.end_min) {
+      const gap = document.createElement("li");
+      gap.className = "gap";
+      gap.textContent = `${copy.waitGap} ${formatDuration(next.start_min - step.end_min)}`;
+      list.appendChild(gap);
+    }
+  });
+  host.append(title, list);
+  host.hidden = false;
+  const width = 280;
+  host.style.left = `${Math.min(event.clientX + 12, window.innerWidth - width - 12)}px`;
+  host.style.top = `${Math.min(event.clientY + 12, window.innerHeight - 220)}px`;
+}
+
+function closeRoute() {
+  state.routeJob = "";
+  const host = $("#route");
+  if (host) host.hidden = true;
+  document.querySelectorAll(".bar.selected").forEach((node) => node.classList.remove("selected"));
 }
 
 function layoutTrack(track, scale) {
@@ -816,13 +1119,34 @@ function layoutTrack(track, scale) {
     item.left = (item.start / scale) * width;
     item.raw = ((item.end - item.start) / scale) * width;
   });
-  items.forEach((item, index) => {
-    const nextLeft = index + 1 < items.length ? items[index + 1].left : width;
+  const laneEnds = [];
+  items.forEach((item) => {
+    let lane = laneEnds.findIndex((end) => item.start >= end);
+    if (lane < 0) {
+      lane = laneEnds.length;
+      laneEnds.push(item.end);
+    } else {
+      laneEnds[lane] = item.end;
+    }
+    item.lane = lane;
+  });
+  const laneCount = Math.max(1, laneEnds.length);
+  if (laneCount > 1) track.style.height = `${8 + laneCount * 24}px`;
+  items.forEach((item) => {
+    const later = items.filter((other) => other.lane === item.lane && other.left > item.left + 0.5);
+    const nextLeft = later.length ? Math.min(...later.map((other) => other.left)) : width;
     const room = Math.max(0, nextLeft - item.left - 1);
     const floor = Math.min(3, room);
     item.draw = room <= 0 ? 0 : Math.min(Math.max(item.raw, floor), room);
     item.node.style.left = `${item.left}px`;
     item.node.style.width = `${item.draw}px`;
+    if (laneCount > 1) {
+      item.node.style.top = `${4 + item.lane * 24}px`;
+      item.node.classList.add("stacked");
+    } else {
+      item.node.style.top = "";
+      item.node.classList.remove("stacked");
+    }
   });
   const lanes = { above: [], below: [] };
   items.forEach((item, index) => {
@@ -830,7 +1154,7 @@ function layoutTrack(track, scale) {
     const text = label ? label.textContent : "";
     const need = textWidth(text);
     item.node.classList.remove("lane-above", "lane-below", "silent");
-    if (!text || item.draw >= need) return;
+    if (!text || item.draw >= need || item.node.classList.contains("stacked")) return;
     const labelLeft = item.left;
     const labelRight = item.left + Math.max(0, need - 8);
     const prefer = index % 2 === 0 ? "above" : "below";
@@ -868,11 +1192,16 @@ function renderLegend(report) {
   const copy = t();
   const host = $("#legend");
   host.innerHTML = "";
-  const lots = new Map();
-  for (const row of report.outcomes || []) lots.set(row.job_id, row.priority);
-  for (const [job, priority] of lots) {
-    const tone = PRIORITY[priority] || PRIORITY[4];
-    host.appendChild(legendItem(tone.fill, `${job} · P${priority}`, tone.ink));
+  const order = ["Lithography", "Etch", "CMP", "Deposition"];
+  const seen = new Set();
+  for (const side of [report.gantt && report.gantt.before, report.gantt && report.gantt.after]) {
+    for (const row of (side && side.rows) || []) {
+      if (row.area) seen.add(row.area);
+    }
+  }
+  for (const area of [...order.filter((name) => seen.has(name)), ...[...seen].filter((name) => !order.includes(name))]) {
+    const tone = areaTone(area);
+    host.appendChild(legendItem(tone.fill, (copy.areas && copy.areas[area]) || area, tone.ink));
   }
   host.appendChild(legendItem(null, copy.moved, null, "moved"));
   host.appendChild(legendItem(null, copy.down, null, "hatch-down"));
@@ -976,6 +1305,7 @@ function shortLot(jobId) {
 function formatMeasure(value, kind, digits) {
   if (kind === "dur") return formatDuration(value);
   if (kind === "%") return `${Number(value).toFixed(digits)}%`;
+  if (kind === "x") return Number(value).toFixed(digits);
   return Number(value).toFixed(digits);
 }
 
@@ -1040,7 +1370,11 @@ async function getJson(url) {
 window.addEventListener("resize", () => {
   document.querySelectorAll(".gantt").forEach((wrap) => {
     const scale = Number(wrap.dataset.scale || 0);
-    wrap.querySelectorAll(".track").forEach((track) => layoutTrack(track, scale));
+    wrap.querySelectorAll(".track").forEach((track) => {
+      layoutTrack(track, scale);
+      track.querySelectorAll(".links").forEach((node) => node.remove());
+      if (track.dataset.links === "1") drawLinks(track);
+    });
   });
 });
 

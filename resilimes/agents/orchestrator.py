@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
@@ -17,7 +17,14 @@ from resilimes.config import Settings
 from resilimes.data.factory import build_source
 from resilimes.domain.critique import critique_schedule
 from resilimes.domain.gantt import annotate_moves, build_gantt
-from resilimes.domain.kpis import area_utilization, evaluate, job_outcomes, lots_moved
+from resilimes.domain.kpis import (
+    compare_load,
+    evaluate,
+    flow_metrics,
+    job_outcomes,
+    lots_moved,
+    step_waits,
+)
 from resilimes.domain.scenarios import (
     Scenario,
     apply_free_text,
@@ -573,16 +580,14 @@ def run_recovery(
             "actions": [item.model_dump() for item in naive_alternative(plants.after, kind)],
             "critique": rejected.model_dump(),
         },
-        kpis={
-            "before": before_kpi.model_dump(),
-            "after": after_kpi.model_dump(),
-            "delta": _delta(before_kpi.model_dump(), after_kpi.model_dump()),
-            "areas": {
-                "before": area_utilization(plants.before, bundle["before"]),
-                "after": area_utilization(plants.after, bundle["after"]),
-            },
-            "lots_moved": lots_moved(bundle["before"], bundle["after"]),
-        },
+        kpis=_comparison_kpis(
+            before_kpi.model_dump(),
+            after_kpi.model_dump(),
+            plants.before,
+            bundle["before"],
+            plants.after,
+            bundle["after"],
+        ),
         outcomes=[row.model_dump() for row in bundle["outcomes"]],
         gantt=_gantt_pair(plants.before, bundle["before"], plants.after, bundle["after"]),
         trace=trace,
@@ -673,6 +678,33 @@ def _public_facts(facts: list[dict[str, object]]) -> list[dict[str, Any]]:
     return public
 
 
+def _comparison_kpis(
+    before_dump: dict[str, Any],
+    after_dump: dict[str, Any],
+    before_plant: Any,
+    before: Any,
+    after_plant: Any,
+    after: Any,
+) -> dict[str, Any]:
+    load = compare_load(before_plant, before, after_plant, after)
+    before_side = cast(dict[str, Any], load["before"])
+    after_side = cast(dict[str, Any], load["after"])
+    before_dump["utilization_pct"] = before_side["utilization_pct"]
+    after_dump["utilization_pct"] = after_side["utilization_pct"]
+    before_dump.update(flow_metrics(before))
+    after_dump.update(flow_metrics(after))
+    return {
+        "before": before_dump,
+        "after": after_dump,
+        "delta": _delta(before_dump, after_dump),
+        "areas": {"before": before_side["areas"], "after": after_side["areas"]},
+        "lots_moved": lots_moved(before, after),
+        "horizon_min": load["horizon_min"],
+        "down": {"before": before_side["down"], "after": after_side["down"]},
+        "waits": {"before": step_waits(before), "after": step_waits(after)},
+    }
+
+
 def _delta(before: dict[str, Any], after: dict[str, Any]) -> dict[str, float]:
     keys = (
         "on_time_delivery_pct",
@@ -681,6 +713,9 @@ def _delta(before: dict[str, Any], after: dict[str, Any]) -> dict[str, float]:
         "utilization_pct",
         "lots_at_risk",
         "setup_changes",
+        "mean_lead_min",
+        "mean_wait_min",
+        "mean_x_factor",
     )
     return {key: float(after[key]) - float(before[key]) for key in keys}
 

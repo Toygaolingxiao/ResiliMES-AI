@@ -36,6 +36,7 @@ def build_gantt(plant: Plant, schedule: Schedule) -> dict[str, object]:
             {
                 "equipment_id": equipment.equipment_id,
                 "name": equipment.name,
+                "area": equipment.area,
                 "status": equipment.status,
                 "available_at_min": equipment.available_at_min,
                 "bars": bars,

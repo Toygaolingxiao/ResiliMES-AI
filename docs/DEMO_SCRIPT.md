@@ -34,15 +34,21 @@ If a SQL line is on screen, point at `SELECT` and `sample-equivalent`.
 
 ### 0:45–1:20 — The decision (Impact, Demo)
 
-When the headline lands, read it, then the three bullets, then the comparison board. Columns are Before, After, and Change. The area panel is utilization for Lithography, Etch, CMP, and Deposition, computed on each book's own makespan.
+When the headline lands, read it, then the three bullets, then the comparison board. Columns are Before, After, and Change. Green is better, red is worse, and gray is not a direction. Utilization is gray on purpose.
 
-"LOT-1001 leaves LITHO-02. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 14 hours to zero. Makespan goes from 16 h 5 min to 7 h. Lots at risk go from one to zero. Lots moved are LOT-1001 and LOT-1004. Changeovers stay at one."
+"LOT-1001 leaves LITHO-02. On-time delivery goes from 83.3 percent to 100. Weighted tardiness goes from 14 hours to zero. Makespan goes from 16 h 5 min to 7 h. Mean lead time goes from 12 h 18 min to 4 h 43 min. Mean wait between steps goes from 4 h 37 min to 44 min. X-factor goes from 7.94 to 3.26. Lots at risk go from one to zero. Lots moved are LOT-1001 and LOT-1004."
 
-"Plant utilization goes from 14.9 percent to 39.8, and the lithography row from 17.7 to 56. The book now ends at 7 hours, before LITHO-02 is back, so the down scanner is outside that window."
+Hover the i on Utilization. "Both books share one window, the longer makespan, 16 h 5 min. Utilization stays 14.9 percent. LITHO-02 is down 10 hours and DEP-01 is in maintenance 4 hours. That time is listed under the board and is not in the denominator, so the shorter book cannot raise the percentage."
 
-Point at the left chart. "The red line is now. The hatch is the scanner down until the repair. 1001 sits on LITHO-02 and finishes late. On CMP-01 the lot numbers sit on the bar, or just above and below it, so neighbors do not cover each other."
+The area rows stay flat on this scenario: Lithography 17.7, Etch 14.2, CMP 23.8, Deposition 0. The small bars under them are where the wait sits after recovery: etch into CMP, about 1 h 16 min on average.
 
-Point at the right chart. "The same lot is outlined because it moved, onto LITHO-01, behind the lot already running. The legend is priority, not a new color per lot. Hover a bar if you need the clock times."
+Point at the left chart. "The red line is now. The red hatch is the scanner down until the repair. Bar color is the area: indigo lithography, cyan etch, violet CMP, teal deposition. 1001 sits on LITHO-02 and finishes late."
+
+Click By lot, then click the LOT-1001 bar. "Each row is one lot. The gap between steps is the wait, and the popover is that lot's route." Switch back to By tool before the next shot. Hover a bar if you need the clock times.
+
+Point at the right chart. "The same lot is outlined because it moved, onto LITHO-01, behind the lot already running."
+
+Leave the theme on Light. Dark is the control next to the languages, for a second cut only.
 
 ### 1:20–1:40 — Why it is allowed (Innovation, Track 03)
 
@@ -84,7 +90,7 @@ Stop. Do not add a chatbot ending.
 | Technical 20 | Pipeline filling from the stream, contract, SQL, critic |
 | Innovation 15 | Solver commits, model explains; rush refuses preemption |
 | Demo 15 | Lamp, then the pipeline, then three disruptions with readable durations |
-| Product & UX 10 | Headline and three bullets, comparison board, legend, before/after chart, language toggle, truthful banner |
+| Product & UX 10 | Headline and three bullets, comparison board, by-lot toggle, legend, language and theme, truthful banner |
 | Sponsor tech 10 | Zetaris node, Scout contract, Nightshift line or the live cut |
 
 ## If something looks different
