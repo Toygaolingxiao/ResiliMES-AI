@@ -129,6 +129,18 @@ const COPY = {
     utilTip: "One window for both books: the longer makespan. Busy time divided by the time tools are up. Down time is excluded and listed here, so a shorter book cannot raise this number.",
     xTip: "Mean completion time divided by raw process time. 1.0 is all processing. Held lots are omitted.",
     changeTip: "Setups charged because the recipe family changed.",
+    qtimeTitle: "Queue time",
+    qtimeNote: "End of one step to the start of the next.",
+    qtimeTip: "Pairs that start inside the limit, including pairs past 80 percent of it. Holds and violations are the misses.",
+    violationTip: "Placed pairs whose gap is longer than the limit.",
+    atRiskTip: "Placed pairs still inside the limit, past 80 percent of it.",
+    bottleneckTitle: "Bottleneck",
+    bottleneckNote: "Most remaining minutes per up-tool minute, over one day. Down tools add no time.",
+    bottleneckTip: "Same-priority work in this area, and the step that feeds it, is dispatched first.",
+    compliance: "Compliance",
+    violations: "Violations",
+    atRisk: "At risk",
+    rework: "Rework",
     areaTip: "Busy time in this area divided by up-time in this area, on the shared window.",
     waitPair: "Mean gap from {from} to {to} on the after book, across {n} lots.",
     tardyCellTip: "Lateness before, then after. A lot with no finish time is charged 24 hours.",
@@ -164,6 +176,8 @@ const COPY = {
       query_status: "status",
       explain: "explain",
       emergency_stop: "emergency stop",
+      rework: "rework",
+      qtime: "queue time",
     },
     verdicts: { accept: "accepted", conditional: "conditional", reject: "rejected" },
     checks: {
@@ -175,6 +189,7 @@ const COPY = {
       material: "Material",
       precedence: "Route order",
       preemption: "Preemption",
+      qtime: "Queue time",
       other: "Other",
     },
     status: { IDLE: "Idle", RUNNING: "Running", DOWN: "Down", MAINTENANCE: "Maintenance", ok: "In stock", short: "Short" },
@@ -183,9 +198,11 @@ const COPY = {
       litho_down: ["Machine breakdown", "LITHO-02 is down for 10 h. LOT-1001 is blocked, due 18:00 UTC."],
       rush_order: ["Rush order", "A hot lot is due in 3 h. Running lots stay on their tools."],
       material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
+      rework: ["Lithography rework", "LOT-1004 overlay failed. Strip and re-expose once."],
+      qtime: ["Queue time", "Etch already finished. CMP must start within 15 min."],
     },
-    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout" },
+    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time" },
+    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip and re-expose", qtime: "15 min queue time" },
   },
   zh: {
     tagline: "一个机台的恢复",
@@ -268,6 +285,18 @@ const COPY = {
     utilTip: "两本账用同一个窗口，取较长的总工期。忙时除以设备可用的时间。宕机时间不进分母，列在这里，所以较短的账不会把这个数抬高。",
     xTip: "完工时间除以纯加工时间的平均。1.0 表示全是加工。暂停的批次不计入。",
     changeTip: "因配方族变化而发生的换型次数。",
+    qtimeTitle: "队列时间",
+    qtimeNote: "上一道结束到下一道开始。",
+    qtimeTip: "在时限内开工的配对，包括已过时限八成的。暂扣和超时是未遵守。",
+    violationTip: "已经排上、间隔超过时限的配对。",
+    atRiskTip: "已经排上、仍在时限内、但已过时限八成的配对。",
+    bottleneckTitle: "瓶颈",
+    bottleneckNote: "一天里，剩余加工分钟除以可用设备分钟。宕机设备不贡献时间。",
+    bottleneckTip: "同优先级时，这个区域和给它供料的工序先派工。",
+    compliance: "遵守率",
+    violations: "超时",
+    atRisk: "临近",
+    rework: "返工",
     areaTip: "该区域的忙时，除以该区域在共享窗口内的可用时间。",
     waitPair: "恢复后从 {from} 到 {to} 的平均间隔，共 {n} 个批次。",
     tardyCellTip: "移动前的拖期，然后是移动后。没有完工时间按 24 小时计。",
@@ -303,6 +332,8 @@ const COPY = {
       query_status: "状态",
       explain: "说明",
       emergency_stop: "紧急停止",
+      rework: "返工",
+      qtime: "队列时间",
     },
     verdicts: { accept: "接受", conditional: "有条件", reject: "拒绝" },
     checks: {
@@ -314,6 +345,7 @@ const COPY = {
       material: "物料",
       precedence: "工艺顺序",
       preemption: "抢占",
+      qtime: "队列时间",
       other: "其他",
     },
     status: { IDLE: "空闲", RUNNING: "加工", DOWN: "宕机", MAINTENANCE: "维护", ok: "有库存", short: "短缺" },
@@ -322,9 +354,11 @@ const COPY = {
       litho_down: ["设备故障", "光刻机 02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
       rush_order: ["急单", "一个热批次 3 小时内要交。正在加工的批次留在原设备。"],
       material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
+      rework: ["光刻返工", "LOT-1004 套刻失败。去胶，再曝光一次。"],
+      qtime: ["队列时间", "刻蚀已经结束。CMP 必须在 15 分钟内开工。"],
     },
-    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货" },
+    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列" },
+    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶再曝光", qtime: "15 分钟队列" },
   },
   ja: {
     tagline: "一つのベイの回復",
@@ -407,6 +441,18 @@ const COPY = {
     utilTip: "二つの帳票は同じ窓。長い方の総所要を使う。稼働時間を、装置が上がっている時間で割る。停止時間は分母に入れずここに示す。短い帳票だから割合は上がらない。",
     xTip: "完了時間を純加工時間で割った平均。1.0 は加工だけ。保留は除く。",
     changeTip: "レシピ族が変わって発生した段取り。",
+    qtimeTitle: "待ち時間",
+    qtimeNote: "前工程の終わりから次工程の開始まで。",
+    qtimeTip: "制限内に始まった組。制限の 8 割を過ぎた組も含む。保留と超過は未達。",
+    violationTip: "計画に入り、間隔が制限を超えた組。",
+    atRiskTip: "計画に入り、制限内だが 8 割を過ぎた組。",
+    bottleneckTitle: "ボトルネック",
+    bottleneckNote: "一日あたり、残加工分を稼働装置分で割った最大。停止装置は分を出さない。",
+    bottleneckTip: "同じ優先度では、このエリアとそこへ送る工程を先に流す。",
+    compliance: "遵守率",
+    violations: "超過",
+    atRisk: "危険",
+    rework: "再加工",
     areaTip: "このエリアの稼働時間を、共有の窓で上がっている時間で割る。",
     waitPair: "回復後の {from} から {to} までの平均間隔。{n} ロット。",
     tardyCellTip: "移動前の遅延、その後が移動後。完了時刻がなければ 24 時間。",
@@ -442,6 +488,8 @@ const COPY = {
       query_status: "状態",
       explain: "説明",
       emergency_stop: "緊急停止",
+      rework: "再加工",
+      qtime: "待ち時間",
     },
     verdicts: { accept: "受理", conditional: "条件付き", reject: "却下" },
     checks: {
@@ -453,6 +501,7 @@ const COPY = {
       material: "資材",
       precedence: "工程順",
       preemption: "割り込み",
+      qtime: "待ち時間",
       other: "その他",
     },
     status: { IDLE: "空き", RUNNING: "加工", DOWN: "停止", MAINTENANCE: "保全", ok: "在庫あり", short: "不足" },
@@ -461,9 +510,11 @@ const COPY = {
       litho_down: ["装置故障", "リソ 02 が 10 時間停止。LOT-1001 が詰まり、納期 18:00 UTC。"],
       rush_order: ["特急", "ホットロットの納期は 3 時間。加工中のロットは装置に残す。"],
       material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
+      rework: ["リソ再加工", "LOT-1004 の重ね合わせ不良。剥離して一度再露光。"],
+      qtime: ["待ち時間", "エッチは終了済み。CMP は 15 分以内に始める。"],
     },
-    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品" },
+    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間" },
+    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離して再露光", qtime: "待ち 15 分" },
   },
 };
 
@@ -471,6 +522,8 @@ const ALERT = {
   litho_down: "LITHO-02",
   rush_order: "LITHO-01",
   material_shortage: "RESIST-UV",
+  rework: "LOT-1004",
+  qtime: "CMP-01",
 };
 
 const state = {
@@ -822,7 +875,7 @@ function paintAnalyze() {
   }
   const wrap = document.createElement("div");
   wrap.className = "analyze";
-  wrap.append(figuresCard(report), utilCard(report), waitCard(report), lotsCard(report));
+  wrap.append(figuresCard(report), utilCard(report), waitCard(report), qtimeCard(report), bottleneckCard(report), lotsCard(report));
   host.appendChild(wrap);
 }
 
@@ -959,6 +1012,72 @@ function waitCard(report) {
     line.append(name, bar, fig);
     card.appendChild(line);
   }
+  return card;
+}
+
+function qtimeCard(report) {
+  const copy = t();
+  const card = document.createElement("article");
+  card.className = "card";
+  card.appendChild(cardHead(copy.qtimeTitle, copy.qtimeNote));
+  const qtime = report.kpis.qtime || {};
+  const before = qtime.before || {};
+  const after = qtime.after || {};
+  const grid = document.createElement("div");
+  grid.className = "qtime-grid";
+  for (const [label, tip, left, right] of [
+    [copy.compliance, copy.qtimeTip, before.compliance_pct, after.compliance_pct],
+    [copy.violations, copy.violationTip, before.violations, after.violations],
+    [copy.atRisk, copy.atRiskTip, before.at_risk, after.at_risk],
+  ]) {
+    const line = document.createElement("div");
+    line.className = "qtime-row";
+    const name = document.createElement("span");
+    name.append(document.createTextNode(label), infoButton(tip));
+    const fig = document.createElement("span");
+    fig.className = "num";
+    const leftText = label === copy.compliance ? `${Number(left || 0).toFixed(1)}%` : String(left || 0);
+    const rightText = label === copy.compliance ? `${Number(right || 0).toFixed(1)}%` : String(right || 0);
+    fig.textContent = `${leftText} → ${rightText}`;
+    bindTip(fig, tip);
+    line.append(name, fig);
+    grid.appendChild(line);
+  }
+  card.appendChild(grid);
+  const rows = (after.rows || []).filter((row) => row.state !== "met");
+  if (rows.length) {
+    const list = document.createElement("ul");
+    list.className = "qtime-list";
+    for (const row of rows.slice(0, 4)) {
+      const item = document.createElement("li");
+      const gap = row.gap_min == null ? copy.held : formatDuration(row.gap_min);
+      item.textContent = `${row.job_id} ${row.from_step} → ${row.to_step} · ${gap} · ${row.state}`;
+      list.appendChild(item);
+    }
+    card.appendChild(list);
+  }
+  return card;
+}
+
+function bottleneckCard(report) {
+  const copy = t();
+  const card = document.createElement("article");
+  card.className = "card";
+  const head = cardHead(copy.bottleneckTitle, copy.bottleneckNote);
+  head.appendChild(infoButton(copy.bottleneckTip));
+  card.appendChild(head);
+  const bottleneck = report.kpis.bottleneck || {};
+  const area = bottleneck.area || "—";
+  const name = document.createElement("p");
+  name.className = "bottleneck-name";
+  name.textContent = (copy.areas && copy.areas[area]) || area;
+  const fig = document.createElement("p");
+  fig.className = "num bottleneck-fig";
+  const before = Number(bottleneck.before_pct || 0).toFixed(1);
+  const after = Number(bottleneck.after_pct || 0).toFixed(1);
+  fig.textContent = `${before}% → ${after}%`;
+  bindTip(fig, copy.bottleneckTip);
+  card.append(name, fig);
   return card;
 }
 
@@ -1223,7 +1342,7 @@ function renderGantt(host, gantt, horizon, scale, draw) {
   const rows = state.view === "lot" ? lotRows(gantt) : gantt.rows;
   for (const row of rows) {
     const line = document.createElement("div");
-    line.className = "gantt-row";
+    line.className = "gantt-row" + (row.bottleneck && state.view !== "lot" ? " bottleneck" : "");
     const label = document.createElement("div");
     label.className = "gantt-label";
     if (state.view === "lot") {
@@ -1244,11 +1363,11 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     for (const bar of row.bars) {
       const node = document.createElement("div");
       const tone = areaTone(bar.area || row.area);
-      node.className = "bar" + (bar.moved ? " moved" : "") + (bar.fresh ? " fresh" : "") + (bar.moved && !draw ? " leaving" : "");
+      node.className = "bar" + (bar.moved ? " moved" : "") + (bar.fresh ? " fresh" : "") + (bar.rework ? " rework" : "") + (bar.moved && !draw ? " leaving" : "");
       if (state.routeJob === bar.job_id) node.classList.add("selected");
       node.dataset.start = String(bar.start_min);
       node.dataset.end = String(bar.end_min);
-      node.style.background = tone.fill;
+      node.style.backgroundColor = tone.fill;
       node.style.color = tone.ink;
       node.title = bar.job_id;
       const name = document.createElement("span");
@@ -1472,6 +1591,10 @@ function renderLegend(report) {
     const tone = areaTone(area);
     host.appendChild(legendItem(tone.fill, (copy.areas && copy.areas[area]) || area, tone.ink));
   }
+  const rework = [report.gantt.before, report.gantt.after].some((side) =>
+    ((side && side.rows) || []).some((row) => (row.bars || []).some((bar) => bar.rework))
+  );
+  if (rework) host.appendChild(legendItem(null, copy.rework, null, "rework"));
   host.appendChild(legendItem(null, copy.moved, null, "moved"));
   host.appendChild(legendItem(null, copy.down, null, "hatch-down"));
   host.appendChild(legendItem(null, copy.maint, null, "hatch-maint"));
@@ -1493,7 +1616,7 @@ function legendItem(fill, label, ink, kind) {
 
 function showTip(event, bar, equipment, horizon) {
   const copy = t();
-  const flags = [bar.moved ? copy.moved : "", bar.fresh ? copy.fresh : ""].filter(Boolean).join(" · ");
+  const flags = [bar.moved ? copy.moved : "", bar.fresh ? copy.fresh : "", bar.rework ? copy.rework : ""].filter(Boolean).join(" · ");
   const text = `${bar.job_id} · P${bar.priority}\n${equipment} · ${bar.step}\n${formatClock(shift(horizon, bar.start_min)).slice(11, 16)}–${formatClock(shift(horizon, bar.end_min)).slice(11, 16)} · ${formatDuration(bar.end_min - bar.start_min)}${flags ? `\n${flags}` : ""}`;
   const tip = $("#tip");
   tip.textContent = text;

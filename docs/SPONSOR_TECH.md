@@ -22,6 +22,7 @@ What that file proves:
 | --- | --- |
 | "Machine Litho-02 Down" classifies as `plant.machine_down`, binds `LITHO-02`, and verifies the HMAC | `test_machine_down_classifies_and_signs` |
 | Rush orders and material shortages classify and bind product or material ids | `test_rush_and_shortage_intents` |
+| The rework and queue-time sentences classify at 0.92 or better | `test_rework_and_qtime_clear_the_floor` |
 | Prompt injection yields `risk.level = block` and no contract | `test_prompt_injection_is_blocked` |
 | A viewer cannot invoke a reschedule | `test_viewer_cannot_reschedule` |
 | An emergency stop on a disallowed surface is blocked | `test_surface_is_enforced` |
@@ -48,7 +49,7 @@ A read-only "what is the fab status?" contract does not carry `memory.write`, so
 
 ## Zetaris
 
-Zetaris is the system of record for equipment, WIP, routes, BOM, stock, operators, and maintenance.
+Zetaris is the system of record for equipment, WIP, routes, route steps, queue-time rules, BOM, stock, operators, and maintenance.
 
 The client is the scaffold in `agent/tools_zetaris.py`:
 

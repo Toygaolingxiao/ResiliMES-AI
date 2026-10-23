@@ -18,12 +18,14 @@ from resilimes.data.factory import build_source
 from resilimes.domain.critique import constraint_checks, critique_schedule
 from resilimes.domain.gantt import annotate_moves, build_gantt
 from resilimes.domain.kpis import (
+    bottleneck_report,
     compare_load,
     evaluate,
     flow_metrics,
     job_outcomes,
     lots_moved,
     metric_tones,
+    qtime_report,
     step_waits,
 )
 from resilimes.domain.scenarios import (
@@ -617,6 +619,7 @@ def run_recovery(
             after=after_kpi,
             rejected=rejected,
             verdict=committed.verdict,
+            bottleneck=_protected_bottleneck(bundle["after"]),
         ),
         steps=steps,
     )
@@ -634,7 +637,21 @@ def _kind_for(intent_id: str) -> str:
         return "insert_lot"
     if intent_id == "plant.material_shortage":
         return "stockout"
+    if intent_id == "plant.rework":
+        return "rework"
+    if intent_id == "plant.qtime":
+        return "qtime"
     return "frozen_vs_recover"
+
+
+def _protected_bottleneck(schedule: Any) -> str:
+    area = str(getattr(schedule, "bottleneck_area", "") or "")
+    if not area:
+        return ""
+    for action in getattr(schedule, "actions", []):
+        if "bottleneck" in action.reason:
+            return area
+    return ""
 
 
 def _mode_banner(settings: Settings, mocked: bool, source_name: str) -> dict[str, Any]:
@@ -705,6 +722,16 @@ def _comparison_kpis(
         "horizon_min": load["horizon_min"],
         "down": {"before": before_side["down"], "after": after_side["down"]},
         "waits": {"before": step_waits(before), "after": step_waits(after)},
+        "qtime": {
+            "before": qtime_report(before_plant, before),
+            "after": qtime_report(after_plant, after),
+        },
+        "bottleneck": bottleneck_report(
+            before,
+            after,
+            cast(list[dict[str, Any]], before_side["areas"]),
+            cast(list[dict[str, Any]], after_side["areas"]),
+        ),
     }
 
 

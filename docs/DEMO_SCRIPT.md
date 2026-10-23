@@ -62,7 +62,7 @@ Open **Analyze**. This is the only place that scrolls.
 
 "Makespan goes from 16 h 5 min to 7 h. Mean lead time goes from 12 h 18 min to 4 h 43 min. Mean wait between steps goes from 4 h 37 min to 44 min. X-factor goes from 7.94 to 3.26. Utilization stays 14.9 percent, gray on purpose. Both books share one window, the longer makespan, 16 h 5 min. LITHO-02 is down 10 hours and DEP-01 is in maintenance 4 hours. That time is listed under the figures and is not in the denominator."
 
-The area card has Before and After. The area percents stay flat: Lithography 17.7, Etch 14.2, CMP 23.8, Deposition 0. The wait card shows etch into CMP, about 1 h 16 min on average. The lot table shows LOT-1004 as ETCH, ETCH-02 to ETCH-01.
+The area card has Before and After. The area percents stay flat: Lithography 17.7, Etch 14.2, CMP 23.8, Deposition 0. The wait card shows etch into CMP, about 1 h 16 min on average. The lot table shows LOT-1004 as ETCH, ETCH-02 to ETCH-01. The queue-time card is 100 percent both ways, with one at-risk pair while waiting and none after. The bottleneck card names Lithography. The tool labels on that area carry a small mark.
 
 Return to **Recover** before the next disruption.
 
@@ -95,6 +95,22 @@ If you have the live clip, cut it here for five seconds: the JSON `provider` and
 "The supervisor gets a schedule they can defend: what moved, what was refused, and the due-date delta in hours, not a raw minute count. Next we point the same loop at the plant's Zetaris tables and the team's Nightshift token. The banner already says which path you are on."
 
 Stop. Do not add a chatbot ending.
+
+### Optional — Rework, only if the cut is still under four minutes
+
+Press **Run** on **Lithography rework**. Stay on Recover.
+
+"LOT-1004 re-enters lithography. Overlay failed, so the book strips and re-exposes once. The limit is one. The striped bar is the re-expose. On-time delivery stays 100 percent. Lithography's share of the window rises."
+
+Open **Verify** only if you also want the queue-time row. That row is the next preset, not this one.
+
+### Optional — Queue time, still inside four minutes
+
+Press **Run** on **Queue time**.
+
+"LOT-1003 misses the etch queue time. Etch finished before 06:30, and CMP had 15 minutes. The book holds the lot. On-time delivery goes from 100 to 83.3 percent. Weighted tardiness goes from zero to 2 days. The refused plan started CMP at minute 120."
+
+On **Verify**, the queue-time row says Refused. On **Analyze**, compliance goes from 100 percent to 80, with one hold.
 
 ## Judging map
 

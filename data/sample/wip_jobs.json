@@ -13,7 +13,8 @@
       "due_at": "2026-10-22T18:00:00Z",
       "started_at": "2026-10-22T05:40:00Z",
       "process_time_min": 90,
-      "remaining_steps": ["ETCH", "CMP"]
+      "remaining_steps": ["ETCH", "CMP"],
+      "released_through": "CMP"
     },
     {
       "job_id": "LOT-1002",
@@ -26,7 +27,8 @@
       "due_at": "2026-10-23T02:00:00Z",
       "started_at": "2026-10-22T05:55:00Z",
       "process_time_min": 90,
-      "remaining_steps": ["ETCH", "CMP"]
+      "remaining_steps": ["ETCH", "CMP"],
+      "released_through": "CMP"
     },
     {
       "job_id": "LOT-1003",
@@ -53,7 +55,8 @@
       "started_at": null,
       "process_time_min": 90,
       "remaining_steps": ["LITHO", "ETCH", "CMP"],
-      "preferred_equipment": ["LITHO-01", "LITHO-02"]
+      "preferred_equipment": ["LITHO-01", "LITHO-02"],
+      "released_through": "CMP"
     },
     {
       "job_id": "LOT-1005",

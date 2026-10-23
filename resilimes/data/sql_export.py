@@ -15,7 +15,9 @@ TABLES = (
     "equipment",
     "wip_jobs",
     "products",
+    "route",
     "route_steps",
+    "qtime_rule",
     "bom",
     "materials",
     "operators",
@@ -26,14 +28,25 @@ TABLES = (
 def table_rows() -> dict[str, list[dict[str, str]]]:
     equipment = _read(SAMPLE / "equipment.json")["equipment"]
     jobs = _read(SAMPLE / "wip_jobs.json")["jobs"]
-    products = _read(SAMPLE / "bom.json")["products"]
+    bom = _read(SAMPLE / "bom.json")
+    products = bom["products"]
     materials = _read(SAMPLE / "materials.json")["materials"]
     operators = _read(SAMPLE / "operators.json")["operators"]
+    rules = _read(SAMPLE / "qtime_rules.json")["rules"]
     return {
         "equipment": [_equipment(row) for row in equipment],
         "wip_jobs": [_job(row) for row in jobs],
-        "products": [{"product_id": row["product_id"], "name": row["name"]} for row in products],
+        "products": [
+            {
+                "product_id": row["product_id"],
+                "name": row["name"],
+                "route_id": _s(row.get("route_id")),
+            }
+            for row in products
+        ],
+        "route": [_route(row) for row in _list(bom.get("routes"))],
         "route_steps": _routes(products),
+        "qtime_rule": [_qtime(row) for row in rules],
         "bom": _bom(products),
         "materials": [
             {
@@ -123,6 +136,28 @@ def _job(row: dict[str, Any]) -> dict[str, str]:
         "process_time_min": _s(row["process_time_min"]),
         "remaining_steps": ",".join(_s(item) for item in _list(row.get("remaining_steps"))),
         "preferred_equipment": ",".join(_s(item) for item in _list(row.get("preferred_equipment"))),
+        "released_through": _s(row.get("released_through")),
+        "rework_of": _s(row.get("rework_of")),
+        "rework_count": _s(row.get("rework_count") or 0),
+        "rework_limit": _s(row.get("rework_limit") or 1),
+    }
+
+
+def _route(row: dict[str, Any]) -> dict[str, str]:
+    return {
+        "route_id": _s(row["route_id"]),
+        "product_id": _s(row["product_id"]),
+        "name": _s(row["name"]),
+    }
+
+
+def _qtime(row: dict[str, Any]) -> dict[str, str]:
+    return {
+        "rule_id": _s(row["rule_id"]),
+        "product_id": _s(row["product_id"]),
+        "from_step": _s(row["from_step"]),
+        "to_step": _s(row["to_step"]),
+        "max_min": _s(row["max_min"]),
     }
 
 
@@ -140,6 +175,12 @@ def _routes(products: list[dict[str, Any]]) -> list[dict[str, str]]:
                     "capability": _s(step["capability"]),
                     "process_time_min": _s(step["process_time_min"]),
                     "setup_family": _s(step["setup_family"]),
+                    "step_no": _s(step.get("step_no")),
+                    "operation": _s(step.get("operation") or step["step"]),
+                    "area": _s(step.get("area")),
+                    "recipe": _s(step.get("recipe") or step["setup_family"]),
+                    "layer": _s(step.get("layer")),
+                    "rework": "true" if step.get("rework") else "false",
                 }
             )
     return rows

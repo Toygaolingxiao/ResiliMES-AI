@@ -29,6 +29,7 @@ def build_gantt(plant: Plant, schedule: Schedule) -> dict[str, object]:
                     "pinned": op.pinned,
                     "late": late and op.step_index == _last_index(schedule, op.job_id),
                     "setup_min": op.setup_min,
+                    "rework": op.rework,
                 }
             )
         bars.sort(key=lambda bar: int(str(bar["start_min"])))
@@ -39,6 +40,8 @@ def build_gantt(plant: Plant, schedule: Schedule) -> dict[str, object]:
                 "area": equipment.area,
                 "status": equipment.status,
                 "available_at_min": equipment.available_at_min,
+                "bottleneck": bool(schedule.bottleneck_area)
+                and equipment.area == schedule.bottleneck_area,
                 "bars": bars,
             }
         )

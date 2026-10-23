@@ -10,7 +10,39 @@ Scout contracts use the wall clock. A contract TTL of five minutes is the public
 
 ## Data
 
-`Plant` is the in-memory snapshot: equipment, jobs, routes, stock, operators, maintenance. Two sources build the same object.
+`Plant` is the in-memory snapshot: equipment, jobs, routes, queue-time rules, stock, operators, maintenance. Two sources build the same object.
+
+A product follows one route. A route is an ordered list of operations. The same area can return on a later layer. PROD-A28 is lithography, etch, CMP on layer L1, then the same three areas again on L2. A lot released only through CMP is scheduled through the first CMP and does not enter L2 today. That is a release limit, not a second route.
+
+```mermaid
+erDiagram
+  PRODUCT ||--|| ROUTE : follows
+  ROUTE ||--|{ ROUTE_STEP : orders
+  PRODUCT ||--|{ QTIME_RULE : limits
+  PRODUCT ||--|{ WIP_JOB : releases
+  ROUTE_STEP {
+    int step_no
+    string operation
+    string area
+    string recipe
+    string layer
+  }
+  QTIME_RULE {
+    string from_step
+    string to_step
+    int max_min
+  }
+  WIP_JOB {
+    string released_through
+    string rework_of
+    int rework_count
+    int rework_limit
+  }
+```
+
+A queue-time rule says the start of `to_step` must be within `max_min` of the end of `from_step`. The sample uses etch to CMP, which is the handoff this bay actually runs. The same shape covers a clean-to-furnace limit. There is no furnace in this six-tool bay, so the seed does not invent one.
+
+The sample limit is 1100 minutes. Waiting out the scanner repair still places every lot, and LOT-1003, whose etch finished before 06:30, sits past 80 percent of that limit. The queue-time scenario tightens the B14 rule to 15 minutes. The Zetaris tables are `route`, `route_steps`, and `qtime_rule`, plus release and rework columns on `wip_jobs`. `data/sql/seed.sql` is generated from `data/sample`.
 
 - `SampleSource` reads `data/sample` and records the SQL that Zetaris would have run.
 - `ZetarisSource` runs that SQL through `agent.tools_zetaris.run_sql` and folds the rows with `plant_from_rows`.
@@ -21,18 +53,21 @@ The schema name is checked against `^[A-Za-z_][A-Za-z0-9_]*$` before it is inter
 
 `schedule_plant` is a list scheduler.
 
-1. Expand each lot's remaining route. An in-progress step keeps its remaining minutes. A step that already finished is skipped. The sample's LOT-1003 has finished etch by 06:30, so only CMP remains.
+1. Expand each lot's remaining route. An in-progress step keeps its remaining minutes. A step that already finished is skipped and opens a queue-time window if a rule names it. The sample's LOT-1003 has finished etch by 06:30, so only CMP remains. A rework flag inserts strip, then one re-expose, after the failed lithography step, and stops when `rework_count` has reached `rework_limit`.
 2. Pin lots that are running on an up tool. They are not preempted.
-3. Dispatch the rest by priority, then due time, then lot id.
-4. For each step, pick the qualified tool that minimizes estimated priority-weighted tardiness, then finish time, then setup.
-5. Charge setup only when the setup family changes. The family on a tool at the horizon is unknown, so the first lot on a tool pays no setup.
-6. A tool runs one lot at a time. Operator demand across overlapping operations cannot exceed the pool. Material is consumed when a not-yet-started lot is dispatched. Short material holds the lot instead of driving stock negative.
+3. Name the bottleneck: the area with the most remaining process minutes per up-tool minute over one day. A down tool adds no minutes. Ties break by area name.
+4. Dispatch by priority, then due time, then whether the step is in the bottleneck or feeds it, then ready time, then lot id.
+5. For each step, pick the qualified tool that minimizes estimated priority-weighted tardiness, then finish time, then setup. If the queue-time window is open and every feasible start misses it, the lot is held and the reason starts with `Q-time`. The book does not place a violating operation.
+6. Charge setup only when the setup family changes. The family on a tool at the horizon is unknown, so the first lot on a tool pays no setup.
+7. A tool runs one lot at a time. Operator demand across overlapping operations cannot exceed the pool. Material is consumed when a not-yet-started lot is dispatched. Short material holds the lot instead of driving stock negative.
 
 `frozen` keeps the current assignment of the current step, which is how "wait for repair" is modeled: LOT-1001 stays on LITHO-02 until `available_at_min`. `recover` may move blocked and queued lots to any qualified tool.
 
 ## Critic
 
-`critique_schedule` re-checks the committed schedule: calendar, capability, overlap, simultaneous WIP, operators, material, precedence, preemption. High violations reject. Holds without a hard violation are conditional. The naive alternative (start on a down tool, preempt a running lot, or expedite without resist) goes through `critique_actions` and is what the console shows as rejected.
+`critique_schedule` re-checks the committed schedule: calendar, capability, overlap, simultaneous WIP, operators, material, precedence, preemption, and queue time. A placed pair whose gap exceeds the rule is a high violation. A held lot is not a queue-time failure; the hold is how the book keeps the rule. High violations reject. Holds without a hard violation are conditional. The naive alternative (start on a down tool, preempt a running lot, expedite without resist, or start CMP after the etch window) goes through `critique_actions` and is what the console shows as rejected.
+
+When a recovery assigns or moves a lot onto the bottleneck area, the action reason says so, and the brief adds one sentence to its last point. Dispatch already prefers that area, and the step that feeds it, ahead of other work at the same priority and due time.
 
 The model is not on this path. A Nightshift outage cannot authorize a bad move.
 
@@ -72,7 +107,7 @@ The explainer calls `LlmProvider.complete` once per recovery. In mock mode that 
 
 FastAPI serves `/` and `/api/*`. The page is static HTML, CSS, and JS with no build step and no external font or script host, so `make demo` works offline. `POST /api/recover/stream` emits each real step (alert, Scout, contract, Zetaris read, sense, plan, critique, explain, commit) as server-sent events while `run_recovery` is still running, then the same report as `POST /api/recover`. Mock mode inserts a 680 ms gap between those events so the console can be filmed. The gap is delivery pacing; `elapsed_ms` on each event is the compute time. `pace_ms: 0` skips it. Live mode does not pace.
 
-The Recover tab is the filmed frame: one headline, the critic's refusal, three numbers (on-time delivery, weighted tardiness, lots at risk), a slim loop stepper, and the before/after Gantt. Analyze holds the rest of the board. Verify lists each constraint check as pass, fail, or refused. The Gantt uses one time scale for both charts. Down time is the hatched band. A bar outline marks a lot whose tool changed. A dashed tick marks a priority-1 due. KPI color comes from `tones` on the report: up or down only when the two books are comparable, otherwise flat. A stockout that holds lots out of the after book keeps makespan, lead time, X-factor, and changeovers flat. Durations on screen are hours and days; the API still speaks minutes.
+The Recover tab is the filmed frame: one headline, the critic's refusal, three numbers (on-time delivery, weighted tardiness, lots at risk), a slim loop stepper, and the before/after Gantt. Analyze holds the rest of the board, including a queue-time card (compliance, violations, at-risk) and the bottleneck card. Verify lists each constraint check as pass, fail, or refused, including queue time. The Gantt uses one time scale for both charts. Down time is the hatched band. A bar outline marks a lot whose tool changed. A rework bar adds a diagonal stripe on top of the area color. The bottleneck area has a mark on the tool label. A dashed tick marks a priority-1 due. KPI color comes from `tones` on the report: up or down only when the two books are comparable, otherwise flat. A stockout that holds lots out of the after book keeps makespan, lead time, X-factor, and changeovers flat. Durations on screen are hours and days; the API still speaks minutes.
 
 ## Failure behavior
 

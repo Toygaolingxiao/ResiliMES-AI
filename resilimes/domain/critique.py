@@ -6,7 +6,7 @@ conditional: the holds are visible, and nothing impossible was committed.
 
 from __future__ import annotations
 
-from .models import Action, Critique, Plant, Schedule, Violation
+from .models import Action, Critique, Plant, Schedule, ScheduledOp, Violation
 
 UNAVAILABLE = {"DOWN", "MAINTENANCE"}
 
@@ -21,6 +21,7 @@ def critique_schedule(plant: Plant, schedule: Schedule) -> Critique:
     violations.extend(_material(plant, schedule))
     violations.extend(_precedence(schedule))
     violations.extend(_preemption(plant, schedule))
+    violations.extend(_qtime(plant, schedule))
     return _summarize(violations, held=bool(schedule.unscheduled))
 
 
@@ -33,6 +34,7 @@ _CHECK_ORDER = (
     "material",
     "precedence",
     "preemption",
+    "qtime",
 )
 
 
@@ -106,6 +108,34 @@ def critique_actions(plant: Plant, actions: list[Action]) -> Critique:
                     fix_hint="Choose an IDLE or RUNNING tool with the same capability.",
                 )
             )
+        if (
+            job is not None
+            and action.step
+            and action.start_min is not None
+            and action.anchor_end_min is not None
+        ):
+            rule = next(
+                (
+                    item
+                    for item in plant.qtime_rules
+                    if item.product_id == job.product_id and item.to_step == action.step
+                ),
+                None,
+            )
+            gap = action.start_min - action.anchor_end_min
+            if rule is not None and gap > rule.max_min:
+                violations.append(
+                    Violation(
+                        constraint="qtime",
+                        severity="high",
+                        detail=(
+                            f"{rule.from_step} ended at t={action.anchor_end_min} min; "
+                            f"{action.job_id} {action.step} cannot start at t={action.start_min} min "
+                            f"(limit {rule.max_min} min)."
+                        ),
+                        fix_hint="Start the next step inside the queue-time window, or hold the lot.",
+                    )
+                )
         if job is not None and action.step:
             route = {step.step: step for step in products[job.product_id].route}
             needed = route.get(action.step)
@@ -361,6 +391,39 @@ def _preemption(plant: Plant, schedule: Schedule) -> list[Violation]:
                     severity="high",
                     detail=(f"{job.job_id} was moved off {job.assigned_equipment} while running."),
                     fix_hint="Keep the running lot on its current tool.",
+                )
+            )
+    return found
+
+
+def _qtime(plant: Plant, schedule: Schedule) -> list[Violation]:
+    found: list[Violation] = []
+    by_job: dict[str, dict[str, ScheduledOp]] = {}
+    for op in schedule.operations:
+        by_job.setdefault(op.job_id, {})[op.step] = op
+    jobs = plant.job_map()
+    for rule in plant.qtime_rules:
+        for job_id, ops in by_job.items():
+            job = jobs.get(job_id)
+            if job is None or job.product_id != rule.product_id:
+                continue
+            left = ops.get(rule.from_step)
+            right = ops.get(rule.to_step)
+            if left is None or right is None:
+                continue
+            gap = right.start_min - left.end_min
+            if gap <= rule.max_min:
+                continue
+            found.append(
+                Violation(
+                    constraint="qtime",
+                    severity="high",
+                    detail=(
+                        f"{rule.from_step} ended at t={left.end_min} min; "
+                        f"{job_id} {rule.to_step} starts at t={right.start_min} min, "
+                        f"past the {rule.max_min} min queue time."
+                    ),
+                    fix_hint="Start the next step inside the queue-time window, or hold the lot.",
                 )
             )
     return found

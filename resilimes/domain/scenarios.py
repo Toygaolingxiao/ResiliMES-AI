@@ -11,6 +11,8 @@ from .plant import enrich_availability
 
 LITHO_REPAIR_MIN = 600
 RUSH_DUE_MIN = 180
+QTIME_TIGHT_MIN = 15
+QTIME_TIGHT_RULE = "QT-B14-ETCH-CMP"
 
 
 class Scenario(BaseModel):
@@ -64,6 +66,30 @@ SCENARIOS: dict[str, Scenario] = {
         before_label="Resist available",
         after_label="RESIST-UV stockout",
         kind="stockout",
+    ),
+    "rework": Scenario(
+        id="rework",
+        title="Lithography rework",
+        incident=(
+            "Rework: LOT-1004 overlay failed at lithography. "
+            "Strip and re-expose once. Rework limit is 1."
+        ),
+        summary="Overlay failed on LOT-1004. Strip the resist and re-expose once.",
+        before_label="No rework",
+        after_label="Strip and re-expose",
+        kind="rework",
+    ),
+    "qtime": Scenario(
+        id="qtime",
+        title="Queue time",
+        incident=(
+            "Q-time: etch to CMP must start within 15 minutes. "
+            "The naive plan starts CMP after the window."
+        ),
+        summary="Etch on LOT-1003 finished before the clock. CMP must start within 15 min.",
+        before_label="8 h queue time",
+        after_label="15 min queue time",
+        kind="qtime",
     ),
 }
 
@@ -120,6 +146,22 @@ def plants_for_scenario(base: Plant, scenario_id: str) -> ScenarioPlants:
             incident=scenario.incident,
             scenario=scenario,
         )
+    if scenario.kind == "rework":
+        healthy = _restore_litho(base)
+        return ScenarioPlants(
+            before=healthy,
+            after=_mark_rework(healthy),
+            incident=scenario.incident,
+            scenario=scenario,
+        )
+    if scenario.kind == "qtime":
+        healthy = _restore_litho(base)
+        return ScenarioPlants(
+            before=healthy,
+            after=_tighten_qtime(healthy),
+            incident=scenario.incident,
+            scenario=scenario,
+        )
     raise KeyError(scenario.kind)
 
 
@@ -155,6 +197,26 @@ def apply_free_text(
             if material.material_id == target:
                 material.on_hand = 0
         return ScenarioPlants(before=host, after=short, incident=incident, scenario=None)
+    if intent_id == "plant.rework":
+        host = base.model_copy(deep=True)
+        if "down" not in incident.lower():
+            host = _restore_litho(base)
+        return ScenarioPlants(
+            before=host,
+            after=_mark_rework(host),
+            incident=incident,
+            scenario=None,
+        )
+    if intent_id == "plant.qtime":
+        host = base.model_copy(deep=True)
+        if "down" not in incident.lower():
+            host = _restore_litho(base)
+        return ScenarioPlants(
+            before=host,
+            after=_tighten_qtime(host),
+            incident=incident,
+            scenario=None,
+        )
     disrupted = _apply_down(base, parameters)
     return ScenarioPlants(
         before=disrupted,
@@ -221,8 +283,28 @@ def _add_rush(plant: Plant) -> Plant:
             process_time_min=90,
             remaining_steps=["LITHO", "ETCH", "CMP"],
             preferred_equipment=["LITHO-01", "LITHO-02"],
+            released_through="CMP",
         )
     )
+    return copied
+
+
+def _mark_rework(plant: Plant) -> Plant:
+    copied = plant.model_copy(deep=True)
+    for job in copied.jobs:
+        if job.job_id == "LOT-1004":
+            job.rework_of = "LITHO"
+            job.rework_count = 0
+            job.rework_limit = 1
+    return copied
+
+
+def _tighten_qtime(plant: Plant) -> Plant:
+    """Close the etch-to-CMP window that LOT-1003 already missed."""
+    copied = plant.model_copy(deep=True)
+    for rule in copied.qtime_rules:
+        if rule.rule_id == QTIME_TIGHT_RULE:
+            rule.max_min = QTIME_TIGHT_MIN
     return copied
 
 

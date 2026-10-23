@@ -1,4 +1,4 @@
-product_id,name
-PROD-A28,Logic Node A28
-PROD-B14,Analog Node B14
-PROD-C07,Sensor Node C07
+product_id,name,route_id
+PROD-A28,Logic Node A28,ROUTE-A28
+PROD-B14,Analog Node B14,ROUTE-B14
+PROD-C07,Sensor Node C07,ROUTE-C07

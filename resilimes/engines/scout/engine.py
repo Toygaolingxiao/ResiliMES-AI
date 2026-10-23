@@ -49,6 +49,8 @@ _TRIGGERS: dict[str, tuple[str, ...]] = {
         r"stop the entire",
         r"stop all tools",
     ),
+    "plant.rework": (r"\brework\b", r"\boverlay\b", r"\bstrip\b"),
+    "plant.qtime": (r"\bq-time\b", r"\bqueue time\b", r"\bqueue-time\b"),
 }
 
 _INJECTION = (

@@ -54,6 +54,7 @@ class ZetarisSource:
             material_rows=tables["materials"],
             operator_rows=tables["operators"],
             maintenance_rows=tables["maintenance_logs"],
+            qtime_rows=tables.get("qtime_rule", []),
             source="zetaris",
         )
         return plant, records

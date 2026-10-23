@@ -5,7 +5,7 @@ from __future__ import annotations
 from itertools import pairwise
 from typing import cast
 
-from .models import JobOutcome, KpiReport, Plant, Schedule, ScheduledOp, priority_weight
+from .models import Job, JobOutcome, KpiReport, Plant, Schedule, ScheduledOp, priority_weight
 from .plant import minutes_between
 
 _UNSCHEDULED_LATE = 24 * 60
@@ -384,6 +384,101 @@ def _utilization(plant: Plant, schedule: Schedule, makespan: int) -> float:
         return 0.0
     busy = sum(op.process_min + op.setup_min for op in schedule.operations)
     return 100.0 * busy / available
+
+
+def qtime_report(plant: Plant, schedule: Schedule) -> dict[str, object]:
+    """Queue-time pairs on this book.
+
+    A pair that starts inside the limit is met. A pair past 80 percent of the
+    limit is still met, and counted at risk. A placed pair past the limit is a
+    violation. A lot the solver held because the window was already closed is
+    held. Compliance is met plus at-risk, over those four.
+    """
+    by_job: dict[str, dict[str, ScheduledOp]] = {}
+    for op in schedule.operations:
+        by_job.setdefault(op.job_id, {})[op.step] = op
+    held_lots = {item.job_id: item for item in schedule.unscheduled}
+    rows: list[dict[str, object]] = []
+    for rule in plant.qtime_rules:
+        for job in plant.jobs:
+            if job.product_id != rule.product_id:
+                continue
+            ops = by_job.get(job.job_id, {})
+            left = ops.get(rule.from_step)
+            right = ops.get(rule.to_step)
+            hold = held_lots.get(job.job_id)
+            anchor = left.end_min if left is not None else _carried_end(job, rule.from_step, plant)
+            if anchor is not None and right is not None:
+                gap = right.start_min - anchor
+                if gap > rule.max_min:
+                    state = "violation"
+                elif gap > 0.8 * rule.max_min:
+                    state = "risk"
+                else:
+                    state = "met"
+                rows.append(
+                    {
+                        "job_id": job.job_id,
+                        "from_step": rule.from_step,
+                        "to_step": rule.to_step,
+                        "gap_min": gap,
+                        "max_min": rule.max_min,
+                        "state": state,
+                    }
+                )
+                continue
+            if hold is not None and hold.step == rule.to_step and hold.reason.startswith("Q-time"):
+                rows.append(
+                    {
+                        "job_id": job.job_id,
+                        "from_step": rule.from_step,
+                        "to_step": rule.to_step,
+                        "gap_min": None,
+                        "max_min": rule.max_min,
+                        "state": "held",
+                    }
+                )
+    met = sum(1 for row in rows if row["state"] == "met")
+    risk = sum(1 for row in rows if row["state"] == "risk")
+    violation = sum(1 for row in rows if row["state"] == "violation")
+    held_n = sum(1 for row in rows if row["state"] == "held")
+    applicable = met + risk + violation + held_n
+    compliance = round(100.0 * (met + risk) / applicable, 1) if applicable else 100.0
+    return {
+        "compliance_pct": compliance,
+        "violations": violation,
+        "at_risk": risk,
+        "held": held_n,
+        "rows": rows,
+    }
+
+
+def _carried_end(job: Job, from_step: str, plant: Plant) -> int | None:
+    """End of a step that finished before the scenario clock, in horizon minutes."""
+    if job.current_step != from_step or job.started_at is None or job.status != "RUNNING":
+        return None
+    elapsed = minutes_between(job.started_at, plant.horizon)
+    if elapsed < job.process_time_min:
+        return None
+    return job.process_time_min - elapsed
+
+
+def bottleneck_report(
+    before: Schedule,
+    after: Schedule,
+    before_areas: list[dict[str, object]],
+    after_areas: list[dict[str, object]],
+) -> dict[str, object]:
+    """The tightest area on the recovered book, with both utilizations."""
+    area = after.bottleneck_area or before.bottleneck_area
+
+    def pct(rows: list[dict[str, object]]) -> float:
+        for row in rows:
+            if row.get("area") == area:
+                return float(cast(float, row["utilization_pct"]))
+        return 0.0
+
+    return {"area": area, "before_pct": pct(before_areas), "after_pct": pct(after_areas)}
 
 
 def completion_of(schedule: Schedule, job_id: str) -> int | None:

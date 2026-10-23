@@ -19,10 +19,16 @@ COLUMNS = {
     ),
     "wip_jobs": (
         "job_id, product_id, priority, qty, current_step, assigned_equipment, status, "
-        "due_at, started_at, process_time_min, remaining_steps, preferred_equipment"
+        "due_at, started_at, process_time_min, remaining_steps, preferred_equipment, "
+        "released_through, rework_of, rework_count, rework_limit"
     ),
-    "products": "product_id, name",
-    "route_steps": "product_id, step_index, step, capability, process_time_min, setup_family",
+    "products": "product_id, name, route_id",
+    "route": "route_id, product_id, name",
+    "route_steps": (
+        "product_id, step_index, step, capability, process_time_min, setup_family, "
+        "step_no, operation, area, recipe, layer, rework"
+    ),
+    "qtime_rule": "rule_id, product_id, from_step, to_step, max_min",
     "bom": "product_id, material_id, qty_per_lot",
     "materials": "material_id, name, on_hand, unit",
     "operators": "operator_id, name, certified, shift",
