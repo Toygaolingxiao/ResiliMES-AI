@@ -1,8 +1,8 @@
 # Demo script
 
-Target length: 3 minutes 20 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
+Target length: 3 minutes 30 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
 
-Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks scheduled lateness as hours: 744 minutes is 12 h 24 min, 584 minutes is 9 h 44 min. A held lot is not given a finish time, so a stockout does not become a day count.
+Record the machine-breakdown path on `make demo` even if you also record one live call. The figures below are what mock mode produces for the sample fab. The console speaks scheduled lateness as hours: 784 minutes is 13 h 4 min, 288 minutes is 4 h 48 min. A held lot is not given a finish time, so a stockout does not become a day count.
 
 The Recover tab is the filmed frame. Do not scroll it. Idle shows one empty state, not a row of Waiting cards. No scenario is marked active until you press Run.
 
@@ -12,7 +12,7 @@ The Recover tab is the filmed frame. Do not scroll it. Idle shows one empty stat
 make demo
 ```
 
-Open http://127.0.0.1:8000. Do not click yet. The ground is flat gray, the cards are white, and indigo is only the accent. The amber banner must be visible in mock mode. The header is one line: ResiliMES, the tagline, and a version chip. The version chip opens a one-line note about this layout. The bay lamps already show Running, Idle, Down, Maintenance, or In stock. Language can stay on English; switch to 中文 or 日本語 only if you want that sentence on camera, then switch back before the numbers.
+Open http://127.0.0.1:8000. Do not click yet. The ground is flat gray, the cards are white, and indigo is only the accent. The amber banner must be visible in mock mode. The header is one line: ResiliMES, the tagline, and a version chip. Idle reads "Recovery for this shift". A six-lot story switches it to "Recovery for one bay". Scale switches it to "Recovery for a 36-tool fab". The version chip opens a one-line note about this layout. The bay lamps already show Running, Idle, Down, Maintenance, or In stock. Language can stay on English; switch to 中文 or 日本語 only if you want that sentence on camera, then switch back before the numbers.
 
 Optional second clip, only if credentials are set: `python -m resilimes recover --scenario litho_down` and show `provider_call.provider` and `provider_call.model` while the token stays off screen.
 
@@ -52,7 +52,7 @@ Leave the theme on Light. Dark is the control next to the languages, for a secon
 
 Open **Verify**.
 
-"The pill says accepted. Each row is one registered check. Tool calendar passed on the committed book. Open that row for the refused plan that started LOT-1001 on the down scanner. Open Reticle for the same plan: the mask is on LITHO-01 until the running lot finishes. The solver commits. The model does not."
+"The pill says accepted. Each row is one registered check. Tool calendar passed on the committed book. Open that row for the refused plan that started LOT-1001 on the down scanner. Reticle passes on the committed book: each physical copy is on one scanner. The spare L1 copy is free, so that refused plan is a down-tool miss. The solver commits. The model does not."
 
 Back on **Recover**, hover Nightshift. In this recording the tip reads `mock · resilimes-mock`.
 
@@ -60,9 +60,9 @@ Back on **Recover**, hover Nightshift. In this recording the tip reads `mock · 
 
 Open **Analyze**. This is the only place that scrolls.
 
-"Makespan goes from 14 h 12 min to 5 h 28 min. Mean lead time goes from 9 h 20 min to 3 h 30 min. Mean wait between steps goes from 2 h 2 min to 24 min. X-factor goes from 4.44 to 1.99. Utilization stays 11.6 percent, gray on purpose. Both books share one window, the longer makespan, 14 h 12 min. LITHO-02 is down 10 hours. That time is listed under the figures and is not in the denominator. DEP-01 is up. Its morning PM is already finished."
+"Makespan goes from 14 h 17 min to 5 h 28 min. Mean lead time goes from 9 h 23 min to 3 h 30 min. Mean wait between steps goes from 2 h 3 min to 24 min. X-factor goes from 4.47 to 1.99. Utilization stays 11.6 percent, gray on purpose. Both books share one window, the longer makespan, 14 h 17 min. LITHO-02 is down 10 hours. That time is listed under the figures and is not in the denominator. DEP-01 is up. Its morning PM is already finished."
 
-The area card has Before and After. The area percents stay flat: Lithography 19.9, Etch 10.9, CMP 13.0, Deposition 10.3, Metrology 7.0, Clean 7.0. The wait card's top row is deposition into etch, about 11 h 27 min while waiting and 2 h 37 min after. The lot table shows LOT-1001 as LITHO, LITHO-02 to LITHO-01. The queue-time card is 100 percent both ways. The bottleneck card names Lithography. The tool labels on that area carry a small mark.
+The area card has Before and After. The area percents stay flat: Lithography 19.7, Etch 10.8, CMP 13.0, Deposition 10.3, Metrology 7.0, Clean 7.0. The wait card's top row is deposition into etch, about 11 h 32 min while waiting and 2 h 37 min after. The lot table shows LOT-1001 as LITHO, LITHO-02 to LITHO-01. The queue-time card is 100 percent both ways. The bottleneck card names Lithography. The tool labels on that area carry a small mark.
 
 Return to **Recover** before the next disruption.
 
@@ -70,7 +70,7 @@ Return to **Recover** before the next disruption.
 
 Press **Run** on **Rush order**. After the stepper:
 
-"LOT-2001 finishes 1 hour 13 minutes late. The dashed tick on the after chart is its due, three hours out. The reticle stays on LITHO-01 with the running lot, so the hot lot takes that scanner next and finishes at 4 h 13 min. On-time delivery falls from 100 to 85.7 percent. Weighted tardiness rises by 9 h 44 min. Lots at risk go from zero to one. Pulling a running lot off its tool was refused: LOT-1002 is already running on LITHO-01. LOT-2001 is a new lot, so it is not in Lots moved."
+"LOT-2001 finishes 36 minutes late. The dashed tick on the after chart is its due, three hours out. LOT-1002 keeps RET-A28-L1-1 on LITHO-01. The hot lot takes the spare copy, RET-A28-L1-2, on LITHO-02 and finishes at 3 h 36 min. On-time delivery falls from 100 to 85.7 percent. Weighted tardiness rises by 4 h 48 min. Lots at risk go from zero to one. Pulling a running lot off its tool was refused: LOT-1002 is already running on LITHO-01. Hover a lithography bar for the copy id. LOT-2001 is a new lot, so it is not in Lots moved."
 
 Hover Scout on the stepper if you want the confidence. The canned rush sentence clears 92 percent.
 
@@ -90,7 +90,15 @@ Back on Recover for machine breakdown if you need the contract line again. In mo
 
 If you have the live clip, cut it here for five seconds: the JSON `provider` and `model` fields, token not visible.
 
-### 3:05–3:20 — Close (Impact, Demo)
+### 3:05–3:15 — Scale, ten seconds
+
+Press **Run** on **Scale**. Stay on Recover. Do not scroll. This frame is a tool strip, not a lot Gantt.
+
+"A thousand lots, 36 tools, one scanner down. The left strip is EDD dispatch: it already meets every due date, and the 24 priority-1 lots are on scanners that are up. Priority recovery matches on-time delivery, weighted tardiness, and lots at risk. All three stay at 100%, zero, and zero. The hatch is the down scanner. Schedule and critic, under a second."
+
+Point at the chart title "vs. EDD dispatch". Point at the stat line: schedule, critic, 1,000 lots, 36 tools, 3,426 steps, 14 passed. The three cards are flat. The strip is the first 12 hours. CMP stays the bottleneck, about 84.7%. The refused line names LITHO-03 down until minute 600.
+
+### 3:15–3:30 — Close (Impact, Demo)
 
 "The supervisor gets a schedule they can defend: what moved, what was refused, and the due-date delta in hours, not a raw minute count. Next we point the same loop at the plant's Zetaris tables and the team's Nightshift token. The banner already says which path you are on."
 

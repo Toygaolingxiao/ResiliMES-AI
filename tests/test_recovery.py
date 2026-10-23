@@ -105,6 +105,7 @@ def test_api_health_scenarios_and_recover() -> None:
         "material_shortage",
         "rework",
         "qtime",
+        "scale",
     }
     recovered = client.post("/api/recover", json={"scenario": "litho_down"})
     assert recovered.status_code == 200

@@ -77,22 +77,35 @@ def table_rows() -> dict[str, list[dict[str, str]]]:
 
 
 def render_sql(schema: str = "resilimes") -> str:
-    rows = table_rows()
-    lines = [
-        "-- ResiliMES factory seed for the Zetaris SQL editor.",
-        "-- Generated from data/sample. Do not edit by hand; run: python scripts/export_zetaris_sql.py",
-        "--",
-        "-- Assumption: the organisation can create tables in a database named",
-        f"-- `{schema}`. If the SQL editor rejects CREATE TABLE, register the CSVs in",
-        "-- data/zetaris/ as Lightning tables with the same names and set ZETARIS_SCHEMA.",
-        "-- Numeric columns are VARCHAR on purpose. The application casts them.",
-        "",
-    ]
+    return render_tables(
+        table_rows(),
+        schema=schema,
+        preamble=[
+            "-- ResiliMES factory seed for the Zetaris SQL editor.",
+            "-- Generated from data/sample. Do not edit by hand; run: python scripts/export_zetaris_sql.py",
+            "--",
+            "-- Assumption: the organisation can create tables in a database named",
+            f"-- `{schema}`. If the SQL editor rejects CREATE TABLE, register the CSVs in",
+            "-- data/zetaris/ as Lightning tables with the same names and set ZETARIS_SCHEMA.",
+            "-- Numeric columns are VARCHAR on purpose. The application casts them.",
+            "",
+        ],
+    )
+
+
+def render_tables(
+    rows: dict[str, list[dict[str, str]]],
+    *,
+    schema: str,
+    preamble: list[str],
+) -> str:
+    lines = list(preamble)
     for name in TABLES:
-        columns = list(rows[name][0].keys())
+        table = rows[name]
+        columns = list(table[0].keys()) if table else []
         col_sql = ", ".join(f"{column} VARCHAR(256)" for column in columns)
         lines.append(f"CREATE TABLE {schema}.{name} ({col_sql});")
-        for row in rows[name]:
+        for row in table:
             values = ", ".join(_quote(row[column]) for column in columns)
             listed = ", ".join(columns)
             lines.append(f"INSERT INTO {schema}.{name} ({listed}) VALUES ({values});")
@@ -100,15 +113,19 @@ def render_sql(schema: str = "resilimes") -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def render_csv(name: str) -> str:
-    rows = table_rows()[name]
+def render_csv_rows(rows: list[dict[str, str]]) -> str:
+    if not rows:
+        return ""
     headers = list(rows[0].keys())
     output: list[str] = []
-    writer_target = _ListWriter(output)
-    writer = csv.DictWriter(writer_target, fieldnames=headers, lineterminator="\n")
+    writer = csv.DictWriter(_ListWriter(output), fieldnames=headers, lineterminator="\n")
     writer.writeheader()
     writer.writerows(rows)
     return "".join(output)
+
+
+def render_csv(name: str) -> str:
+    return render_csv_rows(table_rows()[name])
 
 
 def _equipment(row: dict[str, Any]) -> dict[str, str]:

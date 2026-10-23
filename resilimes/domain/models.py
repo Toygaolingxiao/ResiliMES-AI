@@ -44,7 +44,7 @@ class QTimeRule(BaseModel):
 
 
 class Reticle(BaseModel):
-    """One lithography mask for a product layer. It can sit on one tool at a time."""
+    """One physical copy of a lithography mask. Copies of one layer share product and step."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -222,6 +222,8 @@ class ScheduledOp(BaseModel):
     priority: int
     pinned: bool = False
     rework: bool = False
+    reticle_id: str = ""
+    reticle_load_min: int = 0
 
 
 class Unscheduled(BaseModel):

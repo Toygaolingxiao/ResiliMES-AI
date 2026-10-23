@@ -53,7 +53,9 @@ const ANALYZE_KEYS = [
 
 const COPY = {
   en: {
-    tagline: "Recovery for one bay",
+    taglineIdle: "Recovery for this shift",
+    taglineBay: "Recovery for one bay",
+    taglineScale: "Recovery for a 36-tool fab",
     versionNote: "The first frame is the decision: one sentence, the refusal, three numbers, and both books. Analyze holds the rest. Verify lists the critic's checks.",
     lang: "Language",
     disruption: "Disruption",
@@ -149,6 +151,7 @@ const COPY = {
     violations: "Violations",
     atRisk: "At risk",
     rework: "Rework",
+    reticle: "Reticle",
     areaTip: "Busy time in this area divided by up-time in this area, on the shared window.",
     waitPair: "Mean gap from {from} to {to} on the after book, across {n} lots.",
     tardyCellTip: "Lateness before, then after. A lot with no finish time is charged 24 hours.",
@@ -185,6 +188,7 @@ const COPY = {
     utilNote: "Highest share of up-time first.",
     waitNote: "Largest gaps on the after book.",
     lotNote: "The step whose tool changed. First tool if the lot did not move.",
+    lotNoteScale: "Steps whose tool differs from EDD dispatch. First 12.",
     intents: {
       machine_down: "machine down",
       rush_order: "rush order",
@@ -223,12 +227,21 @@ const COPY = {
       material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
       rework: ["Overlay rework", "LOT-1004 overlay failed at measure. Strip, re-expose, re-measure once."],
       qtime: ["Queue time", "Clean already finished. The next film must start within 15 min."],
+      scale: ["Scale", "1,000 lots, 36 tools. One scanner is down for 10 h."],
     },
-    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time" },
+    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time", scale: "vs. EDD dispatch" },
+    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time", scale: "Priority recovery" },
+    scaleWindow: "First 12 hours",
+    scaleNote: "Busy share of each tool, by hour. A hatch means the tool is down.",
+    scheduleWord: "Schedule",
+    criticWord: "Critic",
+    stepsWord: "steps",
+    toolsWord: "tools",
   },
   zh: {
-    tagline: "一个机台的恢复",
+    taglineIdle: "这一班的恢复",
+    taglineBay: "一个机台的恢复",
+    taglineScale: "36 台设备的恢复",
     versionNote: "第一屏是决定：一句话、拒绝理由、三个数字，和两本账。分析页放其余数字。核对页是评审的检查。",
     lang: "语言",
     disruption: "异常",
@@ -324,6 +337,7 @@ const COPY = {
     violations: "超时",
     atRisk: "临近",
     rework: "返工",
+    reticle: "光罩",
     areaTip: "该区域的忙时，除以该区域在共享窗口内的可用时间。",
     waitPair: "恢复后从 {from} 到 {to} 的平均间隔，共 {n} 个批次。",
     tardyCellTip: "移动前的拖期，然后是移动后。没有完工时间按 24 小时计。",
@@ -360,6 +374,7 @@ const COPY = {
     utilNote: "可用时间占比从高到低。",
     waitNote: "恢复后最大的间隔。",
     lotNote: "换了设备的那道工序。没移动的批次显示第一台设备。",
+    lotNoteScale: "与 EDD 派工不同的工序。前 12 条。",
     intents: {
       machine_down: "设备宕机",
       rush_order: "急单",
@@ -391,12 +406,21 @@ const COPY = {
       material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
       rework: ["套刻返工", "LOT-1004 量测套刻失败。去胶、再曝光、再量一次。"],
       qtime: ["队列时间", "清洗已经结束。下一道成膜必须在 15 分钟内开工。"],
+      scale: ["规模", "1000 个批次、36 台设备。一台光刻机宕机 10 小时。"],
     },
-    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列" },
+    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列", scale: "对比 EDD 派工" },
+    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列", scale: "优先级恢复" },
+    scaleWindow: "前 12 小时",
+    scaleNote: "每台设备每小时的忙碌占比。斜线表示宕机。",
+    scheduleWord: "排程",
+    criticWord: "评审",
+    stepsWord: "工序",
+    toolsWord: "设备",
   },
   ja: {
-    tagline: "一つのベイの回復",
+    taglineIdle: "この直の回復",
+    taglineBay: "一つのベイの回復",
+    taglineScale: "36 台の回復",
     versionNote: "最初の画面が判断です。一文、拒否、三つの数字、二つの帳票。分析に残りの数字。検証に批評の検査。",
     lang: "言語",
     disruption: "異常",
@@ -492,6 +516,7 @@ const COPY = {
     violations: "超過",
     atRisk: "危険",
     rework: "再加工",
+    reticle: "レチクル",
     areaTip: "このエリアの稼働時間を、共有の窓で上がっている時間で割る。",
     waitPair: "回復後の {from} から {to} までの平均間隔。{n} ロット。",
     tardyCellTip: "移動前の遅延、その後が移動後。完了時刻がなければ 24 時間。",
@@ -528,6 +553,7 @@ const COPY = {
     utilNote: "上がっている時間の割合が高い順。",
     waitNote: "回復後の大きい間隔。",
     lotNote: "装置が変わった工程。移動していないロットは最初の装置。",
+    lotNoteScale: "EDD 差し立てと装置が違う工程。先頭 12 件。",
     intents: {
       machine_down: "装置停止",
       rush_order: "特急",
@@ -559,9 +585,16 @@ const COPY = {
       material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
       rework: ["重ね合わせ再加工", "LOT-1004 は測定で不良。剥離し、再露光し、再測定する。"],
       qtime: ["待ち時間", "洗浄は終了済み。次の成膜は 15 分以内に始める。"],
+      scale: ["規模", "1000 ロット、36 台。スキャナー 1 台が 10 時間停止。"],
     },
-    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分" },
+    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間", scale: "EDD 差し立てとの比較" },
+    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分", scale: "優先度の回復" },
+    scaleWindow: "最初の 12 時間",
+    scaleNote: "装置ごとの 1 時間の稼働割合。斜線は停止。",
+    scheduleWord: "計画",
+    criticWord: "批評",
+    stepsWord: "工程",
+    toolsWord: "装置",
   },
 };
 
@@ -653,10 +686,17 @@ function t() {
   return COPY[state.lang] || COPY.en;
 }
 
+function taglineFor(copy) {
+  const id = (state.report && state.report.scenario_id) || state.activeScenario || "";
+  if (id === "scale") return copy.taglineScale;
+  if (id) return copy.taglineBay;
+  return copy.taglineIdle;
+}
+
 function paint() {
   const copy = t();
   document.documentElement.lang = state.lang === "zh" ? "zh-Hans" : state.lang === "ja" ? "ja" : "en";
-  $("#tagline").textContent = copy.tagline;
+  $("#tagline").textContent = taglineFor(copy);
   $("#version").textContent = state.health && state.health.version ? state.health.version : "";
   $("#note").textContent = copy.versionNote;
   $("#lang-label").textContent = copy.lang;
@@ -756,6 +796,25 @@ function bayStatus() {
 function paintBay(statusById) {
   const host = $("#bay");
   host.innerHTML = "";
+  const scaleRows = state.report && state.report.scenario_id === "scale" && state.report.load && state.report.load.after && state.report.load.after.rows;
+  if (scaleRows) {
+    const counts = {};
+    const down = {};
+    for (const row of scaleRows) {
+      counts[row.area] = (counts[row.area] || 0) + 1;
+      if (row.status === "DOWN" || row.status === "MAINTENANCE") down[row.area] = true;
+    }
+    const order = ["Deposition", "Lithography", "Metrology", "Etch", "Clean", "CMP"];
+    for (const area of order) {
+      if (!counts[area]) continue;
+      const li = document.createElement("li");
+      const status = down[area] ? "DOWN" : "IDLE";
+      const name = (t().areas && t().areas[area]) || area;
+      li.innerHTML = `<span class="lamp ${lampClass(status, "tool")}"></span><span>${escapeHtml(name)}</span><small>${counts[area]}</small>`;
+      host.appendChild(li);
+    }
+    return;
+  }
   const rows = state.bay.length ? state.bay : [];
   for (const item of rows) {
     const li = document.createElement("li");
@@ -800,7 +859,7 @@ function paintRecover() {
   story.hidden = !showStory;
   cards.hidden = !report || !report.kpis;
   stepper.hidden = !showStory;
-  result.hidden = !report || !report.gantt;
+  result.hidden = !report || (!report.gantt && !report.load);
   if (state.running && !report) {
     $("#headline").textContent = state.incidentText;
     $("#refusal").textContent = "";
@@ -811,7 +870,7 @@ function paintRecover() {
   }
   if (report && report.kpis) renderCards(report);
   if (showStory) paintStepper();
-  if (report && report.gantt) renderCharts(report);
+  if (report && (report.gantt || report.load)) renderCharts(report);
 }
 
 function refusalLine(report) {
@@ -901,6 +960,10 @@ function paintStepper() {
 }
 
 function renderCharts(report) {
+  if (report.load) {
+    renderScale(report);
+    return;
+  }
   const copy = t();
   const beforeName = (copy.chartBefore && copy.chartBefore[report.scenario_id]) || report.before_label;
   const afterName = (copy.chartAfter && copy.chartAfter[report.scenario_id]) || report.after_label;
@@ -1134,11 +1197,14 @@ function lotsCard(report) {
   const copy = t();
   const card = document.createElement("article");
   card.className = "card wide";
-  card.appendChild(cardHead(copy.lots, copy.lotNote));
+  const note = report.scenario_id === "scale" ? copy.lotNoteScale : copy.lotNote;
+  card.appendChild(cardHead(copy.lots, note));
   const table = document.createElement("table");
   table.innerHTML = `<thead><tr><th>${escapeHtml(copy.lot)}</th><th class="num">${escapeHtml(copy.pri)}</th><th>${escapeHtml(copy.step)}</th><th>${escapeHtml(copy.from)}</th><th>${escapeHtml(copy.to)}</th><th class="num">${escapeHtml(copy.tardy)}</th></tr></thead>`;
   const body = document.createElement("tbody");
-  for (const row of report.outcomes || []) {
+  const changed = (report.outcomes || []).filter((row) => row.moved_from && row.moved_to && row.moved_from !== row.moved_to);
+  const outcomeRows = report.scenario_id === "scale" ? changed.slice(0, 12) : (report.outcomes || []);
+  for (const row of outcomeRows) {
     const from = row.moved_from || row.before_equipment || "—";
     const to = row.moved_to || row.after_equipment || copy.held;
     const step = row.moved_step || "—";
@@ -1403,6 +1469,112 @@ function stepOutput(phase, slots, copy) {
   }
   if (phase === "commit") return `${slots.events ?? 0} ${copy.events}`;
   return "";
+}
+
+function renderScale(report) {
+  const copy = t();
+  const beforeName = (copy.chartBefore && copy.chartBefore.scale) || report.before_label;
+  const afterName = (copy.chartAfter && copy.chartAfter.scale) || report.after_label;
+  $("#before-label").textContent = beforeName;
+  $("#after-label").textContent = afterName;
+  const host = $("#views");
+  host.innerHTML = "";
+  const timing = report.timing || {};
+  const seconds = (ms) => `${(Number(ms || 0) / 1000).toFixed(2)} s`;
+  const line = document.createElement("p");
+  line.className = "scale-stat";
+  line.textContent = [
+    `${copy.scheduleWord} ${seconds(timing.schedule_ms)}`,
+    `${copy.criticWord} ${seconds(timing.critic_ms)}`,
+    `${Number(timing.lots || 0).toLocaleString(copy === COPY.zh ? "zh-Hans" : copy === COPY.ja ? "ja" : "en")} ${copy.lots.toLowerCase()}`,
+    `${timing.tools || 0} ${copy.toolsWord}`,
+    `${timing.steps || 0} ${copy.stepsWord}`,
+    `${timing.checks_passed || 0} ${copy.passed.toLowerCase()}`,
+  ].join(" · ");
+  host.appendChild(line);
+  renderHeat($("#gantt-before"), report.load.before, report.horizon);
+  renderHeat($("#gantt-after"), report.load.after, report.horizon);
+  renderScaleLegend(report);
+}
+
+function heatColor(util) {
+  const share = Math.max(0, Math.min(100, Number(util) || 0));
+  return `color-mix(in srgb, var(--accent) ${Math.round(share)}%, var(--track))`;
+}
+
+function renderHeat(host, side, horizon) {
+  host.innerHTML = "";
+  if (!side) return;
+  const wrap = document.createElement("div");
+  wrap.className = "heat";
+  const axis = document.createElement("div");
+  axis.className = "heat-axis";
+  const blank = document.createElement("span");
+  const ticks = document.createElement("div");
+  ticks.className = "heat-ticks";
+  const bucket = Number(side.bucket_min) || 60;
+  for (let index = 0; index < side.buckets; index += 2) {
+    const tick = document.createElement("span");
+    tick.style.gridColumn = `${index + 1} / span 2`;
+    tick.textContent = clockLabel(horizon, index * bucket);
+    ticks.appendChild(tick);
+  }
+  axis.append(blank, ticks);
+  const rows = document.createElement("div");
+  rows.className = "heat-rows";
+  for (const row of side.rows) {
+    const line = document.createElement("div");
+    line.className = "heat-row";
+    const label = document.createElement("div");
+    label.className = "heat-label";
+    label.textContent = row.equipment_id;
+    const tone = areaTone(row.area);
+    label.style.color = tone.ink;
+    const cells = document.createElement("div");
+    cells.className = "heat-cells";
+    cells.style.gridTemplateColumns = `repeat(${side.buckets}, minmax(0, 1fr))`;
+    for (const cell of row.cells) {
+      const mark = document.createElement("i");
+      if (!cell || cell.down || cell.util == null) {
+        mark.className = "heat-cell down";
+      } else {
+        mark.className = "heat-cell";
+        mark.style.background = heatColor(cell.util);
+      }
+      cells.appendChild(mark);
+    }
+    line.append(label, cells);
+    rows.appendChild(line);
+  }
+  wrap.append(axis, rows);
+  host.appendChild(wrap);
+}
+
+function clockLabel(horizon, minutes) {
+  const when = new Date(Date.parse(horizon) + minutes * 60000);
+  const hh = String(when.getUTCHours()).padStart(2, "0");
+  const mm = String(when.getUTCMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function renderScaleLegend(report) {
+  const host = $("#legend");
+  const copy = t();
+  host.innerHTML = "";
+  const note = document.createElement("li");
+  note.textContent = `${copy.scaleWindow}. ${copy.scaleNote}`;
+  host.appendChild(note);
+  const beforeAreas = (report.kpis && report.kpis.areas && report.kpis.areas.before) || [];
+  const afterAreas = (report.kpis && report.kpis.areas && report.kpis.areas.after) || [];
+  const afterPct = {};
+  for (const row of afterAreas) afterPct[row.area] = row.utilization_pct;
+  for (const row of beforeAreas) {
+    const item = document.createElement("li");
+    const name = (copy.areas && copy.areas[row.area]) || row.area;
+    const after = afterPct[row.area];
+    item.textContent = `${name} ${Number(row.utilization_pct).toFixed(0)}% → ${Number(after || 0).toFixed(0)}%`;
+    host.appendChild(item);
+  }
 }
 
 function paintViews() {
@@ -1813,7 +1985,8 @@ function showTip(event, bar, equipment, horizon) {
     return;
   }
   const flags = [bar.moved ? copy.moved : "", bar.fresh ? copy.fresh : "", bar.rework ? copy.rework : ""].filter(Boolean).join(" · ");
-  const text = `${bar.job_id} · P${bar.priority}\n${equipment} · ${bar.step}\n${formatClock(shift(horizon, bar.start_min)).slice(11, 16)}–${formatClock(shift(horizon, bar.end_min)).slice(11, 16)} · ${formatDuration(bar.end_min - bar.start_min)}${flags ? `\n${flags}` : ""}`;
+  const mask = bar.reticle_id ? `\n${copy.reticle} ${bar.reticle_id}` : "";
+  const text = `${bar.job_id} · P${bar.priority}\n${equipment} · ${bar.step}\n${formatClock(shift(horizon, bar.start_min)).slice(11, 16)}–${formatClock(shift(horizon, bar.end_min)).slice(11, 16)} · ${formatDuration(bar.end_min - bar.start_min)}${flags ? `\n${flags}` : ""}${mask}`;
   const tip = $("#tip");
   tip.textContent = text;
   tip.hidden = false;

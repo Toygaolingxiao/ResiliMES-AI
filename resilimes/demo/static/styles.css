@@ -173,7 +173,7 @@ h3 { font-size: var(--text-title); }
   grid-template-columns: 12px 1fr auto;
   gap: 8px;
   align-items: center;
-  min-height: 24px;
+  min-height: 22px;
   font-family: var(--mono);
   font-size: var(--text-label);
 }
@@ -535,6 +535,41 @@ textarea {
   white-space: nowrap;
 }
 .axis .now-tick { color: var(--alarm); font-weight: 650; }
+.scale-stat {
+  margin: 0;
+  font-size: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.heat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.heat-axis, .heat-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+.heat-axis { flex: 0 0 auto; height: 16px; color: var(--muted); font-size: 14px; }
+.heat-ticks { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.heat-ticks span { white-space: nowrap; }
+.heat-rows { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.heat-row { flex: 1 1 0; min-height: 0; }
+.heat-label {
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.heat-cells { display: grid; gap: 2px; height: 72%; min-height: 0; }
+.heat-cell { display: block; border-radius: 1px; min-height: 0; }
+.heat-cell.down {
+  background: repeating-linear-gradient(-45deg, rgba(180, 35, 24, 0.45) 0 3px, var(--track) 3px 6px);
+}
 .legend {
   display: flex;
   flex-wrap: wrap;
@@ -622,6 +657,7 @@ table.checks th, table.checks td { padding: 4px 8px; }
 .check-reasons ul { margin: 4px 0 0; padding-left: 1.1em; }
 .down-note { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
 
+.tip { white-space: pre-line; }
 .note, .tip, .route {
   position: fixed;
   z-index: 30;

@@ -1,0 +1,2 @@
+log_id,equipment_id,event_type,occurred_at,severity_code,description,estimated_repair_min,technician
+M-SCALE-03,LITHO-03,FAULT,2026-10-22T06:12:00Z,LASER_FAULT,Machine Litho-03 Down — laser source interlock tripped. Repair ETA 600 minutes.,600,tech.nguyen

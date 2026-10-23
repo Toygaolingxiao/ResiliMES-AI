@@ -1,13 +1,25 @@
 {
   "reticles": [
     {
-      "reticle_id": "RET-A28-L1",
+      "reticle_id": "RET-A28-L1-1",
       "product_id": "PROD-A28",
       "layer": "L1",
       "step": "LITHO"
     },
     {
-      "reticle_id": "RET-A28-L2",
+      "reticle_id": "RET-A28-L1-2",
+      "product_id": "PROD-A28",
+      "layer": "L1",
+      "step": "LITHO"
+    },
+    {
+      "reticle_id": "RET-A28-L2-1",
+      "product_id": "PROD-A28",
+      "layer": "L2",
+      "step": "LITHO-L2"
+    },
+    {
+      "reticle_id": "RET-A28-L2-2",
       "product_id": "PROD-A28",
       "layer": "L2",
       "step": "LITHO-L2"

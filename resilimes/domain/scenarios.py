@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from .models import Job, Plant
 from .plant import enrich_availability
+from .scale_fab import build_scale_plant
 from .schedule import POLICY_FROZEN, schedule_plant
 
 LITHO_REPAIR_MIN = 600
@@ -97,6 +98,21 @@ SCENARIOS: dict[str, Scenario] = {
         after_label="15 min queue time",
         kind="qtime",
     ),
+    "scale": Scenario(
+        id="scale",
+        title="Scale",
+        incident=(
+            "Scale: LITHO-03 scanner offline, repair ETA 600 minutes. "
+            "One thousand lots across 36 tools."
+        ),
+        summary=(
+            "A 36-tool fab with 1,000 lots. LITHO-03 is down for 10 hours. "
+            "The baseline is EDD dispatch onto qualified tools. Recovery adds priority."
+        ),
+        before_label="vs. EDD dispatch",
+        after_label="Priority recovery",
+        kind="scale",
+    ),
 }
 
 
@@ -165,6 +181,14 @@ def plants_for_scenario(base: Plant, scenario_id: str) -> ScenarioPlants:
         return ScenarioPlants(
             before=healthy,
             after=_tighten_qtime(healthy),
+            incident=scenario.incident,
+            scenario=scenario,
+        )
+    if scenario.kind == "scale":
+        fab = build_scale_plant(base.horizon)
+        return ScenarioPlants(
+            before=fab,
+            after=fab.model_copy(deep=True),
             incident=scenario.incident,
             scenario=scenario,
         )

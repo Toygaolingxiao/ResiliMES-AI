@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
-from .models import Action, Job, Plant, Schedule, ScheduledOp, Violation
+from .models import Action, Job, Plant, Reticle, Schedule, ScheduledOp, Violation
 from .plant import minutes_between
 
 UNAVAILABLE = {"DOWN", "MAINTENANCE"}
@@ -48,18 +49,25 @@ class Check:
     applies: Callable[[Plant, Schedule], bool] | None = None
 
 
-def reticle_for(plant: Plant, product_id: str, step: str) -> str | None:
-    """Mask for this product step. A rework exposure reuses the lithography mask."""
-    for item in plant.reticles:
-        if item.product_id == product_id and item.step == step:
-            return item.reticle_id
+def reticle_copies(plant: Plant, product_id: str, step: str) -> list[Reticle]:
+    """Physical masks for this product step. A rework exposure reuses the lithography mask."""
+    direct = [
+        item for item in plant.reticles if item.product_id == product_id and item.step == step
+    ]
+    if direct:
+        return direct
     fallback = {"LITHO-RW": "LITHO", "LITHO-L2-RW": "LITHO-L2"}.get(step)
     if fallback is None:
-        return None
-    for item in plant.reticles:
-        if item.product_id == product_id and item.step == fallback:
-            return item.reticle_id
-    return None
+        return []
+    return [
+        item for item in plant.reticles if item.product_id == product_id and item.step == fallback
+    ]
+
+
+def reticle_for(plant: Plant, product_id: str, step: str) -> str | None:
+    """One physical copy, for callers that only need a mask id."""
+    copies = reticle_copies(plant, product_id, step)
+    return copies[0].reticle_id if copies else None
 
 
 def recipe_for(plant: Plant, product_id: str, step: str) -> str:
@@ -214,17 +222,27 @@ def _wip(plant: Plant, schedule: Schedule) -> list[Finding]:
 
 def _operators(plant: Plant, schedule: Schedule) -> list[Finding]:
     equipment = plant.equipment_map()
-    points = sorted({op.start_min for op in schedule.operations} | {0})
-    for point in points:
-        used = 0
-        for op in schedule.operations:
-            if op.start_min <= point < op.end_min:
-                machine = equipment.get(op.equipment_id)
-                used += machine.operators_required if machine else 1
+    events: list[tuple[int, int]] = []
+    for op in schedule.operations:
+        machine = equipment.get(op.equipment_id)
+        need = machine.operators_required if machine else 1
+        events.append((op.start_min, need))
+        events.append((op.end_min, -need))
+    # Ends release the operator before a start at the same minute is counted.
+    events.sort(key=lambda item: (item[0], item[1]))
+    used = 0
+    index = 0
+    while index < len(events):
+        point = events[index][0]
+        while index < len(events) and events[index][0] == point:
+            used += events[index][1]
+            index += 1
         if used > plant.operator_pool:
             return [
                 Finding(
-                    detail=f"Operator demand {used} at t={point} exceeds pool {plant.operator_pool}.",
+                    detail=(
+                        f"Operator demand {used} at t={point} exceeds pool {plant.operator_pool}."
+                    ),
                     fix_hint="Stagger starts or release operators from lower-priority tools.",
                 )
             ]
@@ -402,10 +420,16 @@ def _rework_limit(plant: Plant, schedule: Schedule) -> list[Finding]:
     return found
 
 
+def _assigned_reticle(plant: Plant, op: ScheduledOp) -> str | None:
+    if op.reticle_id:
+        return op.reticle_id
+    return reticle_for(plant, op.product_id, op.step)
+
+
 def _reticle_uses(plant: Plant, schedule: Schedule) -> list[tuple[str, str, str, int, int]]:
     uses: list[tuple[str, str, str, int, int]] = []
     for op in schedule.operations:
-        reticle_id = reticle_for(plant, op.product_id, op.step)
+        reticle_id = _assigned_reticle(plant, op)
         if reticle_id is None:
             continue
         uses.append((reticle_id, op.equipment_id, op.job_id, op.start_min, op.end_min))
@@ -417,7 +441,7 @@ def _reticle(plant: Plant, schedule: Schedule) -> list[Finding]:
     found: list[Finding] = []
     for index, left in enumerate(uses):
         for right in uses[index + 1 :]:
-            if left[0] != right[0] or left[1] == right[1]:
+            if left[0] != right[0]:
                 continue
             if left[3] < right[4] and right[3] < left[4]:
                 found.append(
@@ -429,7 +453,7 @@ def _reticle(plant: Plant, schedule: Schedule) -> list[Finding]:
                             f"[{left[3]}, {left[4]}] and on {right[1]} for {right[2]} "
                             f"[{right[3]}, {right[4]}]."
                         ),
-                        fix_hint="Keep the reticle on one lithography tool at a time.",
+                        fix_hint="Keep each physical reticle on one scanner at a time.",
                     )
                 )
     return found
@@ -643,9 +667,9 @@ REGISTRY: tuple[Check, ...] = (
         id="reticle",
         name=_text("Reticle", "光罩", "レチクル"),
         description=_text(
-            "A lithography reticle can be on only one tool at a time.",
-            "一块光罩同一时间只能在一台光刻机上。",
-            "レチクルは同時に一台のリソ装置にしか載せられない。",
+            "Each physical reticle copy is on one scanner at a time.",
+            "每一块实物光罩同一时间只能在一台光刻机上。",
+            "レチクルの現物は同時に一台のスキャナにしか載せられない。",
         ),
         category="equipment",
         fields=("reticle.reticle_id", "reticle.step", "operation.equipment_id"),
@@ -758,52 +782,68 @@ def validate(plant: Plant, schedule: Schedule) -> dict[str, Any]:
     }
 
 
-def _running_hold(plant: Plant, job_id: str) -> tuple[str, int] | None:
+def _running_hold(job: Job, horizon: datetime) -> tuple[str, int] | None:
     """Tool and end minute for a lot that is still running at the horizon."""
-    job = plant.job_map().get(job_id)
-    if job is None or job.status != "RUNNING" or not job.assigned_equipment:
+    if job.status != "RUNNING" or not job.assigned_equipment:
         return None
     elapsed = 0
     if job.started_at is not None:
-        elapsed = max(0, minutes_between(job.started_at, plant.horizon))
+        elapsed = max(0, minutes_between(job.started_at, horizon))
     remaining = job.process_time_min - elapsed
     if remaining <= 0:
         return None
     return job.assigned_equipment, remaining
 
 
+def _copies_in_use(plant: Plant) -> dict[str, tuple[str, str, int]]:
+    """Physical copies a running lot already holds: reticle id to tool, lot, and end."""
+    mounted: dict[str, tuple[str, str, int]] = {}
+    for holder in plant.jobs:
+        held = _running_hold(holder, plant.horizon)
+        if held is None:
+            continue
+        tool, end = held
+        for copy in reticle_copies(plant, holder.product_id, holder.current_step):
+            if copy.reticle_id in mounted:
+                continue
+            mounted[copy.reticle_id] = (tool, holder.job_id, end)
+            break
+    return mounted
+
+
 def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
     """Checks appended after the original action rules, so the first refusal stays put."""
-    job = plant.job_map().get(action.job_id)
+    jobs = plant.job_map()
+    job = jobs.get(action.job_id)
     if job is None or not action.step or not action.to_equipment:
         return []
     found: list[Violation] = []
-    reticle_id = reticle_for(plant, job.product_id, action.step)
-    if reticle_id is not None and action.start_min is not None:
-        for holder in plant.jobs:
-            if holder.job_id == action.job_id:
-                continue
-            held = _running_hold(plant, holder.job_id)
-            if held is None:
-                continue
-            tool, end = held
-            mask = reticle_for(plant, holder.product_id, holder.current_step)
-            if mask != reticle_id or tool == action.to_equipment:
-                continue
-            if action.start_min < end:
-                found.append(
-                    Violation(
-                        constraint="reticle",
-                        severity="high",
-                        detail=(
-                            f"Reticle {reticle_id} is on {tool} with {holder.job_id} "
-                            f"until t={end} min; {action.job_id} cannot start on "
-                            f"{action.to_equipment} at t={action.start_min}."
-                        ),
-                        fix_hint="Use the tool that already has the reticle, or wait until it is free.",
-                    )
-                )
+    copies = reticle_copies(plant, job.product_id, action.step)
+    if copies and action.start_min is not None:
+        mounted = _copies_in_use(plant)
+        blocked: tuple[str, str, str, int] | None = None
+        free = False
+        for copy in copies:
+            hold = mounted.get(copy.reticle_id)
+            if hold is None or hold[0] == action.to_equipment or action.start_min >= hold[2]:
+                free = True
                 break
+            if blocked is None:
+                blocked = (copy.reticle_id, hold[0], hold[1], hold[2])
+        if not free and blocked is not None:
+            reticle_id, tool, holder_id, end = blocked
+            found.append(
+                Violation(
+                    constraint="reticle",
+                    severity="high",
+                    detail=(
+                        f"Reticle {reticle_id} is on {tool} with {holder_id} "
+                        f"until t={end} min; {action.job_id} cannot start on "
+                        f"{action.to_equipment} at t={action.start_min}."
+                    ),
+                    fix_hint="Use a free copy, or wait until one is free.",
+                )
+            )
     recipe = recipe_for(plant, job.product_id, action.step)
     if inhibited(plant, job.product_id, recipe, action.to_equipment):
         found.append(

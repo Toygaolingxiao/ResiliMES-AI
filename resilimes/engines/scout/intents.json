@@ -15,6 +15,7 @@
       "surfaces": ["mes_console", "api", "chat"],
       "roles": ["planner", "supervisor", "admin", "operator"],
       "examples": [
+        "Scale: LITHO-03 scanner offline, repair ETA 600 minutes. One thousand lots across 36 tools.",
         "Machine Litho-02 Down",
         "LITHO-02 laser fault",
         "tool down unplanned breakdown",

@@ -33,6 +33,34 @@ def test_litho_recovery_saves_the_priority_lot() -> None:
     assert critique_schedule(pair.before, before).verdict == "accept"
 
 
+def test_every_mask_type_has_two_copies_and_litho_names_one() -> None:
+    plant = load_sample(Path("data/sample"), HORIZON)
+    counts: dict[tuple[str, str], int] = {}
+    for item in plant.reticles:
+        key = (item.product_id, item.step)
+        counts[key] = counts.get(key, 0) + 1
+    assert counts
+    assert min(counts.values()) >= 2
+    pair = plants_for_scenario(plant, "litho_down")
+    after = schedule_plant(pair.after, POLICY_RECOVER)
+    litho = [op for op in after.operations if op.step.startswith("LITHO")]
+    assert litho
+    assert all(op.reticle_id for op in litho)
+    rush = plants_for_scenario(plant, "rush_order")
+    booked = schedule_plant(rush.after, POLICY_RECOVER)
+    exposures = [op for op in booked.operations if op.step == "LITHO"]
+    overlapped = False
+    for index, left in enumerate(exposures):
+        for right in exposures[index + 1 :]:
+            if left.equipment_id == right.equipment_id:
+                continue
+            if left.start_min < right.end_min and right.start_min < left.end_min:
+                assert left.reticle_id != right.reticle_id
+                overlapped = True
+    assert overlapped
+    assert completion_of(booked, "LOT-2001") == 216
+
+
 def test_schedule_is_deterministic() -> None:
     plant = load_sample(Path("data/sample"), HORIZON)
     pair = plants_for_scenario(plant, "litho_down")

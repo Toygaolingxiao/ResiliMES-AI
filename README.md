@@ -13,13 +13,23 @@ Sample fab FAB-A, scenario clock 22 Oct 2026 06:30 UTC. Machine breakdown (`lith
 | KPI | Wait for repair | Rescheduled |
 | --- | ---: | ---: |
 | On-time delivery | 83.3% | 100% |
-| Priority-weighted tardiness | 744 min | 0 min |
-| Makespan | 852 min | 328 min |
+| Priority-weighted tardiness | 784 min | 0 min |
+| Makespan | 857 min | 328 min |
 | Priority-1/2 lots at risk | 1 | 0 |
 
-LOT-1001 is priority 1, blocked on LITHO-02 (laser fault, revised repair 600 minutes), due 18:00 UTC. Waiting finishes it 93 minutes late. The recovery moves it to LITHO-01, which shares `litho_193nm`, the setup family already on the tool, and reticle RET-A28-L1, and finishes it at t=253. A naive plan that starts the lot on the down tool immediately is rejected. That plan also asks for the reticle that is still on LITHO-01. Lithography stays the bottleneck, and the move keeps it on an up tool.
+LOT-1001 is priority 1, blocked on LITHO-02 (laser fault, revised repair 600 minutes), due 18:00 UTC. Waiting finishes it 98 minutes late: the frozen book mounts RET-A28-L1-1 on LITHO-02, and that mount takes 5 minutes. The recovery moves the lot to LITHO-01, which shares `litho_193nm` and the setup family already on the tool, reuses the copy the running lot releases, and finishes it at t=253. A naive plan that starts the lot on the down tool immediately is rejected. A second L1 copy is free, so the refusal is the tool status. Lithography stays the bottleneck, and the move keeps it on an up tool.
 
-Four more disruptions are one click away. A three-hour rush order finishes 1 h 13 min late: the running lot is not preempted, and its reticle cannot move to the other scanner until that exposure ends. A photoresist stockout holds the lots which still need lithography. An overlay fail on LOT-1004 strips the resist, re-exposes once, and measures again. A second loop is not inserted. A queue-time miss holds LOT-1003 because the wet clean finished before the clock and the next film would start after a 15-minute window. The critic refuses that late deposition start.
+A sixth preset, **Scale**, is a separate seeded fab: 1,000 lots and 36 tools across deposition, lithography, metrology, etch, clean, and CMP, on the same per-layer route. The six-lot stories above stay as they are. LITHO-03 is down for 600 minutes, and 24 priority-1 lots are blocked on it. The baseline is EDD dispatch: earliest due date, then the qualified tool that can start soonest, with no priority weight and no bottleneck lookahead. Priority recovery is the committed book.
+
+| KPI | vs. EDD dispatch | Priority recovery |
+| --- | ---: | ---: |
+| On-time delivery | 100% | 100% |
+| Priority-weighted tardiness | 0 min | 0 min |
+| Priority-1/2 lots at risk | 0 | 0 |
+
+Both books clear the dues. EDD already sends the 24 priority-1 lots to scanners that are up, and priority recovery leaves those lots on the same scanners. Mean wait between steps falls from 389 minutes to 125. Makespan grows from 4,522 minutes to 5,116 because lower-priority lots wait. Each product-layer has two physical reticles, and a copy that is not already on the scanner takes 5 minutes to mount. Schedule plus critic is about 0.7 seconds for 3,426 steps. Fourteen checks pass. The refused plan starts a blocked lot on LITHO-03 at time zero. Area utilization over the shared horizon stays near CMP 84.7%. The frame draws the first 12 hours as a per-tool load strip. LITHO-03 is hatched until the repair. CMP stays the bottleneck. The bay is staffed one operator per tool. `python scripts/export_scale_sql.py` writes `data/sql/scale_seed.sql` and `data/zetaris/scale/` for the same Zetaris catalog. `pytest` skips the 1,000-lot timer unless `RESILIMES_BENCHMARK=1`. CI runs a 40-lot smoke of the same generator.
+
+The other sample disruptions are one click away. A three-hour rush order finishes 36 min late. The running lot stays on LITHO-01 with RET-A28-L1-1. The spare copy exposes the hot lot on LITHO-02, and the rest of the route still misses the due. A photoresist stockout holds the lots which still need lithography. An overlay fail on LOT-1004 strips the resist, re-exposes once, and measures again. A second loop is not inserted. A queue-time miss holds LOT-1003 because the wet clean finished before the clock and the next film would start after a 15-minute window. The critic refuses that late deposition start.
 
 ## Architecture
 
@@ -115,12 +125,12 @@ Mask the token if you film that command. The console never prints it. A recovery
 The console is the product. Five presets:
 
 - **Machine breakdown** — LITHO-02 down for 10 hours. Compare “wait for repair” with a recovered schedule. Lithography is the bottleneck, and the recovery keeps it on an up tool.
-- **Rush order** — insert priority-1 LOT-2001 due in three hours. Running lots stay put, and the L1 reticle stays with them, so the promise is 1 h 13 min late.
+- **Rush order** — insert priority-1 LOT-2001 due in three hours. The running lot keeps its scanner and one L1 copy. The spare copy exposes the hot lot on the other scanner. The promise is still 36 min late.
 - **Material shortage** — RESIST-UV on hand is zero. Lots that still need lithography are held. LOT-1002 is already running and keeps its resist.
 - **Overlay rework** — overlay failed on LOT-1004 at metrology. The book strips on the wet bench, re-exposes once, and measures again. The rework limit is 1. The re-measure bar is striped.
 - **Queue time** — clean to the next film on PROD-B14 must start within 15 minutes. LOT-1003 already missed that window. A naive start at t=120 is refused.
 
-Each layer of PROD-A28 is deposition, lithography (coat, expose, and develop as one step), overlay and CD metrology, etch, wet clean, and CMP. L2 repeats the six steps. DEP-01 runs the film. MEAS-01 measures. WET-01 strips and cleans. Lots released through CMP stay on the first layer today. Queue time is surface exposure: 480 minutes from clean end to the next deposition. On A28 that next film is DEP-L2, with CMP between them, so the limit covers the polish. The 15-minute scenario tightens the adjacent B14 pair, clean to the cap film. RET-A28-L1 can be on one lithography tool at a time. Analyze shows compliance and the bottleneck. Verify lists every registered check.
+Each layer of PROD-A28 is deposition, lithography (coat, expose, and develop as one step), overlay and CD metrology, etch, wet clean, and CMP. L2 repeats the six steps. DEP-01 runs the film. MEAS-01 measures. WET-01 strips and cleans. Lots released through CMP stay on the first layer today. Queue time is surface exposure: 480 minutes from clean end to the next deposition. On A28 that next film is DEP-L2, with CMP between them, so the limit covers the polish. The 15-minute scenario tightens the adjacent B14 pair, clean to the cap film. Each A28 layer has two physical reticles. A copy sits on one scanner at a time, and mounting it on a different scanner takes 5 minutes. Analyze shows compliance and the bottleneck. Verify lists every registered check. A lithography bar tooltip names the copy.
 
 Or type an incident. Scout classifies it. A viewer role, or a prompt-injection attempt, is refused before any schedule is written.
 
@@ -154,7 +164,9 @@ resilimes/            Product: domain, engines, agents, API, console
 agent/                Live connectors only: Nightshift client and Zetaris REST
 data/sample/          Offline plant
 data/sql/seed.sql     Zetaris DDL and inserts, generated from data/sample
-data/zetaris/         CSV twin of the same tables
+data/sql/scale_seed.sql  Same catalog for the 1,000-lot fab
+data/zetaris/         CSV twin of the sample tables
+data/zetaris/scale/   CSV twin of the scale fab
 prompts/              Specialist prompt. The recovery loop does not load it.
 tests/                Unit and API tests
 docs/                 Architecture, sponsor write-up, demo script, pitch, checklist
