@@ -208,6 +208,45 @@ h3 { font-size: var(--text-title); }
   50% { transform: scale(1.45); }
 }
 .bay small { color: var(--muted); font-family: var(--font); font-size: var(--text-label); }
+.dispatch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+}
+.dispatch input {
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: var(--sheet);
+  font-size: 14px;
+}
+.dispatch .run { padding: 4px 8px; }
+.intent {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.intent .status-row { display: flex; align-items: center; gap: 8px; margin: 0; }
+.intent h2 { font-size: 18px; }
+.intent dl { display: grid; grid-template-columns: 8em minmax(0, 1fr); gap: 2px 8px; margin: 0; }
+.intent dt { color: var(--muted); }
+.intent dd { margin: 0; }
+.intent .fallback {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--amber-wash);
+  color: var(--amber);
+  border-radius: 6px;
+  font-size: 14px;
+}
+.intent .actions { display: flex; gap: 8px; }
+.intent .reviewer { border-top: 1px solid var(--line); padding-top: 8px; }
+.intent .reviewer h3 { font-size: 15px; }
+.intent .muted { color: var(--muted); margin: 0; }
 .custom-wrap { color: var(--muted); font-size: 14px; }
 .custom-wrap summary { cursor: pointer; }
 textarea {
@@ -238,7 +277,8 @@ textarea {
 #story[hidden],
 #cards[hidden],
 #stepper[hidden],
-#result[hidden] { display: none !important; }
+#result[hidden],
+#intent[hidden] { display: none !important; }
 
 .overview {
   flex: 1;

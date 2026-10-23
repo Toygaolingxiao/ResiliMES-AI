@@ -365,6 +365,80 @@
       "scale_headline": "EDD dispatch already meets the dues",
       "named_headline": "{tool} is down for {span}",
       "named_headline_bare": "{tool} is down"
+    },
+    "intent": {
+      "placeholder": "ETCH-02 down 30 min, notify Yamamoto-san, check inventory",
+      "submit": "Parse",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "call": "Tool call",
+      "signature": "Scout signature",
+      "noContract": "No signature. These ids are not in this plant.",
+      "fallback": "Local parser. This text is not from the model.",
+      "degraded": "The note did not match the result, so the local sentence stays.",
+      "notify": "{name} · recorded, not sent",
+      "suggestions": "Suggestions do not change the schedule.",
+      "safety": "Safety test",
+      "safetyNote": "The refused plan is a safety test. It does not change the schedule.",
+      "rounds": "Repair rounds",
+      "checkInventory": "Check stock",
+      "notifyPe": "Notify",
+      "yes": "Yes",
+      "no": "No",
+      "unknownLot": "Unknown lot {id}.",
+      "unknownTool": "Unknown equipment {id}.",
+      "injection": "Prompt injection detected.",
+      "runningHold": "Cannot hold {lot}: it is running on {tool}.",
+      "leaveRunning": "Leave the running lot in place and reschedule queued work.",
+      "affected": "Affected lots",
+      "none": "none",
+      "committed": "Written to the plan",
+      "simulated": "Trial only. The plan is unchanged.",
+      "notWritten": "Not written. The plan is unchanged.",
+      "status": {
+        "pending_confirmation": "Pending confirmation",
+        "rejected": "Rejected",
+        "executed": "Executed",
+        "aborted": "Aborted"
+      },
+      "names": {
+        "insert_hot_lot": "Hot lot",
+        "move_pm": "Move PM",
+        "mark_tool_down": "Tool down",
+        "hold_lot": "Hold lot",
+        "release_lot": "Release lot",
+        "what_if": "What-if"
+      },
+      "roles": {
+        "process_equipment": "Process equipment",
+        "production_control": "Production control",
+        "risk": "Risk"
+      },
+      "review": {
+        "approve": "Approve",
+        "approve-with-changes": "Approve with changes",
+        "reject": "Reject"
+      },
+      "agreement": {
+        "unanimous": "Unanimous",
+        "majority": "Majority",
+        "split": "Split"
+      },
+      "params": {
+        "lot_id": "Lot",
+        "equipment_id": "Tool",
+        "eta_min": "Repair",
+        "reason": "Reason",
+        "target_station_group": "Station group",
+        "priority_override": "Priority override",
+        "fault_code": "Fault",
+        "new_start_min": "Start",
+        "duration_min": "Duration",
+        "question": "Question"
+      },
+      "concernDown": "{id} is down or in maintenance.",
+      "concernHeld": "{id} is held.",
+      "suggestHold": "Review the hold on {id} before the book is published."
     }
   },
   "zh": {
@@ -411,7 +485,7 @@
     "after": "重排后",
     "tardy": "延误",
     "change": "变化",
-    "verified": "合约已核对",
+    "verified": "约束已校验",
     "explainer": "说明",
     "checkpoint": "检查点",
     "of": "/",
@@ -733,6 +807,80 @@
       "scale_headline": "EDD 派工已满足交期",
       "named_headline": "{tool} 宕机 {span}",
       "named_headline_bare": "{tool} 宕机"
+    },
+    "intent": {
+      "placeholder": "ETCH-02 宕机 30 分钟，通知 Yamamoto-san，核对库存",
+      "submit": "解析",
+      "confirm": "确认执行",
+      "cancel": "取消",
+      "call": "解析出的指令",
+      "signature": "Scout 签名",
+      "noContract": "没有签名。这些编号不在本产线。",
+      "fallback": "本地解析。这段文字不是模型原文。",
+      "degraded": "说明与结果不符，已改用本地句子。",
+      "notify": "{name} · 已记录，未发送",
+      "suggestions": "建议不改变排程。",
+      "safety": "安全测试",
+      "safetyNote": "被拒方案是安全测试，不改变排程。",
+      "rounds": "修复轮次",
+      "checkInventory": "核对库存",
+      "notifyPe": "通知",
+      "yes": "是",
+      "no": "否",
+      "unknownLot": "未知批次 {id}。",
+      "unknownTool": "未知装置 {id}。",
+      "injection": "检测到提示注入。",
+      "runningHold": "不能暂扣 {lot}：正在 {tool} 上加工。",
+      "leaveRunning": "加工中的批次留在原装置，只重排排队的批次。",
+      "affected": "影响批次",
+      "none": "无",
+      "committed": "已写入计划",
+      "simulated": "仅试算，计划未改。",
+      "notWritten": "未写入。计划未改。",
+      "status": {
+        "pending_confirmation": "待确认",
+        "rejected": "已拒绝",
+        "executed": "已执行",
+        "aborted": "已中止"
+      },
+      "names": {
+        "insert_hot_lot": "急件",
+        "move_pm": "调整保养",
+        "mark_tool_down": "装置宕机",
+        "hold_lot": "暂扣批次",
+        "release_lot": "解除暂扣",
+        "what_if": "假设"
+      },
+      "roles": {
+        "process_equipment": "工艺设备",
+        "production_control": "生产管理",
+        "risk": "风险"
+      },
+      "review": {
+        "approve": "同意",
+        "approve-with-changes": "附带修改后同意",
+        "reject": "拒绝"
+      },
+      "agreement": {
+        "unanimous": "一致",
+        "majority": "多数",
+        "split": "分歧"
+      },
+      "params": {
+        "lot_id": "批次",
+        "equipment_id": "装置",
+        "eta_min": "修复",
+        "reason": "原因",
+        "target_station_group": "设备组",
+        "priority_override": "提高优先级",
+        "fault_code": "故障码",
+        "new_start_min": "开始",
+        "duration_min": "时长",
+        "question": "问题"
+      },
+      "concernDown": "{id} 宕机或保养中。",
+      "concernHeld": "{id} 被暂扣。",
+      "suggestHold": "发布前复核 {id} 的暂扣。"
     }
   },
   "ja": {
@@ -779,7 +927,7 @@
     "after": "変更後",
     "tardy": "遅延",
     "change": "変化",
-    "verified": "契約を確認",
+    "verified": "制約を検証済み",
     "explainer": "説明",
     "checkpoint": "チェック",
     "of": "/",
@@ -1101,6 +1249,80 @@
       "scale_headline": "EDD 差し立てで納期は守れている",
       "named_headline": "{tool} は {span}停止",
       "named_headline_bare": "{tool} は停止"
+    },
+    "intent": {
+      "placeholder": "ETCH-02 が30分停止。通知 Yamamoto-san。在庫確認",
+      "submit": "解析",
+      "confirm": "実行する",
+      "cancel": "取り消す",
+      "call": "解析した指令",
+      "signature": "Scout 署名",
+      "noContract": "署名はありません。このラインにない番号です。",
+      "fallback": "ローカル解析です。モデルの原文ではありません。",
+      "degraded": "結果と合わないため、ローカルの文に戻しました。",
+      "notify": "{name} · 記録のみ、未送信",
+      "suggestions": "提案は計画を変えません。",
+      "safety": "安全テスト",
+      "safetyNote": "拒否した案は安全テストです。計画は変わりません。",
+      "rounds": "修正ラウンド",
+      "checkInventory": "在庫確認",
+      "notifyPe": "連絡",
+      "yes": "あり",
+      "no": "なし",
+      "unknownLot": "不明なロット {id}。",
+      "unknownTool": "不明な装置 {id}。",
+      "injection": "プロンプト注入を検知しました。",
+      "runningHold": "{lot} は {tool} で加工中のため保留できません。",
+      "leaveRunning": "加工中ロットは装置に残し、待ちロットだけ再計画します。",
+      "affected": "影響ロット",
+      "none": "なし",
+      "committed": "計画に反映",
+      "simulated": "試算のみ。計画は未更新。",
+      "notWritten": "未反映。計画はそのままです。",
+      "status": {
+        "pending_confirmation": "確認待ち",
+        "rejected": "不採用",
+        "executed": "実行済み",
+        "aborted": "中止"
+      },
+      "names": {
+        "insert_hot_lot": "特急ロット",
+        "move_pm": "保全の移動",
+        "mark_tool_down": "装置停止",
+        "hold_lot": "ロット保留",
+        "release_lot": "保留解除",
+        "what_if": "想定"
+      },
+      "roles": {
+        "process_equipment": "プロセス・装置",
+        "production_control": "生産管理",
+        "risk": "リスク"
+      },
+      "review": {
+        "approve": "承認",
+        "approve-with-changes": "条件付き承認",
+        "reject": "却下"
+      },
+      "agreement": {
+        "unanimous": "全員一致",
+        "majority": "多数",
+        "split": "分かれ"
+      },
+      "params": {
+        "lot_id": "ロット",
+        "equipment_id": "装置",
+        "eta_min": "復旧",
+        "reason": "理由",
+        "target_station_group": "装置群",
+        "priority_override": "優先度変更",
+        "fault_code": "故障コード",
+        "new_start_min": "開始",
+        "duration_min": "時間",
+        "question": "質問"
+      },
+      "concernDown": "{id} は停止または保全中です。",
+      "concernHeld": "{id} は保留中です。",
+      "suggestHold": "公開前に {id} の保留を確認してください。"
     }
   }
 }

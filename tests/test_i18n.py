@@ -15,6 +15,16 @@ ROOT = Path(__file__).resolve().parents[1]
 BANNED = ("t=", "heuristic", "ヒューリスティック", "启发式", "ヒューリスティク")
 
 
+def test_verified_uses_constraint_wording() -> None:
+    data = catalog()
+    assert data["zh"]["verified"] == "约束已校验"
+    assert data["ja"]["verified"] == "制約を検証済み"
+    for lang in ("en", "zh", "ja"):
+        assert data[lang]["intent"]["notify"]
+        assert data[lang]["intent"]["suggestions"]
+        assert data[lang]["intent"]["safety"]
+
+
 def test_catalog_keys_match_and_the_review_lists_them() -> None:
     data = catalog()
     en = flatten(data["en"])

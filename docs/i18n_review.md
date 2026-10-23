@@ -48,7 +48,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `after` | After | 重排后 | 変更後 |
 | `tardy` | Tardiness | 延误 | 遅延 |
 | `change` | Change | 变化 | 変化 |
-| `verified` | contract verified | 合约已核对 | 契約を確認 |
+| `verified` | contract verified | 约束已校验 | 制約を検証済み |
 | `explainer` | Explanation | 说明 | 説明 |
 | `checkpoint` | Checkpoint | 检查点 | チェック |
 | `of` | of | / | / |
@@ -333,3 +333,63 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `brief.scale_headline` | EDD dispatch already meets the dues | EDD 派工已满足交期 | EDD 差し立てで納期は守れている |
 | `brief.named_headline` | {tool} is down for {span} | {tool} 宕机 {span} | {tool} は {span}停止 |
 | `brief.named_headline_bare` | {tool} is down | {tool} 宕机 | {tool} は停止 |
+| `intent.placeholder` | ETCH-02 down 30 min, notify Yamamoto-san, check inventory | ETCH-02 宕机 30 分钟，通知 Yamamoto-san，核对库存 | ETCH-02 が30分停止。通知 Yamamoto-san。在庫確認 |
+| `intent.submit` | Parse | 解析 | 解析 |
+| `intent.confirm` | Confirm | 确认执行 | 実行する |
+| `intent.cancel` | Cancel | 取消 | 取り消す |
+| `intent.call` | Tool call | 解析出的指令 | 解析した指令 |
+| `intent.signature` | Scout signature | Scout 签名 | Scout 署名 |
+| `intent.noContract` | No signature. These ids are not in this plant. | 没有签名。这些编号不在本产线。 | 署名はありません。このラインにない番号です。 |
+| `intent.fallback` | Local parser. This text is not from the model. | 本地解析。这段文字不是模型原文。 | ローカル解析です。モデルの原文ではありません。 |
+| `intent.degraded` | The note did not match the result, so the local sentence stays. | 说明与结果不符，已改用本地句子。 | 結果と合わないため、ローカルの文に戻しました。 |
+| `intent.notify` | {name} · recorded, not sent | {name} · 已记录，未发送 | {name} · 記録のみ、未送信 |
+| `intent.suggestions` | Suggestions do not change the schedule. | 建议不改变排程。 | 提案は計画を変えません。 |
+| `intent.safety` | Safety test | 安全测试 | 安全テスト |
+| `intent.safetyNote` | The refused plan is a safety test. It does not change the schedule. | 被拒方案是安全测试，不改变排程。 | 拒否した案は安全テストです。計画は変わりません。 |
+| `intent.rounds` | Repair rounds | 修复轮次 | 修正ラウンド |
+| `intent.checkInventory` | Check stock | 核对库存 | 在庫確認 |
+| `intent.notifyPe` | Notify | 通知 | 連絡 |
+| `intent.yes` | Yes | 是 | あり |
+| `intent.no` | No | 否 | なし |
+| `intent.unknownLot` | Unknown lot {id}. | 未知批次 {id}。 | 不明なロット {id}。 |
+| `intent.unknownTool` | Unknown equipment {id}. | 未知装置 {id}。 | 不明な装置 {id}。 |
+| `intent.injection` | Prompt injection detected. | 检测到提示注入。 | プロンプト注入を検知しました。 |
+| `intent.runningHold` | Cannot hold {lot}: it is running on {tool}. | 不能暂扣 {lot}：正在 {tool} 上加工。 | {lot} は {tool} で加工中のため保留できません。 |
+| `intent.leaveRunning` | Leave the running lot in place and reschedule queued work. | 加工中的批次留在原装置，只重排排队的批次。 | 加工中ロットは装置に残し、待ちロットだけ再計画します。 |
+| `intent.affected` | Affected lots | 影响批次 | 影響ロット |
+| `intent.none` | none | 无 | なし |
+| `intent.committed` | Written to the plan | 已写入计划 | 計画に反映 |
+| `intent.simulated` | Trial only. The plan is unchanged. | 仅试算，计划未改。 | 試算のみ。計画は未更新。 |
+| `intent.notWritten` | Not written. The plan is unchanged. | 未写入。计划未改。 | 未反映。計画はそのままです。 |
+| `intent.status.pending_confirmation` | Pending confirmation | 待确认 | 確認待ち |
+| `intent.status.rejected` | Rejected | 已拒绝 | 不採用 |
+| `intent.status.executed` | Executed | 已执行 | 実行済み |
+| `intent.status.aborted` | Aborted | 已中止 | 中止 |
+| `intent.names.insert_hot_lot` | Hot lot | 急件 | 特急ロット |
+| `intent.names.move_pm` | Move PM | 调整保养 | 保全の移動 |
+| `intent.names.mark_tool_down` | Tool down | 装置宕机 | 装置停止 |
+| `intent.names.hold_lot` | Hold lot | 暂扣批次 | ロット保留 |
+| `intent.names.release_lot` | Release lot | 解除暂扣 | 保留解除 |
+| `intent.names.what_if` | What-if | 假设 | 想定 |
+| `intent.roles.process_equipment` | Process equipment | 工艺设备 | プロセス・装置 |
+| `intent.roles.production_control` | Production control | 生产管理 | 生産管理 |
+| `intent.roles.risk` | Risk | 风险 | リスク |
+| `intent.review.approve` | Approve | 同意 | 承認 |
+| `intent.review.approve-with-changes` | Approve with changes | 附带修改后同意 | 条件付き承認 |
+| `intent.review.reject` | Reject | 拒绝 | 却下 |
+| `intent.agreement.unanimous` | Unanimous | 一致 | 全員一致 |
+| `intent.agreement.majority` | Majority | 多数 | 多数 |
+| `intent.agreement.split` | Split | 分歧 | 分かれ |
+| `intent.params.lot_id` | Lot | 批次 | ロット |
+| `intent.params.equipment_id` | Tool | 装置 | 装置 |
+| `intent.params.eta_min` | Repair | 修复 | 復旧 |
+| `intent.params.reason` | Reason | 原因 | 理由 |
+| `intent.params.target_station_group` | Station group | 设备组 | 装置群 |
+| `intent.params.priority_override` | Priority override | 提高优先级 | 優先度変更 |
+| `intent.params.fault_code` | Fault | 故障码 | 故障コード |
+| `intent.params.new_start_min` | Start | 开始 | 開始 |
+| `intent.params.duration_min` | Duration | 时长 | 時間 |
+| `intent.params.question` | Question | 问题 | 質問 |
+| `intent.concernDown` | {id} is down or in maintenance. | {id} 宕机或保养中。 | {id} は停止または保全中です。 |
+| `intent.concernHeld` | {id} is held. | {id} 被暂扣。 | {id} は保留中です。 |
+| `intent.suggestHold` | Review the hold on {id} before the book is published. | 发布前复核 {id} 的暂扣。 | 公開前に {id} の保留を確認してください。 |
