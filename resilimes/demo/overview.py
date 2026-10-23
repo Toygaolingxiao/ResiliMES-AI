@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from resilimes.domain.floor import ReplanTrigger, TriggerKind, tool_queues, wip_steps
 from resilimes.domain.gantt import build_gantt, shared_window
 from resilimes.domain.kpis import evaluate
 from resilimes.domain.models import Plant
@@ -56,14 +57,20 @@ def _impact(plant: Plant, scenario_id: str, kind: str) -> dict[str, float | int]
 
 def _litho_shift(plant: Plant) -> dict[str, Any]:
     pair = plants_for_scenario(plant, "litho_down")
-    return _shift(pair.before, POLICY_FROZEN)
+    return _shift(pair.before, POLICY_FROZEN, trigger_kind="breakdown", scenario_id="litho_down")
 
 
 def _plain_shift(plant: Plant) -> dict[str, Any]:
     return _shift(plant, POLICY_FROZEN)
 
 
-def _shift(plant: Plant, policy: str) -> dict[str, Any]:
+def _shift(
+    plant: Plant,
+    policy: str,
+    *,
+    trigger_kind: TriggerKind | None = None,
+    scenario_id: str = "",
+) -> dict[str, Any]:
     book = schedule_plant(plant, policy)
     chart = build_gantt(plant, book)
     window = shared_window(chart, chart)
@@ -82,6 +89,9 @@ def _shift(plant: Plant, policy: str) -> dict[str, Any]:
         "gantt": chart,
         "window": window,
         "tools": tools,
+        "queues": [item.model_dump() for item in tool_queues(plant, book)],
+        "wip_steps": [item.model_dump() for item in wip_steps(plant)],
+        "trigger": ReplanTrigger(kind=trigger_kind, scenario_id=scenario_id).model_dump(),
         "materials": [
             {
                 "id": stock.material_id,
@@ -111,4 +121,5 @@ def _tool(row: dict[str, Any]) -> dict[str, Any]:
         "next_lot": str(nxt["job_id"]) if nxt else "",
         "next_min": int(nxt["start_min"]) if nxt else None,
         "down_until_min": available if status in _DOWN else None,
+        "state": str(row.get("state") or "idle"),
     }

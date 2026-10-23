@@ -172,6 +172,7 @@
       "IDLE": "Idle",
       "RUNNING": "Running",
       "DOWN": "Down",
+      "SETUP": "Setup",
       "MAINTENANCE": "Maintenance",
       "ok": "In stock",
       "short": "Short"
@@ -182,7 +183,9 @@
       "CMP": "CMP",
       "Deposition": "Deposition",
       "Metrology": "Metrology",
-      "Clean": "Clean"
+      "Clean": "Clean",
+      "Furnace": "Furnace",
+      "Diffusion": "Diffusion"
     },
     "scenarios": {
       "litho_down": [
@@ -251,6 +254,34 @@
     "runRecommended": "Reschedule this shift",
     "recommended": "Recommended",
     "productLine": "When a tool stops, ResiliMES rebuilds the shift so lots still meet their due times.",
+    "boardTitle": "Tool state",
+    "states": {
+      "idle": "Idle",
+      "run": "Run",
+      "setup": "Setup",
+      "down": "Down",
+      "pm": "PM"
+    },
+    "queueHead": "Bottleneck queue",
+    "queueRunning": "{lot} running · done {time}",
+    "queueNext": "Next {lot} · {time}",
+    "queueCount": "{count} waiting",
+    "queueBlocked": "{lot} cannot start · down until {time}",
+    "scoreCr": "CR",
+    "scoreSlack": "Slack",
+    "scoreSetup": "Setup",
+    "scoreQtime": "Q-time",
+    "scorePending": "The weighted score is not on this dispatcher yet.",
+    "wipByStep": "WIP by step",
+    "wipNone": "No pile-up limit on this plant yet.",
+    "wipOver": "{step} {lots} lots · limit {limit}",
+    "triggers": {
+      "breakdown": "Tool down",
+      "hot_lot": "Hot lot",
+      "wip_threshold": "WIP limit"
+    },
+    "proposeMove": "Move to {tool}",
+    "noAlternate": "No other qualified tool.",
     "analyzeEmpty": "Run a reschedule first. The other numbers show up here.",
     "verifyEmpty": "Run a reschedule first. Every constraint shows up here.",
     "planTitle": "Current plan · {tool} down",
@@ -509,6 +540,7 @@
       "IDLE": "空闲",
       "RUNNING": "加工中",
       "DOWN": "宕机",
+      "SETUP": "换型",
       "MAINTENANCE": "保养",
       "ok": "有库存",
       "short": "短缺"
@@ -519,7 +551,9 @@
       "CMP": "CMP",
       "Deposition": "成膜",
       "Metrology": "量测",
-      "Clean": "清洗"
+      "Clean": "清洗",
+      "Furnace": "炉管",
+      "Diffusion": "扩散"
     },
     "scenarios": {
       "litho_down": [
@@ -588,6 +622,34 @@
     "runRecommended": "重排本班",
     "recommended": "建议",
     "productLine": "机台宕机后，重排本班计划，让批次赶上交期。",
+    "boardTitle": "装置状态",
+    "states": {
+      "idle": "空闲",
+      "run": "加工",
+      "setup": "换型",
+      "down": "宕机",
+      "pm": "保养"
+    },
+    "queueHead": "瓶颈排队",
+    "queueRunning": "{lot} 加工中 · {time} 完工",
+    "queueNext": "下一道 {lot} · {time}",
+    "queueCount": "等待 {count}",
+    "queueBlocked": "{lot} 不能开工 · 宕机至 {time}",
+    "scoreCr": "临界比",
+    "scoreSlack": "松弛",
+    "scoreSetup": "换型",
+    "scoreQtime": "排队时限",
+    "scorePending": "加权评分还没接到这台调度上。",
+    "wipByStep": "工序在制",
+    "wipNone": "这条线还没有积压上限。",
+    "wipOver": "{step} {lots} 批 · 上限 {limit}",
+    "triggers": {
+      "breakdown": "装置宕机",
+      "hot_lot": "急件",
+      "wip_threshold": "在制超限"
+    },
+    "proposeMove": "改到 {tool}",
+    "noAlternate": "没有其他合格装置。",
     "analyzeEmpty": "先重排一次，其余指标会出现在这里。",
     "verifyEmpty": "先重排一次，每条约束的结果会出现在这里。",
     "planTitle": "当前计划 · {tool} 宕机",
@@ -846,6 +908,7 @@
       "IDLE": "空き",
       "RUNNING": "加工中",
       "DOWN": "停止",
+      "SETUP": "段取り",
       "MAINTENANCE": "保全",
       "ok": "在庫あり",
       "short": "不足"
@@ -856,7 +919,9 @@
       "CMP": "CMP",
       "Deposition": "成膜",
       "Metrology": "測定",
-      "Clean": "洗浄"
+      "Clean": "洗浄",
+      "Furnace": "炉",
+      "Diffusion": "拡散"
     },
     "scenarios": {
       "litho_down": [
@@ -925,6 +990,34 @@
     "runRecommended": "当直を再スケジュール",
     "recommended": "推奨",
     "productLine": "装置が止まったとき、当直の計画を組み直して納期を守ります。",
+    "boardTitle": "装置状態",
+    "states": {
+      "idle": "空き",
+      "run": "加工",
+      "setup": "段取り",
+      "down": "停止",
+      "pm": "保全"
+    },
+    "queueHead": "ボトルネック待ち",
+    "queueRunning": "{lot} 加工中 · {time} 完了",
+    "queueNext": "次 {lot} · {time}",
+    "queueCount": "待ち {count}",
+    "queueBlocked": "{lot} は着工不可 · {time} まで停止",
+    "scoreCr": "CR",
+    "scoreSlack": "スラック",
+    "scoreSetup": "段取り",
+    "scoreQtime": "キュータイム",
+    "scorePending": "加重スコアはまだこの差し立てにありません。",
+    "wipByStep": "工程別仕掛品",
+    "wipNone": "このラインに滞留の上限はまだありません。",
+    "wipOver": "{step} {lots}ロット · 上限 {limit}",
+    "triggers": {
+      "breakdown": "装置故障",
+      "hot_lot": "特急ロット",
+      "wip_threshold": "仕掛上限"
+    },
+    "proposeMove": "{tool} へ移す",
+    "noAlternate": "他に資格のある装置はありません。",
     "analyzeEmpty": "先に再スケジュールしてください。残りの指標はここに出ます。",
     "verifyEmpty": "先に再スケジュールしてください。制約ごとの結果はここに出ます。",
     "planTitle": "現在の計画 · {tool} 停止",

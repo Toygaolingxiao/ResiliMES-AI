@@ -168,6 +168,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `status.IDLE` | Idle | 空闲 | 空き |
 | `status.RUNNING` | Running | 加工中 | 加工中 |
 | `status.DOWN` | Down | 宕机 | 停止 |
+| `status.SETUP` | Setup | 换型 | 段取り |
 | `status.MAINTENANCE` | Maintenance | 保养 | 保全 |
 | `status.ok` | In stock | 有库存 | 在庫あり |
 | `status.short` | Short | 短缺 | 不足 |
@@ -177,6 +178,8 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `areas.Deposition` | Deposition | 成膜 | 成膜 |
 | `areas.Metrology` | Metrology | 量测 | 測定 |
 | `areas.Clean` | Clean | 清洗 | 洗浄 |
+| `areas.Furnace` | Furnace | 炉管 | 炉 |
+| `areas.Diffusion` | Diffusion | 扩散 | 拡散 |
 | `scenarios.litho_down.0` | Litho down | 光刻机宕机 | 露光装置停止 |
 | `scenarios.litho_down.1` | LITHO-02 is down for 10 h. LOT-1001 is on that tool. | LITHO-02 宕机 10 小时，LOT-1001 排在这台。 | LITHO-02 が10時間停止。LOT-1001 が載っています。 |
 | `scenarios.rush_order.0` | Rush lot | 急单 | 特急ロット |
@@ -226,6 +229,30 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `runRecommended` | Reschedule this shift | 重排本班 | 当直を再スケジュール |
 | `recommended` | Recommended | 建议 | 推奨 |
 | `productLine` | When a tool stops, ResiliMES rebuilds the shift so lots still meet their due times. | 机台宕机后，重排本班计划，让批次赶上交期。 | 装置が止まったとき、当直の計画を組み直して納期を守ります。 |
+| `boardTitle` | Tool state | 装置状态 | 装置状態 |
+| `states.idle` | Idle | 空闲 | 空き |
+| `states.run` | Run | 加工 | 加工 |
+| `states.setup` | Setup | 换型 | 段取り |
+| `states.down` | Down | 宕机 | 停止 |
+| `states.pm` | PM | 保养 | 保全 |
+| `queueHead` | Bottleneck queue | 瓶颈排队 | ボトルネック待ち |
+| `queueRunning` | {lot} running · done {time} | {lot} 加工中 · {time} 完工 | {lot} 加工中 · {time} 完了 |
+| `queueNext` | Next {lot} · {time} | 下一道 {lot} · {time} | 次 {lot} · {time} |
+| `queueCount` | {count} waiting | 等待 {count} | 待ち {count} |
+| `queueBlocked` | {lot} cannot start · down until {time} | {lot} 不能开工 · 宕机至 {time} | {lot} は着工不可 · {time} まで停止 |
+| `scoreCr` | CR | 临界比 | CR |
+| `scoreSlack` | Slack | 松弛 | スラック |
+| `scoreSetup` | Setup | 换型 | 段取り |
+| `scoreQtime` | Q-time | 排队时限 | キュータイム |
+| `scorePending` | The weighted score is not on this dispatcher yet. | 加权评分还没接到这台调度上。 | 加重スコアはまだこの差し立てにありません。 |
+| `wipByStep` | WIP by step | 工序在制 | 工程別仕掛品 |
+| `wipNone` | No pile-up limit on this plant yet. | 这条线还没有积压上限。 | このラインに滞留の上限はまだありません。 |
+| `wipOver` | {step} {lots} lots · limit {limit} | {step} {lots} 批 · 上限 {limit} | {step} {lots}ロット · 上限 {limit} |
+| `triggers.breakdown` | Tool down | 装置宕机 | 装置故障 |
+| `triggers.hot_lot` | Hot lot | 急件 | 特急ロット |
+| `triggers.wip_threshold` | WIP limit | 在制超限 | 仕掛上限 |
+| `proposeMove` | Move to {tool} | 改到 {tool} | {tool} へ移す |
+| `noAlternate` | No other qualified tool. | 没有其他合格装置。 | 他に資格のある装置はありません。 |
 | `analyzeEmpty` | Run a reschedule first. The other numbers show up here. | 先重排一次，其余指标会出现在这里。 | 先に再スケジュールしてください。残りの指標はここに出ます。 |
 | `verifyEmpty` | Run a reschedule first. Every constraint shows up here. | 先重排一次，每条约束的结果会出现在这里。 | 先に再スケジュールしてください。制約ごとの結果はここに出ます。 |
 | `planTitle` | Current plan · {tool} down | 当前计划 · {tool} 宕机 | 現在の計画 · {tool} 停止 |

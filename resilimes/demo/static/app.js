@@ -72,6 +72,7 @@ const state = {
   health: null,
   bay: [],
   overview: null,
+  proposal: null,
   scenarioItems: [],
   running: false,
   incidentText: "",
@@ -157,7 +158,7 @@ function paint() {
   $("#note").textContent = copy.versionNote;
   $("#lang-label").textContent = copy.lang;
   $("#disruption-label").textContent = copy.disruption;
-  $("#tools-label").textContent = copy.toolsLabel;
+  $("#tools-label").textContent = copy.boardTitle || copy.toolsLabel;
   $("#materials-label").textContent = copy.materialsLabel;
   $("#describe-label").textContent = copy.describe;
   $("#incident").placeholder = copy.placeholder;
@@ -177,7 +178,8 @@ function paint() {
   paintAnalyze();
   paintVerify();
   if (state.running && !state.report) $("#status").textContent = copy.working;
-  else if (!state.running && !state.report) $("#status").textContent = "";
+  else if (state.report) $("#status").textContent = state.report.blocked ? copy.refused : doneStatus(state.report);
+  else $("#status").textContent = "";
 }
 
 function paintTabs() {
@@ -274,9 +276,16 @@ function paintBay() {
   tools.innerHTML = "";
   materials.innerHTML = "";
   legend.innerHTML = "";
-  for (const [klass, label] of [["up", copy.legendUp], ["down", copy.legendDown], ["maint", copy.legendMaint]]) {
+  const states = copy.states || {};
+  for (const [klass, label] of [
+    ["idle", states.idle],
+    ["run", states.run],
+    ["setup", states.setup],
+    ["down", states.down],
+    ["pm", states.pm],
+  ]) {
     const li = document.createElement("li");
-    li.innerHTML = `<i class="swatch ${klass}"></i><span>${escapeHtml(label)}</span>`;
+    li.innerHTML = `<i class="swatch ${klass}"></i><span>${escapeHtml(label || "")}</span>`;
     legend.appendChild(li);
   }
   const scaleRows = state.report && state.report.scenario_id === "scale" && state.report.load && state.report.load.after && state.report.load.after.rows;
@@ -307,8 +316,10 @@ function paintBay() {
     const li = document.createElement("li");
     li.dataset.id = tool.id;
     const detail = toolDetail(tool, copy);
-    li.innerHTML = `<span class="lamp ${lampClass(tool.status, "tool")}"></span><span>${escapeHtml(tool.id)}</span><small>${escapeHtml(detail)}</small>`;
-    li.title = `${tool.id} · ${detail}`;
+    const board = tool.state || "idle";
+    const word = (copy.states && copy.states[board]) || board;
+    li.innerHTML = `<span class="lamp ${lampClass(board, "tool")}"></span><span>${escapeHtml(tool.id)}</span><small>${escapeHtml(detail)}</small>`;
+    li.title = `${tool.id} · ${word} · ${detail}`;
     tools.appendChild(li);
   }
   for (const item of currentMaterials()) {
@@ -338,6 +349,7 @@ function toolFromRow(row) {
     next_lot: nxt ? nxt.job_id : "",
     next_min: nxt ? nxt.start_min : null,
     down_until_min: row.status === "DOWN" || row.status === "MAINTENANCE" ? row.available_at_min : null,
+    state: row.state || boardState(row.status, bars),
   };
 }
 
@@ -359,10 +371,24 @@ function toolDetail(tool, copy) {
 
 function lampClass(status, kind) {
   if (kind === "material" && (status === "short" || status === "DOWN")) return "short";
-  if (status === "DOWN" || status === "short") return "down";
-  if (status === "MAINTENANCE") return "maint";
-  if (status === "RUNNING" || status === "IDLE" || status === "ok") return "up";
+  if (status === "setup" || status === "SETUP") return "setup";
+  if (status === "pm" || status === "MAINTENANCE") return "pm";
+  if (status === "down" || status === "DOWN" || status === "short") return "down";
+  if (status === "idle" || status === "IDLE") return "idle";
+  if (status === "run" || status === "RUNNING" || status === "ok") return "run";
   return "";
+}
+
+function boardState(status, bars) {
+  const key = String(status || "").toUpperCase();
+  if (key === "DOWN") return "down";
+  if (key === "MAINTENANCE") return "pm";
+  if (key === "SETUP") return "setup";
+  const now = (bars || []).find((bar) => !bar.held && bar.start_min <= 0 && bar.end_min > 0);
+  if (now && now.setup_min > 0 && now.start_min <= 0 && 0 < now.start_min + now.setup_min) return "setup";
+  if (now) return "run";
+  if (key === "RUNNING") return "run";
+  return "idle";
 }
 
 function statusLabel(status) {
@@ -394,11 +420,11 @@ function paintRecover() {
   stepper.hidden = !showStory;
   result.hidden = !report || (!report.gantt && !report.load);
   if (state.running && !report) {
-    $("#headline").textContent = state.incidentText;
+    setHeadline(state.incidentText, null);
     $("#refusal").textContent = "";
   } else if (report) {
     const brief = report.brief && report.brief[state.lang];
-    $("#headline").textContent = brief ? brief.headline : state.incidentText;
+    setHeadline(brief ? brief.headline : state.incidentText, report);
     $("#refusal").textContent = refusalLine(report);
   }
   if (report && report.kpis) renderCards(report);
@@ -1248,6 +1274,7 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     const line = document.createElement("div");
     const downRow = row.status === "DOWN" || row.status === "MAINTENANCE";
     line.className = "gantt-row" + (row.bottleneck && !byLot ? " bottleneck" : "") + (downRow ? " down-row" : "");
+    line.dataset.tool = row.equipment_id || "";
     const label = document.createElement("div");
     label.className = "gantt-label";
     if (byLot) {
@@ -1291,11 +1318,14 @@ function renderGantt(host, gantt, horizon, scale, draw) {
         : shortLot(bar.job_id);
       node.appendChild(name);
       const toolId = bar.equipment_id || row.equipment_id;
+      node.dataset.job = bar.job_id;
+      node.dataset.tool = toolId;
+      node.dataset.step = bar.step || "";
       node.addEventListener("pointerenter", (event) => showTip(event, bar, toolId, horizon));
       node.addEventListener("click", (event) => {
         event.stopPropagation();
         hideTip();
-        openRoute(event, bar.job_id, gantt, horizon);
+        openRoute(event, bar, row, gantt, horizon);
       });
       node.addEventListener("pointermove", moveTip);
       node.addEventListener("pointerleave", hideTip);
@@ -1331,6 +1361,7 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     if (track.dataset.links === "1") drawLinks(track);
   });
   drawDues(wrap, gantt, scale);
+  applyProposal();
 }
 
 function drawDues(wrap, gantt, scale) {
@@ -1404,17 +1435,18 @@ function drawLinks(track) {
   track.appendChild(svg);
 }
 
-function openRoute(event, jobId, gantt, horizon) {
+function openRoute(event, bar, row, gantt, horizon) {
   const copy = t();
+  const jobId = bar.job_id;
   const steps = [];
-  for (const row of gantt.rows) {
-    for (const bar of row.bars) {
-      if (bar.job_id === jobId && !bar.held) steps.push({ ...bar, equipment_id: row.equipment_id, area: row.area });
+  for (const line of gantt.rows) {
+    for (const item of line.bars) {
+      if (item.job_id === jobId && !item.held) steps.push({ ...item, equipment_id: line.equipment_id, area: line.area });
     }
   }
   steps.sort((a, b) => a.start_min - b.start_min);
   state.routeJob = jobId;
-  document.querySelectorAll(".bar").forEach((node) => node.classList.toggle("selected", node.title === jobId));
+  document.querySelectorAll(".bar").forEach((node) => node.classList.toggle("selected", node.dataset.job === jobId));
   const host = $("#route");
   host.innerHTML = "";
   const title = document.createElement("h3");
@@ -1434,9 +1466,105 @@ function openRoute(event, jobId, gantt, horizon) {
     }
   });
   host.append(title, list);
+  if (!bar.held) host.append(adjustBlock(bar, row, gantt, copy, event, horizon));
   host.hidden = false;
   host.style.left = `${Math.min(event.clientX + 12, window.innerWidth - 340)}px`;
-  host.style.top = `${Math.min(event.clientY + 12, window.innerHeight - 220)}px`;
+  host.style.top = `${Math.min(event.clientY + 12, window.innerHeight - 280)}px`;
+}
+
+function adjustBlock(bar, row, gantt, copy, event, horizon) {
+  const wrap = document.createElement("div");
+  const toolId = bar.equipment_id || row.equipment_id;
+  const alts = alternateTools(gantt, row);
+  if (!alts.length) {
+    const none = document.createElement("p");
+    none.className = "score";
+    none.textContent = copy.noAlternate;
+    wrap.append(none);
+    return wrap;
+  }
+  const buttons = document.createElement("div");
+  buttons.className = "adjust";
+  for (const tool of alts) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = fill(copy.proposeMove, { tool });
+    const active = state.proposal
+      && state.proposal.job_id === bar.job_id
+      && state.proposal.step === bar.step
+      && state.proposal.from_equipment === toolId
+      && state.proposal.to_equipment === tool;
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+    button.addEventListener("click", (click) => {
+      click.stopPropagation();
+      state.proposal = {
+        job_id: bar.job_id,
+        step: bar.step,
+        from_equipment: toolId,
+        to_equipment: tool,
+        score: pendingScore(),
+      };
+      applyProposal();
+      openRoute(event, bar, row, gantt, horizon);
+    });
+    buttons.appendChild(button);
+  }
+  const pending = document.createElement("p");
+  pending.className = "score";
+  pending.textContent = copy.scorePending;
+  const score = document.createElement("p");
+  score.className = "score";
+  const current = state.proposal && state.proposal.job_id === bar.job_id ? state.proposal.score : pendingScore();
+  score.textContent = scoreText(current, copy);
+  wrap.append(buttons, pending, score);
+  return wrap;
+}
+
+function alternateTools(gantt, row) {
+  const caps = new Set(row.capability || []);
+  if (!caps.size) return [];
+  const found = [];
+  for (const other of gantt.rows || []) {
+    if (other.equipment_id === row.equipment_id) continue;
+    if (other.state === "down" || other.state === "pm") continue;
+    if ((other.capability || []).some((cap) => caps.has(cap))) found.push(other.equipment_id);
+  }
+  return found;
+}
+
+function applyProposal() {
+  const proposal = state.proposal;
+  document.querySelectorAll(".bar.proposed").forEach((node) => node.classList.remove("proposed"));
+  document.querySelectorAll(".gantt-row.adjust-target").forEach((node) => node.classList.remove("adjust-target"));
+  if (!proposal) return;
+  document.querySelectorAll(".bar").forEach((node) => {
+    if (node.dataset.job === proposal.job_id && node.dataset.tool === proposal.from_equipment && node.dataset.step === proposal.step) {
+      node.classList.add("proposed");
+    }
+  });
+  document.querySelectorAll(".gantt-row").forEach((node) => {
+    if (node.dataset.tool === proposal.to_equipment) node.classList.add("adjust-target");
+  });
+}
+
+function pendingScore() {
+  return { cr: null, slack_min: null, setup_cost_min: null, qtime_risk: null };
+}
+
+function scoreText(score, copy) {
+  const slots = [
+    ["cr", copy.scoreCr],
+    ["slack_min", copy.scoreSlack],
+    ["setup_cost_min", copy.scoreSetup],
+    ["qtime_risk", copy.scoreQtime],
+  ];
+  return slots.map(([key, label]) => `${label} ${scoreShown(key, score && score[key])}`).join(" · ");
+}
+
+function scoreShown(key, value) {
+  if (value == null || value === "") return "—";
+  if (String(key).endsWith("_min")) return formatDuration(value);
+  return String(value);
 }
 
 function closeRoute() {
@@ -1729,6 +1857,7 @@ function paintOverview() {
     bindTip(article, copy[tip]);
     kpis.appendChild(article);
   }
+  paintWip(copy, overview);
   const down = (overview && overview.down_tools) || [];
   const plan = $("#plan-label");
   if (plan) {
@@ -1743,6 +1872,7 @@ function paintOverview() {
       legend.appendChild(li);
     }
   }
+  paintQueues(copy, overview);
   if (overview && overview.gantt && overview.window) {
     renderGantt($("#gantt-now"), overview.gantt, state.horizon, overview.window, false);
   }
@@ -1753,7 +1883,9 @@ function paintOverview() {
   const text = (copy.scenarios && copy.scenarios[id]) || ["", ""];
   const words = document.createElement("div");
   const impact = scenarioImpact(id, copy);
-  words.innerHTML = `<strong><em>${escapeHtml(copy.recommended)}</em>${escapeHtml(text[0])}</strong><span>${escapeHtml(impact || text[1])}</span>`;
+  const trigger = triggerText(overview && overview.trigger, copy);
+  const detail = [trigger, impact || text[1]].filter(Boolean).join(" · ");
+  words.innerHTML = `<strong><em>${escapeHtml(copy.recommended)}</em>${escapeHtml(text[0])}</strong><span>${escapeHtml(detail)}</span>`;
   const button = document.createElement("button");
   button.type = "button";
   button.className = "run";
@@ -1769,7 +1901,112 @@ function doneStatus(report) {
   const verdict = report && report.verdict && report.verdict.verdict;
   const word = (copy.verdicts && copy.verdicts[verdict]) || copy.done;
   const data = report && report.mode && report.mode.data === "zetaris" ? copy.sourceZetaris : copy.sourceSample;
-  return `${word} · ${data}`;
+  const trigger = triggerText(triggerOf(report), copy);
+  return trigger ? `${trigger} · ${word} · ${data}` : `${word} · ${data}`;
+}
+
+function setHeadline(text, report) {
+  const headline = $("#headline");
+  headline.textContent = text || "";
+  const label = report ? triggerText(triggerOf(report), t()) : "";
+  if (!label) return;
+  const chip = document.createElement("span");
+  chip.className = "trigger";
+  chip.textContent = label;
+  headline.append(chip);
+}
+
+function triggerOf(report) {
+  if (!report) return null;
+  const byScenario = {
+    litho_down: "breakdown",
+    rush_order: "hot_lot",
+  };
+  const byIntent = {
+    "plant.machine_down": "breakdown",
+    "plant.rush_order": "hot_lot",
+  };
+  const kind = (report.scenario_id && byScenario[report.scenario_id])
+    || (report.intent && byIntent[report.intent.primary])
+    || "";
+  return kind ? { kind } : null;
+}
+
+function triggerText(trigger, copy) {
+  const kind = trigger && trigger.kind;
+  return (kind && copy.triggers && copy.triggers[kind]) || "";
+}
+
+function paintWip(copy, overview) {
+  const host = $("#wip-line");
+  if (!host) return;
+  const steps = (overview && overview.wip_steps) || [];
+  if (!steps.length) {
+    host.hidden = true;
+    host.innerHTML = "";
+    return;
+  }
+  host.hidden = false;
+  const chips = steps.map((step) => {
+    const text = step.warning && step.threshold != null
+      ? fill(copy.wipOver, { step: step.step, lots: step.lots, limit: step.threshold })
+      : `${step.step} ${step.lots}`;
+    return `<span class="${step.warning ? "warn" : ""}">${escapeHtml(text)}</span>`;
+  });
+  const note = steps.some((step) => step.warning) ? "" : `<span class="pending">${escapeHtml(copy.wipNone)}</span>`;
+  host.innerHTML = `<span class="label">${escapeHtml(copy.wipByStep)}</span>${chips.join("")}${note}`;
+}
+
+function paintQueues(copy, overview) {
+  const host = $("#queues");
+  if (!host) return;
+  const queues = (overview && overview.queues) || [];
+  host.innerHTML = "";
+  if (!queues.length) {
+    host.hidden = true;
+    return;
+  }
+  host.hidden = false;
+  const title = document.createElement("p");
+  title.className = "queue-title";
+  title.textContent = copy.queueHead;
+  host.appendChild(title);
+  for (const queue of queues) host.appendChild(queueLine(queue, copy));
+  const score = document.createElement("p");
+  score.className = "score";
+  score.textContent = scoreText(queues[0].score, copy);
+  score.title = copy.scorePending;
+  host.appendChild(score);
+}
+
+function queueLine(queue, copy) {
+  const line = document.createElement("p");
+  const area = (copy.areas && copy.areas[queue.area]) || queue.area || "";
+  const parts = [`${area} ${queue.tool}`];
+  const stateWord = copy.states && copy.states[queue.state];
+  if (stateWord && queue.state !== "run" && queue.state !== "idle") parts.push(stateWord);
+  if (queue.blocked) {
+    parts.push(fill(copy.queueBlocked, {
+      lot: shortLot(queue.blocked.lot),
+      time: shiftClock(queue.available_at_min),
+    }));
+  } else if (queue.running) {
+    parts.push(fill(copy.queueRunning, {
+      lot: shortLot(queue.running.lot),
+      time: shiftClock(queue.running.end_min),
+    }));
+  }
+  if (queue.next) {
+    parts.push(fill(copy.queueNext, {
+      lot: shortLot(queue.next.lot),
+      time: shiftClock(queue.next.start_min),
+    }));
+  }
+  if (queue.queued && queue.queued.length) {
+    parts.push(fill(copy.queueCount, { count: queue.queued.length }));
+  }
+  line.textContent = parts.join(" · ");
+  return line;
 }
 
 function formatFinding(item) {

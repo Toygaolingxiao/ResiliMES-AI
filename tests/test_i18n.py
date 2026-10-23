@@ -50,6 +50,19 @@ def test_overview_numbers_match_the_litho_recovery() -> None:
     assert "RESIST-UV" in materials
     assert "RESIST-UV" not in tools
     assert tools["LITHO-02"]["down_until_min"] == 600
+    assert tools["LITHO-02"]["state"] == "down"
+    queues = {row["tool"]: row for row in body["overview"]["queues"]}
+    assert queues
+    assert {row["kind"] for row in body["overview"]["queues"]} == {"litho"}
+    assert queues["LITHO-02"]["state"] == "down"
+    blank = {"cr": None, "slack_min": None, "setup_cost_min": None, "qtime_risk": None}
+    for row in body["overview"]["queues"]:
+        assert row["score"] == blank
+    steps = body["overview"]["wip_steps"]
+    assert steps
+    assert all(step["threshold"] is None and step["warning"] is False for step in steps)
+    assert sum(step["lots"] for step in steps) == body["overview"]["kpis"]["wip"]
+    assert body["overview"]["trigger"] == {"kind": "breakdown", "scenario_id": "litho_down"}
     report = run_recovery(settings, RecoverInput(scenario="litho_down"))
     refused = report.rejected_alternative["critique"]["violations"][0]  # type: ignore[index]
     assert refused["code"] == "equipment_down"
