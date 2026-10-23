@@ -105,9 +105,13 @@ SCENARIOS: dict[str, SmtScenario] = {
         title="WIP threshold",
         summary=(
             "When a station family holds more than two lots per tool, choose() "
-            "keeps eight candidates instead of twenty-four. That counter is not a replan."
+            "keeps eight candidates instead of twenty-four, and also keeps a lot "
+            "whose slack is at or under 7200 seconds. That counter is not a replan."
         ),
-        incident="WIP over the station-family cap. The candidate list shortens. The book is not replanned.",
+        incident=(
+            "WIP over the station-family cap. The candidate list shortens. "
+            "Lots with slack at or under 7200 seconds stay on the list. The book is not replanned."
+        ),
         before_policy="fifo",
         after_policy="resilimes",
         kind="wip",
@@ -547,15 +551,20 @@ def _report(
             "candidate_cap": (
                 "The WIP counter in enqueue records that a family exceeded "
                 "max(8, two lots per tool). choose() then keeps 8 candidates "
-                "instead of 24. It does not replan the family."
+                "instead of 24, and also keeps a lot whose slack is at or under "
+                "7200 seconds. It does not replan the family. On seeds 9-13 that "
+                "slack exception matched the shipped score."
             ),
             "qtime_gate": (
                 "The adjacent Wet_Etch look-ahead is a hold, not a replan. "
-                "On the measured books that gate fired 0 times."
+                "On the measured books that gate fired 0 times. Retargeting it "
+                "at the 44 adjacent 1-hour Dry_Etch to Wet_Etch pairs, and counting "
+                "lots already queued downstream, was reverted after seeds 9-13."
             ),
             "macro_aps": (
                 "macro_aps_ms times a backward due and an earliest-free scanner "
-                "placement. Those operation dues are not an input to dpi()."
+                "placement. Those operation dues are not an input to dpi(). "
+                "Feeding the expose-step due into dpi() was reverted after seeds 9-13."
             ),
             "pm_avoided": "ResiliMES decisions that refused at least one lot because it would cross a PM.",
             "pm_overlaps": "Baseline starts whose process overlaps a PM window.",

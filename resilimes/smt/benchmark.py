@@ -54,6 +54,50 @@ _KEYS = (
 
 _X_ETAS = (180.0, 300.0, 600.0, LITHO_MTTR_MIN)
 
+# One pre-registered run. Seeds 9-13. Not retuned after the numbers.
+_HELDOUT: dict[str, Any] = {
+    "seeds": [9, 10, 11, 12, 13],
+    "slack_sec": 7200,
+    "rule": (
+        "Keep a ResiliMES arm only when, on both books, on-time lots are not "
+        "fewer and re-cleans and Q-time violations are not higher than the control."
+    ),
+    "xfactor": {
+        "due_per_seed": 87,
+        "control": {"on_time": 407, "qtime": 2223, "recleans": 223, "decision": "baseline"},
+        "expose_due_in_dpi": {
+            "on_time": 420,
+            "qtime": 2148,
+            "recleans": 208,
+            "decision": "revert",
+        },
+        "dry_etch_queue_gate": {
+            "on_time": 407,
+            "qtime": 2198,
+            "recleans": 213,
+            "decision": "revert",
+        },
+        "slack_7200": {"on_time": 407, "qtime": 2223, "recleans": 223, "decision": "keep"},
+    },
+    "published": {
+        "due_per_seed": 56,
+        "control": {"on_time": 156, "qtime": 1821, "recleans": 131, "decision": "baseline"},
+        "expose_due_in_dpi": {
+            "on_time": 155,
+            "qtime": 1862,
+            "recleans": 147,
+            "decision": "revert",
+        },
+        "dry_etch_queue_gate": {
+            "on_time": 156,
+            "qtime": 1850,
+            "recleans": 131,
+            "decision": "revert",
+        },
+        "slack_7200": {"on_time": 156, "qtime": 1821, "recleans": 131, "decision": "keep"},
+    },
+}
+
 
 def main() -> None:
     fab = load_fab()
@@ -90,6 +134,7 @@ def main() -> None:
         "xfactor": _xfactor(fab),
         "repair_mc": _repair_mc(),
         "price": _prices(fab),
+        "heldout_seeds_9_13": _HELDOUT,
     }
     json_path = ROOT / "data" / "smt2020" / "benchmark.json"
     json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -437,9 +482,11 @@ def _markdown(payload: dict[str, Any]) -> str:
         "",
         "The WIP column is a candidate cap, not a replan. "
         "`choose()` keeps 8 lots instead of 24 after a family exceeds "
-        "max(8, two lots per tool). "
+        "max(8, two lots per tool), and also keeps a lot whose slack is at or "
+        "under 7200 seconds. "
         "The adjacent Wet_Etch look-ahead fired 0 times on these books. "
         "`macro_aps_ms` does not feed `dpi()`. "
+        "`rank()` calls `dispatch_score`. "
         "A down tool queues the end of every covering window, so a forced outage "
         "that overlaps an MTTF draw still releases at the later end. "
         "Seeds 1-5 on-time on the books below match the figures in this file.",
@@ -540,12 +587,44 @@ def _markdown(payload: dict[str, Any]) -> str:
         "",
         _hot_note(payload),
         "",
+        _heldout(),
+        "",
         "Per-seed rows are in `data/smt2020/benchmark.json`. Regenerate with `make smt-bench`.",
         "What the extract contains, and what this simulator leaves out, is "
         "[SMT2020_PROVENANCE.md](SMT2020_PROVENANCE.md).",
         "",
     ]
     return "\n".join(lines)
+
+
+def _heldout() -> str:
+    """Seeds 9-13, one run, pre-registered. Not retuned after the numbers."""
+    return """## Seeds 9-13 (one run, then keep or revert)
+
+Registered before the run. Seeds 9, 10, 11, 12, 13. X-factor book: due = remaining process times 2.75, 48 hours, 87 lots due, `Litho_FE_92-1` down 600 minutes. Published-due book: 48 hours, 56 lots due. Policies: ResiliMES, EDD, FIFO, CR. Slack threshold 7200 seconds. Keep a ResiliMES arm only when, on both books, the on-time lot count is not lower and re-cleans are not higher and Q-time violations are not higher than the control. EDD, FIFO, and CR matched the control on every arm.
+
+Control is the shipped score: lot due inside `dpi()`, the Wet_Etch gate, and the candidate cap. Sums are five seeds.
+
+| Book | Arm | Decision | On time | Q-time | Re-cleans |
+| --- | --- | --- | ---: | ---: | ---: |
+| X-factor | control |  | 407/435 | 2223 | 223 |
+| X-factor | expose due inside dpi() | revert | 420/435 | 2148 | 208 |
+| X-factor | dry-etch queue gate | revert | 407/435 | 2198 | 213 |
+| X-factor | slack at or under 7200 s stays | keep | 407/435 | 2223 | 223 |
+| Published | control |  | 156/280 | 1821 | 131 |
+| Published | expose due inside dpi() | revert | 155/280 | 1862 | 147 |
+| Published | dry-etch queue gate | revert | 156/280 | 1850 | 131 |
+| Published | slack at or under 7200 s stays | keep | 156/280 | 1821 | 131 |
+
+The expose-step due raised X-factor on-time and cut re-cleans and Q-time, and lost one published-due lot (156 to 155) while raising that book's Q-time and re-cleans. Reverted. `dpi()` still uses the lot due. `rank()` still calls `dispatch_score`.
+
+The dry-etch gate, aimed at the 44 adjacent 1-hour Dry_Etch to Wet_Etch pairs and counting lots already queued downstream, held X-factor on-time and cut that book's Q-time (2223 to 2198) and re-cleans (223 to 213). Published-due on-time stayed 156/280 and Q-time rose from 1821 to 1850. Reverted. The Wet_Etch gate remains, and it fired 0 times on the books above.
+
+The slack exception matched the control on every seed of both books. It stays in `choose()`.
+
+Per seed, ResiliMES on time, X-factor control: 82/87, 74/87, 87/87, 87/87, 77/87. Expose due: 82/87, 87/87, 87/87, 87/87, 77/87. Dry-etch: 82/87, 74/87, 87/87, 87/87, 77/87. Slack: same as control.
+
+Per seed, ResiliMES on time, published control: 32/56, 31/56, 32/56, 32/56, 29/56. Expose due: 32/56, 31/56, 32/56, 32/56, 28/56. Dry-etch and slack: same as control."""
 
 
 def _published_lead(payload: dict[str, Any]) -> str:

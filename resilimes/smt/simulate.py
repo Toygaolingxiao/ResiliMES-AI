@@ -44,10 +44,8 @@ DISPOSITION_SEC = 15.0 * 60.0
 # Due dates in the X-factor book. Middle of the 2.5-3 range.
 X_FACTOR = 2.75
 # Lots at least this tight stay in the candidate list when the family cap is on.
-# Pre-registered for the seeds 9-13 campaign. Not a tuned result.
+# Pre-registered at 7200 s before the seeds 9-13 run. Not changed after that run.
 SLACK_CANDIDATE_SEC = 7200.0
-# Adjacent Dry_Etch -> Wet_Etch CQT published as 1 hour.
-_HOUR_SEC = 3600.0
 
 
 @dataclass
@@ -244,24 +242,6 @@ def macro_aps_ms(fab: Fab) -> tuple[float, int]:
     return elapsed_ms, len(jobs)
 
 
-def scanner_operation_dues(fab: Fab) -> dict[tuple[int, int], float]:
-    """Finish due of each remaining expose step, walked back from the lot due.
-
-    Same backward pass as ``macro_aps_ms``. The placement in that timer still
-    discards the rows. ``dpi`` uses this map only when the caller passes it.
-    """
-    found: dict[tuple[int, int], float] = {}
-    for lot_i, route_i in enumerate(fab.lot_route):
-        route = fab.routes[route_i]
-        step0 = fab.lot_step[lot_i]
-        cursor = fab.lot_due[lot_i]
-        for index in range(len(route.family) - 1, step0 - 1, -1):
-            if fab.families[route.family[index]].scanner:
-                found[(lot_i, index)] = cursor
-            cursor -= route.cycle[index]
-    return found
-
-
 def run_policy(
     fab: Fab,
     *,
@@ -278,9 +258,6 @@ def run_policy(
     watch: tuple[int, ...] = (),
     bar_family: int | None = None,
     bar_until: float | None = None,
-    aps_dues: dict[tuple[int, int], float] | None = None,
-    dry_etch_gate: bool = False,
-    keep_slack: bool = False,
 ) -> RunResult:
     if policy not in {"resilimes", "edd", "fifo", "cr"}:
         raise ValueError(f"Unknown policy {policy}")
@@ -299,9 +276,6 @@ def run_policy(
         watch=watch,
         bar_family=bar_family,
         bar_until=bar_until,
-        aps_dues=aps_dues,
-        dry_etch_gate=dry_etch_gate,
-        keep_slack=keep_slack,
     )
     return sim.run()
 
@@ -349,9 +323,6 @@ class _Sim:
         watch: tuple[int, ...] = (),
         bar_family: int | None = None,
         bar_until: float | None = None,
-        aps_dues: dict[tuple[int, int], float] | None = None,
-        dry_etch_gate: bool = False,
-        keep_slack: bool = False,
     ) -> None:
         self.fab = fab
         self.policy = policy
@@ -424,9 +395,6 @@ class _Sim:
         self.bar_family = fab.focus_family if bar_family is None else bar_family
         self.bar_until = 12 * 3600.0 if bar_until is None else bar_until
         self.bar_cap = 2400 if self.bar_until > 12 * 3600.0 else 400
-        self.aps_dues = aps_dues
-        self.dry_etch_gate = dry_etch_gate
-        self.keep_slack = keep_slack
         self.downstream = _downstream(fab, fab.focus_family)
         self.threshold = [max(WIP_FLOOR, WIP_PER_TOOL * item.tools) for item in fab.families]
         self.bins = int(horizon // _BIN_SEC) + 1 if trace else 0
@@ -541,14 +509,12 @@ class _Sim:
                     return self.cheap(lot, moment)
 
                 ranked = heapq.nsmallest(limit, pool, key=_cheap)
-                if over_cap and self.keep_slack:
+                if over_cap:
                     kept = set(ranked)
                     for lot in pool:
                         if lot not in kept and self._slack(lot, moment) <= SLACK_CANDIDATE_SEC:
                             ranked.append(lot)
-                    pool = ranked
-                else:
-                    pool = ranked
+                pool = ranked
         pm_start = self.next_pm_start(tool, moment) if self.policy == "resilimes" else None
         feasible: list[int] = []
         skipped = False
@@ -629,15 +595,12 @@ class _Sim:
         return route.cqt_limit[index]
 
     def downstream_ready(self, lot: int, moment: float, proc: float) -> float | None:
-        """Earliest downstream start for the queue-time pair this step opens.
+        """Earliest downstream start for an adjacent Wet_Etch queue-time pair.
 
-        The default looks at an adjacent Wet_Etch origin. That gate did not
-        fire on the measured books. ``dry_etch_gate`` retargets the same check
-        at adjacent 1-hour Dry_Etch to Wet_Etch pairs and counts lots already
-        queued downstream.
+        Returns None when this step does not open that kind of window.
+        On the measured books this gate fired 0 times. A Dry_Etch retarget
+        was reverted after seeds 9-13.
         """
-        if self.dry_etch_gate:
-            return self._dry_etch_ready(lot, moment, proc)
         limit = self._open_limit(lot)
         if limit <= 0:
             return None
@@ -647,21 +610,6 @@ class _Sim:
             return None
         target = route.family[index + 1]
         return self._earliest_tool(target, moment + proc)
-
-    def _dry_etch_ready(self, lot: int, moment: float, proc: float) -> float | None:
-        route = self.fab.routes[self.fab.lot_route[lot]]
-        index = self.step[lot]
-        if route.cqt_target[index] != index + 1:
-            return None
-        if abs(route.cqt_limit[index] - _HOUR_SEC) > 1.0:
-            return None
-        if index + 1 >= len(route.family):
-            return None
-        origin = self.fab.families[route.family[index]]
-        target_fam = self.fab.families[route.family[index + 1]]
-        if origin.group != "Dry_Etch" or target_fam.group != "Wet_Etch":
-            return None
-        return self._queued_free(route.family[index + 1], moment + proc)
 
     def _earliest_tool(self, target: int, arrival: float) -> float | None:
         family = self.fab.families[target]
@@ -674,27 +622,6 @@ class _Sim:
             if earliest is None or free < earliest:
                 earliest = free
         return earliest
-
-    def _queued_free(self, target: int, arrival: float) -> float:
-        """Earliest start after lots already waiting at the downstream family."""
-        family = self.fab.families[target]
-        frees: list[float] = []
-        for tool in range(family.tool0, family.tool0 + family.tools):
-            free = max(arrival, self.busy_until[tool])
-            covered = _covering(self.downs[tool], free)
-            if covered is not None:
-                free = covered[1]
-            frees.append(free)
-        if not frees:
-            return arrival
-        for queued in self.queues[target]:
-            if not self.waiting[queued]:
-                continue
-            route = self.fab.routes[self.fab.lot_route[queued]]
-            proc = route.cycle[self.step[queued]]
-            slot = min(range(len(frees)), key=lambda index: frees[index])
-            frees[slot] += proc
-        return min(frees)
 
     def pick_batch(self, lots: list[int], moment: float) -> list[int]:
         grouped: dict[int, list[int]] = {}
@@ -752,13 +679,8 @@ class _Sim:
     def dpi(self, lot: int, moment: float) -> float:
         route = self.fab.routes[self.fab.lot_route[lot]]
         kind = "VIP" if self.promote_hot and lot == self.hot_lot else self.fab.lot_class[lot]
-        due = self.due[lot]
-        if self.aps_dues:
-            operation = self.aps_dues.get((lot, self.step[lot]))
-            if operation is not None:
-                due = operation
         return dynamic_priority(
-            due_sec=due,
+            due_sec=self.due[lot],
             now_sec=moment,
             remaining_sec=route.remain[self.step[lot]],
             order_class=kind,

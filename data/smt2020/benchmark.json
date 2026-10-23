@@ -4217,5 +4217,70 @@
         "recleans": 31
       }
     }
+  },
+  "heldout_seeds_9_13": {
+    "seeds": [
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "slack_sec": 7200,
+    "rule": "Keep a ResiliMES arm only when, on both books, on-time lots are not fewer and re-cleans and Q-time violations are not higher than the control.",
+    "xfactor": {
+      "due_per_seed": 87,
+      "control": {
+        "on_time": 407,
+        "qtime": 2223,
+        "recleans": 223,
+        "decision": "baseline"
+      },
+      "expose_due_in_dpi": {
+        "on_time": 420,
+        "qtime": 2148,
+        "recleans": 208,
+        "decision": "revert"
+      },
+      "dry_etch_queue_gate": {
+        "on_time": 407,
+        "qtime": 2198,
+        "recleans": 213,
+        "decision": "revert"
+      },
+      "slack_7200": {
+        "on_time": 407,
+        "qtime": 2223,
+        "recleans": 223,
+        "decision": "keep"
+      }
+    },
+    "published": {
+      "due_per_seed": 56,
+      "control": {
+        "on_time": 156,
+        "qtime": 1821,
+        "recleans": 131,
+        "decision": "baseline"
+      },
+      "expose_due_in_dpi": {
+        "on_time": 155,
+        "qtime": 1862,
+        "recleans": 147,
+        "decision": "revert"
+      },
+      "dry_etch_queue_gate": {
+        "on_time": 156,
+        "qtime": 1850,
+        "recleans": 131,
+        "decision": "revert"
+      },
+      "slack_7200": {
+        "on_time": 156,
+        "qtime": 1821,
+        "recleans": 131,
+        "decision": "keep"
+      }
+    }
   }
 }
