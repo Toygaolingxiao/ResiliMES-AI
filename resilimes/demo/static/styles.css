@@ -657,6 +657,7 @@ table.checks th, table.checks td { padding: 4px 8px; }
 .check-reasons ul { margin: 4px 0 0; padding-left: 1.1em; }
 .down-note { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
 
+.tip { white-space: pre-line; }
 .note, .tip, .route {
   position: fixed;
   z-index: 30;

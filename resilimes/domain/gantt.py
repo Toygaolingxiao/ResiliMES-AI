@@ -31,6 +31,7 @@ def build_gantt(plant: Plant, schedule: Schedule) -> dict[str, object]:
                     "setup_min": op.setup_min,
                     "rework": op.rework,
                     "held": False,
+                    "reticle_id": op.reticle_id,
                 }
             )
         bars.extend(_held_bars(plant, schedule, equipment.equipment_id))

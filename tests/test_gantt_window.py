@@ -67,6 +67,24 @@ def test_litho_window_keeps_the_late_bar_and_one_scale() -> None:
     assert window == shared_window(pair["before"], pair["after"])  # type: ignore[arg-type]
 
 
+def test_litho_bars_name_the_reticle() -> None:
+    pair = _pair("litho_down")
+    named = 0
+    for side in ("before", "after"):
+        gantt = pair[side]
+        assert isinstance(gantt, dict)
+        rows = gantt["rows"]
+        assert isinstance(rows, list)
+        for row in rows:
+            for bar in row["bars"]:
+                if str(bar["step"]).startswith("LITHO") and bar.get("held") is not True:
+                    assert str(bar["reticle_id"]).startswith("RET-")
+                    named += 1
+                else:
+                    assert not bar.get("reticle_id")
+    assert named > 0
+
+
 def test_rush_window_stops_before_the_far_priority_due() -> None:
     pair = _pair("rush_order")
     window = pair["window"]

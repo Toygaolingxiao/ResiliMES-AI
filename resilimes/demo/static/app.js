@@ -151,6 +151,7 @@ const COPY = {
     violations: "Violations",
     atRisk: "At risk",
     rework: "Rework",
+    reticle: "Reticle",
     areaTip: "Busy time in this area divided by up-time in this area, on the shared window.",
     waitPair: "Mean gap from {from} to {to} on the after book, across {n} lots.",
     tardyCellTip: "Lateness before, then after. A lot with no finish time is charged 24 hours.",
@@ -336,6 +337,7 @@ const COPY = {
     violations: "超时",
     atRisk: "临近",
     rework: "返工",
+    reticle: "光罩",
     areaTip: "该区域的忙时，除以该区域在共享窗口内的可用时间。",
     waitPair: "恢复后从 {from} 到 {to} 的平均间隔，共 {n} 个批次。",
     tardyCellTip: "移动前的拖期，然后是移动后。没有完工时间按 24 小时计。",
@@ -514,6 +516,7 @@ const COPY = {
     violations: "超過",
     atRisk: "危険",
     rework: "再加工",
+    reticle: "レチクル",
     areaTip: "このエリアの稼働時間を、共有の窓で上がっている時間で割る。",
     waitPair: "回復後の {from} から {to} までの平均間隔。{n} ロット。",
     tardyCellTip: "移動前の遅延、その後が移動後。完了時刻がなければ 24 時間。",
@@ -1982,7 +1985,8 @@ function showTip(event, bar, equipment, horizon) {
     return;
   }
   const flags = [bar.moved ? copy.moved : "", bar.fresh ? copy.fresh : "", bar.rework ? copy.rework : ""].filter(Boolean).join(" · ");
-  const text = `${bar.job_id} · P${bar.priority}\n${equipment} · ${bar.step}\n${formatClock(shift(horizon, bar.start_min)).slice(11, 16)}–${formatClock(shift(horizon, bar.end_min)).slice(11, 16)} · ${formatDuration(bar.end_min - bar.start_min)}${flags ? `\n${flags}` : ""}`;
+  const mask = bar.reticle_id ? `\n${copy.reticle} ${bar.reticle_id}` : "";
+  const text = `${bar.job_id} · P${bar.priority}\n${equipment} · ${bar.step}\n${formatClock(shift(horizon, bar.start_min)).slice(11, 16)}–${formatClock(shift(horizon, bar.end_min)).slice(11, 16)} · ${formatDuration(bar.end_min - bar.start_min)}${flags ? `\n${flags}` : ""}${mask}`;
   const tip = $("#tip");
   tip.textContent = text;
   tip.hidden = false;
