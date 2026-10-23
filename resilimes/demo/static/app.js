@@ -237,6 +237,20 @@ const COPY = {
     criticWord: "Critic",
     stepsWord: "steps",
     toolsWord: "tools",
+    optTitle: "Optimality gap",
+    optNote: "The committed book stays the list scheduler. This is the CP-SAT reference for the same rules.",
+    optProvedZero: "Heuristic within 0% of optimal (proved)",
+    optProvedTardy: "CP-SAT improves weighted tardiness by {delta} (proved)",
+    optProvedSpan: "Weighted tardiness matches optimal. Makespan is {delta} shorter (proved)",
+    optFeasible: "Heuristic within {gap}% of the bound (feasible)",
+    optLnsTardy: "Neighborhood search cut weighted tardiness by {delta} in {seconds} s",
+    optLnsSpan: "Neighborhood search cut makespan by {delta} in {seconds} s",
+    optKept: "No improvement in {seconds} s. Heuristic kept.",
+    optHeuristic: "Heuristic",
+    optBest: "CP-SAT",
+    optBound: "Lower bound",
+    optChanged: "Steps that differ in the reference",
+    optStart: "Start",
   },
   zh: {
     taglineIdle: "这一班的恢复",
@@ -416,6 +430,20 @@ const COPY = {
     criticWord: "评审",
     stepsWord: "工序",
     toolsWord: "设备",
+    optTitle: "最优差距",
+    optNote: "提交的账仍是列表排程。这一行是同一约束的 CP-SAT 参考。",
+    optProvedZero: "启发式在最优的 0% 以内（已证明）",
+    optProvedTardy: "CP-SAT 将加权拖期缩短 {delta}（已证明）",
+    optProvedSpan: "加权拖期与最优相同。工期短 {delta}（已证明）",
+    optFeasible: "启发式在下界的 {gap}% 以内（可行）",
+    optLnsTardy: "邻域搜索在 {seconds} 秒内将加权拖期缩短 {delta}",
+    optLnsSpan: "邻域搜索在 {seconds} 秒内将工期缩短 {delta}",
+    optKept: "{seconds} 秒内没有改进。保留启发式。",
+    optHeuristic: "启发式",
+    optBest: "CP-SAT",
+    optBound: "下界",
+    optChanged: "参考账中不同的工序",
+    optStart: "开工",
   },
   ja: {
     taglineIdle: "この直の回復",
@@ -595,6 +623,20 @@ const COPY = {
     criticWord: "批評",
     stepsWord: "工程",
     toolsWord: "装置",
+    optTitle: "最適との差",
+    optNote: "確定する帳票はリスト計画のまま。この行は同じ制約の CP-SAT 参照です。",
+    optProvedZero: "ヒューリスティックは最適の 0% 以内（証明済み）",
+    optProvedTardy: "CP-SAT が加重遅延を {delta} 短縮（証明済み）",
+    optProvedSpan: "加重遅延は最適と同じ。工期は {delta} 短い（証明済み）",
+    optFeasible: "ヒューリスティックは下界の {gap}% 以内（実行可能）",
+    optLnsTardy: "近傍探索が {seconds} 秒で加重遅延を {delta} 短縮",
+    optLnsSpan: "近傍探索が {seconds} 秒で工期を {delta} 短縮",
+    optKept: "{seconds} 秒で改善なし。ヒューリスティックを維持。",
+    optHeuristic: "ヒューリスティック",
+    optBest: "CP-SAT",
+    optBound: "下界",
+    optChanged: "参照帳票で異なる工程",
+    optStart: "開始",
   },
 };
 
@@ -959,7 +1001,49 @@ function paintStepper() {
   host.append(list, stack);
 }
 
+function optimalityGap(opt) {
+  const heuristic = Number(opt.heuristic_tardiness_min) || 0;
+  const bound = opt.bound_tardiness_min == null ? null : Number(opt.bound_tardiness_min);
+  if (bound == null || heuristic <= 0) return 0;
+  return Math.max(0, Math.round((100 * (heuristic - bound)) / heuristic));
+}
+
+function optimalityLine(opt, copy) {
+  if (!opt || opt.available !== true) return "";
+  const seconds = (Number(opt.runtime_ms || 0) / 1000).toFixed(2);
+  const delta = formatDuration(opt.delta_min > 0 ? opt.delta_min : opt.makespan_delta_min);
+  const fill = (template) => template
+    .replaceAll("{delta}", delta)
+    .replaceAll("{seconds}", seconds)
+    .replaceAll("{gap}", String(optimalityGap(opt)));
+  const neighborhood = opt.mode === "lns" || opt.status === "KEPT" || opt.status === "UNKNOWN" || opt.status === "INFEASIBLE" || opt.status === "SKIPPED";
+  if (neighborhood) {
+    if (opt.improved && opt.delta_min > 0) return fill(copy.optLnsTardy);
+    if (opt.improved && opt.makespan_delta_min > 0) return fill(copy.optLnsSpan);
+    return fill(copy.optKept);
+  }
+  if (opt.status === "FEASIBLE") {
+    if (opt.bound_tardiness_min == null) return fill(copy.optKept);
+    return fill(copy.optFeasible);
+  }
+  if (opt.proved && opt.delta_min > 0) return fill(copy.optProvedTardy);
+  if (opt.proved && opt.makespan_delta_min > 0) return fill(copy.optProvedSpan);
+  if (opt.proved) return copy.optProvedZero;
+  return fill(copy.optKept);
+}
+
+function paintOptimality(report) {
+  const node = $("#optimality");
+  if (!node) return;
+  const opt = report && report.optimality;
+  const text = optimalityLine(opt, t());
+  node.hidden = !text;
+  node.textContent = text;
+  node.className = "opt-badge" + (opt && opt.proved ? " proved" : "");
+}
+
 function renderCharts(report) {
+  paintOptimality(report);
   if (report.load) {
     renderScale(report);
     return;
@@ -987,8 +1071,61 @@ function paintAnalyze() {
   }
   const wrap = document.createElement("div");
   wrap.className = "analyze";
-  wrap.append(figuresCard(report), utilCard(report), waitCard(report), qtimeCard(report), bottleneckCard(report), lotsCard(report));
+  const gap = optimalityCard(report);
+  const parts = [figuresCard(report), utilCard(report), waitCard(report), qtimeCard(report), bottleneckCard(report), lotsCard(report)];
+  if (gap) parts.unshift(gap);
+  wrap.append(...parts);
   host.appendChild(wrap);
+}
+
+function optimalityCard(report) {
+  const opt = report.optimality;
+  const copy = t();
+  const text = optimalityLine(opt, copy);
+  if (!text) return null;
+  const card = document.createElement("article");
+  card.className = "card wide";
+  card.id = "optimality-card";
+  card.appendChild(cardHead(copy.optTitle, copy.optNote));
+  const line = document.createElement("p");
+  line.className = "opt-line" + (opt.proved ? " proved" : "");
+  line.textContent = text;
+  card.appendChild(line);
+  const table = document.createElement("table");
+  table.className = "compare";
+  const head = document.createElement("thead");
+  head.innerHTML = `<tr><th></th><th class="num">${escapeHtml(copy.optHeuristic)}</th><th class="num">${escapeHtml(copy.optBest)}</th><th class="num">${escapeHtml(copy.optBound)}</th></tr>`;
+  const body = document.createElement("tbody");
+  const bound = opt.bound_tardiness_min == null ? "—" : formatDuration(opt.bound_tardiness_min);
+  const rows = [
+    [copy.kpiTardy, formatDuration(opt.heuristic_tardiness_min), formatDuration(opt.best_tardiness_min), bound],
+    [copy.kpiSpan, formatDuration(opt.heuristic_makespan_min), formatDuration(opt.best_makespan_min), "—"],
+  ];
+  for (const [name, left, mid, right] of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<th>${escapeHtml(name)}</th><td class="num">${escapeHtml(left)}</td><td class="num">${escapeHtml(mid)}</td><td class="num">${escapeHtml(right)}</td>`;
+    body.appendChild(tr);
+  }
+  table.append(head, body);
+  card.appendChild(table);
+  const changed = (opt.reference && opt.reference.changed) || [];
+  if (opt.improved && changed.length) {
+    const title = document.createElement("p");
+    title.className = "note-inline";
+    title.textContent = copy.optChanged;
+    card.appendChild(title);
+    const moves = document.createElement("table");
+    moves.innerHTML = `<thead><tr><th>${escapeHtml(copy.lot)}</th><th>${escapeHtml(copy.step)}</th><th>${escapeHtml(copy.from)}</th><th>${escapeHtml(copy.to)}</th><th class="num">${escapeHtml(copy.optStart)}</th></tr></thead>`;
+    const moveBody = document.createElement("tbody");
+    for (const row of changed.slice(0, 12)) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="mono">${escapeHtml(row.job_id)}</td><td class="mono">${escapeHtml(row.step)}</td><td class="mono">${escapeHtml(row.from_equipment || "—")}</td><td class="mono">${escapeHtml(row.equipment_id)}</td><td class="num">${escapeHtml(formatDuration(row.start_min))}</td>`;
+      moveBody.appendChild(tr);
+    }
+    moves.appendChild(moveBody);
+    card.appendChild(moves);
+  }
+  return card;
 }
 
 function figuresCard(report) {

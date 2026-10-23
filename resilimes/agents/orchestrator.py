@@ -16,6 +16,7 @@ from resilimes.agents.specialist import gather
 from resilimes.config import Settings
 from resilimes.data.factory import build_source
 from resilimes.domain.checks import validate
+from resilimes.domain.cpsat import optimality_reference
 from resilimes.domain.critique import constraint_checks, critique_schedule
 from resilimes.domain.gantt import annotate_moves, build_gantt, shared_window
 from resilimes.domain.kpis import (
@@ -78,6 +79,7 @@ class RecoveryReport(BaseModel):
     gantt: dict[str, Any] | None = None
     timing: dict[str, Any] | None = None
     load: dict[str, Any] | None = None
+    optimality: dict[str, Any] | None = None
     trace: list[dict[str, Any]] = Field(default_factory=list)
     narrative: str = ""
     facts: list[dict[str, Any]] = Field(default_factory=list)
@@ -605,6 +607,11 @@ def run_recovery(
         bundle["critic_ms"] = (
             float(bundle.get("critic_ms") or 0) + (time.perf_counter() - started_validate) * 1000
         )
+    reference = optimality_reference(
+        plants.after,
+        bundle["after"],
+        mode="lns" if kind == "scale" else "exact",
+    )
     return RecoveryReport(
         scenario_id=scenario.id if scenario else None,
         incident=incident,
@@ -638,6 +645,7 @@ def run_recovery(
         load=_scale_load(plants.before, bundle["before"], plants.after, bundle["after"])
         if kind == "scale"
         else None,
+        optimality=reference,
         trace=trace,
         checks=constraint_checks(committed, rejected),
         validation=validated,
