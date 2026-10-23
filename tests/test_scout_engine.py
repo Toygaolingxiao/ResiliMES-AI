@@ -46,6 +46,14 @@ def test_machine_down_classifies_and_signs() -> None:
     assert contract["modelProfile"]["provider"] == "mock"
 
 
+def test_canned_rush_incident_clears_the_floor() -> None:
+    from resilimes.domain.scenarios import get_scenario
+
+    decision = _decide(get_scenario("rush_order").incident)
+    assert decision.intent["primary"] == "plant.rush_order"  # type: ignore[attr-defined]
+    assert decision.intent["confidence"] >= 0.92  # type: ignore[attr-defined]
+
+
 def test_rush_and_shortage_intents() -> None:
     rush = _decide("Rush order for PROD-A28, hot lot due in 3 hours")
     assert rush.intent["primary"] == "plant.rush_order"  # type: ignore[attr-defined]

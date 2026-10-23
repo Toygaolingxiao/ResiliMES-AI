@@ -37,6 +37,7 @@
       "roles": ["planner", "supervisor", "admin"],
       "examples": [
         "rush order for PROD-A28",
+        "Rush order: accept hot lot LOT-2001, product PROD-A28, priority 1, 25 wafers, due in 3 hours.",
         "hot lot due in 16 hours",
         "expedite a new priority 1 lot",
         "customer pull-in accept the order"

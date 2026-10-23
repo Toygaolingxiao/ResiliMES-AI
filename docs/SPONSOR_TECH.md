@@ -73,7 +73,7 @@ Nightshift is the only model provider on the live path. The client is `resilimes
 - Base URL normalized to `<origin>/v1`. A pasted `/v1/chat/completions` or `/healthz` does not become `/v1/v1`.
 - `Authorization: Bearer <METERLESS_RUNTIME_TOKEN>`. The placeholder `rt-local` is rejected.
 - `meterless-app: resilimes` and `meterless-scope: user` on chat calls.
-- The explainer calls `NEMOTRON_MODEL`. The planner and the critic do not call the model. `complete(lane="critic")` selects `NEMOTRON_CRITIC_MODEL` when that variable is set; the recovery loop does not use that lane.
+- The explainer calls `NEMOTRON_MODEL`. Nightshift explains. The planner and the critic do not call the model. The critic is `critique_schedule`.
 - Timeout defaults to 180 seconds. Rate limits and connection errors retry three times.
 - Logs record lane, model id, and latency. They do not record the token.
 

@@ -29,47 +29,66 @@ const NODES = [
   ["commit", "nodeCommit"],
 ];
 
+const KEY_CARDS = [
+  ["on_time_delivery_pct", "kpiOtd", "%", 1, "otdTip", "dot"],
+  ["weighted_tardiness_min", "kpiTardy", "dur", 0, "tardyTip", "bar"],
+  ["lots_at_risk", "kpiRisk", "", 0, "riskTip", "ring"],
+];
+
+const ANALYZE_KEYS = [
+  ["on_time_delivery_pct", "kpiOtd", "%", 1, "otdTip"],
+  ["weighted_tardiness_min", "kpiTardy", "dur", 0, "tardyTip"],
+  ["makespan_min", "kpiSpan", "dur", 0, "spanTip"],
+  ["mean_lead_min", "kpiLead", "dur", 0, "leadTip"],
+  ["mean_wait_min", "kpiWait", "dur", 0, "waitTip"],
+  ["mean_x_factor", "kpiX", "x", 2, "xTip"],
+  ["utilization_pct", "kpiUtil", "%", 1, "utilTip"],
+  ["setup_changes", "kpiChange", "", 0, "changeTip"],
+  ["lots_at_risk", "kpiRisk", "", 0, "riskTip"],
+];
+
 const COPY = {
   en: {
-    scope: "FAB-A recovery",
+    tagline: "Recovery for one bay",
+    versionNote: "The first frame is the decision: one sentence, the refusal, three numbers, and both books. Analyze holds the rest. Verify lists the critic's checks.",
     lang: "Language",
     disruption: "Disruption",
     bay: "Bay",
     describe: "Or describe one",
     placeholder: "Litho-02 is down, repair in 10 hours",
-    run: "Run recovery",
-    running: "Reading the line…",
+    run: "Run",
+    runLong: "Run recovery",
     refused: "Request refused.",
+    refusedLine: "Refused:",
     idle: "Choose a disruption.",
-    headline: "Which disruption should the bay recover?",
-    points: [
-      "A priority lot blocked on a down tool misses its due time while the book is rebuilt by hand.",
-      "ResiliMES reschedules only what the critic will sign.",
-      "The loop below is the real run, one step at a time.",
-    ],
-    full: "Full note",
+    emptyTitle: "Which disruption should the bay recover?",
+    emptyHint: "Click Run on a disruption. The books stay off this frame until the critic commits.",
     mock: "Offline mock. The schedule, the critic, and the engines are real. Nightshift and Zetaris are not called. Secrets stay off this screen.",
     live: "Live path. Data and the explainer use the credentials in the environment. Secrets stay off this screen.",
     offline: "Offline mock",
     clock: "Scenario clock",
-    was: "was",
-    noSchedule: "No schedule",
-    readOnly: "Read only",
+    tabRecover: "Recover",
+    tabAnalyze: "Analyze",
+    tabVerify: "Verify",
+    details: "Details",
     now: "Now",
+    due: "due",
     moved: "Moved",
     fresh: "New",
     down: "Down",
     maint: "Maintenance",
+    held: "held",
     lots: "Lots",
     lot: "Lot",
     pri: "Pri",
+    step: "Step",
+    from: "From",
+    to: "To",
     before: "Before",
     after: "After",
     tardy: "Tardiness",
-    critic: "Why the critic committed this",
-    held: "held",
+    change: "Change",
     verified: "contract verified",
-    rejected: "Refused alternative",
     explainer: "Explainer",
     checkpoint: "Checkpoint",
     of: "of",
@@ -90,7 +109,6 @@ const COPY = {
     holds: "holds",
     events: "events",
     loopLabel: "Recovery loop",
-    change: "Change",
     byArea: "Utilization by area",
     kpiOtd: "On-time delivery",
     kpiTardy: "Weighted tardiness",
@@ -102,8 +120,23 @@ const COPY = {
     kpiLead: "Mean lead time",
     kpiWait: "Mean wait",
     kpiX: "X-factor",
-    utilTip: "One window for both books: the longer makespan. Busy time divided by the time tools are up. Down time is excluded and listed below, so a shorter book cannot raise this number.",
-    xTip: "Mean time from the scenario clock to completion, divided by raw process time. 1.0 is all processing.",
+    otdTip: "Lots finished by their due time, divided by lots on the book.",
+    tardyTip: "Sum of lateness, weighted by priority. A lot with no finish time is charged 24 hours.",
+    riskTip: "Lots that miss their due time, including lots the book could not place.",
+    spanTip: "Finish of the last operation on that book.",
+    leadTip: "Mean time from the scenario clock to completion, for lots the book finishes. Held lots are omitted.",
+    waitTip: "Mean gap between consecutive steps of the same lot.",
+    utilTip: "One window for both books: the longer makespan. Busy time divided by the time tools are up. Down time is excluded and listed here, so a shorter book cannot raise this number.",
+    xTip: "Mean completion time divided by raw process time. 1.0 is all processing. Held lots are omitted.",
+    changeTip: "Setups charged because the recipe family changed.",
+    areaTip: "Busy time in this area divided by up-time in this area, on the shared window.",
+    waitPair: "Mean gap from {from} to {to} on the after book, across {n} lots.",
+    tardyCellTip: "Lateness before, then after. A lot with no finish time is charged 24 hours.",
+    movedTip: "Lots whose tool changed on a step that exists in both books.",
+    downTip: "Minutes down or in maintenance inside the shared window. Left out of the utilization denominator.",
+    progressTip: "Stations finished, out of the seven in the recovery loop.",
+    dueTip: "Due time of a priority-1 lot, on the same scale as the bars.",
+    heldOut: "Held lots left this figure. It is not a win.",
     downWindow: "Down in this window",
     byTool: "By tool",
     byLot: "By lot",
@@ -112,6 +145,18 @@ const COPY = {
     waitGap: "wait",
     themeLight: "Light",
     themeDark: "Dark",
+    pass: "Pass",
+    fail: "Fail",
+    rejected: "Refused",
+    check: "Check",
+    result: "Result",
+    reason: "Reason",
+    verifyLead: "One row per constraint.",
+    figures: "Figures",
+    figuresNote: "Gray is not a direction. A hold cannot turn a shorter book green.",
+    utilNote: "Highest share of up-time first.",
+    waitNote: "Largest gaps on the after book.",
+    lotNote: "The step whose tool changed. First tool if the lot did not move.",
     intents: {
       machine_down: "machine down",
       rush_order: "rush order",
@@ -121,6 +166,18 @@ const COPY = {
       emergency_stop: "emergency stop",
     },
     verdicts: { accept: "accepted", conditional: "conditional", reject: "rejected" },
+    checks: {
+      equipment_status: "Tool calendar",
+      capability: "Capability",
+      overlap: "Overlap",
+      wip: "WIP",
+      operators: "Operators",
+      material: "Material",
+      precedence: "Route order",
+      preemption: "Preemption",
+      other: "Other",
+    },
+    status: { IDLE: "Idle", RUNNING: "Running", DOWN: "Down", MAINTENANCE: "Maintenance", ok: "In stock", short: "Short" },
     areas: { Lithography: "Lithography", Etch: "Etch", CMP: "CMP", Deposition: "Deposition" },
     scenarios: {
       litho_down: ["Machine breakdown", "LITHO-02 is down for 10 h. LOT-1001 is blocked, due 18:00 UTC."],
@@ -131,45 +188,46 @@ const COPY = {
     chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout" },
   },
   zh: {
-    scope: "FAB-A 恢复",
+    tagline: "一个机台的恢复",
+    versionNote: "第一屏是决定：一句话、拒绝理由、三个数字，和两本账。分析页放其余数字。核对页是评审的检查。",
     lang: "语言",
     disruption: "异常",
     bay: "机台",
     describe: "或自己描述",
     placeholder: "光刻机 02 宕机，维修 10 小时",
-    run: "开始恢复",
-    running: "正在读产线…",
+    run: "开始",
+    runLong: "开始恢复",
     refused: "请求被拒绝。",
+    refusedLine: "拒绝：",
     idle: "选择一个异常。",
-    headline: "这一班要先恢复哪一件异常？",
-    points: [
-      "优先级批次挡在宕机设备上，人工重排的时候交期已经错过。",
-      "ResiliMES 只提交评审愿意签字的排程。",
-      "下面的循环是真实运行，一步一步出现。",
-    ],
-    full: "完整说明",
-    mock: "离线模拟。排程、评审和引擎是真的。没有调用 Nightshift 和 Zetaris。密钥不会出现在这个画面上。",
-    live: "实时路径。数据和说明使用环境中的凭据。密钥不会出现在这个画面上。",
-    offline: "离线模拟",
+    emptyTitle: "这一班要先恢复哪一件异常？",
+    emptyHint: "在异常上点开始。评审提交之前，账不出现在这一屏。",
+    mock: "离线样例。排程、评审和引擎是真的。没有调用 Nightshift 和 Zetaris。密钥不出现在这屏。",
+    live: "在线路径。数据和说明使用环境里的凭据。密钥不出现在这屏。",
+    offline: "离线样例",
     clock: "场景时钟",
-    was: "原先",
-    noSchedule: "没有排程",
-    readOnly: "只读",
+    tabRecover: "恢复",
+    tabAnalyze: "分析",
+    tabVerify: "核对",
+    details: "详情",
     now: "现在",
+    due: "交期",
     moved: "已移动",
-    fresh: "新批次",
+    fresh: "新增",
     down: "宕机",
-    maint: "保养",
+    maint: "维护",
+    held: "暂停",
     lots: "批次",
     lot: "批次",
-    pri: "优先级",
+    pri: "优先",
+    step: "工序",
+    from: "从",
+    to: "到",
     before: "之前",
     after: "之后",
     tardy: "拖期",
-    critic: "评审为什么提交这一版",
-    held: "暂扣",
-    verified: "合同已验证",
-    rejected: "被拒绝的替代方案",
+    change: "变化",
+    verified: "合同已核验",
     explainer: "说明",
     checkpoint: "检查点",
     of: "/",
@@ -182,15 +240,14 @@ const COPY = {
     nodeExplain: "Nightshift",
     nodeCommit: "提交",
     wait: "等待",
-    runState: "运行",
+    runState: "进行中",
     done: "完成",
     reads: "次读取",
     facts: "条事实",
     ops: "道工序",
-    holds: "个暂扣",
+    holds: "个暂停",
     events: "条事件",
-    loopLabel: "恢复循环",
-    change: "变化",
+    loopLabel: "恢复回路",
     byArea: "各区域利用率",
     kpiOtd: "准时交付",
     kpiTardy: "加权拖期",
@@ -202,9 +259,24 @@ const COPY = {
     kpiLead: "平均前置时间",
     kpiWait: "平均等待",
     kpiX: "X 因子",
-    utilTip: "两本账用同一个窗口，取较长的总工期。忙时除以设备可用的时间。宕机时间不进分母，列在下面，所以较短的账不会把这个数抬高。",
-    xTip: "从场景时钟到完工的平均时间，除以纯加工时间。1.0 表示全是加工。",
-    downWindow: "本窗口宕机",
+    otdTip: "在交期前完工的批次，除以账上的批次数。",
+    tardyTip: "拖期按优先级加权求和。没有完工时间的批次按 24 小时计。",
+    riskTip: "错过交期的批次，包括账上排不下的批次。",
+    spanTip: "这本账最后一道工序的完工时间。",
+    leadTip: "从场景时钟到完工的平均时间，只算这本账完工的批次。暂停的批次不计入。",
+    waitTip: "同一批次相邻工序之间的平均间隔。",
+    utilTip: "两本账用同一个窗口，取较长的总工期。忙时除以设备可用的时间。宕机时间不进分母，列在这里，所以较短的账不会把这个数抬高。",
+    xTip: "完工时间除以纯加工时间的平均。1.0 表示全是加工。暂停的批次不计入。",
+    changeTip: "因配方族变化而发生的换型次数。",
+    areaTip: "该区域的忙时，除以该区域在共享窗口内的可用时间。",
+    waitPair: "恢复后从 {from} 到 {to} 的平均间隔，共 {n} 个批次。",
+    tardyCellTip: "移动前的拖期，然后是移动后。没有完工时间按 24 小时计。",
+    movedTip: "两本账都有的工序换了设备的批次。",
+    downTip: "共享窗口内的宕机或维护分钟。不进入利用率的分母。",
+    progressTip: "已经完成的站，共七站。",
+    dueTip: "优先级 1 的交期，和条形用同一时间尺。",
+    heldOut: "暂停的批次离开了这个数。它不是改善。",
+    downWindow: "这个窗口内的停机",
     byTool: "按设备",
     byLot: "按批次",
     whereWait: "等待在哪",
@@ -212,86 +284,110 @@ const COPY = {
     waitGap: "等待",
     themeLight: "浅色",
     themeDark: "深色",
+    pass: "通过",
+    fail: "失败",
+    rejected: "已拒绝",
+    check: "检查",
+    result: "结果",
+    reason: "原因",
+    verifyLead: "一行一条约束。",
+    figures: "指标",
+    figuresNote: "灰色不是方向。暂停不能把更短的账涂成改善。",
+    utilNote: "可用时间占比从高到低。",
+    waitNote: "恢复后最大的间隔。",
+    lotNote: "换了设备的那道工序。没移动的批次显示第一台设备。",
     intents: {
       machine_down: "设备宕机",
       rush_order: "急单",
-      material_shortage: "物料短缺",
+      material_shortage: "缺料",
       query_status: "状态",
       explain: "说明",
       emergency_stop: "紧急停止",
     },
     verdicts: { accept: "接受", conditional: "有条件", reject: "拒绝" },
-    areas: { Lithography: "光刻", Etch: "刻蚀", CMP: "CMP", Deposition: "沉积" },
-    scenarios: {
-      litho_down: ["设备故障", "LITHO-02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
-      rush_order: ["急单", "一个热批次要求 3 小时内交货。正在加工的批次留在设备上。"],
-      material_shortage: ["物料短缺", "RESIST-UV 库存为零。还需要它的批次等待。"],
+    checks: {
+      equipment_status: "设备日历",
+      capability: "能力",
+      overlap: "重叠",
+      wip: "在制",
+      operators: "人员",
+      material: "物料",
+      precedence: "工艺顺序",
+      preemption: "抢占",
+      other: "其他",
     },
-    chartBefore: { litho_down: "等待维修", rush_order: "没有急单的账", material_shortage: "光刻胶充足" },
-    chartAfter: { litho_down: "已重排", rush_order: "加入急单", material_shortage: "RESIST-UV 断料" },
+    status: { IDLE: "空闲", RUNNING: "加工", DOWN: "宕机", MAINTENANCE: "维护", ok: "有库存", short: "短缺" },
+    areas: { Lithography: "光刻", Etch: "刻蚀", CMP: "抛光", Deposition: "沉积" },
+    scenarios: {
+      litho_down: ["设备故障", "光刻机 02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
+      rush_order: ["急单", "一个热批次 3 小时内要交。正在加工的批次留在原设备。"],
+      material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
+    },
+    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶" },
+    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货" },
   },
   ja: {
-    scope: "FAB-A の回復",
+    tagline: "一つのベイの回復",
+    versionNote: "最初の画面が判断です。一文、拒否、三つの数字、二つの帳票。分析に残りの数字。検証に批評の検査。",
     lang: "言語",
     disruption: "異常",
     bay: "装置",
-    describe: "または文章で",
-    placeholder: "露光機 02 が停止。修理は 10 時間",
-    run: "回復を実行",
-    running: "ラインを読んでいる…",
-    refused: "依頼は拒否された。",
+    describe: "または自分で書く",
+    placeholder: "リソグラフィ 02 が停止、修理 10 時間",
+    run: "実行",
+    runLong: "回復を実行",
+    refused: "要求は拒否された。",
+    refusedLine: "拒否：",
     idle: "異常を選ぶ。",
-    headline: "この直で、どの異常から回復するか？",
-    points: [
-      "停止装置に止まった優先ロットは、手で組み直している間に納期を落とす。",
-      "ResiliMES は、批評が署名する日程だけを確定する。",
-      "下のループは実際の実行で、一歩ずつ現れる。",
-    ],
-    full: "全文",
-    mock: "オフライン模擬。日程、批評、エンジンは本物。Nightshift と Zetaris は呼んでいない。秘密はこの画面に出ない。",
-    live: "ライブ経路。データと説明は環境の資格情報を使う。秘密はこの画面に出ない。",
-    offline: "オフライン模擬",
-    clock: "シナリオ時計",
-    was: "前は",
-    noSchedule: "日程なし",
-    readOnly: "読み取りのみ",
-    now: "今",
+    emptyTitle: "この直で、どの異常から回復するか？",
+    emptyHint: "異常の実行を押す。批評が確定するまで帳票はこの画面に出さない。",
+    mock: "オフラインの見本。日程、批評、エンジンは本物。Nightshift と Zetaris は呼ばない。秘密はこの画面に出さない。",
+    live: "ライブ経路。データと説明は環境の資格情報を使う。秘密はこの画面に出さない。",
+    offline: "オフライン見本",
+    clock: "シナリオ時刻",
+    tabRecover: "回復",
+    tabAnalyze: "分析",
+    tabVerify: "検証",
+    details: "詳細",
+    now: "現在",
+    due: "納期",
     moved: "移動",
     fresh: "新規",
     down: "停止",
     maint: "保全",
+    held: "保留",
     lots: "ロット",
     lot: "ロット",
     pri: "優先",
+    step: "工程",
+    from: "から",
+    to: "へ",
     before: "前",
     after: "後",
     tardy: "遅延",
-    critic: "批評がこれを確定した理由",
-    held: "保留",
+    change: "変化",
     verified: "契約を検証",
-    rejected: "拒否した代替",
     explainer: "説明",
     checkpoint: "チェックポイント",
     of: "/",
     computed: "計算",
     nodeScout: "Scout",
     nodeZetaris: "Zetaris",
-    nodeSense: "把握",
+    nodeSense: "検知",
     nodePlan: "計画",
     nodeCritic: "批評",
     nodeExplain: "Nightshift",
     nodeCommit: "確定",
     wait: "待機",
-    runState: "実行",
+    runState: "実行中",
     done: "完了",
     reads: "件の読取",
     facts: "件の事実",
     ops: "工程",
     holds: "件の保留",
-    events: "件のイベント",
+    events: "件の事象",
     loopLabel: "回復ループ",
-    change: "変化",
-    byArea: "エリア別の稼働率",
+    byArea: "エリア別稼働率",
     kpiOtd: "納期遵守",
     kpiTardy: "加重遅延",
     kpiSpan: "総所要",
@@ -301,9 +397,24 @@ const COPY = {
     kpiMoved: "移動ロット",
     kpiLead: "平均リードタイム",
     kpiWait: "平均待ち",
-    kpiX: "X ファクター",
-    utilTip: "二つの帳票は同じ窓。長い方の総所要を使う。稼働時間を、装置が上がっている時間で割る。停止時間は分母に入れず下に示す。短い帳票だから割合は上がらない。",
-    xTip: "シナリオ時計から完了までの平均を、正味加工時間で割る。1.0 は加工だけ。",
+    kpiX: "X ファクタ",
+    otdTip: "納期までに完了したロットを、帳票上のロット数で割る。",
+    tardyTip: "遅延を優先度で加重した合計。完了時刻がないロットは 24 時間とする。",
+    riskTip: "納期に遅れるロット。帳票に置けなかったロットを含む。",
+    spanTip: "その帳票の最後の工程の完了時刻。",
+    leadTip: "シナリオ時刻から完了までの平均。帳票が終えるロットだけ。保留は除く。",
+    waitTip: "同じロットの連続する工程の間の平均。",
+    utilTip: "二つの帳票は同じ窓。長い方の総所要を使う。稼働時間を、装置が上がっている時間で割る。停止時間は分母に入れずここに示す。短い帳票だから割合は上がらない。",
+    xTip: "完了時間を純加工時間で割った平均。1.0 は加工だけ。保留は除く。",
+    changeTip: "レシピ族が変わって発生した段取り。",
+    areaTip: "このエリアの稼働時間を、共有の窓で上がっている時間で割る。",
+    waitPair: "回復後の {from} から {to} までの平均間隔。{n} ロット。",
+    tardyCellTip: "移動前の遅延、その後が移動後。完了時刻がなければ 24 時間。",
+    movedTip: "両方の帳票にある工程で装置が変わったロット。",
+    downTip: "共有の窓で停止または保全だった分。稼働率の分母に入れない。",
+    progressTip: "終わった工程。回復ループは七つ。",
+    dueTip: "優先度 1 の納期。バーと同じ時間軸。",
+    heldOut: "保留ロットがこの数字から外れた。改善ではない。",
     downWindow: "この窓の停止",
     byTool: "装置別",
     byLot: "ロット別",
@@ -312,35 +423,49 @@ const COPY = {
     waitGap: "待ち",
     themeLight: "ライト",
     themeDark: "ダーク",
+    pass: "合格",
+    fail: "不合格",
+    rejected: "拒否",
+    check: "検査",
+    result: "結果",
+    reason: "理由",
+    verifyLead: "制約ごとに一行。",
+    figures: "指標",
+    figuresNote: "灰色は方向ではない。保留で短い帳票を改善色にしない。",
+    utilNote: "上がっている時間の割合が高い順。",
+    waitNote: "回復後の大きい間隔。",
+    lotNote: "装置が変わった工程。移動していないロットは最初の装置。",
     intents: {
       machine_down: "装置停止",
       rush_order: "特急",
-      material_shortage: "材料不足",
+      material_shortage: "資材不足",
       query_status: "状態",
       explain: "説明",
-      emergency_stop: "非常停止",
+      emergency_stop: "緊急停止",
     },
-    verdicts: { accept: "受理", conditional: "条件付き", reject: "拒否" },
-    areas: { Lithography: "露光", Etch: "エッチング", CMP: "CMP", Deposition: "成膜" },
+    verdicts: { accept: "受理", conditional: "条件付き", reject: "却下" },
+    checks: {
+      equipment_status: "装置カレンダー",
+      capability: "能力",
+      overlap: "重複",
+      wip: "仕掛",
+      operators: "人員",
+      material: "資材",
+      precedence: "工程順",
+      preemption: "割り込み",
+      other: "その他",
+    },
+    status: { IDLE: "空き", RUNNING: "加工", DOWN: "停止", MAINTENANCE: "保全", ok: "在庫あり", short: "不足" },
+    areas: { Lithography: "リソ", Etch: "エッチ", CMP: "CMP", Deposition: "成膜" },
     scenarios: {
-      litho_down: ["装置故障", "LITHO-02 は 10 時間停止。LOT-1001 が止まり、納期は 18:00 UTC。"],
-      rush_order: ["特急", "特急ロットの納期は 3 時間後。加工中のロットは装置に残す。"],
-      material_shortage: ["材料不足", "RESIST-UV は在庫ゼロ。まだ必要なロットは待つ。"],
+      litho_down: ["装置故障", "リソ 02 が 10 時間停止。LOT-1001 が詰まり、納期 18:00 UTC。"],
+      rush_order: ["特急", "ホットロットの納期は 3 時間。加工中のロットは装置に残す。"],
+      material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
     },
     chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり" },
     chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品" },
   },
 };
-
-const BAY = [
-  ["LITHO-01", "tool"],
-  ["LITHO-02", "tool"],
-  ["ETCH-01", "tool"],
-  ["ETCH-02", "tool"],
-  ["CMP-01", "tool"],
-  ["DEP-01", "tool"],
-  ["RESIST-UV", "material"],
-];
 
 const ALERT = {
   litho_down: "LITHO-02",
@@ -352,13 +477,18 @@ const state = {
   lang: localStorage.getItem("resilimes.lang") || "en",
   theme: localStorage.getItem("resilimes.theme") === "dark" ? "dark" : "light",
   view: "tool",
+  tab: "recover",
   routeJob: "",
-  scenario: "litho_down",
+  activeScenario: "",
   report: null,
   steps: [],
   horizon: "",
   health: null,
+  bay: [],
+  scenarioItems: [],
   running: false,
+  incidentText: "",
+  utilSide: "after",
 };
 
 const $ = (id) => document.querySelector(id);
@@ -370,41 +500,46 @@ async function init() {
   state.horizon = state.health.horizon;
   const payload = await getJson("/api/scenarios");
   state.scenarioItems = payload.scenarios;
+  state.bay = payload.bay || [];
   applyTheme();
-  paintChrome();
-  paintBay({});
-  paintAgents();
-  paintFinding(null);
-  $("#run").addEventListener("click", () => {
+  paint();
+  $("#theme").addEventListener("click", () => {
+    state.theme = state.theme === "dark" ? "light" : "dark";
+    applyTheme();
+    paint();
+  });
+  $("#version").addEventListener("click", (event) => {
+    event.stopPropagation();
+    const note = $("#note");
+    note.hidden = !note.hidden;
+    if (!note.hidden) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      note.style.left = `${rect.left}px`;
+      note.style.top = `${rect.bottom + 6}px`;
+    }
+  });
+  $("#run-custom").addEventListener("click", () => {
     const incident = $("#incident").value.trim();
     if (incident) run({ incident });
-    else run({ scenario: state.scenario });
   });
   document.querySelectorAll("[data-lang]").forEach((button) => {
     button.addEventListener("click", () => {
       state.lang = button.getAttribute("data-lang");
       localStorage.setItem("resilimes.lang", state.lang);
-      document.documentElement.lang = state.lang === "zh" ? "zh-Hans" : state.lang === "ja" ? "ja" : "en";
-      paintChrome();
-      if (state.report) render(state.report);
-      else paintFinding(null);
-      paintAgents();
+      paint();
     });
-  });
-  $("#theme").addEventListener("click", () => {
-    state.theme = state.theme === "dark" ? "light" : "dark";
-    applyTheme();
-    if (state.report) render(state.report);
-    else paintChrome();
   });
   document.addEventListener("click", (event) => {
     const route = $("#route");
-    if (!route || route.hidden) return;
-    if (event.target.closest && event.target.closest("#route, .bar")) return;
-    closeRoute();
+    if (route && !route.hidden && !(event.target.closest && event.target.closest("#route, .bar"))) closeRoute();
+    const note = $("#note");
+    if (note && !note.hidden && !(event.target.closest && event.target.closest("#note, #version"))) note.hidden = true;
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeRoute();
+    if (event.key === "Escape") {
+      closeRoute();
+      $("#note").hidden = true;
+    }
   });
 }
 
@@ -418,24 +553,20 @@ function t() {
   return COPY[state.lang] || COPY.en;
 }
 
-function paintChrome() {
+function paint() {
   const copy = t();
   document.documentElement.lang = state.lang === "zh" ? "zh-Hans" : state.lang === "ja" ? "ja" : "en";
-  $("#scope").textContent = copy.scope;
+  $("#tagline").textContent = copy.tagline;
+  $("#version").textContent = state.health && state.health.version ? state.health.version : "";
+  $("#note").textContent = copy.versionNote;
   $("#lang-label").textContent = copy.lang;
   $("#disruption-label").textContent = copy.disruption;
   $("#bay-label").textContent = copy.bay;
   $("#describe-label").textContent = copy.describe;
   $("#incident").placeholder = copy.placeholder;
-  $("#run").textContent = copy.run;
-  $("#detail-summary").textContent = copy.full;
-  $("#lots-label").textContent = copy.lots;
-  $("#th-lot").textContent = copy.lot;
-  $("#th-pri").textContent = copy.pri;
-  $("#th-before").textContent = copy.before;
-  $("#th-after").textContent = copy.after;
-  $("#th-tardy").textContent = copy.tardy;
-  $("#critic-label").textContent = copy.critic;
+  $("#run-custom").textContent = copy.runLong;
+  $("#empty-title").textContent = copy.emptyTitle;
+  $("#empty-hint").textContent = copy.emptyHint;
   $("#clock").textContent = `${copy.clock} ${formatClock(state.horizon)} UTC`;
   const mock = state.health.llm === "mock" && state.health.data === "sample";
   const badge = $("#mode-badge");
@@ -444,13 +575,44 @@ function paintChrome() {
   const banner = $("#banner");
   banner.hidden = false;
   banner.textContent = mock ? copy.mock : copy.live;
-  const theme = $("#theme");
-  if (theme) theme.textContent = state.theme === "dark" ? copy.themeDark : copy.themeLight;
+  $("#theme").textContent = state.theme === "dark" ? copy.themeDark : copy.themeLight;
   document.querySelectorAll("[data-lang]").forEach((button) => {
     button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
   });
+  paintTabs();
   paintScenarios();
+  paintBay(bayStatus());
+  paintRecover();
+  paintAnalyze();
+  paintVerify();
   if (!state.running && !state.report) $("#status").textContent = copy.idle;
+}
+
+function paintTabs() {
+  const copy = t();
+  const host = $("#tabs");
+  host.innerHTML = "";
+  for (const [id, label] of [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify]]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", state.tab === id ? "true" : "false");
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      state.tab = id;
+      paintTabs();
+      showPanel();
+    });
+    host.appendChild(button);
+  }
+  showPanel();
+}
+
+function showPanel() {
+  for (const id of ["recover", "analyze", "verify"]) {
+    const panel = $(`#panel-${id}`);
+    panel.hidden = state.tab !== id;
+  }
 }
 
 function paintScenarios() {
@@ -459,47 +621,61 @@ function paintScenarios() {
   host.innerHTML = "";
   for (const item of state.scenarioItems || []) {
     const text = copy.scenarios[item.id] || [item.title, item.summary];
+    const row = document.createElement("div");
+    row.className = "scenario" + (item.id === state.activeScenario ? " active" : "");
+    const words = document.createElement("div");
+    words.innerHTML = `<strong>${escapeHtml(text[0])}</strong><span>${escapeHtml(text[1])}</span>`;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "scenario" + (item.id === state.scenario ? " active" : "");
-    button.innerHTML = `<strong>${escapeHtml(text[0])}</strong><span>${escapeHtml(text[1])}</span>`;
+    button.className = "run";
+    button.textContent = copy.run;
+    button.disabled = state.running;
     button.addEventListener("click", () => {
-      state.scenario = item.id;
       $("#incident").value = "";
-      paintScenarios();
       run({ scenario: item.id });
     });
-    host.appendChild(button);
+    row.append(words, button);
+    host.appendChild(row);
   }
+  $("#run-custom").disabled = state.running;
+}
+
+function bayStatus() {
+  const status = {};
+  for (const item of state.bay) status[item.id] = item.status;
+  if (!state.report) return status;
+  const rows = state.report.gantt && state.report.gantt.after && state.report.gantt.after.rows;
+  if (rows) {
+    for (const row of rows) status[row.equipment_id] = row.status;
+  }
+  if (state.report.scenario_id === "material_shortage") status["RESIST-UV"] = "short";
+  return status;
 }
 
 function paintBay(statusById) {
   const host = $("#bay");
   host.innerHTML = "";
-  for (const [id, kind] of BAY) {
+  const rows = state.bay.length ? state.bay : [];
+  for (const item of rows) {
     const li = document.createElement("li");
-    li.dataset.id = id;
-    const status = statusById[id] || (kind === "material" ? "ok" : "—");
-    const lamp = lampClass(status, kind);
-    li.innerHTML = `<span class="lamp ${lamp}"></span><span>${escapeHtml(id)}</span><small>${escapeHtml(statusLabel(status))}</small>`;
+    li.dataset.id = item.id;
+    const status = statusById[item.id] || item.status;
+    li.innerHTML = `<span class="lamp ${lampClass(status, item.kind)}"></span><span>${escapeHtml(item.id)}</span><small>${escapeHtml(statusLabel(status))}</small>`;
     host.appendChild(li);
   }
 }
 
 function lampClass(status, kind) {
-  if (kind === "material" && status === "short") return "short";
-  if (status === "DOWN") return "down";
+  if (kind === "material" && (status === "short" || status === "DOWN")) return "short";
+  if (status === "DOWN" || status === "short") return "down";
   if (status === "MAINTENANCE") return "maint";
   if (status === "RUNNING" || status === "IDLE" || status === "ok") return "up";
   return "";
 }
 
 function statusLabel(status) {
-  const copy = t();
-  if (status === "DOWN") return copy.down;
-  if (status === "MAINTENANCE") return copy.maint;
-  if (status === "short") return copy.down;
-  return status;
+  const names = t().status || {};
+  return names[status] || status;
 }
 
 function flash(id) {
@@ -509,8 +685,412 @@ function flash(id) {
   lamp.classList.remove("flash");
   void lamp.offsetWidth;
   lamp.classList.add("flash");
-  if (id === "RESIST-UV") lamp.className = "lamp short flash";
-  if (id === "LITHO-02") lamp.className = "lamp down flash";
+}
+
+function paintRecover() {
+  const report = state.report;
+  const empty = $("#empty");
+  const story = $("#story");
+  const cards = $("#cards");
+  const stepper = $("#stepper");
+  const result = $("#result");
+  const showStory = Boolean(report) || state.running;
+  empty.hidden = showStory;
+  story.hidden = !showStory;
+  cards.hidden = !report || !report.kpis;
+  stepper.hidden = !showStory;
+  result.hidden = !report || !report.gantt;
+  if (state.running && !report) {
+    $("#headline").textContent = state.incidentText;
+    $("#refusal").textContent = "";
+  } else if (report) {
+    const brief = report.brief && report.brief[state.lang];
+    $("#headline").textContent = brief ? brief.headline : state.incidentText;
+    $("#refusal").textContent = refusalLine(report);
+  }
+  if (report && report.kpis) renderCards(report);
+  if (showStory) paintStepper();
+  if (report && report.gantt) renderCharts(report);
+}
+
+function refusalLine(report) {
+  const rejected = report.rejected_alternative && report.rejected_alternative.critique;
+  const violation = rejected && rejected.violations && rejected.violations[0];
+  if (!violation) return "";
+  return `${t().refusedLine} ${violation.detail}`;
+}
+
+function renderCards(report) {
+  const copy = t();
+  const host = $("#cards");
+  host.innerHTML = "";
+  for (const [key, labelKey, kind, digits, tipKey, icon] of KEY_CARDS) {
+    const tone = (report.kpis.tones && report.kpis.tones[key]) || { tone: "flat" };
+    const card = document.createElement("article");
+    card.className = "kpi";
+    const mark = document.createElement("span");
+    mark.className = "icon";
+    mark.innerHTML = iconSvg(icon);
+    const title = document.createElement("div");
+    title.className = "title";
+    title.append(document.createTextNode(copy[labelKey]), infoButton(copy[tipKey]));
+    const value = document.createElement("div");
+    value.className = "value";
+    value.textContent = formatMeasure(report.kpis.after[key], kind, digits);
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.innerHTML = `${escapeHtml(formatMeasure(report.kpis.before[key], kind, digits))} <span class="${escapeHtml(tone.tone)}">${escapeHtml(signedMeasure(report.kpis.delta[key], kind, digits))}</span>`;
+    const details = document.createElement("button");
+    details.type = "button";
+    details.className = "details";
+    details.textContent = copy.details;
+    details.addEventListener("click", () => {
+      state.tab = "analyze";
+      paintTabs();
+    });
+    card.append(mark, title, details, value, sub);
+    host.appendChild(card);
+  }
+}
+
+function iconSvg(kind) {
+  if (kind === "bar") return '<svg viewBox="0 0 14 14" aria-hidden="true"><rect x="1" y="8" width="3" height="5" rx="1" fill="currentColor"/><rect x="5.5" y="4" width="3" height="9" rx="1" fill="currentColor"/><rect x="10" y="1" width="3" height="12" rx="1" fill="currentColor"/></svg>';
+  if (kind === "ring") return '<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+  return '<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="currentColor"/></svg>';
+}
+
+function paintStepper() {
+  const copy = t();
+  const host = $("#stepper");
+  host.innerHTML = "";
+  host.setAttribute("aria-label", copy.loopLabel);
+  const seen = new Map(state.steps.map((step) => [step.phase, step]));
+  let active = "";
+  for (const step of state.steps) {
+    if (NODES.some(([phase]) => phase === step.phase)) active = step.phase;
+  }
+  const list = document.createElement("ol");
+  let done = 0;
+  for (const [phase, key] of NODES) {
+    const step = seen.get(phase);
+    if (step) done += 1;
+    const running = Boolean(step) && phase === active && state.running;
+    const li = document.createElement("li");
+    li.className = running ? "on" : step ? "done" : "";
+    li.textContent = copy[key];
+    if (step) {
+      const text = `${copy[key]} · ${stepOutput(phase, step.slots || {}, copy)} · ${step.summary || ""} · ${step.elapsed_ms} ms`;
+      li.addEventListener("pointerenter", (event) => showPlainTip(event, text));
+      li.addEventListener("pointerleave", hideTip);
+    }
+    list.appendChild(li);
+  }
+  const pct = Math.round((100 * done) / NODES.length);
+  const side = document.createElement("div");
+  side.innerHTML = `<div class="meter-line"><i style="width:${pct}%"></i></div>`;
+  const label = document.createElement("div");
+  label.className = "progress-label";
+  const current = NODES.find(([phase]) => phase === active);
+  label.textContent = state.running && current ? `${pct}% · ${copy[current[1]]}` : `${pct}%`;
+  bindTip(label, copy.progressTip);
+  const stack = document.createElement("div");
+  stack.append(side, label);
+  host.append(list, stack);
+}
+
+function renderCharts(report) {
+  const copy = t();
+  const beforeName = (copy.chartBefore && copy.chartBefore[report.scenario_id]) || report.before_label;
+  const afterName = (copy.chartAfter && copy.chartAfter[report.scenario_id]) || report.after_label;
+  $("#before-label").textContent = beforeName;
+  $("#after-label").textContent = afterName;
+  paintViews();
+  const scale = scaleOf(report);
+  renderGantt($("#gantt-before"), report.gantt.before, report.horizon, scale, false);
+  renderGantt($("#gantt-after"), report.gantt.after, report.horizon, scale, true);
+  renderLegend(report);
+}
+
+function paintAnalyze() {
+  const host = $("#panel-analyze");
+  const copy = t();
+  host.innerHTML = "";
+  const report = state.report;
+  if (!report || !report.kpis) {
+    host.appendChild(emptyLine(copy.emptyHint));
+    return;
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "analyze";
+  wrap.append(figuresCard(report), utilCard(report), waitCard(report), lotsCard(report));
+  host.appendChild(wrap);
+}
+
+function figuresCard(report) {
+  const copy = t();
+  const card = document.createElement("article");
+  card.className = "card wide";
+  card.appendChild(cardHead(copy.figures, copy.figuresNote));
+  const table = document.createElement("table");
+  table.className = "compare";
+  const head = document.createElement("tr");
+  for (const label of ["", copy.before, copy.after, copy.change]) {
+    const th = document.createElement("th");
+    th.textContent = label;
+    if (label) th.className = "num";
+    head.appendChild(th);
+  }
+  const body = document.createElement("tbody");
+  const headRow = document.createElement("thead");
+  headRow.appendChild(head);
+  for (const [key, labelKey, kind, digits, tipKey] of ANALYZE_KEYS) {
+    if (report.kpis.before[key] === undefined) continue;
+    const tone = (report.kpis.tones && report.kpis.tones[key]) || { tone: "flat", comparable: true };
+    const tr = document.createElement("tr");
+    const th = document.createElement("th");
+    th.append(document.createTextNode(copy[labelKey]), infoButton(copy[tipKey]));
+    if (tone.comparable === false) {
+      const note = document.createElement("div");
+      note.className = "note-inline";
+      note.textContent = copy.heldOut;
+      th.appendChild(note);
+    }
+    tr.appendChild(th);
+    for (const [value, extra] of [
+      [formatMeasure(report.kpis.before[key], kind, digits), "num"],
+      [formatMeasure(report.kpis.after[key], kind, digits), "num"],
+      [signedMeasure(report.kpis.delta[key], kind, digits), `num ${tone.tone}`],
+    ]) {
+      const td = document.createElement("td");
+      td.className = extra;
+      td.textContent = value;
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+  const moved = report.kpis.lots_moved || [];
+  const tr = document.createElement("tr");
+  const movedName = document.createElement("th");
+  movedName.append(document.createTextNode(copy.kpiMoved), infoButton(copy.movedTip));
+  tr.appendChild(movedName);
+  for (const [value, extra] of [["—", "num"], [String(moved.length), "num"], [moved.join(", ") || "—", "num flat mono"]]) {
+    const td = document.createElement("td");
+    td.className = extra;
+    td.textContent = value;
+    if (extra.startsWith("num") && value !== "—") bindTip(td, copy.movedTip);
+    tr.appendChild(td);
+  }
+  body.appendChild(tr);
+  table.append(headRow, body);
+  card.appendChild(table);
+  const down = downNote(report.kpis.down || {}, copy);
+  if (down) card.appendChild(down);
+  return card;
+}
+
+function utilCard(report) {
+  const copy = t();
+  const card = document.createElement("article");
+  card.className = "card";
+  const head = cardHead(copy.byArea, copy.utilNote);
+  const toggles = document.createElement("div");
+  toggles.className = "toggles";
+  for (const [id, label] of [["before", copy.before], ["after", copy.after]]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.setAttribute("aria-pressed", state.utilSide === id ? "true" : "false");
+    button.addEventListener("click", () => {
+      state.utilSide = id;
+      paintAnalyze();
+    });
+    toggles.appendChild(button);
+  }
+  head.appendChild(toggles);
+  card.appendChild(head);
+  const areas = ((report.kpis.areas || {})[state.utilSide] || []).slice().sort((a, b) => b.utilization_pct - a.utilization_pct);
+  for (const row of areas) {
+    const line = document.createElement("div");
+    line.className = "area";
+    const name = document.createElement("span");
+    name.textContent = (copy.areas && copy.areas[row.area]) || row.area;
+    const bar = document.createElement("span");
+    bar.className = "meter";
+    const fill = document.createElement("i");
+    fill.style.width = `${Math.max(0, Math.min(100, row.utilization_pct))}%`;
+    bar.appendChild(fill);
+    const fig = document.createElement("span");
+    fig.textContent = `${Number(row.utilization_pct).toFixed(1)}%`;
+    fig.className = "num";
+    bindTip(fig, copy.areaTip);
+    line.append(name, bar, fig);
+    card.appendChild(line);
+  }
+  return card;
+}
+
+function waitCard(report) {
+  const copy = t();
+  const card = document.createElement("article");
+  card.className = "card";
+  card.appendChild(cardHead(copy.whereWait, copy.waitNote));
+  const after = (report.kpis.waits && report.kpis.waits.after) || [];
+  const before = new Map(((report.kpis.waits && report.kpis.waits.before) || []).map((row) => [`${row.from_step}→${row.to_step}`, row.avg_min]));
+  const peak = Math.max(1, ...after.map((row) => row.avg_min));
+  const tone = (report.kpis.tones && report.kpis.tones.mean_wait_min) || { tone: "flat", comparable: true };
+  for (const row of after.slice(0, 4)) {
+    const key = `${row.from_step}→${row.to_step}`;
+    const line = document.createElement("div");
+    line.className = "wait-row";
+    const name = document.createElement("span");
+    name.textContent = `${row.from_step} → ${row.to_step}`;
+    const bar = document.createElement("span");
+    bar.className = "wait-bar";
+    const fill = document.createElement("i");
+    fill.style.width = `${Math.max(4, (row.avg_min / peak) * 100)}%`;
+    bar.appendChild(fill);
+    const fig = document.createElement("span");
+    const prior = before.get(key);
+    let klass = "flat";
+    if (tone.comparable !== false && prior !== undefined && row.avg_min !== prior) klass = row.avg_min < prior ? "good" : "bad";
+    fig.className = klass;
+    fig.textContent = formatDuration(row.avg_min);
+    bindTip(fig, copy.waitPair.replace("{from}", row.from_step).replace("{to}", row.to_step).replace("{n}", String(row.n)));
+    line.append(name, bar, fig);
+    card.appendChild(line);
+  }
+  return card;
+}
+
+function lotsCard(report) {
+  const copy = t();
+  const card = document.createElement("article");
+  card.className = "card wide";
+  card.appendChild(cardHead(copy.lots, copy.lotNote));
+  const table = document.createElement("table");
+  table.innerHTML = `<thead><tr><th>${escapeHtml(copy.lot)}</th><th class="num">${escapeHtml(copy.pri)}</th><th>${escapeHtml(copy.step)}</th><th>${escapeHtml(copy.from)}</th><th>${escapeHtml(copy.to)}</th><th class="num">${escapeHtml(copy.tardy)}</th></tr></thead>`;
+  const body = document.createElement("tbody");
+  for (const row of report.outcomes || []) {
+    const from = row.moved_from || row.before_equipment || "—";
+    const to = row.moved_to || row.after_equipment || copy.held;
+    const step = row.moved_step || "—";
+    const better = row.after_tardiness_min < row.before_tardiness_min;
+    const worse = row.after_tardiness_min > row.before_tardiness_min;
+    const tone = better ? "good" : worse ? "bad" : "flat";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="mono">${escapeHtml(row.job_id)}</td><td class="num">${row.priority}</td><td class="mono">${escapeHtml(step)}</td><td class="mono">${escapeHtml(from)}</td><td class="mono">${escapeHtml(to)}</td><td class="num ${tone}">${escapeHtml(formatDuration(row.before_tardiness_min))} → ${escapeHtml(formatDuration(row.after_tardiness_min))}</td>`;
+    bindTip(tr.lastElementChild, copy.tardyCellTip);
+    body.appendChild(tr);
+  }
+  table.appendChild(body);
+  card.appendChild(table);
+  return card;
+}
+
+function paintVerify() {
+  const host = $("#panel-verify");
+  const copy = t();
+  host.innerHTML = "";
+  const report = state.report;
+  if (!report) {
+    host.appendChild(emptyLine(copy.emptyHint));
+    return;
+  }
+  const card = document.createElement("article");
+  card.className = "card";
+  const verdict = report.verdict ? report.verdict.verdict : "—";
+  const head = cardHead(copy.tabVerify, copy.verifyLead);
+  card.appendChild(head);
+  const summary = document.createElement("p");
+  const pill = document.createElement("span");
+  pill.className = `pill ${verdict}`;
+  pill.textContent = (copy.verdicts && copy.verdicts[verdict]) || verdict;
+  summary.appendChild(pill);
+  if (report.verdict && verdict !== "accept" && report.verdict.rationale) {
+    summary.append(document.createTextNode(` ${report.verdict.rationale}`));
+  }
+  card.appendChild(summary);
+  const table = document.createElement("table");
+  table.innerHTML = `<thead><tr><th>${escapeHtml(copy.check)}</th><th>${escapeHtml(copy.result)}</th><th>${escapeHtml(copy.reason)}</th></tr></thead>`;
+  const body = document.createElement("tbody");
+  for (const row of report.checks || []) {
+    const tr = document.createElement("tr");
+    const name = (copy.checks && copy.checks[row.constraint]) || row.constraint;
+    const result = copy[row.result] || row.result;
+    tr.innerHTML = `<td>${escapeHtml(name)}</td><td><span class="pill ${escapeHtml(row.result)}">${escapeHtml(result)}</span></td><td>${escapeHtml(row.reason || "—")}</td>`;
+    body.appendChild(tr);
+  }
+  table.appendChild(body);
+  card.appendChild(table);
+  host.appendChild(card);
+}
+
+function cardHead(title, note) {
+  const head = document.createElement("div");
+  head.className = "card-head";
+  const h = document.createElement("h3");
+  h.textContent = title;
+  const p = document.createElement("p");
+  p.textContent = note;
+  head.append(h, p);
+  return head;
+}
+
+function emptyLine(text) {
+  const p = document.createElement("p");
+  p.className = "empty";
+  p.textContent = text;
+  return p;
+}
+
+function downNote(down, copy) {
+  const before = describeDown(down.before || [], copy);
+  const after = describeDown(down.after || [], copy);
+  if (!before && !after) return null;
+  const note = document.createElement("p");
+  note.className = "down-note";
+  const lamp = document.createElement("span");
+  lamp.className = "lamp down";
+  const text = before === after ? `${copy.downWindow}: ${after}` : `${copy.before} ${before} · ${copy.after} ${after}`;
+  note.append(lamp, document.createTextNode(text));
+  bindTip(note, copy.downTip);
+  return note;
+}
+
+function describeDown(rows, copy) {
+  return rows.map((row) => {
+    const word = row.status === "MAINTENANCE" ? copy.maint : copy.down;
+    return `${row.equipment_id} · ${word} · ${formatDuration(row.down_min)}`;
+  }).join(", ");
+}
+
+function infoButton(text) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "info";
+  button.textContent = "?";
+  button.setAttribute("aria-label", text);
+  bindTip(button, text);
+  return button;
+}
+
+function bindTip(node, text) {
+  if (!node) return;
+  if (node.tagName !== "BUTTON") node.setAttribute("aria-label", text);
+  node.addEventListener("pointerenter", (event) => showPlainTip(event, text));
+  node.addEventListener("focus", (event) => showPlainTip(event, text));
+  node.addEventListener("pointerleave", hideTip);
+  node.addEventListener("blur", hideTip);
+}
+
+function showPlainTip(event, text) {
+  const tip = $("#tip");
+  tip.textContent = text;
+  tip.hidden = false;
+  const x = event.clientX || (event.target.getBoundingClientRect().left);
+  const y = event.clientY || (event.target.getBoundingClientRect().bottom);
+  tip.style.left = `${Math.min(x + 12, window.innerWidth - 340)}px`;
+  tip.style.top = `${Math.min(y + 16, window.innerHeight - 80)}px`;
 }
 
 async function run(body) {
@@ -518,12 +1098,11 @@ async function run(body) {
   state.running = true;
   state.steps = [];
   state.report = null;
-  $("#run").disabled = true;
-  $("#status").textContent = t().running;
-  $("#result").hidden = true;
-  $("#kpis").hidden = true;
-  paintFinding(null);
-  paintAgents();
+  state.tab = "recover";
+  state.activeScenario = body.scenario || "";
+  state.incidentText = incidentOf(body);
+  closeRoute();
+  paint();
   const alertId = ALERT[body.scenario];
   if (alertId) flash(alertId);
   try {
@@ -539,11 +1118,12 @@ async function run(body) {
     await readSse(response, (kind, payload) => {
       if (kind === "step") {
         state.steps.push(payload);
-        paintAgents();
+        paintStepper();
+        paintScenarios();
         if (payload.phase === "alert" && body.scenario) flash(ALERT[body.scenario]);
       } else if (kind === "report") {
         state.report = payload;
-        render(payload);
+        paint();
       } else if (kind === "error") {
         throw new Error(payload.detail || "Recovery failed");
       }
@@ -556,9 +1136,15 @@ async function run(body) {
     $("#status").textContent = error.message;
   } finally {
     state.running = false;
-    $("#run").disabled = false;
-    paintAgents();
+    paintScenarios();
+    paintStepper();
   }
+}
+
+function incidentOf(body) {
+  if (body.incident) return body.incident;
+  const item = (state.scenarioItems || []).find((row) => row.id === body.scenario);
+  return item ? item.incident : "";
 }
 
 async function readSse(response, onEvent) {
@@ -591,54 +1177,6 @@ function parseSse(block) {
   return { kind, payload: JSON.parse(data) };
 }
 
-function paintAgents() {
-  const copy = t();
-  const host = $("#agents");
-  host.setAttribute("aria-label", copy.loopLabel);
-  host.innerHTML = "";
-  const seen = new Map(state.steps.map((step) => [step.phase, step]));
-  let active = "";
-  for (const step of state.steps) {
-    if (NODES.some(([phase]) => phase === step.phase)) active = step.phase;
-  }
-  NODES.forEach(([phase, key], index) => {
-    const step = seen.get(phase);
-    const running = Boolean(step) && phase === active && state.running;
-    const li = document.createElement("li");
-    li.className = running ? "on" : step ? "done" : "wait";
-    const no = document.createElement("span");
-    no.className = "step-no";
-    no.textContent = String(index + 1).padStart(2, "0");
-    const who = document.createElement("span");
-    who.className = "who";
-    who.textContent = copy[key];
-    const status = document.createElement("span");
-    status.className = "state";
-    status.textContent = running ? copy.runState : step ? copy.done : copy.wait;
-    const out = document.createElement("span");
-    out.className = "out";
-    out.textContent = step ? stepOutput(phase, step.slots || {}, copy) : "";
-    const ms = document.createElement("span");
-    ms.className = "ms";
-    ms.textContent = step ? `${step.elapsed_ms} ms` : "";
-    li.append(no, who, status, out, ms);
-    host.appendChild(li);
-  });
-  const last = state.steps[state.steps.length - 1];
-  const line = $("#agent-line");
-  const evidence = $("#agent-evidence");
-  if (!last) {
-    line.textContent = "";
-    evidence.textContent = "";
-    return;
-  }
-  const slot = last.slots || {};
-  const checkpoint = slot.checkpoint ? ` · ${copy.checkpoint} ${slot.checkpoint} ${copy.of} ${slot.checkpoints}` : "";
-  line.textContent = `${last.summary}${checkpoint} · ${copy.computed} ${last.elapsed_ms} ms`;
-  const lines = (last.evidence || []).slice(0, 2);
-  evidence.textContent = lines.join("\n");
-}
-
 function stepOutput(phase, slots, copy) {
   if (phase === "scout") {
     const raw = String(slots.intent || "").replace(/^plant\./, "");
@@ -658,275 +1196,22 @@ function stepOutput(phase, slots, copy) {
   return "";
 }
 
-function render(report) {
-  paintFinding(report);
-  renderKpis(report);
+function paintViews() {
+  const host = $("#views");
   const copy = t();
-  const beforeName = (copy.chartBefore && copy.chartBefore[report.scenario_id]) || report.before_label;
-  const afterName = (copy.chartAfter && copy.chartAfter[report.scenario_id]) || report.after_label;
-  $("#before-label").textContent = beforeName;
-  $("#after-label").textContent = afterName;
-  $("#clock").textContent = `${copy.clock} ${formatClock(report.horizon)} UTC`;
-  const result = $("#result");
-  if (!report.gantt) {
-    result.hidden = true;
-    updateBay(report);
-    return;
-  }
-  result.hidden = false;
-  paintViews();
-  const scale = scaleOf(report);
-  renderGantt($("#gantt-before"), report.gantt.before, report.horizon, scale, false);
-  renderGantt($("#gantt-after"), report.gantt.after, report.horizon, scale, true);
-  renderLegend(report);
-  renderLots(report.outcomes || []);
-  renderDecision(report);
-  updateBay(report);
-}
-
-function paintFinding(report) {
-  const copy = t();
-  const brief = report && report.brief && report.brief[state.lang];
-  const list = $("#points");
-  list.innerHTML = "";
-  if (!brief && state.running) {
-    $("#headline").textContent = copy.running;
-    $("#detail").hidden = true;
-    return;
-  }
-  $("#headline").textContent = brief ? brief.headline : copy.headline;
-  const points = brief ? brief.points : copy.points;
-  for (const point of points || []) {
-    const li = document.createElement("li");
-    li.textContent = point;
-    list.appendChild(li);
-  }
-  const detail = $("#detail");
-  if (brief && brief.detail) {
-    detail.hidden = false;
-    $("#detail-body").textContent = brief.detail;
-  } else {
-    detail.hidden = true;
-  }
-}
-
-function renderKpis(report) {
-  const host = $("#kpis");
-  const copy = t();
-  host.hidden = false;
   host.innerHTML = "";
-  if (!report.kpis) {
-    const empty = document.createElement("p");
-    empty.className = "board-empty";
-    empty.textContent = report.block_reason || copy.readOnly;
-    host.appendChild(empty);
-    return;
+  for (const [id, label] of [["tool", copy.byTool], ["lot", copy.byLot]]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.setAttribute("aria-pressed", state.view === id ? "true" : "false");
+    button.addEventListener("click", () => {
+      state.view = id;
+      closeRoute();
+      if (state.report) renderCharts(state.report);
+    });
+    host.appendChild(button);
   }
-  const specs = [
-    ["on_time_delivery_pct", copy.kpiOtd, "%", 1, true, ""],
-    ["weighted_tardiness_min", copy.kpiTardy, "dur", 0, false, ""],
-    ["makespan_min", copy.kpiSpan, "dur", 0, false, ""],
-    ["mean_lead_min", copy.kpiLead, "dur", 0, false, ""],
-    ["mean_wait_min", copy.kpiWait, "dur", 0, false, ""],
-    ["mean_x_factor", copy.kpiX, "x", 2, false, copy.xTip],
-    ["utilization_pct", copy.kpiUtil, "%", 1, null, copy.utilTip],
-    ["setup_changes", copy.kpiChange, "", 0, false, ""],
-    ["lots_at_risk", copy.kpiRisk, "", 0, false, ""],
-  ];
-  const table = document.createElement("table");
-  table.className = "compare";
-  const head = document.createElement("thead");
-  const headRow = document.createElement("tr");
-  for (const label of ["", copy.before, copy.after, copy.change]) {
-    const th = document.createElement("th");
-    th.textContent = label;
-    headRow.appendChild(th);
-  }
-  head.appendChild(headRow);
-  const body = document.createElement("tbody");
-  for (const [key, label, kind, digits, upGood, tip] of specs) {
-    if (report.kpis.before[key] === undefined) continue;
-    const before = report.kpis.before[key];
-    const after = report.kpis.after[key];
-    const delta = report.kpis.delta[key];
-    body.appendChild(compareRow(
-      label,
-      formatMeasure(before, kind, digits),
-      formatMeasure(after, kind, digits),
-      signedMeasure(delta, kind, digits),
-      deltaTone(delta, upGood),
-      false,
-      tip,
-    ));
-  }
-  const moved = report.kpis.lots_moved || [];
-  body.appendChild(compareRow(
-    copy.kpiMoved,
-    "—",
-    String(moved.length),
-    moved.length ? moved.join(", ") : "—",
-    "flat",
-    true,
-  ));
-  table.append(head, body);
-  const side = document.createElement("div");
-  side.className = "side";
-  side.append(
-    renderAreas(report.kpis.areas || {}, copy),
-    renderDown(report.kpis.down || {}, copy),
-    renderWaits(report.kpis.waits || {}, copy),
-  );
-  host.append(table, side);
-}
-
-function compareRow(label, before, after, change, tone, ids, tip) {
-  const tr = document.createElement("tr");
-  const values = [label, before, after, change];
-  values.forEach((text, index) => {
-    const cell = document.createElement(index === 0 ? "th" : "td");
-    if (index > 0) cell.className = "num" + (index === 3 ? ` ${tone}` : "") + (index === 3 && ids ? " ids" : "");
-    cell.textContent = text;
-    tr.appendChild(cell);
-  });
-  if (tip) tr.querySelector("th").append(infoButton(tip));
-  return tr;
-}
-
-function infoButton(text) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "info";
-  button.textContent = "i";
-  button.setAttribute("aria-label", text);
-  const tip = document.createElement("span");
-  tip.className = "info-tip";
-  tip.setAttribute("role", "tooltip");
-  tip.textContent = text;
-  const place = () => {
-    const rect = button.getBoundingClientRect();
-    const width = 240;
-    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
-    tip.style.left = `${left}px`;
-    const below = rect.bottom + 6;
-    tip.style.top = `${below}px`;
-    tip.style.bottom = "auto";
-    const height = tip.offsetHeight || 72;
-    if (below + height > window.innerHeight - 8) {
-      tip.style.top = "auto";
-      tip.style.bottom = `${window.innerHeight - rect.top + 6}px`;
-    }
-  };
-  button.addEventListener("mouseenter", place);
-  button.addEventListener("focus", place);
-  button.appendChild(tip);
-  return button;
-}
-
-function renderDown(down, copy) {
-  const note = document.createElement("p");
-  note.className = "down-note";
-  const before = down.before || [];
-  const after = down.after || [];
-  if (!before.length && !after.length) {
-    note.hidden = true;
-    return note;
-  }
-  const lamp = document.createElement("span");
-  lamp.className = "lamp down";
-  const text = (rows) => rows.map((row) => {
-    const word = row.status === "MAINTENANCE" ? copy.maint : copy.down;
-    return `${row.equipment_id} · ${word} · ${formatDuration(row.down_min)}`;
-  }).join(", ");
-  const same = text(before) === text(after);
-  const label = document.createElement("span");
-  label.textContent = same
-    ? `${copy.downWindow}: ${text(after)}`
-    : `${copy.before} ${text(before)} · ${copy.after} ${text(after)}`;
-  note.append(lamp, label);
-  return note;
-}
-
-function renderWaits(waits, copy) {
-  const wrap = document.createElement("div");
-  wrap.className = "waits";
-  const title = document.createElement("h3");
-  title.textContent = copy.whereWait;
-  wrap.appendChild(title);
-  const after = (waits.after || []).slice(0, 4);
-  if (!after.length) return wrap;
-  const before = new Map((waits.before || []).map((row) => [`${row.from_step}>${row.to_step}`, row]));
-  const peak = Math.max(...after.map((row) => Number(row.avg_min) || 0), 1);
-  for (const row of after) {
-    const line = document.createElement("div");
-    line.className = "wait-row";
-    const name = document.createElement("span");
-    name.textContent = `${row.from_step} → ${row.to_step}`;
-    const bar = document.createElement("span");
-    bar.className = "wait-bar";
-    const fill = document.createElement("i");
-    fill.style.width = `${Math.max(0, Math.min(100, (Number(row.avg_min) / peak) * 100))}%`;
-    bar.appendChild(fill);
-    const fig = document.createElement("span");
-    fig.className = "wait-fig";
-    const prior = before.get(`${row.from_step}>${row.to_step}`);
-    const delta = prior ? Number(row.avg_min) - Number(prior.avg_min) : 0;
-    const tone = prior ? deltaTone(delta, false) : "flat";
-    fig.textContent = formatDuration(row.avg_min);
-    fig.classList.add(tone);
-    line.append(name, bar, fig);
-    wrap.appendChild(line);
-  }
-  return wrap;
-}
-
-function deltaTone(delta, upGood) {
-  if (upGood === null || Math.abs(delta) <= 0.05) return "flat";
-  return (upGood ? delta > 0 : delta < 0) ? "good" : "bad";
-}
-
-function renderAreas(sides, copy) {
-  const wrap = document.createElement("div");
-  wrap.className = "areas";
-  const title = document.createElement("h3");
-  title.textContent = copy.byArea;
-  const key = document.createElement("p");
-  key.className = "area-key";
-  key.append(meterKey("before"), document.createTextNode(` ${copy.before} `), meterKey("after"), document.createTextNode(` ${copy.after}`));
-  wrap.append(title, key);
-  const before = new Map((sides.before || []).map((row) => [row.area, row]));
-  const after = new Map((sides.after || []).map((row) => [row.area, row]));
-  const names = [...new Set([...before.keys(), ...after.keys()])].sort();
-  for (const name of names) {
-    const bPct = before.has(name) ? before.get(name).utilization_pct : 0;
-    const aPct = after.has(name) ? after.get(name).utilization_pct : 0;
-    const row = document.createElement("div");
-    row.className = "area";
-    const label = document.createElement("span");
-    label.className = "name";
-    label.textContent = (copy.areas && copy.areas[name]) || name;
-    const fig = document.createElement("span");
-    fig.className = "fig";
-    fig.textContent = `${formatMeasure(bPct, "%", 1)} → ${formatMeasure(aPct, "%", 1)}`;
-    const meters = document.createElement("span");
-    meters.className = "meters";
-    meters.append(meterBar("before", bPct), meterBar("after", aPct));
-    row.append(label, fig, meters);
-    wrap.appendChild(row);
-  }
-  return wrap;
-}
-
-function meterKey(kind) {
-  return meterBar(kind, 100);
-}
-
-function meterBar(kind, pct) {
-  const span = document.createElement("span");
-  span.className = `meter ${kind}`;
-  const fill = document.createElement("i");
-  fill.style.width = `${Math.max(0, Math.min(100, Number(pct) || 0))}%`;
-  span.appendChild(fill);
-  return span;
 }
 
 function renderGantt(host, gantt, horizon, scale, draw) {
@@ -944,7 +1229,7 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     if (state.view === "lot") {
       label.innerHTML = `${escapeHtml(row.job_id)}<small>P${row.priority}</small>`;
     } else {
-      label.innerHTML = `${escapeHtml(row.equipment_id)}<small>${escapeHtml(statusLabel(row.status))}</small>`;
+      label.textContent = row.equipment_id;
     }
     const track = document.createElement("div");
     track.className = "track";
@@ -966,10 +1251,10 @@ function renderGantt(host, gantt, horizon, scale, draw) {
       node.style.background = tone.fill;
       node.style.color = tone.ink;
       node.title = bar.job_id;
-      const label = document.createElement("span");
-      label.className = "bar-label";
-      label.textContent = shortLot(bar.job_id);
-      node.appendChild(label);
+      const name = document.createElement("span");
+      name.className = "bar-label";
+      name.textContent = shortLot(bar.job_id);
+      node.appendChild(name);
       const toolId = bar.equipment_id || row.equipment_id;
       node.addEventListener("pointerenter", (event) => showTip(event, bar, toolId, horizon));
       node.addEventListener("click", (event) => {
@@ -998,47 +1283,44 @@ function renderGantt(host, gantt, horizon, scale, draw) {
     layoutTrack(track, scale);
     if (track.dataset.links === "1") drawLinks(track);
   });
+  if (state.view !== "lot") drawDues(wrap, gantt, scale);
+}
+
+function drawDues(wrap, gantt, scale) {
+  const track = wrap.querySelector(".track");
+  if (!track || !scale) return;
+  const wrapBox = wrap.getBoundingClientRect();
+  const trackBox = track.getBoundingClientRect();
+  const origin = trackBox.left - wrapBox.left;
+  const width = trackBox.width;
+  for (const due of gantt.dues || []) {
+    if (due.due_min < 0 || due.due_min > scale) continue;
+    const mark = document.createElement("div");
+    mark.className = "due-line";
+    mark.style.left = `${origin + (due.due_min / scale) * width}px`;
+    const cap = document.createElement("span");
+    cap.textContent = `${shortLot(due.job_id)} ${t().due}`;
+    bindTip(cap, t().dueTip);
+    mark.appendChild(cap);
+    wrap.appendChild(mark);
+  }
 }
 
 function lotRows(gantt) {
   const lots = new Map();
   for (const row of gantt.rows) {
     for (const bar of row.bars) {
-      if (!lots.has(bar.job_id)) {
-        lots.set(bar.job_id, { job_id: bar.job_id, priority: bar.priority, bars: [] });
-      }
+      if (!lots.has(bar.job_id)) lots.set(bar.job_id, { job_id: bar.job_id, priority: bar.priority, bars: [] });
       lots.get(bar.job_id).bars.push({ ...bar, equipment_id: row.equipment_id, area: row.area });
     }
   }
   return [...lots.values()].sort((a, b) => a.priority - b.priority || a.job_id.localeCompare(b.job_id));
 }
 
-function paintViews() {
-  const host = $("#views");
-  if (!host) return;
-  const copy = t();
-  host.setAttribute("aria-label", copy.byTool);
-  host.innerHTML = "";
-  for (const [id, label] of [["tool", copy.byTool], ["lot", copy.byLot]]) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = label;
-    button.setAttribute("aria-pressed", state.view === id ? "true" : "false");
-    button.addEventListener("click", () => {
-      state.view = id;
-      closeRoute();
-      if (state.report) render(state.report);
-    });
-    host.appendChild(button);
-  }
-}
-
 function drawLinks(track) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "links");
-  const bars = [...track.querySelectorAll(".bar")].sort(
-    (a, b) => Number(a.dataset.start) - Number(b.dataset.start),
-  );
+  const bars = [...track.querySelectorAll(".bar")].sort((a, b) => Number(a.dataset.start) - Number(b.dataset.start));
   for (let index = 0; index < bars.length - 1; index += 1) {
     const left = bars[index];
     const right = bars[index + 1];
@@ -1063,16 +1345,12 @@ function openRoute(event, jobId, gantt, horizon) {
   const steps = [];
   for (const row of gantt.rows) {
     for (const bar of row.bars) {
-      if (bar.job_id === jobId) {
-        steps.push({ ...bar, equipment_id: row.equipment_id, area: row.area });
-      }
+      if (bar.job_id === jobId) steps.push({ ...bar, equipment_id: row.equipment_id, area: row.area });
     }
   }
   steps.sort((a, b) => a.start_min - b.start_min);
   state.routeJob = jobId;
-  document.querySelectorAll(".bar").forEach((node) => {
-    node.classList.toggle("selected", node.title === jobId);
-  });
+  document.querySelectorAll(".bar").forEach((node) => node.classList.toggle("selected", node.title === jobId));
   const host = $("#route");
   host.innerHTML = "";
   const title = document.createElement("h3");
@@ -1093,8 +1371,7 @@ function openRoute(event, jobId, gantt, horizon) {
   });
   host.append(title, list);
   host.hidden = false;
-  const width = 280;
-  host.style.left = `${Math.min(event.clientX + 12, window.innerWidth - width - 12)}px`;
+  host.style.left = `${Math.min(event.clientX + 12, window.innerWidth - 340)}px`;
   host.style.top = `${Math.min(event.clientY + 12, window.innerHeight - 220)}px`;
 }
 
@@ -1109,11 +1386,7 @@ function layoutTrack(track, scale) {
   const width = track.clientWidth;
   if (!width || !scale) return;
   const items = [...track.querySelectorAll(".bar")]
-    .map((node) => ({
-      node,
-      start: Number(node.dataset.start),
-      end: Number(node.dataset.end),
-    }))
+    .map((node) => ({ node, start: Number(node.dataset.start), end: Number(node.dataset.end) }))
     .sort((a, b) => a.start - b.start);
   items.forEach((item) => {
     item.left = (item.start / scale) * width;
@@ -1125,13 +1398,11 @@ function layoutTrack(track, scale) {
     if (lane < 0) {
       lane = laneEnds.length;
       laneEnds.push(item.end);
-    } else {
-      laneEnds[lane] = item.end;
-    }
+    } else laneEnds[lane] = item.end;
     item.lane = lane;
   });
   const laneCount = Math.max(1, laneEnds.length);
-  if (laneCount > 1) track.style.height = `${8 + laneCount * 24}px`;
+  if (laneCount > 1) track.style.height = `${8 + laneCount * 22}px`;
   items.forEach((item) => {
     const later = items.filter((other) => other.lane === item.lane && other.left > item.left + 0.5);
     const nextLeft = later.length ? Math.min(...later.map((other) => other.left)) : width;
@@ -1141,7 +1412,7 @@ function layoutTrack(track, scale) {
     item.node.style.left = `${item.left}px`;
     item.node.style.width = `${item.draw}px`;
     if (laneCount > 1) {
-      item.node.style.top = `${4 + item.lane * 24}px`;
+      item.node.style.top = `${4 + item.lane * 22}px`;
       item.node.classList.add("stacked");
     } else {
       item.node.style.top = "";
@@ -1194,10 +1465,8 @@ function renderLegend(report) {
   host.innerHTML = "";
   const order = ["Lithography", "Etch", "CMP", "Deposition"];
   const seen = new Set();
-  for (const side of [report.gantt && report.gantt.before, report.gantt && report.gantt.after]) {
-    for (const row of (side && side.rows) || []) {
-      if (row.area) seen.add(row.area);
-    }
+  for (const side of [report.gantt.before, report.gantt.after]) {
+    for (const row of (side && side.rows) || []) if (row.area) seen.add(row.area);
   }
   for (const area of [...order.filter((name) => seen.has(name)), ...[...seen].filter((name) => !order.includes(name))]) {
     const tone = areaTone(area);
@@ -1207,6 +1476,7 @@ function renderLegend(report) {
   host.appendChild(legendItem(null, copy.down, null, "hatch-down"));
   host.appendChild(legendItem(null, copy.maint, null, "hatch-maint"));
   host.appendChild(legendItem(null, copy.now, null, "now"));
+  host.appendChild(legendItem(null, copy.due, null, "due"));
 }
 
 function legendItem(fill, label, ink, kind) {
@@ -1221,64 +1491,19 @@ function legendItem(fill, label, ink, kind) {
   return li;
 }
 
-function renderLots(rows) {
-  const body = $("#lots");
-  const copy = t();
-  body.innerHTML = "";
-  for (const row of rows) {
-    const tr = document.createElement("tr");
-    const better = row.after_tardiness_min < row.before_tardiness_min;
-    const worse = row.after_tardiness_min > row.before_tardiness_min;
-    const tone = better ? "good" : worse ? "bad" : "";
-    const after = row.after_equipment || copy.held;
-    tr.innerHTML = `
-      <td class="mono">${escapeHtml(row.job_id)}</td>
-      <td class="num">${row.priority}</td>
-      <td class="mono">${escapeHtml(row.before_equipment || "—")}</td>
-      <td class="mono">${escapeHtml(after)}</td>
-      <td class="num ${tone}">${escapeHtml(formatDuration(row.before_tardiness_min))} → ${escapeHtml(formatDuration(row.after_tardiness_min))}</td>`;
-    body.appendChild(tr);
-  }
-}
-
-function renderDecision(report) {
-  const copy = t();
-  const host = $("#decision");
-  const verdict = report.verdict ? report.verdict.verdict : report.blocked ? "blocked" : "—";
-  const rejected = report.rejected_alternative && report.rejected_alternative.critique;
-  const violation = rejected && rejected.violations && rejected.violations[0];
-  const contract = report.contract;
-  host.innerHTML = `
-    <p><span class="pill ${escapeHtml(verdict)}">${escapeHtml(verdict)}</span>
-      ${contract ? `<span class="pill">${escapeHtml(copy.verified)}</span>` : ""}</p>
-    <p>${escapeHtml(report.verdict ? report.verdict.rationale : report.narrative)}</p>
-    ${violation ? `<p>${escapeHtml(copy.rejected)} · ${escapeHtml(violation.constraint)}: ${escapeHtml(violation.detail)}</p>` : ""}
-    ${contract ? `<p class="meta">${escapeHtml(contract.modelProfile || "")} · ${escapeHtml(contract.contractId || "")}</p>` : ""}
-    ${report.provider_call ? `<p class="meta">${escapeHtml(copy.explainer)} ${escapeHtml(report.provider_call.provider)} · ${escapeHtml(report.provider_call.model)} · ${Math.round(report.provider_call.latency_ms)} ms${report.provider_call.mocked ? " · mock" : ""}</p>` : ""}`;
-}
-
-function updateBay(report) {
-  const status = {};
-  const rows = report.gantt && report.gantt.after && report.gantt.after.rows;
-  if (rows) {
-    for (const row of rows) status[row.equipment_id] = row.status;
-  }
-  if (report.scenario_id === "material_shortage") status["RESIST-UV"] = "short";
-  paintBay(status);
-}
-
 function showTip(event, bar, equipment, horizon) {
-  const tip = $("#tip");
   const copy = t();
   const flags = [bar.moved ? copy.moved : "", bar.fresh ? copy.fresh : ""].filter(Boolean).join(" · ");
-  tip.innerHTML = `<strong>${escapeHtml(bar.job_id)}</strong> · P${bar.priority}<br>${escapeHtml(equipment)} · ${escapeHtml(bar.step)}<br>${escapeHtml(formatClock(shift(horizon, bar.start_min)).slice(11, 16))}–${escapeHtml(formatClock(shift(horizon, bar.end_min)).slice(11, 16))} · ${escapeHtml(formatDuration(bar.end_min - bar.start_min))}${flags ? `<br>${escapeHtml(flags)}` : ""}`;
+  const text = `${bar.job_id} · P${bar.priority}\n${equipment} · ${bar.step}\n${formatClock(shift(horizon, bar.start_min)).slice(11, 16)}–${formatClock(shift(horizon, bar.end_min)).slice(11, 16)} · ${formatDuration(bar.end_min - bar.start_min)}${flags ? `\n${flags}` : ""}`;
+  const tip = $("#tip");
+  tip.textContent = text;
   tip.hidden = false;
   moveTip(event);
 }
 
 function moveTip(event) {
   const tip = $("#tip");
-  tip.style.left = `${Math.min(event.clientX + 12, window.innerWidth - 300)}px`;
+  tip.style.left = `${Math.min(event.clientX + 12, window.innerWidth - 280)}px`;
   tip.style.top = `${event.clientY + 16}px`;
 }
 
@@ -1290,7 +1515,8 @@ function scaleOf(report) {
   let max = 240;
   for (const side of [report.gantt && report.gantt.before, report.gantt && report.gantt.after]) {
     if (!side) continue;
-    for (const row of side.rows) {
+    for (const due of side.dues || []) max = Math.max(max, due.due_min || 0);
+    for (const row of side.rows || []) {
       max = Math.max(max, row.available_at_min || 0);
       for (const bar of row.bars) max = Math.max(max, bar.end_min);
     }
@@ -1311,8 +1537,7 @@ function formatMeasure(value, kind, digits) {
 
 function signedMeasure(value, kind, digits) {
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
-  const body = formatMeasure(Math.abs(value), kind, digits);
-  return `${sign}${body}`;
+  return `${sign}${formatMeasure(Math.abs(value), kind, digits)}`;
 }
 
 function formatDuration(minutes) {
@@ -1368,14 +1593,7 @@ async function getJson(url) {
 }
 
 window.addEventListener("resize", () => {
-  document.querySelectorAll(".gantt").forEach((wrap) => {
-    const scale = Number(wrap.dataset.scale || 0);
-    wrap.querySelectorAll(".track").forEach((track) => {
-      layoutTrack(track, scale);
-      track.querySelectorAll(".links").forEach((node) => node.remove());
-      if (track.dataset.links === "1") drawLinks(track);
-    });
-  });
+  if (state.report && state.report.gantt) renderCharts(state.report);
 });
 
 function escapeHtml(value) {

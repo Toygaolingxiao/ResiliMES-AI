@@ -59,6 +59,7 @@ def job_outcomes(
     after_done = _completions(after_plant, after)
     before_tool = _first_tool(before)
     after_tool = _first_tool(after)
+    changes = step_tool_changes(before, after)
     before_ids = {job.job_id for job in before_plant.jobs}
     after_ids = {job.job_id for job in after_plant.jobs}
     catalog = {job.job_id: job for job in before_plant.jobs}
@@ -69,6 +70,7 @@ def job_outcomes(
         due = minutes_between(after_plant.horizon, job.due_at)
         in_before = job.job_id in before_ids
         in_after = job.job_id in after_ids
+        change = changes.get(job.job_id)
         rows.append(
             JobOutcome(
                 job_id=job.job_id,
@@ -83,6 +85,9 @@ def job_outcomes(
                 after_tardiness_min=_tardiness(after_done.get(job.job_id), due) if in_after else 0,
                 before_equipment=before_tool.get(job.job_id) if in_before else None,
                 after_equipment=after_tool.get(job.job_id) if in_after else None,
+                moved_step=change[0] if change else None,
+                moved_from=change[1] if change else None,
+                moved_to=change[2] if change else None,
             )
         )
     return rows
@@ -300,16 +305,72 @@ def lots_moved(before: Schedule, after: Schedule) -> list[str]:
     """Lots whose tool changed on a step that exists in both books.
 
     A new lot, a held lot, and a lot that only moved in time stay out of this list.
+    The same pairs are on each lot as ``moved_from`` / ``moved_to``.
     """
+    return sorted(step_tool_changes(before, after))
+
+
+def step_tool_changes(before: Schedule, after: Schedule) -> dict[str, tuple[str, str, str]]:
+    """First step whose tool changed: job id to (step, before tool, after tool)."""
     prior: dict[tuple[str, str], str] = {}
     for op in before.operations:
         prior.setdefault((op.job_id, op.step), op.equipment_id)
-    moved: set[str] = set()
-    for op in after.operations:
+    found: dict[str, tuple[str, str, str]] = {}
+    ordered = sorted(after.operations, key=lambda op: (op.job_id, op.step_index, op.start_min))
+    for op in ordered:
         old = prior.get((op.job_id, op.step))
-        if old is not None and old != op.equipment_id:
-            moved.add(op.job_id)
-    return sorted(moved)
+        if old is not None and old != op.equipment_id and op.job_id not in found:
+            found[op.job_id] = (op.step, old, op.equipment_id)
+    return found
+
+
+_UP_GOOD = frozenset({"on_time_delivery_pct"})
+_DOWN_GOOD = frozenset(
+    {
+        "weighted_tardiness_min",
+        "makespan_min",
+        "lots_at_risk",
+        "setup_changes",
+        "mean_lead_min",
+        "mean_wait_min",
+        "mean_x_factor",
+    }
+)
+# A hold drops unfinished lots out of the book. Shorter makespan, lead, X-factor,
+# and fewer changeovers are then not a better fab.
+_HOLD_NEUTRAL = frozenset({"makespan_min", "mean_lead_min", "mean_x_factor", "setup_changes"})
+_NEVER_DIRECTIONAL = frozenset({"utilization_pct"})
+
+
+def metric_tones(
+    before: dict[str, object], after: dict[str, object]
+) -> dict[str, dict[str, object]]:
+    """Green, red, or flat for each compared figure.
+
+    ``comparable`` is false when a rise in held lots makes the figure look
+    better only because work left the book. Those tones are flat.
+    """
+    before_held = _held_count(before.get("unscheduled_lots"))
+    after_held = _held_count(after.get("unscheduled_lots"))
+    hold = after_held > before_held
+    tones: dict[str, dict[str, object]] = {}
+    for key in _UP_GOOD | _DOWN_GOOD | _NEVER_DIRECTIONAL:
+        delta = cast(float, after[key]) - cast(float, before[key])
+        comparable = not (hold and key in _HOLD_NEUTRAL)
+        if not comparable or key in _NEVER_DIRECTIONAL or abs(delta) < 1e-9:
+            tone = "flat"
+        elif key in _UP_GOOD:
+            tone = "good" if delta > 0 else "bad"
+        else:
+            tone = "good" if delta < 0 else "bad"
+        tones[key] = {"tone": tone, "comparable": comparable}
+    return tones
+
+
+def _held_count(value: object) -> int:
+    if isinstance(value, list):
+        return len(value)
+    return 0
 
 
 def _utilization(plant: Plant, schedule: Schedule, makespan: int) -> float:

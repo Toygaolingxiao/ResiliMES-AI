@@ -36,7 +36,7 @@ Confirmed from the Meterless provider contract published on the engines page and
 
 Assumption: the Nemotron id installed for the hackathon is passed in `NEMOTRON_MODEL`. The default `nvidia/NVIDIA-Nemotron-Nano-9B-v2` matches the scaffold. The Meterless model library also lists Nemotron 3.5 Lightning and Nemotron 3 Nano. Use whichever id your Nightshift `/v1/models` list actually serves. We do not call `integrate.api.nvidia.com` directly. NVIDIA is reached through Nightshift, which is what the Academy FAQ requires.
 
-Assumption: unknown JSON fields are not sent. `NEMOTRON_CRITIC_MODEL` is selected only when `complete` is called with `lane="critic"`. The recovery loop calls the explainer lane, so a second body field is not required.
+Assumption: unknown JSON fields are not sent. Nightshift explains. The critic is deterministic code in `resilimes.domain.critique` and does not call a model, so there is no critic-model setting.
 
 The explainer asks for a JSON object `{"narrative": "..."}`. If the server ignores `response_format`, the client parses the text and falls back to the deterministic narrative. We do not send `response_format` today, because support varies across OpenAI-compatible runtimes.
 
@@ -57,7 +57,7 @@ Assumption, because the spec says "canonical JSON" and does not name RFC 8785: c
 
 Assumption: a Guard result of `block` produces no contract. The spec's contract risk enum is `low | medium | high`. `block` is a guard outcome, not a signed plan.
 
-Assumption: plant data is a sensitive class, so Recommend only selects profiles with `local: true` and `plant` in `dataClasses`. The shipped profiles are the mock profile and two Nightshift Nemotron profiles.
+Assumption: plant data is a sensitive class, so Recommend only selects profiles with `local: true` and `plant` in `dataClasses`. The shipped catalog has a mock profile and two Nightshift Nemotron routing labels. The schedule critic does not call either label. Nightshift explains; `critique_schedule` commits.
 
 The registry in `resilimes/engines/scout/intents.json` is the manufacturing catalog (machine down, rush order, material shortage, explain, status, emergency stop). It uses the spec's intent record: examples are mandatory, `riskClass` is a floor, `surfaces` and `roles` are enforced.
 

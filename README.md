@@ -50,7 +50,7 @@ The language model explains a schedule it did not invent. The committed plan com
 | Critic | Enforces tool status, capability, single-server overlap, simultaneous WIP, operators, material, precedence, and no preemption of a running lot. |
 | Markovian | Runs sense → plan → critique → explain → commit as bounded chunks. Each chunk sees a checkpoint, not the growing transcript. |
 | World Model | Append-only plant log. Assignments are ingested under the contract and replayed. |
-| Nightshift | OpenAI-compatible hotspot. The explainer calls NVIDIA Nemotron when a runtime token is configured. The planner and the critic stay deterministic. |
+| Nightshift | OpenAI-compatible hotspot. The explainer calls NVIDIA Nemotron when a runtime token is configured. Nightshift explains. The planner and the critic stay deterministic code. |
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Sponsor write-up: [docs/SPONSOR_TECH.md](docs/SPONSOR_TECH.md).
 
@@ -147,11 +147,11 @@ That is ruff, mypy, and pytest. The Meterless engine proofs are:
 
 ```text
 resilimes/            Product: domain, engines, agents, API, console
-agent/                Scaffold connectors (Nightshift client, Zetaris REST, critic helpers)
+agent/                Live connectors only: Nightshift client and Zetaris REST
 data/sample/          Offline plant
 data/sql/seed.sql     Zetaris DDL and inserts, generated from data/sample
 data/zetaris/         CSV twin of the same tables
-prompts/              Planner, specialist, and evaluator system prompts
+prompts/              Specialist prompt. The recovery loop does not load it.
 tests/                Unit and API tests
 docs/                 Architecture, sponsor write-up, demo script, pitch, checklist
 ```

@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from resilimes import __version__
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
 from resilimes.config import ConfigError, Settings, get_settings
+from resilimes.data.factory import build_source
 from resilimes.data.zetaris_source import ZetarisDataError
 from resilimes.domain.plant import PlantDataError
 from resilimes.domain.scenarios import list_scenarios
@@ -70,7 +71,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/scenarios")
     def scenarios() -> dict[str, object]:
-        return {"scenarios": [item.model_dump() for item in list_scenarios()]}
+        cfg: Settings = app.state.settings
+        plant, _records = build_source(cfg).load_plant(cfg.horizon)
+        bay: list[dict[str, str]] = [
+            {"id": equipment.equipment_id, "kind": "tool", "status": equipment.status}
+            for equipment in plant.equipment
+        ]
+        bay.extend(
+            {
+                "id": stock.material_id,
+                "kind": "material",
+                "status": "short" if stock.on_hand <= 0 else "ok",
+            }
+            for stock in plant.materials
+        )
+        return {
+            "scenarios": [item.model_dump() for item in list_scenarios()],
+            "bay": bay,
+        }
 
     @app.post("/api/recover")
     def recover(body: RecoverBody) -> dict[str, object]:

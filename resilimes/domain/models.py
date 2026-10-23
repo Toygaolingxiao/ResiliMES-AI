@@ -210,6 +210,9 @@ class JobOutcome(BaseModel):
     after_tardiness_min: int
     before_equipment: str | None = None
     after_equipment: str | None = None
+    moved_step: str | None = None
+    moved_from: str | None = None
+    moved_to: str | None = None
 
 
 class Violation(BaseModel):

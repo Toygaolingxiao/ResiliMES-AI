@@ -6,7 +6,15 @@ from pathlib import Path
 
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
 from resilimes.config import HORIZON, Settings
-from resilimes.domain.kpis import compare_load, evaluate, flow_metrics, lots_moved, step_waits
+from resilimes.domain.kpis import (
+    compare_load,
+    evaluate,
+    flow_metrics,
+    job_outcomes,
+    lots_moved,
+    metric_tones,
+    step_waits,
+)
 from resilimes.domain.models import Equipment, Plant, Schedule, ScheduledOp
 from resilimes.domain.plant import load_sample
 from resilimes.domain.scenarios import plants_for_scenario
@@ -132,10 +140,19 @@ def test_flow_metrics_and_step_waits_come_from_the_book() -> None:
 
 
 def test_litho_lots_moved_is_the_scanner_change() -> None:
-    _before_plant, before, _after_plant, after = _books("litho_down")
+    before_plant, before, after_plant, after = _books("litho_down")
     moved = lots_moved(before, after)
     assert "LOT-1001" in moved
     assert "LOT-1002" not in moved
+    outcomes = {row.job_id: row for row in job_outcomes(before_plant, before, after_plant, after)}
+    assert outcomes["LOT-1001"].moved_from == "LITHO-02"
+    assert outcomes["LOT-1001"].moved_to == "LITHO-01"
+    assert outcomes["LOT-1004"].moved_step == "ETCH"
+    assert outcomes["LOT-1004"].moved_from == "ETCH-02"
+    assert outcomes["LOT-1004"].moved_to == "ETCH-01"
+    for job_id in moved:
+        row = outcomes[job_id]
+        assert row.moved_from != row.moved_to
 
 
 def test_rush_insert_and_stockout_holds_are_not_tool_moves() -> None:
@@ -178,3 +195,40 @@ def test_recovery_report_carries_areas_and_lots_moved() -> None:
     for side in ("before", "after"):
         for row in report.kpis["areas"][side]:
             assert 0.0 <= float(row["utilization_pct"]) <= 100.0
+    assert report.kpis["tones"]["makespan_min"]["tone"] == "good"
+    assert report.kpis["tones"]["utilization_pct"]["tone"] == "flat"
+    assert any(
+        row["result"] == "rejected" and row["constraint"] == "equipment_status"
+        for row in report.checks
+    )
+    after_gantt = report.gantt["after"]
+    assert any(due["job_id"] == "LOT-1001" for due in after_gantt["dues"])
+
+
+def test_stockout_does_not_paint_a_shorter_book_as_a_win() -> None:
+    report = run_recovery(
+        Settings(mode="mock", horizon=HORIZON, scout_signing_secret="kpi-secret"),
+        RecoverInput(scenario="material_shortage"),
+    )
+    assert report.kpis is not None
+    tones = report.kpis["tones"]
+    for key in ("makespan_min", "mean_lead_min", "mean_x_factor", "setup_changes"):
+        assert tones[key]["comparable"] is False
+        assert tones[key]["tone"] == "flat"
+    assert tones["on_time_delivery_pct"]["tone"] == "bad"
+    assert tones["weighted_tardiness_min"]["tone"] == "bad"
+    assert tones["lots_at_risk"]["tone"] == "bad"
+    assert tones["utilization_pct"]["tone"] == "flat"
+    assert metric_tones(report.kpis["before"], report.kpis["after"]) == tones
+
+
+def test_rush_gantt_marks_the_hot_lot_due() -> None:
+    report = run_recovery(
+        Settings(mode="mock", horizon=HORIZON, scout_signing_secret="kpi-secret"),
+        RecoverInput(scenario="rush_order"),
+    )
+    assert report.gantt is not None
+    dues = report.gantt["after"]["dues"]
+    hot = next(due for due in dues if due["job_id"] == "LOT-2001")
+    assert hot["due_min"] == 180
+    assert all(due["job_id"] != "LOT-2001" for due in report.gantt["before"]["dues"])

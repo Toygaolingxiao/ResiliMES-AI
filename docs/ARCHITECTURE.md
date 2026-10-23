@@ -72,7 +72,7 @@ The explainer calls `LlmProvider.complete` once per recovery. In mock mode that 
 
 FastAPI serves `/` and `/api/*`. The page is static HTML, CSS, and JS with no build step and no external font or script host, so `make demo` works offline. `POST /api/recover/stream` emits each real step (alert, Scout, contract, Zetaris read, sense, plan, critique, explain, commit) as server-sent events while `run_recovery` is still running, then the same report as `POST /api/recover`. Mock mode inserts a 680 ms gap between those events so the console can be filmed. The gap is delivery pacing; `elapsed_ms` on each event is the compute time. `pace_ms: 0` skips it. Live mode does not pace.
 
-The Gantt uses one time scale for both charts. Down time is the hatched band. A bar outline marks a lot that changed tool or start. KPI color follows the direction that helps the fab: on-time delivery up is good, tardiness and lots-at-risk down are good. Durations on screen are hours and days; the API still speaks minutes.
+The Recover tab is the filmed frame: one headline, the critic's refusal, three numbers (on-time delivery, weighted tardiness, lots at risk), a slim loop stepper, and the before/after Gantt. Analyze holds the rest of the board. Verify lists each constraint check as pass, fail, or refused. The Gantt uses one time scale for both charts. Down time is the hatched band. A bar outline marks a lot whose tool changed. A dashed tick marks a priority-1 due. KPI color comes from `tones` on the report: up or down only when the two books are comparable, otherwise flat. A stockout that holds lots out of the after book keeps makespan, lead time, X-factor, and changeovers flat. Durations on screen are hours and days; the API still speaks minutes.
 
 ## Failure behavior
 

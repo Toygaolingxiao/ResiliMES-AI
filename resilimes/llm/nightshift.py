@@ -1,8 +1,7 @@
 """Meterless Nightshift client. OpenAI-compatible, NVIDIA Nemotron behind it.
 
-Lanes share one hotspot and can pin different model ids:
-- planner / explainer → NEMOTRON_MODEL
-- critic → NEMOTRON_CRITIC_MODEL, falling back to NEMOTRON_MODEL
+Nightshift explains. The critic is deterministic code and does not call a model.
+Every lane uses NEMOTRON_MODEL.
 
 Retries: 429 and connection / 5xx, with exponential backoff. The token is never logged.
 """
@@ -55,8 +54,7 @@ class NightshiftProvider:
         )
 
     def model_for(self, lane: str) -> str:
-        if lane == "critic" and self._settings.nemotron_critic_model:
-            return self._settings.nemotron_critic_model
+        del lane
         return self._settings.nemotron_model
 
     def complete(
