@@ -1,10 +1,10 @@
 # SMT2020 full-fab measurements
 
-Source: Kopp, Hassoun, Kalir, and Mönch, IEEE Trans. Semicond. Manuf. 33(4), 2020, doi 10.1109/TSM.2020.3001933. PySCFabSim-release commit `0dbff6a`, directory `datasets/SMT2020_LVHM`.
+Public industry benchmark (SMT2020). Source: Kopp, Hassoun, Kalir, and Mönch, IEEE Trans. Semicond. Manuf. 33(4), 2020, doi 10.1109/TSM.2020.3001933. PySCFabSim-release commit `0dbff6a`, directory `datasets/SMT2020_LVHM`. This is not a recording from a production fab.
 
 Fab: 106 station families, 1313 tools, 102 `Litho_*` tools (82 expose scanners plus 20 `Litho_REG`), 10 products, 2156 initial WIP lots, 12 station groups. `Delay_32` is included (400 tools, 147 route steps).
 
-Horizon: 48 hours from 2018-01-01 00:00 UTC. Seeds: 1, 2, 3, 4, 5. Each seed draws exponential MTTF/MTTR from `downcal.txt`, one clock per tool. The same draw is shared across policies.
+The tight VIP table is 24 hours. The appendix is 48 hours from 2018-01-01 00:00 UTC. Seeds: 1, 2, 3, 4, 5. Each seed draws exponential MTTF/MTTR from `downcal.txt`, one clock per tool. The same draw is shared across policies.
 
 Macro APS (backward due, then earliest free expose scanner, 30625 scanner steps): **312.8 ms**.
 
@@ -18,7 +18,22 @@ Lithography breakdown holds `Litho_FE_92-1` (`Litho_FE_92`, largest expose famil
 
 Hot lot `Init_Lot_10_11` is the lowest lot id among normal-priority lots sitting four steps before an expose scanner. The ResiliMES book raises it to VIP with a due 12 hours from the snapshot. FIFO keeps the published priority.
 
-## Steady fab (seeded breakdowns, published PM calendar unshifted)
+## Tight VIP dues (constructed, 24 hours)
+
+The published dues do not make earliest-due lose on on-time delivery. This book keeps the routes, process times, setups, and CQT limits, and replaces the dues used for scoring. Eight lots waiting at `Dielectric_BE_28` with a later CQT become VIP and are due at 8 hours. The other lots in that queue stay normal and are due at 7.2 hours, so earliest-due serves them first. Every other lot still moves through the fab and is outside the scored horizon. `Dielectric_BE_28-1` is down for the published dielectric MTTR of 604.8 minutes. The family has three tools. Horizon is 24 hours, five seeds.
+
+| Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | WIP replans | Dispatch p50 ms | Dispatch p95 ms | Sim s |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| resilimes | 19.05 | 4293.14 | 9.84 | 77.452 | 72.318 | 176.8 | 0.0 | 0.0 | 142.0 | 0.005 | 0.149 | 0.904 |
+| edd | 12.384 | 8013.42 | 11.496 | 80.87 | 76.446 | 402.0 | 0.0 | 0.0 | 0.0 | 0.002 | 0.029 | 0.256 |
+| fifo | 0.0 | 18788.8 | 14.08 | 81.116 | 76.754 | 418.0 | 0.0 | 0.0 | 0.0 | 0.002 | 0.015 | 0.195 |
+| cr | 10.474 | 7865.74 | 10.69 | 75.956 | 70.622 | 223.0 | 0.0 | 0.0 | 0.0 | 0.002 | 0.049 | 0.331 |
+
+## Appendix: published order book (performance)
+
+On the published dues, a 48-hour horizon, ResiliMES and EDD tie on on-time delivery. EDD has slightly lower weighted tardiness. These tables are runtime and knock-on measurements. They are not the claim that earliest-due loses.
+
+### Steady fab (seeded breakdowns, published PM calendar unshifted)
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | WIP replans | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -27,7 +42,7 @@ Hot lot `Init_Lot_10_11` is the lowest lot id among normal-priority lots sitting
 | fifo | 25.358 | 53890.0 | 27.126 | 73.33 | 67.864 | 647.4 | 0.0 | 0.0 | 0.0 | 0.001 | 0.013 | 0.321 |
 | cr | 27.858 | 23365.74 | 29.636 | 68.882 | 63.7 | 305.2 | 0.0 | 0.0 | 0.0 | 0.002 | 0.04 | 0.483 |
 
-## Lithography breakdown
+### Lithography breakdown
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | WIP replans | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -36,14 +51,14 @@ Hot lot `Init_Lot_10_11` is the lowest lot id among normal-priority lots sitting
 
 While `Litho_FE_92-1` is down, other tools in `Litho_FE_92` start 225.2 lots under ResiliMES and 218.0 under EDD (five-seed mean). The family queue peaks at 40.0 lots. The downstream queue peaks at 442.6 under ResiliMES and 398.8 under EDD. On-time uses 56.0 lots due inside the horizon, of which 10.0 are already late at the snapshot.
 
-## PM avoidance (calendar shifted, durations unchanged)
+### PM avoidance (calendar shifted, durations unchanged)
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | WIP replans | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | resilimes | 55.36 | 22730.5 | 27.296 | 74.574 | 70.392 | 326.8 | 40.6 | 0.0 | 184.6 | 0.004 | 0.144 | 1.364 |
 | edd | 57.14 | 21611.14 | 25.898 | 74.09 | 69.546 | 418.2 | 0.0 | 450.4 | 0.0 | 0.001 | 0.033 | 0.427 |
 
-## Hot lot
+### Hot lot
 
 | Policy | OTD % | Weighted tardiness min | Cycle h | Litho util % | Scanner util % | Q-time | PM avoided | PM overlaps | WIP replans | Dispatch p50 ms | Dispatch p95 ms | Sim s |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |

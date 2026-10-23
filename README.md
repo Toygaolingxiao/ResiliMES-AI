@@ -6,11 +6,15 @@ A production supervisor gets a line-down, a rush order, a material shortage, a l
 
 **Primary track: Track 03 — Reasoning Architecture.** The product turns fragmented factory data, a signed intent contract, a world-model event log, and bounded agent steps into a schedule a supervisor can commit. Explainability is part of that decision, not a separate product. See [why this track](#track).
 
-## Default console: SMT2020 LV/HM
+## Default console: public industry benchmark (SMT2020)
 
-`make demo` opens the full SMT2020 fab, not the six-lot bay. The extract is 106 station families, 1,313 tools, 102 `Litho_*` tools (82 expose scanners and 20 `Litho_REG`), 10 products, and 2,156 initial WIP lots. The banner reads `data source: smt2020`. The lithography scenario holds `Litho_FE_92-1` for the published 705.59-minute lithography repair. Tool state is aggregated by station group; the Gantt is virtualized to the selected group and time window.
+`make demo` opens the public industry benchmark (SMT2020), not the six-lot bay. The extract is 106 station families, 1,313 tools, 102 `Litho_*` tools (82 expose scanners and 20 `Litho_REG`), 10 products, and 2,156 initial WIP lots. The banner reads `public industry benchmark (SMT2020)`. The lithography scenario holds `Litho_FE_92-1` for the published 705.59-minute lithography repair. Tool state is aggregated by station group; the Gantt is virtualized to the selected group and time window.
 
-A click simulates 12 hours so the page returns quickly. The five-seed, 48-hour comparison against EDD, FIFO, and CR is in [docs/SMT2020_SCALE.md](docs/SMT2020_SCALE.md). On that study, dispatch p50/p95 for ResiliMES is 0.004 ms / 0.138 ms, macro APS is 312.8 ms for 30,625 scanner steps, and one 48-hour ResiliMES run is about 1.4 seconds. On-time on the steady book is 57.14% for both ResiliMES and EDD, on 56 lots due inside the horizon (10 of them already late at the snapshot). FIFO is 25.36%. ResiliMES weighted tardiness is 22,264 minutes against EDD 21,611, FIFO 53,890, and CR 23,366. Those are censored at the horizon. ResiliMES does not win every column. The scale doc has the rest, including Q-time, litho utilization, the PM shift, and the hot lot `Init_Lot_10_11`.
+The comparison where earliest-due loses is **Tight VIP dues**. It keeps the published routes, process times, setups, and CQT limits, and replaces only the dues used for scoring. Eight lots at `Dielectric_BE_28` become VIP and are due at 8 hours. Thirteen normal lots in that same queue are due at 7.2 hours. `Dielectric_BE_28-1` is down for the published dielectric repair, 604.8 minutes. Other lots still move through the fab and sit outside the scored horizon. Five seeds, 24 hours: ResiliMES on-time 19.05% against EDD 12.38%, FIFO 0%, and CR 10.47%. Weighted tardiness is 4,293 minutes against EDD 8,013, FIFO 18,789, and CR 7,866. Queue-time violations are 177 against EDD 402. On seed 1, `Init_Lot_2_23` is 5.21 hours late under EDD and on time under ResiliMES. The critic refuses a start of `Init_Lot_1_3` on the down tool. Dispatch on that book is 0.005 ms p50 and 0.149 ms p95. One ResiliMES run is about 0.9 seconds.
+
+`make demo-live` is the same fab with Zetaris and Nightshift when those credentials are set. `make demo` does not call them. The film notes are in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
+The published-due book does not show that loss. Over 48 hours and five seeds, ResiliMES and EDD both finish 57.14% of the 56 lots due inside the horizon, and EDD's weighted tardiness is slightly lower (21,611 minutes against 22,264). Dispatch there is 0.004 ms p50 and 0.138 ms p95. Macro APS is 312.8 ms for 30,625 scanner steps. One 48-hour ResiliMES run is about 1.4 seconds. Those figures are performance data in the appendix of [docs/SMT2020_SCALE.md](docs/SMT2020_SCALE.md).
 
 `make demo-bay` is the six-lot sample used by the unit tests below.
 
@@ -21,21 +25,13 @@ Sample fab FAB-A, scenario clock 22 Oct 2026 06:30 UTC. Machine breakdown (`lith
 | KPI | Wait for repair | Rescheduled |
 | --- | ---: | ---: |
 | On-time delivery | 83.3% | 100% |
-| Priority-weighted tardiness | 784 min | 0 min |
+| Priority-weighted tardiness | 784 min (13 h 4 min) | 0 min |
 | Makespan | 857 min | 328 min |
 | Priority-1/2 lots at risk | 1 | 0 |
 
 LOT-1001 is priority 1, blocked on LITHO-02 (laser fault, revised repair 600 minutes), due 18:00 UTC. Waiting finishes it 98 minutes late: the frozen book mounts RET-A28-L1-1 on LITHO-02, and that mount takes 5 minutes. The recovery moves the lot to LITHO-01, which shares `litho_193nm` and the setup family already on the tool, reuses the copy the running lot releases, and finishes it at t=253. A naive plan that starts the lot on the down tool immediately is rejected. A second L1 copy is free, so the refusal is the tool status. Lithography stays the bottleneck, and the move keeps it on an up tool.
 
-A sixth preset, **Scale**, is a separate seeded fab: 1,000 lots and 36 tools across deposition, lithography, metrology, etch, clean, and CMP, on the same per-layer route. The six-lot stories above stay as they are. LITHO-03 is down for 600 minutes, and 24 priority-1 lots are blocked on it. The baseline is EDD dispatch: earliest due date, then the qualified tool that can start soonest, with no priority weight and no bottleneck lookahead. Priority recovery is the committed book.
-
-| KPI | vs. EDD dispatch | Priority recovery |
-| --- | ---: | ---: |
-| On-time delivery | 100% | 100% |
-| Priority-weighted tardiness | 0 min | 0 min |
-| Priority-1/2 lots at risk | 0 | 0 |
-
-Both books clear the dues. EDD already sends the 24 priority-1 lots to scanners that are up, and priority recovery leaves those lots on the same scanners. Mean wait between steps falls from 389 minutes to 125. Makespan grows from 4,522 minutes to 5,116 because lower-priority lots wait. Each product-layer has two physical reticles, and a copy that is not already on the scanner takes 5 minutes to mount. Schedule plus critic is about 0.7 seconds for 3,426 steps. Fourteen checks pass. The refused plan starts a blocked lot on LITHO-03 at time zero. Area utilization over the shared horizon stays near CMP 84.7%. The frame draws the first 12 hours as a per-tool load strip. LITHO-03 is hatched until the repair. CMP stays the bottleneck. The bay is staffed one operator per tool. `python scripts/export_scale_sql.py` writes `data/sql/scale_seed.sql` and `data/zetaris/scale/` for the same Zetaris catalog. `pytest` skips the 1,000-lot timer unless `RESILIMES_BENCHMARK=1`. CI runs a 40-lot smoke of the same generator.
+A sixth preset, **Scale**, is a separate seeded fab of 1,000 lots and 36 tools. It ties EDD on on-time delivery and weighted tardiness, so it is performance data only. The table and the timing notes are in [docs/SCALE_APPENDIX.md](docs/SCALE_APPENDIX.md).
 
 The committed book stays that list scheduler. An optional CP-SAT model of the same rules is the optimality reference: tool eligibility, inhibits, family-change setups, down windows, one physical reticle copy per scanner, release times, re-entrant routes, queue-time max lag, and material holds. The objective is the same priority-weighted tardiness, with makespan as the tie-break. Held lots are scored the same way as the KPI: no finish time is invented for them. The console prints the gap on the chart row. On the six-lot stories the search proves the list scheduler's weighted tardiness. Lithography and the stockout match makespan as well. The rush book keeps tardiness at 288 minutes and shortens makespan from 342 to 293. Overlay rework shortens makespan from 402 to 326. Queue time shortens makespan from 285 to 256. On the 1,000-lot fab the two-second neighborhood does not beat the list schedule, so makespan stays 5,116 and the badge says the heuristic was kept. The list schedule is ready first, and it is what the cards commit. Analyze lists the steps the reference moved. Without OR-Tools the gap line stays hidden and recovery still completes. CI installs `ortools`. Locally it is the `solver` extra.
 

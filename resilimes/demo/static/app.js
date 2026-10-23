@@ -668,6 +668,7 @@ const state = {
   smtStart: 0,
   smtEnd: 720,
   smtDrill: "",
+  smtPinned: "",
 };
 
 const $ = (id) => document.querySelector(id);
@@ -763,16 +764,16 @@ function paint() {
   banner.hidden = false;
   if (source === "smt2020") {
     const counts = `${state.health.groups || 106} groups · ${state.health.tools || 1313} tools · ${state.health.litho_tools || 102} litho · ${state.health.lots || 2156} lots`;
-    banner.textContent = `data source: smt2020 · ${counts}`;
+    banner.textContent = `public industry benchmark (SMT2020) · data source: smt2020 · ${counts}`;
     $("#bay-label").textContent = "Tool groups";
+    $("#tagline").textContent = "Public industry benchmark (SMT2020)";
   } else {
     banner.textContent = `${mock ? copy.mock : copy.live} data source: ${source}`;
   }
   const query = $("#query-line");
-  const reportQuery = state.report && state.report.query;
-  const stepQuery = (state.steps || []).find((step) => step.phase === "query" && step.evidence && step.evidence.length);
-  query.hidden = !(reportQuery || stepQuery);
-  query.textContent = reportQuery || (stepQuery ? stepQuery.evidence[0] : "");
+  const queryBody = formatBenchmark(state.report, state.steps);
+  query.hidden = !queryBody;
+  query.textContent = queryBody;
   $("#theme").textContent = state.theme === "dark" ? copy.themeDark : copy.themeLight;
   document.querySelectorAll("[data-lang]").forEach((button) => {
     button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
@@ -927,6 +928,25 @@ function paintGroups(host) {
   }
 }
 
+function formatBenchmark(report, steps) {
+  const fromStep = (steps || []).find((step) => step.phase === "query");
+  const slots = (fromStep && fromStep.slots) || (report && report.zetaris) || null;
+  if (!slots || !slots.queries) {
+    return (report && report.query) || "";
+  }
+  const live = slots.mode === "zetaris" && !slots.error;
+  const head = live
+    ? "Zetaris"
+    : slots.error
+      ? "Zetaris query failed"
+      : "local extract (Zetaris not called)";
+  const sources = `sources: ${(slots.sources || []).join(", ")}`;
+  const rows = slots.row_counts || {};
+  const counts = `rows: ${Object.entries(rows).map(([name, count]) => `${name} ${count}`).join(" · ")}`;
+  const sql = (slots.queries || []).map((item) => item.sql).join("\n");
+  return [head, sources, counts, sql].filter(Boolean).join("\n");
+}
+
 function paintSmtRecover(report) {
   $("#empty").hidden = true;
   $("#story").hidden = false;
@@ -934,16 +954,25 @@ function paintSmtRecover(report) {
   $("#stepper").hidden = false;
   $("#result").hidden = !report.gantt;
   const focus = report.focus || {};
+  const tight = report.tight;
+  if (tight && state.smtPinned !== report.scenario_id) {
+    state.smtGroup = tight.group || "Dielectric";
+    state.smtEnd = Math.round((report.horizon_h || 24) * 60);
+    state.smtPinned = report.scenario_id;
+  }
   $("#headline").textContent = report.incident || "";
   const hot = report.hot_lot || {};
-  const knock = report.scenario_id === "litho_down"
+  const refused = report.refusal && report.refusal.detail;
+  const knock = report.scenario_id === "tight_p1" && tight
+    ? `${tight.tool} is down ${tight.down_min} min. ${tight.p1_lots.length} VIP lots due at ${tight.p1_due_h} h. ${tight.decoy_lots.length} normal lots in the same queue due at ${tight.decoy_due_h} h. ${tight.spotlight_lot} is ${tight.spotlight_late_h_before} h late under EDD and ${tight.spotlight_late_h_after} h late under ResiliMES on this seed.`
+    : report.scenario_id === "litho_down"
     ? `${focus.tool} in ${focus.family} (${focus.tools_in_family} tools) is down ${focus.down_min} min. Sibling starts ${focus.sibling_starts_before} → ${focus.sibling_starts_after}. Family queue peak ${focus.queue_max_before} → ${focus.queue_max_after}. Downstream queue peak ${focus.downstream_queue_max_before} → ${focus.downstream_queue_max_after}.`
     : report.scenario_id === "hot_lot"
       ? `${hot.lot_id} (${hot.product}) steps ${hot.steps_before} → ${hot.steps_after}. Scanner start ${hot.scanner_start_min_before ?? "—"} → ${hot.scanner_start_min_after ?? "—"} min.`
       : report.scenario_id === "pm_avoid"
         ? `${(report.pm && report.pm.calendar) || "PM"} shifted ${report.pm && report.pm.shift_h} h so the published window opens inside this run.`
         : "";
-  $("#refusal").textContent = knock;
+  $("#refusal").textContent = [refused, knock].filter(Boolean).join(" ");
   if (report.kpis) renderSmtCards(report);
   paintStepper();
   paintSmtCharts(report);
@@ -1781,7 +1810,13 @@ function stepOutput(phase, slots, copy) {
     const conf = typeof slots.confidence === "number" ? ` · ${Math.round(slots.confidence * 100)}%` : "";
     return `${label}${conf}`;
   }
-  if (phase === "query") return `${slots.reads ?? 0} ${copy.reads}`;
+  if (phase === "query") {
+    const sources = (slots.sources || []).join(", ");
+    const rows = slots.row_counts || {};
+    const rendered = Object.entries(rows).map(([name, count]) => `${name} ${count}`).join(", ");
+    return [sources, rendered].filter(Boolean).join(" · ");
+  }
+  if (phase === "critique" && slots.lot_id) return `${slots.lot_id} blocked on ${slots.tool || "down tool"}`;
   if (phase === "sense") return `${slots.facts ?? 0} ${copy.facts}`;
   if (phase === "plan") return `${slots.operations ?? 0} ${copy.ops} · ${slots.holds ?? 0} ${copy.holds}`;
   if (phase === "critique") return String((copy.verdicts && copy.verdicts[slots.verdict]) || slots.verdict || "");

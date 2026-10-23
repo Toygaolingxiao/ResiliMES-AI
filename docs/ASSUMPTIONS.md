@@ -100,13 +100,13 @@ Each PROD-A28 layer is deposition, one lithography step (coat, expose, and devel
 
 The Scale preset is a seeded synthetic fab (`seed` 20261022), not a second copy of the six-lot bay. It has 1,000 lots and 36 tools, one operator per tool, so staffing does not search. A lot is released only through the end of its current layer. The same catalog columns are written to `data/sql/scale_seed.sql`. Furnace batching, implant, metal PVD, and AMHS stay out of scope on this fab too.
 
-The scale baseline is EDD dispatch. It orders ready steps by due date, then by the minute they become ready, and places each step on the qualified tool that can start soonest. It does not use priority weights or the bottleneck. On the seeded book that rule already finishes every lot on time (on-time delivery 100%, weighted tardiness 0, lots at risk 0). Priority recovery matches those three figures. It cuts mean inter-step wait from 389 minutes to 125 and lengthens makespan from 4,522 minutes to 5,116. The five-minute reticle mount is inside those figures. The hero scenarios still compare a frozen book with the recovery.
+The scale baseline is EDD dispatch. It orders ready steps by due date, then by the minute they become ready, and places each step on the qualified tool that can start soonest. It does not use priority weights or the bottleneck. On the seeded book that rule already finishes every lot on time (on-time delivery 100%, weighted tardiness 0, lots at risk 0). Priority recovery matches those three figures. It cuts mean inter-step wait from 389 minutes to 125 and lengthens makespan from 4,522 minutes to 5,116. The five-minute reticle mount is inside those figures. The hero scenarios still compare a frozen book with the recovery. Because the two books tie, this preset is performance data in [SCALE_APPENDIX.md](SCALE_APPENDIX.md), not the SMT2020 comparison.
 
 CP-SAT is a reference. The committed book stays the list scheduler. CP-SAT models the same rules the critic checks, including sequence-dependent setup (the first lot on a tool pays none), one scanner per physical reticle copy, and the same hold rule as the KPI: a lot is left unfinished only when completing it is infeasible, and that hold adds no weighted tardiness. Hero scenarios get up to five seconds and report OPTIMAL or FEASIBLE with the bound. The scale fab gets a two-second neighborhood around late lots and the makespan-setting lot, hinted from the list schedule. On the seeded book that neighborhood does not shorten the list schedule, so the badge keeps it. A candidate that fails the critic is discarded. The list schedule is always computed first, and the KPI cards use it.
 
 ## Production would add
 
-These are real fab constraints and they are out of this demo:
+A production line would also carry these constraints. They are out of this demo:
 
 - Furnace batching
 - Implant

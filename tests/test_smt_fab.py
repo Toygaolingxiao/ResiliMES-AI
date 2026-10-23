@@ -8,8 +8,9 @@ from resilimes.api.app import create_app
 from resilimes.config import Settings
 from resilimes.domain.scenarios import SAMPLE_BAY
 from resilimes.smt.fab import LITHO_MTTR_MIN, load_fab
-from resilimes.smt.scenarios import SCENARIOS, run_smt
+from resilimes.smt.scenarios import SCENARIOS, run_smt, simulate_pair
 from resilimes.smt.simulate import macro_aps_ms, pm_windows, run_policy, sample_downs
+from resilimes.smt.tight import TIGHT_HORIZON_SEC, apply_tight, local_counts, read_benchmark
 
 
 def test_extract_counts_match_the_published_fab() -> None:
@@ -86,11 +87,69 @@ def test_api_default_lists_the_full_fab_scenarios() -> None:
         "pm_avoid",
         "wip_threshold",
         "qtime",
+        "tight_p1",
     }
     assert all(item["kind"] == "group" for item in payload["bay"])
     assert "LITHO-02" not in {item["id"] for item in payload["bay"]}
     page = client.get("/")
     assert "query-line" in page.text
+
+
+def test_tight_book_is_a_constructed_due_stress() -> None:
+    fab = load_fab()
+    book = apply_tight(fab)
+    assert fab.tool_name[book.down_tool] == "Dielectric_BE_28-1"
+    assert len(book.p1) == 8
+    assert len(book.decoy) == 13
+    assert book.fab.lot_class[book.p1[0]] == "VIP"
+    assert book.fab.lot_due[book.p1[0]] == 8 * 3600
+    assert book.fab.lot_due[book.decoy[0]] == 7.2 * 3600
+    assert book.fab.lot_due[0] > TIGHT_HORIZON_SEC or 0 in book.p1 or 0 in book.decoy
+    counts = local_counts(fab)
+    assert counts["lots"] == 2156
+    assert counts["operations"] == 4013
+    read = read_benchmark(Settings(mode="mock", fab="smt2020"), fab)
+    assert read["called"] is False
+    assert read["mode"] == "extract"
+    assert read["sources"] == ["resilimes", "fab_cmms", "fab_erp"]
+    sql = "\n".join(item["sql"] for item in read["queries"])
+    assert "SELECT COUNT(*) AS n FROM resilimes.lots" in sql
+    assert "fab_cmms.pm_calendar" in sql
+    assert "fab_erp.orders" in sql
+    assert read["row_counts"]["lots"] == 2156
+
+
+def test_tight_vip_dues_make_edd_lose_on_seed_one() -> None:
+    fab = load_fab()
+    scenario = SCENARIOS["tight_p1"]
+    report = simulate_pair(fab, scenario, seed=1, horizon=TIGHT_HORIZON_SEC)
+    before = report["kpis"]["before"]
+    after = report["kpis"]["after"]
+    assert before["policy"] == "edd"
+    assert after["on_time_pct"] > before["on_time_pct"]
+    assert after["weighted_tardiness_min"] < before["weighted_tardiness_min"] * 0.7
+    assert after["qtime_violations"] < before["qtime_violations"]
+    tight = report["tight"]
+    assert tight["spotlight_lot"] == "Init_Lot_2_23"
+    assert tight["spotlight_late_h_before"] > 5
+    assert tight["spotlight_late_h_after"] == 0
+    assert "public industry benchmark (SMT2020)" in tight["note"]
+
+
+def test_mock_run_shows_sql_and_rejects_the_down_tool() -> None:
+    report = run_smt(
+        Settings(mode="mock", fab="smt2020", scout_signing_secret="smt-secret"),
+        "litho_down",
+        actor_role="planner",
+        horizon_sec=30,
+    )
+    assert report["zetaris"]["called"] is False
+    assert report["zetaris"]["queries"][0]["source"] == "resilimes"
+    assert report["refusal"]["verdict"] == "reject"
+    assert report["refusal"]["tool"] == "Litho_FE_92-1"
+    assert report["refusal"]["lot_id"]
+    assert report["explain"]["mocked"] is True
+    assert report["explain"]["meterless_request_id"] == ""
 
 
 def test_viewer_is_blocked_before_the_sim() -> None:

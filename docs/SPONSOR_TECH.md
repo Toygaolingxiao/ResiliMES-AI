@@ -94,18 +94,29 @@ The scaffold (`agent/`, `prompts/`, the original sample files, `smoke_test.py`) 
 
 ## Full SMT2020 fab
 
-The working feature on `make demo` is dispatch of the SMT2020 LV/HM fab. Scout still classifies the scenario sentence and signs the contract before the run. The test that proves Scout is `tests/test_scout_engine.py`. The test that proves the fab counts and a short full-tool dispatch is `tests/test_smt_fab.py`.
+The working feature on `make demo` is dispatch of the public industry benchmark (SMT2020) LV/HM fab. Scout still classifies the scenario sentence and signs the contract before the run. The test that proves Scout is `tests/test_scout_engine.py`. The test that proves the fab counts, the tight-due book, and a short full-tool dispatch is `tests/test_smt_fab.py`.
 
-Nightshift remains the only model provider. Base URL `METERLESS_BASE_URL`, default `http://127.0.0.1:8088/v1`. The model id is `nvidia/nemotron-3.5-lightning-30b-a3b`. On the sample-bay path it rewrites the supervisor note and the tool-call text. The full-fab book does not call it. A live request id appears in the sample-bay console when a runtime token is set (`provider_call.meterless_request_id` and the Nightshift step). The full-fab schedule is the dispatcher.
+Nightshift remains the only model provider. Base URL `METERLESS_BASE_URL`, default `http://127.0.0.1:8088/v1`. The model id is `nvidia/nemotron-3.5-lightning-30b-a3b`. On the sample-bay path it rewrites the supervisor note and the tool-call text. On the full-fab path, `make demo-live` with a runtime token sends one completion after the schedule is fixed. The request id is `explain.meterless_request_id` and the Nightshift step. The schedule is still the dispatcher. `make demo` does not make that call.
 
-Measured means for five seeds and a 48-hour horizon are in [SMT2020_SCALE.md](SMT2020_SCALE.md). Dispatch p50/p95 on the ResiliMES steady book: 0.004 ms / 0.138 ms. Macro APS: 312.8 ms. One 48-hour simulation: about 1.4 s.
+When Zetaris credentials are set, the same live path runs `SELECT COUNT(*)` against datasources `resilimes`, `fab_cmms`, and `fab_erp`. The console shows the SQL, those source names, and the row counts. Without credentials the line says the local extract was used and Zetaris was not called.
+
+Measured means are in [SMT2020_SCALE.md](SMT2020_SCALE.md). The lead table is the constructed 24-hour book: ResiliMES on-time 19.05% against EDD 12.38%, weighted tardiness 4,293 minutes against 8,013. Dispatch on that book is 0.005 ms p50 and 0.149 ms p95. The published-due 48-hour book is an appendix: on-time ties EDD at 57.14%, dispatch p50/p95 is 0.004 ms / 0.138 ms, macro APS is 312.8 ms, and one 48-hour ResiliMES run is about 1.4 s.
 
 ## Pre-existing code declaration
 
 The build window opens 2026-10-22 00:00 UTC (2026-10-22 09:00 JST) and closes 2026-10-27 23:45 UTC (2026-10-28 08:45 JST). That window is in [hackathon/HACKATHON_RULES.md](hackathon/HACKATHON_RULES.md).
 
-`git log --reverse` shows the first commit at 2026-10-22 22:22 UTC (`83f37fc`, "Initial commit"). There is no commit before the window opened. There is no separate pre-window product in this repository. The scaffold, the six-lot sample bay, Scout, World Model, Markovian, the Nightshift client, and the sample console were all written after that first commit and inside the window. This branch adds the SMT2020 kernel tables, the Zetaris datasource layout, the optional Redis state store, and the full-fab simulator.
+`git log --reverse` shows the first commit at 2026-10-22 22:22 UTC (`83f37fc`, "Initial commit"). There is no commit before the window opened. There is no separate pre-window product in this repository. The scaffold (`agent/`, `prompts/`, the original sample files, `smoke_test.py`), the six-lot sample bay, Scout, World Model, Markovian, the Nightshift client, and the sample console were written in this repository after that first commit and inside the window. They are not an imported third-party application template. This branch adds the SMT2020 kernel tables, the Zetaris datasource layout, the optional Redis state store, and the full-fab simulator.
+
+Third-party skill texts under `.cursor/skills/`, copied in, not rewritten. Licenses are in the folders and in `.cursor/skills/CREDITS.md`.
+
+| Path | Origin | License |
+| --- | --- | --- |
+| `.cursor/skills/design-taste-frontend/` | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill), `SKILL.md` and `references/app-screens.md`, fetched 2026-10-23 | MIT, Copyright (c) 2026 Leonxlnx |
+| `.cursor/skills/frontend-design/` | [anthropics/skills](https://github.com/anthropics/skills), `skills/frontend-design`, fetched 2026-10-23 | Apache License 2.0, Copyright Anthropic |
+
+Runtime dependencies in `pyproject.toml`: `fastapi`, `uvicorn`, `pydantic`, `openai`, `requests`, `python-dotenv`. OR-Tools (`ortools>=9.11`) is an optional extra (`pip install -e ".[solver]"`). It is the CP-SAT reference on the sample bay. The SMT2020 dispatcher does not import it. CI installs it with the dev extra.
 
 ## What is unusual about the combination
 
-Most hackathon agents let the model both decide and explain. Here the model is behind Nightshift, the decision is a tested scheduler, and Scout will not let the loop run without a fresh contract. Zetaris, or its sample twin with the same SQL, is the only source of lots and tools. The world model is the only place a committed assignment exists. A viewer, an injection, an expired contract, or a missing approval stops the write. That is the sponsor stack used as the control plane of a manufacturing decision, not as three logos on a chat window.
+Most hackathon agents let the model both decide and explain. Here the model is behind Nightshift, the decision is a tested scheduler, and Scout will not let the loop run without a fresh contract. The sample bay reads lots and tools from Zetaris, or from the sample twin with the same SQL. The full-fab dispatcher reads the public industry benchmark (SMT2020) in process, and the live console asks Zetaris for the count queries before that run. The world model is the only place a committed assignment exists. A viewer, an injection, an expired contract, or a missing approval stops the write. That is the sponsor stack used as the control plane of a manufacturing decision, not as three logos on a chat window.

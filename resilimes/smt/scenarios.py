@@ -12,6 +12,7 @@ from typing import Any
 
 from resilimes.config import Settings
 from resilimes.engines.scout.engine import default_scout
+from resilimes.llm.factory import build_provider
 from resilimes.smt.fab import DATA_SOURCE, LITHO_MTTR_MIN, READ_QUERY, Fab, initial_queues, load_fab
 from resilimes.smt.simulate import (
     RunResult,
@@ -20,6 +21,14 @@ from resilimes.smt.simulate import (
     pm_windows,
     run_policy,
     sample_downs,
+)
+from resilimes.smt.tight import (
+    DIELECTRIC_MTTR_MIN,
+    TIGHT_HORIZON_SEC,
+    apply_tight,
+    first_lot_at,
+    read_benchmark,
+    refuse_down_start,
 )
 
 logger = logging.getLogger(__name__)
@@ -107,6 +116,23 @@ SCENARIOS: dict[str, SmtScenario] = {
         after_policy="resilimes",
         kind="qtime",
     ),
+    "tight_p1": SmtScenario(
+        id="tight_p1",
+        title="Tight VIP dues",
+        summary=(
+            "Constructed dues on the public industry benchmark (SMT2020). "
+            "Eight lots at Dielectric_BE_28 become VIP, due in 8 hours. "
+            "Thirteen normal lots in that queue are due 48 minutes earlier. "
+            "Dielectric_BE_28-1 is down for the published dielectric repair."
+        ),
+        incident=(
+            "Dielectric_BE_28-1 is down. Eight VIP lots in that queue are due "
+            "in 8 hours. Earliest-due serves the normal lots first."
+        ),
+        before_policy="edd",
+        after_policy="resilimes",
+        kind="tight",
+    ),
 }
 
 
@@ -157,7 +183,10 @@ def run_smt(
     if scenario is None:
         raise KeyError(scenario_id)
     fab = load_fab()
-    horizon = INTERACTIVE_HORIZON_SEC if horizon_sec is None else horizon_sec
+    if horizon_sec is None:
+        horizon = TIGHT_HORIZON_SEC if scenario.kind == "tight" else INTERACTIVE_HORIZON_SEC
+    else:
+        horizon = horizon_sec
     scout = default_scout(
         signing_secret=settings.scout_signing_secret,
         provider_mode="mock",
@@ -195,17 +224,75 @@ def run_smt(
             "data_source": DATA_SOURCE,
             "query": READ_QUERY,
         }
+    benchmark = read_benchmark(settings, fab)
+    _emit(
+        on_event,
+        "query",
+        "specialist",
+        "Zetaris read",
+        _benchmark_summary(benchmark),
+        {
+            "source": benchmark["mode"],
+            "reads": len(benchmark["queries"]),
+            "sources": benchmark["sources"],
+            "queries": benchmark["queries"],
+            "row_counts": benchmark["row_counts"],
+            "mode": benchmark["mode"],
+            "error": benchmark["error"],
+        },
+        evidence=[item["sql"] for item in benchmark["queries"]],
+    )
     _emit(on_event, "sim", "dispatcher", "Full fab", _count_line(fab), {"lots": len(fab.lot_id)})
     report = simulate_pair(fab, scenario, seed=seed, horizon=horizon)
+    refusal = _refusal(fab, scenario, report)
+    report["refusal"] = refusal
+    _emit(
+        on_event,
+        "critique",
+        "evaluator",
+        "Critic",
+        refusal["detail"] if refusal else "No start on a down tool was proposed.",
+        {
+            "verdict": "reject" if refusal else "accept",
+            "lot_id": refusal.get("lot_id") if refusal else "",
+            "tool": refusal.get("tool") if refusal else "",
+        },
+        evidence=[refusal["detail"]] if refusal else [],
+    )
+    note = _explain(settings, scenario.incident, report)
+    report["explain"] = note
+    _emit(
+        on_event,
+        "explain",
+        "narrator",
+        "Nightshift",
+        note.get("text") or note.get("error") or "",
+        {
+            "provider": note.get("provider"),
+            "model": note.get("model"),
+            "mocked": note.get("mocked"),
+            "meterless_request_id": note.get("meterless_request_id"),
+            "completion_id": note.get("completion_id"),
+        },
+    )
     report["scout"] = _scout_public(decision)
+    report["zetaris"] = benchmark
+    report["query"] = benchmark["queries"][0]["sql"] if benchmark["queries"] else READ_QUERY
     report["blocked"] = False
     report["verdict"] = {"verdict": "accept"}
-    report["mode"] = {"label": "SMT2020", "data": DATA_SOURCE, "llm": "mock"}
+    provider_name = str(note.get("provider") or "mock")
+    report["mode"] = {
+        "label": "NIGHTSHIFT" if provider_name == "nightshift" else "SMT2020",
+        "data": DATA_SOURCE,
+        "llm": provider_name,
+    }
     logger.info(
         "data source: smt2020",
         extra={
             "fields": {
-                "query": READ_QUERY,
+                "query": report["query"],
+                "zetaris": benchmark["mode"],
+                "sources": ",".join(benchmark["sources"]),
                 "scenario": scenario_id,
                 "seed": str(seed),
                 "horizon_h": str(horizon / 3600.0),
@@ -222,21 +309,26 @@ def simulate_pair(
     seed: int,
     horizon: float,
 ) -> dict[str, Any]:
+    book = apply_tight(fab, horizon=horizon) if scenario.kind == "tight" else None
+    plant = book.fab if book is not None else fab
     forced_tool = fab.focus_tool if scenario.kind == "litho" else None
     forced_until = LITHO_MTTR_MIN * 60.0 if scenario.kind == "litho" else 0.0
     shift = pm_shift_to_open(fab, fab.pm_calendar, PM_OPEN_SEC) if scenario.kind == "pm" else 0.0
     downs = sample_downs(
-        fab,
+        plant,
         seed,
         horizon,
         forced_tool=forced_tool,
         forced_until=forced_until,
     )
-    pm = pm_windows(fab, horizon, shift_sec=shift)
+    if book is not None:
+        downs[book.down_tool].append((0.0, min(book.down_until, horizon)))
+    pm = pm_windows(plant, horizon, shift_sec=shift)
     hot = fab.hot_lot if scenario.kind == "hot" else None
+    watch = book.watch if book is not None else ()
     # The before book keeps the lot at its published priority.
     before = run_policy(
-        fab,
+        plant,
         policy=scenario.before_policy,
         seed=seed,
         horizon=horizon,
@@ -245,9 +337,10 @@ def simulate_pair(
         hot_lot=hot,
         trace=True,
         focus_down_until=forced_until,
+        watch=watch,
     )
     after = run_policy(
-        fab,
+        plant,
         policy=scenario.after_policy,
         seed=seed,
         horizon=horizon,
@@ -258,9 +351,13 @@ def simulate_pair(
         promote_hot=hot is not None,
         trace=True,
         focus_down_until=forced_until,
+        watch=watch,
     )
     aps_ms, scanner_steps = macro_aps_ms(fab)
-    return _report(fab, scenario, before, after, seed, horizon, aps_ms, scanner_steps, shift)
+    report = _report(fab, scenario, before, after, seed, horizon, aps_ms, scanner_steps, shift)
+    if book is not None:
+        report["tight"] = _tight_public(fab, book, before, after)
+    return report
 
 
 def _report(
@@ -496,9 +593,11 @@ def _emit(
     title: str,
     summary: str,
     slots: dict[str, Any],
+    evidence: list[str] | None = None,
 ) -> None:
     if on_event is None:
         return
+    shown = evidence if evidence is not None else ([READ_QUERY] if phase == "sim" else [])
     on_event(
         {
             "type": "step",
@@ -506,8 +605,109 @@ def _emit(
             "agent": agent,
             "title": title,
             "summary": summary,
-            "evidence": [READ_QUERY] if phase == "sim" else [],
+            "evidence": shown,
             "slots": slots,
             "elapsed_ms": 0,
         }
     )
+
+
+def _benchmark_summary(benchmark: dict[str, Any]) -> str:
+    counts = benchmark.get("row_counts") or {}
+    rendered = ", ".join(f"{name} {value}" for name, value in counts.items())
+    sources = ", ".join(benchmark.get("sources") or [])
+    if benchmark.get("mode") == "zetaris" and not benchmark.get("error"):
+        return f"Zetaris sources {sources}. Rows: {rendered}."
+    if benchmark.get("error"):
+        return f"Zetaris query failed. Sources {sources}."
+    return f"Local extract. Zetaris was not called. Sources {sources}. Rows: {rendered}."
+
+
+def _refusal(fab: Fab, scenario: SmtScenario, report: dict[str, Any]) -> dict[str, Any] | None:
+    if scenario.kind == "tight":
+        tight = report.get("tight") or {}
+        lot_id = (tight.get("p1_lots") or [None])[0]
+        tool = tight.get("tool")
+        if lot_id and tool:
+            return refuse_down_start(str(tool), str(lot_id), DIELECTRIC_MTTR_MIN)
+    if scenario.kind == "litho":
+        lot_id = first_lot_at(fab, fab.focus_family)
+        if lot_id:
+            return refuse_down_start(fab.tool_name[fab.focus_tool], lot_id, LITHO_MTTR_MIN)
+    return None
+
+
+def _explain(settings: Settings, incident: str, report: dict[str, Any]) -> dict[str, Any]:
+    """One Nightshift completion. The schedule is already fixed."""
+    after = (report.get("kpis") or {}).get("after") or {}
+    try:
+        provider = build_provider(settings)
+        result = provider.complete(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Write one sentence a fab supervisor can read. "
+                        "The schedule is already fixed. Do not invent numbers or lot ids."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Incident: {incident}\n"
+                        f"On-time percent after recovery: {after.get('on_time_pct')}. "
+                        f"Weighted tardiness minutes after recovery: "
+                        f"{after.get('weighted_tardiness_min')}."
+                    ),
+                },
+            ],
+            lane="explain",
+            temperature=0.2,
+        )
+    except Exception as exc:
+        return {"provider": "nightshift", "mocked": False, "error": str(exc)[:240], "text": ""}
+    return {
+        "provider": result.provider,
+        "model": result.model,
+        "mocked": result.mocked,
+        "meterless_request_id": result.meterless_request_id,
+        "completion_id": result.completion_id,
+        "text": result.content[:500],
+        "error": "",
+    }
+
+
+def _tight_public(
+    fab: Fab,
+    book: Any,
+    before: RunResult,
+    after: RunResult,
+) -> dict[str, Any]:
+    family = fab.families[fab.family_index["Dielectric_BE_28"]]
+    gap = 0.0
+    spot_id = fab.lot_id[book.p1[0]]
+    for index in book.p1:
+        lot_id = fab.lot_id[index]
+        delta = before.watched_late_h.get(lot_id, 0.0) - after.watched_late_h.get(lot_id, 0.0)
+        if delta >= gap:
+            gap = delta
+            spot_id = lot_id
+    return {
+        "family": family.name,
+        "group": family.group,
+        "tool": fab.tool_name[book.down_tool],
+        "tools_in_family": family.tools,
+        "down_min": DIELECTRIC_MTTR_MIN,
+        "p1_due_h": 8,
+        "decoy_due_h": 7.2,
+        "p1_lots": [fab.lot_id[index] for index in book.p1],
+        "decoy_lots": [fab.lot_id[index] for index in book.decoy],
+        "spotlight_lot": spot_id,
+        "spotlight_late_h_before": before.watched_late_h.get(spot_id),
+        "spotlight_late_h_after": after.watched_late_h.get(spot_id),
+        "note": (
+            "Constructed dues on the public industry benchmark (SMT2020). "
+            "Routes, process times, setups, and CQT limits stay published. "
+            "Lots outside this queue stay in the fab and are outside the scored horizon."
+        ),
+    }

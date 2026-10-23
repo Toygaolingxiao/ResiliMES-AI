@@ -76,9 +76,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "llm": llm,
             "data": data,
             "data_source": data,
-            "label": "SMT2020"
+            "label": ("NIGHTSHIFT" if llm == "nightshift" else "SMT2020")
             if data == "smt2020"
             else ("OFFLINE MOCK" if llm == "mock" and data == "sample" else llm.upper()),
+            "benchmark": "public industry benchmark (SMT2020)" if data == "smt2020" else "",
             "nightshift_configured": cfg.token_configured,
             "zetaris_configured": cfg.zetaris_configured,
             "nemotron_model": cfg.nemotron_model if cfg.token_configured else None,
@@ -261,7 +262,8 @@ def _smt_request(settings: Settings, scenario: str | None) -> bool:
 def _guard_fab(settings: Settings, scenario: str | None) -> None:
     if settings.fab == "smt2020" and scenario not in SMT_SCENARIOS:
         raise ValueError(
-            "The SMT2020 console runs litho_down, hot_lot, pm_avoid, wip_threshold, and qtime."
+            "The SMT2020 console runs litho_down, hot_lot, pm_avoid, "
+            "wip_threshold, qtime, and tight_p1."
         )
 
 

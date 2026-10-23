@@ -21,6 +21,7 @@ from resilimes.smt.simulate import (
     run_policy,
     sample_downs,
 )
+from resilimes.smt.tight import DIELECTRIC_MTTR_MIN, TIGHT_HORIZON_SEC, apply_tight
 
 _KEYS = (
     "on_time_pct",
@@ -77,6 +78,7 @@ def main() -> None:
         "litho": _pack(litho),
         "pm": _pack(pm),
         "hot": _pack(hot),
+        "tight": _pack(_tight_matrix(fab)),
     }
     json_path = ROOT / "data" / "smt2020" / "benchmark.json"
     json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -84,6 +86,34 @@ def main() -> None:
     doc.write_text(_markdown(payload), encoding="utf-8")
     print(f"wrote {json_path}", flush=True)
     print(f"wrote {doc}", flush=True)
+
+
+def _tight_matrix(fab: Any) -> dict[str, list[RunResult]]:
+    """24-hour constructed dues. Not the published order book."""
+    found: dict[str, list[RunResult]] = {
+        policy: [] for policy in ("resilimes", "edd", "fifo", "cr")
+    }
+    horizon = TIGHT_HORIZON_SEC
+    for seed in SEEDS:
+        book = apply_tight(fab, horizon=horizon)
+        downs = sample_downs(book.fab, seed, horizon)
+        downs[book.down_tool].append((0.0, min(book.down_until, horizon)))
+        pm = pm_windows(book.fab, horizon)
+        for policy in found:
+            print(f"tight {policy} seed {seed}", flush=True)
+            found[policy].append(
+                run_policy(
+                    book.fab,
+                    policy=policy,
+                    seed=seed,
+                    horizon=horizon,
+                    downs=downs,
+                    pm=pm,
+                    trace=False,
+                    watch=book.watch,
+                )
+            )
+    return found
 
 
 def _matrix(
@@ -151,9 +181,11 @@ def _markdown(payload: dict[str, Any]) -> str:
     lines = [
         "# SMT2020 full-fab measurements",
         "",
-        "Source: Kopp, Hassoun, Kalir, and Mönch, IEEE Trans. Semicond. Manuf. "
-        "33(4), 2020, doi 10.1109/TSM.2020.3001933. PySCFabSim-release commit "
-        "`0dbff6a`, directory `datasets/SMT2020_LVHM`.",
+        "Public industry benchmark (SMT2020). Source: Kopp, Hassoun, Kalir, and "
+        "Mönch, IEEE Trans. Semicond. Manuf. 33(4), 2020, doi "
+        "10.1109/TSM.2020.3001933. PySCFabSim-release commit `0dbff6a`, "
+        "directory `datasets/SMT2020_LVHM`. This is not a recording from a "
+        "production fab.",
         "",
         f"Fab: {counts['groups']} station families, {counts['tools']} tools, "
         f"{counts['litho_tools']} `Litho_*` tools "
@@ -163,7 +195,8 @@ def _markdown(payload: dict[str, Any]) -> str:
         f"{counts['station_groups']} station groups. "
         "`Delay_32` is included (400 tools, 147 route steps).",
         "",
-        f"Horizon: {payload['horizon_h']:.0f} hours from 2018-01-01 00:00 UTC. "
+        "The tight VIP table is 24 hours. The appendix is "
+        f"{payload['horizon_h']:.0f} hours from 2018-01-01 00:00 UTC. "
         f"Seeds: {', '.join(str(item) for item in payload['seeds'])}. "
         "Each seed draws exponential MTTF/MTTR from `downcal.txt`, one clock per tool. "
         "The same draw is shared across policies.",
@@ -204,21 +237,42 @@ def _markdown(payload: dict[str, Any]) -> str:
         "raises it to VIP with a due 12 hours from the snapshot. FIFO keeps "
         "the published priority.",
         "",
-        "## Steady fab (seeded breakdowns, published PM calendar unshifted)",
+        "## Tight VIP dues (constructed, 24 hours)",
+        "",
+        "The published dues do not make earliest-due lose on on-time delivery. "
+        "This book keeps the routes, process times, setups, and CQT limits, and "
+        "replaces the dues used for scoring. Eight lots waiting at "
+        f"`Dielectric_BE_28` with a later CQT become VIP and are due at 8 hours. "
+        "The other lots in that queue stay normal and are due at 7.2 hours, so "
+        "earliest-due serves them first. Every other lot still moves through the "
+        "fab and is outside the scored horizon. `Dielectric_BE_28-1` is down for "
+        f"the published dielectric MTTR of {DIELECTRIC_MTTR_MIN} minutes. "
+        "The family has three tools. Horizon is 24 hours, five seeds.",
+        "",
+        _table(payload["tight"]) if payload.get("tight") else "_Not measured._",
+        "",
+        "## Appendix: published order book (performance)",
+        "",
+        "On the published dues, a 48-hour horizon, ResiliMES and EDD tie on "
+        "on-time delivery. EDD has slightly lower weighted tardiness. These "
+        "tables are runtime and knock-on measurements. They are not the claim "
+        "that earliest-due loses.",
+        "",
+        "### Steady fab (seeded breakdowns, published PM calendar unshifted)",
         "",
         _table(payload["steady"]),
         "",
-        "## Lithography breakdown",
+        "### Lithography breakdown",
         "",
         _table(payload["litho"]),
         "",
         _litho_note(payload),
         "",
-        "## PM avoidance (calendar shifted, durations unchanged)",
+        "### PM avoidance (calendar shifted, durations unchanged)",
         "",
         _table(payload["pm"]),
         "",
-        "## Hot lot",
+        "### Hot lot",
         "",
         _table(payload["hot"]),
         "",

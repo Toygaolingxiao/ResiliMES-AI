@@ -1,75 +1,73 @@
 # Demo script
 
-Target length: 3 minutes. Film the console full screen. Hide `.env`. Do not read a token aloud.
+Target length: 2:45–3:15. English narration. Film the console full screen. Hide `.env`. Do not read a token aloud.
 
-The default console is the SMT2020 LV/HM fab. The six-lot bay is `make demo-bay` and is not this recording. The figures in [SMT2020_SCALE.md](SMT2020_SCALE.md) are five-seed, 48-hour means. A click on this page is one seed and 12 hours, so read the cards on screen. Do not quote the 48-hour table as if it were this click.
+This recording is the live path on the public industry benchmark (SMT2020). `make demo` forces mock mode and is not this shot. The six-lot bay is `make demo-bay` and is not this shot either.
+
+The sample-bay weighted tardiness of 784 minutes is 13 hours 4 minutes. This film does not use that number.
 
 ## Before you hit record
 
+Put the Nightshift runtime token and the Zetaris API key, org id, and REST URL in `.env`. Mask the file. Then:
+
 ```bash
-make demo
+make demo-live
 ```
 
-Open http://127.0.0.1:8000. The banner must say `data source: smt2020` and list 106 groups, 1,313 tools, 102 litho tools, and 2,156 lots. The rail is station groups, not a six-tool bay.
+That target sets `RESILIMES_MODE=auto` and `RESILIMES_FAB=smt2020`. With both credentials present, the console calls Zetaris and Nightshift. Open http://127.0.0.1:8000.
 
-Optional, only if the local Zetaris platform is already up (UI `localhost:3000`, API `localhost:8888`):
+Do not start recording until all of these are true:
+
+- The badge says `NIGHTSHIFT`, not a mock label.
+- The banner says `public industry benchmark (SMT2020)` and lists 106 groups, 1,313 tools, 102 litho tools, and 2,156 lots.
+- A rehearsal Run shows `Zetaris` on the query line, names `resilimes`, `fab_cmms`, and `fab_erp`, and shows row counts. If it says `local extract (Zetaris not called)`, stop. That is not this film. Reload the page before the count-in so the recording starts on the idle console.
+
+Mock mode inserts a 680 ms pause after each stepper event so a viewer can read the rail. `make demo-live` with a Nightshift token sets that pause to 0. This recording uses the 0 ms pace. The 680 ms delay is not part of the dispatcher.
+
+If the local Zetaris platform is not loaded yet (UI `localhost:3000`, API `localhost:8888`):
 
 ```bash
 wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh
 ```
 
-That loads Postgres and registers `resilimes`, `fab_cmms`, and `fab_erp`. The console you are filming still reads `data/smt2020`. Say that if you show the Zetaris window. Do not claim the Gantt came from a live SQL call.
-
-Optional second clip, only with a Nightshift token, on the sample bay so one real request id is on screen:
-
-```bash
-make demo-bay
-```
-
-Mask the key. The full-fab book does not call Nightshift.
+That registers datasources `resilimes`, `fab_cmms`, and `fab_erp` and loads the kernel tables. The query line is the live `SELECT COUNT(*)` against those datasources. The dispatcher still runs in process on the same benchmark files. Say that. Do not say the Gantt was streamed row by row from SQL.
 
 ## Shot list
 
-### 0:00–0:25 — The fab
+### 0:00–0:25 — The loss
 
-On the idle page, point at the banner and the Litho row in the rail.
+Idle page. Point at the banner, then at **Tight VIP dues**. Do not press Run yet.
 
-"This is the SMT2020 LV/HM fab. One hundred six tool families, one thousand three hundred thirteen tools, one hundred two lithography tools, two thousand one hundred fifty-six lots in process. The data source on the banner is the SMT2020 extract."
+"Dielectric_BE_28-1 is down for the published dielectric repair, six hundred four point eight minutes. Eight VIP lots in that queue are due in eight hours. Thirteen normal lots in the same queue are due forty-eight minutes sooner, so earliest-due serves them first. One of the VIP lots, Init_Lot_2_23, finishes five point two one hours late on that rule."
 
-### 0:25–1:20 — Lithography breakdown
+### 0:25–0:55 — The live read
 
-Press **Run** on **Lithography breakdown**. Stay on Recover.
+Press **Run** on **Tight VIP dues**. When the Zetaris node lights, point at the query line under the banner. Leave it on screen.
 
-"Litho_FE_92-1 is an expose scanner in Litho_FE_92, the largest scanner family. It is down for the published repair, seven hundred five point five nine minutes. Scout signs the contract before the dispatcher runs. The other scanners in that family take the work. The line under the headline is the knock-on: sibling starts, the queue on that family, and the queue downstream."
+"This is a live Zetaris read. The SQL is five count queries. The sources are resilimes, fab_cmms, and fab_erp. The row counts are on this line. The banner is the public industry benchmark, SMT2020. One hundred six families, one thousand three hundred thirteen tools, two thousand one hundred fifty-six lots."
 
-Hover the Scout step. Point at the query line. It names the extract files.
+### 0:55–1:25 — The critic
 
-Open the Litho group in the rail. The Gantt rows are station families. Set the window to the first twelve hours if it is not already. Click `Litho_FE_92` to drill into the tools. Scroll the list. It only draws the rows in view.
+Stay on the refusal line. Do not move on until the lot id and the tool are visible.
 
-"The left chart is EDD. The right chart is ResiliMES. Same breakdown draw. The hatch of work is only the families in view, and only the minutes in the window."
+"The critic rejects a start of Init_Lot_1_3 on Dielectric_BE_28-1. The tool is down. That plan does not get a slot. The lots that run are placed by the dispatcher, on the two tools in that family that are up."
 
-### 1:20–2:05 — The numbers on this click
+### 1:25–2:05 — The cards
 
-Read the six cards from the screen. Then one sentence from the study, labeled as the study:
+Read the on-time, weighted tardiness, and queue-time cards from the screen. They are seed 1 and 24 hours. Then one sentence from the study:
 
-"On-time, weighted tardiness, cycle time, lithography utilization, queue-time violations, and PM interruptions avoided are on these cards. They are this twelve-hour seed. The five-seed, forty-eight-hour study is separate. There, ResiliMES and EDD both finish fifty-seven point one four percent of the fifty-six lots that are due inside the horizon. Ten of those lots are already late at the snapshot. FIFO is about twenty-five percent. ResiliMES does not win every column. Weighted tardiness is a bit higher than EDD and much lower than FIFO."
+"On this seed, earliest-due is fourteen point two nine percent on time and seven thousand six hundred minutes of weighted tardiness. ResiliMES is nineteen point zero five percent and four thousand two hundred fifty point eight minutes. Queue-time violations fall from four hundred eighteen to one hundred eighty-three. Init_Lot_2_23 is five point two one hours late under earliest-due and on time here. Across five seeds the means are nineteen point zero five percent against twelve point three eight, and four thousand two hundred ninety-three minutes against eight thousand thirteen. FIFO is zero percent on time. Critical ratio is ten point four seven."
 
-### 2:05–2:35 — Hot lot, then PM
+### 2:05–2:35 — The same fab, one scanner
 
-Press **Run** on **Hot lot**.
+Press **Run** on **Lithography breakdown**. Point at the refusal line, then open the Litho group.
 
-"Init_Lot_10_11 is a real normal lot, four steps before a scanner. ResiliMES raises it to VIP with a twelve-hour due. FIFO keeps the published priority. The line under the headline is how many steps that lot completed on each book."
+"Same benchmark, different incident. Litho_FE_92-1, an expose scanner, is down for the published lithography repair, seven hundred five point five nine minutes. The critic blocks a lot on that scanner. The other tools in Litho_FE_92 take the work. The Gantt draws the group and the time window in view."
 
-Press **Run** on **PM avoidance**.
+### 2:35–3:05 — Nightshift
 
-"The published weekly PM on Litho_FE_92 opens about seven days out, so a two-day window would never see it. This scenario shifts every day-based calendar by the same offset. The duration stays six point six five hours. ResiliMES will not start a lot that would run across that window. EDD will. The card is the count."
+Hover the Nightshift step. The request id has to be on screen. The model id is `nvidia/nemotron-3.5-lightning-30b-a3b`. The base URL is `http://127.0.0.1:8088/v1`.
 
-### 2:35–3:00 — Scout, and Nightshift if you have the token
+"Nightshift is the only model provider. NVIDIA Nemotron writes this one sentence. It does not place the lots. The schedule was already fixed when the request went out. The key stays off screen."
 
-"Scout Intent is the engine in front of the run. The test is tests/test_scout_engine.py. The schedule itself is the dispatcher, not the model."
-
-If you recorded the sample-bay live call, cut it here for ten seconds. Nightshift console on `http://127.0.0.1:8088`, and the request id in the sample console. The model id is `nvidia/nemotron-3.5-lightning-30b-a3b`. The key stays off screen.
-
-"Nightshift is the only model provider. The base URL is the local proxy on port 8088. NVIDIA Nemotron writes the note on that path. It does not place the lots."
-
-Stop.
+Stop. Aim to cut before 3:15.

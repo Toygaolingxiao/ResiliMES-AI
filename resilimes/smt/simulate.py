@@ -64,6 +64,7 @@ class RunResult:
     down_tools: dict[str, int] = field(default_factory=dict)
     occupancy: list[list[float]] = field(default_factory=list)
     focus_bars: list[dict[str, float | str]] = field(default_factory=list)
+    watched_late_h: dict[str, float] = field(default_factory=dict)
 
 
 def setup_seconds(fab: Fab, family: int, current: int, recipe: int) -> float:
@@ -201,6 +202,7 @@ def run_policy(
     promote_hot: bool = False,
     trace: bool = False,
     focus_down_until: float = 0.0,
+    watch: tuple[int, ...] = (),
 ) -> RunResult:
     if policy not in {"resilimes", "edd", "fifo", "cr"}:
         raise ValueError(f"Unknown policy {policy}")
@@ -216,6 +218,7 @@ def run_policy(
         promote_hot=promote_hot,
         trace=trace,
         focus_down_until=focus_down_until,
+        watch=watch,
     )
     return sim.run()
 
@@ -260,6 +263,7 @@ class _Sim:
         promote_hot: bool,
         trace: bool,
         focus_down_until: float,
+        watch: tuple[int, ...] = (),
     ) -> None:
         self.fab = fab
         self.policy = policy
@@ -271,6 +275,7 @@ class _Sim:
         self.promote_hot = promote_hot
         self.trace = trace
         self.focus_down_until = focus_down_until
+        self.watch = watch
         self.n = len(fab.lot_id)
         self.tools = len(fab.tool_name)
         self.step = list(fab.lot_step)
@@ -696,6 +701,11 @@ class _Sim:
             if self.cqt_at[lot] >= 0 and 0 < self.deadline[lot] <= self.horizon:
                 self.violations += 1
         denom = len(due_lots)
+        watched: dict[str, float] = {}
+        for lot in self.watch:
+            end = self.finished_at[lot]
+            finish = end if end >= 0 else self.horizon
+            watched[fab.lot_id[lot]] = round(max(0.0, finish - self.due[lot]) / 3600.0, 2)
         self.litho_busy = max(0.0, self.litho_busy)
         self.scanner_busy = max(0.0, self.scanner_busy)
         litho_tools = max(1, fab.litho_tools)
@@ -740,4 +750,5 @@ class _Sim:
             down_tools=down_tools,
             occupancy=self.occupancy,
             focus_bars=self.focus_bars,
+            watched_late_h=watched,
         )
