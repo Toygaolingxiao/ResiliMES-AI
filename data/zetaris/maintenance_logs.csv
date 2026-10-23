@@ -1,0 +1,9 @@
+log_id,equipment_id,event_type,occurred_at,severity_code,description,estimated_repair_min,technician
+M-9001,LITHO-02,FAULT,2026-10-22T06:12:00Z,LASER_FAULT,Machine Litho-02 Down — laser source interlock tripped,180,tech.kim
+M-9002,LITHO-02,ALARM,2026-10-22T06:05:00Z,TEMP_WARN,Scanner chamber temperature drift +2.1C before fault,0,system
+M-9003,DEP-01,PM_START,2026-10-22T04:00:00Z,PM_CVD,Scheduled preventive maintenance window,240,tech.nguyen
+M-9004,ETCH-01,ALARM,2026-10-21T22:14:00Z,RF_REFLECT,Transient RF reflection spike; auto-recovered,0,system
+M-9005,LITHO-01,PM_COMPLETE,2026-10-18T08:00:00Z,PM_LITHO,Quarterly optics clean and calibration,0,tech.park
+M-9006,CMP-01,ALARM,2026-10-21T11:02:00Z,PAD_WEAR,Pad wear near threshold; continue with monitoring,0,system
+M-9007,ETCH-02,FAULT,2026-10-15T09:40:00Z,PUMP_DOWN,Roughing pump failure — repaired and returned to IDLE,360,tech.kim
+M-9008,LITHO-02,FAULT,2026-10-10T16:20:00Z,STAGE_STALL,Wafer stage stall; parts replaced,420,tech.nguyen

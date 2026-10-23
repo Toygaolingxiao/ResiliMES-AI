@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-10-22T06:30:00Z",
+  "plant_id": "FAB-A",
+  "materials": [
+    {
+      "material_id": "WAFER-300",
+      "name": "300mm prime wafer",
+      "on_hand": 400,
+      "unit": "wafer"
+    },
+    {
+      "material_id": "WAFER-200",
+      "name": "200mm prime wafer",
+      "on_hand": 80,
+      "unit": "wafer"
+    },
+    {
+      "material_id": "RESIST-UV",
+      "name": "193nm photoresist",
+      "on_hand": 3,
+      "unit": "bottle"
+    },
+    {
+      "material_id": "GAS-CF4",
+      "name": "CF4 etch gas",
+      "on_hand": 20,
+      "unit": "cylinder"
+    },
+    {
+      "material_id": "SLURRY-OX",
+      "name": "Oxide CMP slurry",
+      "on_hand": 15,
+      "unit": "drum"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+product_id,step_index,step,capability,process_time_min,setup_family
+PROD-A28,0,LITHO,litho_193nm,90,LITHO_A
+PROD-A28,1,ETCH,etch_dielectric,60,ETCH_D
+PROD-A28,2,CMP,cmp_oxide,45,CMP_OX
+PROD-B14,0,ETCH,etch_metal,60,ETCH_M
+PROD-B14,1,CMP,cmp_oxide,40,CMP_OX
+PROD-C07,0,CMP,cmp_oxide,45,CMP_OX

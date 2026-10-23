@@ -1,0 +1,6 @@
+material_id,name,on_hand,unit
+WAFER-300,300mm prime wafer,400,wafer
+WAFER-200,200mm prime wafer,80,wafer
+RESIST-UV,193nm photoresist,3,bottle
+GAS-CF4,CF4 etch gas,20,cylinder
+SLURRY-OX,Oxide CMP slurry,15,drum

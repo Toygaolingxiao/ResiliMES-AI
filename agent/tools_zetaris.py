@@ -74,9 +74,7 @@ def run_sql(sql: str, *, timeout_s: float = DEFAULT_TIMEOUT_S) -> dict[str, Any]
         timeout=timeout_s,
     )
     if response.status_code >= 400:
-        raise ZetarisError(
-            f"Zetaris SQL failed ({response.status_code}): {response.text[:500]}"
-        )
+        raise ZetarisError(f"Zetaris SQL failed ({response.status_code}): {response.text[:500]}")
     try:
         return response.json()
     except ValueError as exc:
@@ -85,6 +83,9 @@ def run_sql(sql: str, *, timeout_s: float = DEFAULT_TIMEOUT_S) -> dict[str, Any]
 
 def rows_as_dicts(result: dict[str, Any]) -> list[dict[str, Any]]:
     """Convert a Zetaris SQL result (`headers` + `data`) into a list of dicts."""
+    nested = result.get("result")
+    if isinstance(nested, dict) and ("headers" in nested or "data" in nested or "rows" in nested):
+        result = nested
     headers = result.get("headers") or result.get("columns") or []
     data = result.get("data") or result.get("rows") or []
     if not headers:
@@ -94,7 +95,7 @@ def rows_as_dicts(result: dict[str, Any]) -> list[dict[str, Any]]:
         if isinstance(row, dict):
             out.append(row)
         else:
-            out.append({str(h): v for h, v in zip(headers, row)})
+            out.append({str(h): v for h, v in zip(headers, row, strict=False)})
     return out
 
 
