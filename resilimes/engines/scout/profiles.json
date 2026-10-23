@@ -1,0 +1,37 @@
+{
+  "profiles": [
+    {
+      "id": "nemotron-planner",
+      "provider": "meterless-nightshift",
+      "model": "nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+      "lane": "planner",
+      "local": true,
+      "dataClasses": ["plant", "public"],
+      "jsonMode": true,
+      "costTier": "low",
+      "latencyP95Ms": 4000
+    },
+    {
+      "id": "nemotron-critic",
+      "provider": "meterless-nightshift",
+      "model": "nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+      "lane": "critic",
+      "local": true,
+      "dataClasses": ["plant", "public"],
+      "jsonMode": true,
+      "costTier": "low",
+      "latencyP95Ms": 2500
+    },
+    {
+      "id": "mock-deterministic",
+      "provider": "mock",
+      "model": "resilimes-mock",
+      "lane": "planner",
+      "local": true,
+      "dataClasses": ["plant", "public"],
+      "jsonMode": true,
+      "costTier": "none",
+      "latencyP95Ms": 5
+    }
+  ]
+}

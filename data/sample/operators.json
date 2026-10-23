@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-10-22T06:30:00Z",
+  "plant_id": "FAB-A",
+  "pool": 4,
+  "operators": [
+    {
+      "operator_id": "OP-01",
+      "name": "A. Kim",
+      "certified": ["litho_193nm", "etch_dielectric"],
+      "shift": "A"
+    },
+    {
+      "operator_id": "OP-02",
+      "name": "L. Nguyen",
+      "certified": ["litho_193nm", "cvd_oxide"],
+      "shift": "A"
+    },
+    {
+      "operator_id": "OP-03",
+      "name": "M. Park",
+      "certified": ["etch_dielectric", "etch_metal", "cmp_oxide"],
+      "shift": "A"
+    },
+    {
+      "operator_id": "OP-04",
+      "name": "R. Singh",
+      "certified": ["cmp_oxide", "etch_metal"],
+      "shift": "A"
+    }
+  ]
+}

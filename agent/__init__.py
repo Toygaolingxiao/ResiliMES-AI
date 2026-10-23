@@ -4,13 +4,13 @@ from .llm import chat_completion, get_openai_client
 
 __all__ = [
     "chat_completion",
+    "evaluate_plan",
     "get_openai_client",
     "plan_incident",
-    "evaluate_plan",
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     # Lazy exports avoid runpy warnings for `python -m agent.planner|evaluator`.
     if name == "plan_incident":
         from .planner import plan_incident

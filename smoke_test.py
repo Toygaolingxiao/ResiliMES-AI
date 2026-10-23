@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 from dotenv import load_dotenv
 
@@ -46,7 +46,7 @@ def check_zetaris_web() -> bool:
     except ZetarisError as exc:
         _fail("Zetaris Web", str(exc))
         return False
-    except Exception as exc:  # noqa: BLE001 — smoke test surfaces any connector error
+    except Exception as exc:
         _fail("Zetaris Web", f"{type(exc).__name__}: {exc}")
         return False
 
@@ -65,7 +65,7 @@ def check_zetaris_rest_sql() -> bool:
     except ZetarisError as exc:
         _fail("Zetaris REST SQL", str(exc))
         return False
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _fail("Zetaris REST SQL", f"{type(exc).__name__}: {exc}")
         return False
 
@@ -90,12 +90,21 @@ def check_nemotron() -> bool:
             return False
         _ok("Nemotron API", f"model={model} reply={reply[:80]!r}")
         return True
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _fail("Nemotron API", f"{type(exc).__name__}: {exc}")
         return False
 
 
 def main() -> int:
+    if "--mock" in sys.argv:
+        os.environ["RESILIMES_MODE"] = "mock"
+        from resilimes.__main__ import _check
+        from resilimes.config import get_settings
+
+        get_settings.cache_clear()
+        print("ResiliMES offline check (mock providers, no credentials)")
+        return _check(get_settings())
+
     print("ResiliMES smoke test (Zetaris Web · Zetaris REST SQL · Nemotron)")
     print("-" * 60)
 

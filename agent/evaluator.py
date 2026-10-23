@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -47,9 +47,7 @@ def deterministic_checks(plan: dict[str, Any]) -> list[dict[str, Any]]:
 
     Returns a list of violation dicts; empty means no hard failures found locally.
     """
-    equipment = {
-        e["equipment_id"]: e for e in _load_json("equipment.json").get("equipment", [])
-    }
+    equipment = {e["equipment_id"]: e for e in _load_json("equipment.json").get("equipment", [])}
     jobs = {j["job_id"]: j for j in _load_json("wip_jobs.json").get("jobs", [])}
     violations: list[dict[str, Any]] = []
 
@@ -101,7 +99,7 @@ def deterministic_checks(plan: dict[str, Any]) -> list[dict[str, Any]]:
             operator_load += int(eq.get("operators_required", 1))
 
         due = _parse_dt(job.get("due_at"))
-        if due and due < datetime.now(timezone.utc) and job.get("priority", 99) <= 2:
+        if due and due < datetime.now(UTC) and job.get("priority", 99) <= 2:
             violations.append(
                 {
                     "constraint": "due_date",

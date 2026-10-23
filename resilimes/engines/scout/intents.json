@@ -1,0 +1,114 @@
+{
+  "registryVersion": 1,
+  "intents": [
+    {
+      "id": "plant.machine_down",
+      "category": "plant",
+      "description": "A machine is down or faulted and production must be rescheduled around it.",
+      "parameters": {
+        "equipment_id": "string",
+        "fault_code": "string",
+        "repair_min": "number"
+      },
+      "capabilities": ["world.query", "world.sync", "schedule.recover", "schedule.commit", "memory.write"],
+      "riskClass": "medium",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin", "operator"],
+      "examples": [
+        "Machine Litho-02 Down",
+        "LITHO-02 laser fault",
+        "tool down unplanned breakdown",
+        "scanner offline repair ETA 600 minutes"
+      ],
+      "version": 1
+    },
+    {
+      "id": "plant.rush_order",
+      "category": "plant",
+      "description": "A hot lot or rush order must be inserted into the current book.",
+      "parameters": {
+        "product_id": "string",
+        "due_min": "number",
+        "qty": "number"
+      },
+      "capabilities": ["world.query", "world.sync", "schedule.recover", "schedule.commit", "memory.write"],
+      "riskClass": "medium",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin"],
+      "examples": [
+        "rush order for PROD-A28",
+        "hot lot due in 16 hours",
+        "expedite a new priority 1 lot",
+        "customer pull-in accept the order"
+      ],
+      "version": 1
+    },
+    {
+      "id": "plant.material_shortage",
+      "category": "plant",
+      "description": "A material is short and lots that consume it must be held or rerouted.",
+      "parameters": {
+        "material_id": "string"
+      },
+      "capabilities": ["world.query", "world.sync", "schedule.recover", "schedule.commit", "memory.write"],
+      "riskClass": "medium",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin", "operator"],
+      "examples": [
+        "photoresist shortage RESIST-UV is out",
+        "material shortage on resist",
+        "stockout of RESIST-UV",
+        "out of 193nm photoresist"
+      ],
+      "version": 1
+    },
+    {
+      "id": "plant.explain",
+      "category": "plant",
+      "description": "Explain a schedule decision with evidence. Read only.",
+      "parameters": {},
+      "capabilities": ["world.query"],
+      "riskClass": "low",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin", "operator", "viewer"],
+      "examples": [
+        "explain why LOT-1001 moved",
+        "why was the lot rescheduled",
+        "what happened to the litho queue"
+      ],
+      "version": 1
+    },
+    {
+      "id": "plant.query_status",
+      "category": "plant",
+      "description": "Report current WIP, tool status, and due-date risk. Read only.",
+      "parameters": {},
+      "capabilities": ["world.query"],
+      "riskClass": "low",
+      "surfaces": ["mes_console", "api", "chat"],
+      "roles": ["planner", "supervisor", "admin", "operator", "viewer"],
+      "examples": [
+        "what is the fab status",
+        "show the WIP queue",
+        "which tools are down"
+      ],
+      "version": 1
+    },
+    {
+      "id": "plant.emergency_stop",
+      "category": "plant",
+      "description": "Stop the whole factory. High risk. Requires an explicit approval.",
+      "parameters": {},
+      "capabilities": ["schedule.commit"],
+      "riskClass": "high",
+      "surfaces": ["mes_console", "api"],
+      "roles": ["supervisor", "admin"],
+      "examples": [
+        "emergency stop all tools",
+        "stop the entire factory now",
+        "shut down every tool"
+      ],
+      "version": 1
+    }
+  ]
+}

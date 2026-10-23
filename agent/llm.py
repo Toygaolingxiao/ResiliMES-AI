@@ -5,6 +5,9 @@ Uses the standard OpenAI-compatible SDK against:
   METERLESS_BASE_URL + chat/completions
 Auth: Bearer METERLESS_RUNTIME_TOKEN
 Model: NEMOTRON_MODEL
+
+URL normalization and the rt-local rejection live in resilimes.llm so the
+scaffold smoke test and the product share one client contract.
 """
 
 from __future__ import annotations
@@ -16,6 +19,9 @@ from typing import Any
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from resilimes.llm.nightshift import build_openai_client
+from resilimes.llm.urls import normalize_base_url
+
 load_dotenv()
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8088/v1"
@@ -26,19 +32,7 @@ DEFAULT_TIMEOUT_S = 180.0
 
 def _normalize_base_url(raw: str) -> str:
     """Normalize pasted URLs to <host>/v1 (never /v1/v1)."""
-    url = (raw or DEFAULT_BASE_URL).strip().rstrip("/")
-    for suffix in (
-        "/v1/chat/completions",
-        "/v1/models",
-        "/healthz",
-        "/v1",
-    ):
-        if url.endswith(suffix):
-            url = url[: -len(suffix)]
-            break
-    if "://" not in url:
-        url = "http://" + url
-    return url.rstrip("/") + "/v1"
+    return normalize_base_url(raw)
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -51,21 +45,12 @@ def _env(name: str, default: str | None = None) -> str | None:
 @lru_cache(maxsize=1)
 def get_openai_client() -> OpenAI:
     """Build a cached OpenAI client pointed at Meterless Nightshift."""
-    base_url = _normalize_base_url(_env("METERLESS_BASE_URL", DEFAULT_BASE_URL) or DEFAULT_BASE_URL)
-    token = _env("METERLESS_RUNTIME_TOKEN")
-    if not token:
-        raise RuntimeError(
-            "METERLESS_RUNTIME_TOKEN is not set. Copy .env.example to .env and paste the Nightshift runtime token."
-        )
     timeout = float(_env("METERLESS_TIMEOUT_S", str(DEFAULT_TIMEOUT_S)) or DEFAULT_TIMEOUT_S)
-    return OpenAI(
-        base_url=base_url,
-        api_key=token,
-        timeout=timeout,
-        default_headers={
-            "meterless-app": _env("METERLESS_APP_ID", DEFAULT_APP_ID) or DEFAULT_APP_ID,
-            "meterless-scope": "user",
-        },
+    return build_openai_client(
+        base_url=_env("METERLESS_BASE_URL", DEFAULT_BASE_URL) or DEFAULT_BASE_URL,
+        token=_env("METERLESS_RUNTIME_TOKEN") or "",
+        timeout_s=timeout,
+        app_id=_env("METERLESS_APP_ID", DEFAULT_APP_ID) or DEFAULT_APP_ID,
     )
 
 
