@@ -67,8 +67,8 @@ Innovation is the split between a deterministic commit path and a language lane,
 | Zetaris | SQL over equipment, WIP, routes, stock, maintenance | Same queries in live and mock. Mock is labeled. |
 | Scout Intent | The required Meterless engine | Nothing reschedules without a fresh HMAC contract. |
 | World Model | Assignment log | Replay is the commit. |
-| Markovian | The five-step loop | Checkpoint tokens stay flat. About 500 vs about 1600 on the litho run. |
-| Nightshift + Nemotron | Explainer lane | Right model in the language lane. Solver stays in the decision lane. |
+| Markovian | The five-step loop | Checkpoint size stays flat. About 500 vs about 1600 on the litho run. Not a model token count. |
+| Nightshift + Nemotron | Intent, feedback, and explainer lanes | Right model in the language lane. Solver stays in the decision lane. |
 | Cursor | How the team built it | Agent-assisted implementation, tests, and this deck's source docs. |
 
 Speaker note: `pytest tests/test_scout_engine.py` is the test the submission form should name.

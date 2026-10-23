@@ -31,7 +31,7 @@ Deadline: **27 Oct 2026 23:45 UTC**. Ties break on Impact, then submission times
 
 **Zetaris.** Factory tables are queried with the REST SQL editor (`Authorization: Bearer`, `X-Org-ID`, `X-Request-ID`). Seed: `data/sql/seed.sql`. Mock mode runs the same statements against `data/sample` and labels the trace `sample-equivalent`.
 
-**Nightshift and Nemotron.** Chat completions go to the Nightshift OpenAI-compatible base with the runtime token and `meterless-app: resilimes`. `NEMOTRON_MODEL` is the NVIDIA model id installed in Nightshift. The model explains the schedule. The solver and critic commit it.
+**Nightshift and Nemotron.** Chat completions go to the Nightshift OpenAI-compatible base with the runtime token and `meterless-app: resilimes`. `NEMOTRON_MODEL` is the NVIDIA model id installed in Nightshift. The model parses dispatch intents and writes feedback. The solver and critic commit the schedule.
 
 **Cursor.** The system was developed in Cursor.
 

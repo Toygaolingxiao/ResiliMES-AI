@@ -30,7 +30,7 @@ Point at the scenario clock: 22 Oct 2026 06:30 UTC. Point at LITHO-02 already re
 
 Press **Run** on **Machine breakdown**. That row is the only one that turns active. LITHO-02's lamp flashes red. The headline is the incident sentence, not a generic "Reading the line." A slim stepper and a thin percent bar fill under it: Scout, Zetaris, Sense, Plan, Critic, Nightshift, Commit. The running station is indigo. Hover a station for its output and its compute time in milliseconds. Each station is a real event from `POST /api/recover/stream`, held about 680 ms so it can be read. The millisecond is compute time, not the hold.
 
-"Scout classifies it and signs a contract. Zetaris, or the sample twin with the same SQL, is the read. The solver builds both books. The critic checks the move. Nightshift only explains. The world model commits."
+"Scout classifies it and signs a contract. Zetaris, or the sample twin with the same SQL, is the read. The solver builds both books. The critic checks the move. Nemotron turns a sentence into a tool call and writes the note. The world model commits."
 
 ### 0:45–1:25 — The decision (Impact, Demo)
 
@@ -126,7 +126,7 @@ On **Verify**, queue time passed on the committed book. Open the row for the ref
 | --- | --- |
 | Impact 30 | Idle problem, Recover headline, three numbers, both charts, the close |
 | Technical 20 | Stepper filling from the stream, contract on hover, critic table on Verify |
-| Innovation 15 | Solver commits, model explains; rush refuses preemption; shortage stays gray |
+| Innovation 15 | Solver commits, model writes the note; rush refuses preemption; shortage stays gray |
 | Demo 15 | Lamp, then the stepper, then three disruptions with readable durations |
 | Product & UX 10 | Empty state, three cards, Analyze and Verify, by-lot toggle, language and theme, truthful banner |
 | Sponsor tech 10 | Zetaris hover, Scout contract, Nightshift line or the live cut |

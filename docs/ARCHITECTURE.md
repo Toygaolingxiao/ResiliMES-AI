@@ -81,7 +81,7 @@ The critic is a registry of small checks. Each one names itself in English, 中�
 
 When a recovery assigns or moves a lot onto the bottleneck area, the action reason says so, and the brief adds one sentence to its last point. Dispatch already prefers that area, and the step that feeds it, ahead of other work at the same priority and due time.
 
-The model is not on this path. A Nightshift outage cannot authorize a bad move.
+The model is not on this path. A Nightshift outage cannot authorize a bad move. Dispatcher text becomes a tool call (`insert_hot_lot`, `move_pm`, `mark_tool_down`, `hold_lot`, `release_lot`, `what_if`). Scout signs it only after the schema and the plant ids check out. The user confirms. The transactional adapter then locks the tools, applies the change, and calls `schedule_plant` again. See [API.md](API.md).
 
 ## Engines
 
@@ -95,7 +95,7 @@ They compose the way the Meterless spec describes: Scout signs, Markovian runs t
 - Interpret binds equipment ids (`Litho-02` → `LITHO-02`), repair durations, material ids, and product ids.
 - Guard blocks prompt injection, a role outside the intent, and a surface outside the intent. A block decision has no contract.
 - Route expands capabilities to a tool plan. Recovery intents include `world.query`, `world.sync`, `schedule.recover`, `schedule.commit`, and `memory.write`. Read-only intents include only `world.query`.
-- Recommend picks a local model profile cleared for plant data. Mock mode selects `mock-deterministic`. Live mode selects the Nightshift Nemotron planner profile. The contract is HMAC-SHA256 over canonical JSON, TTL five minutes, `signedBy: scout`.
+- Recommend picks a local model profile cleared for plant data. Mock mode selects `mock-deterministic`. Live mode selects `nemotron-propose` or `nemotron-explain` on lane, both routed to `nvidia/nemotron-3.5-lightning-30b-a3b`. The contract is HMAC-SHA256 over canonical JSON, TTL five minutes, `signedBy: scout`.
 
 `replan` issues a new contract with `parentId` set and the same `traceId`.
 
@@ -107,13 +107,19 @@ An append-only log. Event ids are a hash of type, entity, payload, and idempoten
 
 ### Markovian
 
-`compress` keeps decisions, entities, open issues, and structured state. It drops `transcript`, `messages`, `raw_prompt`, `prose`, and `history`. A step that raises is recorded and the checkpoint stays at the last good state, so the next chunk still runs. The run reports a checkpoint size next to the quadratic cost of resending the whole history. The count is `len(json) // 4`, a size comparison, not a model tokenizer. On the litho scenario the five chunks use about 500 against about 1600 for the naive history.
+`compress` keeps decisions, entities, open issues, and structured state. It drops `transcript`, `messages`, `raw_prompt`, `prose`, and `history`. A step that raises is recorded and the checkpoint stays at the last good state, so the next chunk still runs. The run reports `checkpoint_units` next to `replayed_history_units`. Both are `len(json) // 4`, a size comparison, not a model tokenizer and not a token-savings claim. On the litho scenario the five chunks use about 500 against about 1600 for the replayed history.
 
 ## Agents and the model
 
 The orchestrator closes the loop in `resilimes/agents/orchestrator.py`.
 
-The explainer calls `LlmProvider.complete` once per recovery. In mock mode that provider returns the deterministic narrative and labels the call `mocked: true`. In live mode the same call goes to Nightshift with `meterless-app: resilimes` and `meterless-scope: user`, model `NEMOTRON_MODEL`, with retries on 429 and connection errors. If the model returns something that is not a narrative, the deterministic text is kept. The committed schedule does not change either way.
+The explainer calls `LlmProvider.complete` once per recovery. In mock mode that provider returns the deterministic narrative and labels the call `mocked: true`. In live mode the same call goes to Nightshift with `meterless-app: resilimes` and `meterless-scope: user`, model `NEMOTRON_MODEL`, with retries on 429 and connection errors. If the call raises, or the narrative contains a lot, tool, or number that is not in the fact table, the deterministic text is kept and `provider_call.narrative_degraded` is true. The committed schedule does not change either way.
+
+A qualitative panel (process and equipment, production control, risk) reads the book after the critic. Suggestions are advice. They do not recompute KPIs and they do not replace the schedule. Each review records `meterless_request_id` when Nightshift answered. Mock mode is `source: deterministic-fallback`.
+
+`commit` writes nothing when the critic verdict is `reject`.
+
+Nightshift can route the same lanes (`intent`, `feedback`, `review.process`, `review.production`, `review.risk`, `explainer`) to a local model by changing `NEMOTRON_MODEL` in Nightshift. That deployment option is not a second code path here.
 
 ## Console
 
