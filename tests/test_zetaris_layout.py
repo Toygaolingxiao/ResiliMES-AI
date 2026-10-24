@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,7 +15,13 @@ from resilimes.config import HORIZON, ConfigError, Settings, load_settings
 from resilimes.data.factory import build_source
 from resilimes.data.sample_source import SampleSource
 from resilimes.data.sql_catalog import kernel_statements, statements
-from resilimes.data.zetaris_admin import api_key_body, login_body, register
+from resilimes.data.zetaris_admin import (
+    _read_env_file,
+    api_key_body,
+    credentials,
+    login_body,
+    register,
+)
 from resilimes.data.zetaris_layout import (
     FEDERATED_SQL,
     datasource_ddl,
@@ -192,7 +199,11 @@ def test_split_keeps_each_database_to_its_own_tables(tmp_path) -> None:
 def test_datasource_ddl_matches_the_verified_shape() -> None:
     drop, create, register_sql = datasource_ddl("fab_mes", user="fab", password="abc123")
     assert drop == "DROP DATASOURCE resilimes"
-    assert 'DESCRIBE BY "fab_mes.resilimes"' in create
+    assert 'DESCRIBE BY "ResiliMES_MES.fab_mes"' in create
+    assert (
+        'DESCRIBE BY "Maintenance_CMMS.fab_cmms"'
+        in datasource_ddl("fab_cmms", user="fab", password="abc123")[1]
+    )
     assert " " not in create.split('DESCRIBE BY "', 1)[1].split('"', 1)[0]
     assert 'jdbcurl "jdbc:postgresql://fab-mes:5432/fab_mes"' in create
     assert 'schema "resilimes"' in create
@@ -214,6 +225,10 @@ def test_register_scrubs_secrets_and_skips_a_missing_drop() -> None:
         if url.endswith("/auth/api-key"):
             return 200, {"apiKey": "secret-key"}
         sql = str(body["sql"])
+        if sql == "SHOW DATASOURCES":
+            return 200, {"headers": ["name"], "data": [["fab_cmms"], ["fab_erp"]], "total": 2}
+        if sql.startswith("SHOW TABLES FROM"):
+            return 200, {"headers": ["name"], "data": [["resilimes.machines"]], "total": 1}
         if sql.startswith("DROP"):
             return 400, {"msg": "missing"}
         if "JOIN" in sql:
@@ -240,10 +255,71 @@ def test_register_scrubs_secrets_and_skips_a_missing_drop() -> None:
     blob = "\n".join(lines)
     for secret in ("admin-secret", "dbsecret", "secret-key", "jwt-token", "admin@example.com"):
         assert secret not in blob
-    assert "drop fab_mes skipped" in blob
-    assert "probe federated status=200 rows=1" in blob
+    # resilimes is not registered yet, so its DROP is never sent; fab_cmms is, and its
+    # DROP returning 400 is tolerated.
+    assert "drop fab_mes skipped (not registered)" in blob
+    assert "drop fab_cmms skipped status=400" in blob
+    assert "datasource resilimes -> fab_mes.resilimes: 1 tables machines" in blob
+    assert "probe federated status=200 rows=1 cols=1" in blob
     sql_calls = [item for item in calls if item[0].endswith("/sql-editor/sqls/run-query")]
-    assert sql_calls
-    assert sql_calls[0][2]["Authorization"] == "Bearer secret-key"
-    assert sql_calls[0][2]["X-Org-ID"] == "1"
-    assert set(sql_calls[0][1]) == {"sql"}
+    assert sql_calls[0][1] == {"sql": "SHOW DATASOURCES"}
+    assert not any(item[1]["sql"] == "DROP DATASOURCE resilimes" for item in sql_calls)
+    # Like the owner's script: the setup SQL runs with the login token, not an API key.
+    for _, body, headers in sql_calls:
+        assert headers["Authorization"] == "Bearer jwt-token"
+        assert headers["X-Org-ID"] == "1"
+        assert headers["X-Request-ID"]
+        assert set(body) == {"sql"}
+    assert calls[-1][0].endswith("/auth/api-key")
+
+
+def test_register_keeps_an_existing_key_and_survives_a_failed_mint() -> None:
+    def post(
+        url: str, body: dict[str, object], headers: dict[str, str]
+    ) -> tuple[int, dict[str, object]]:
+        if url.endswith("/api/auth/login"):
+            return 200, {"idToken": "jwt-token", "orgId": 7}
+        if url.endswith("/auth/api-key"):
+            return 403, {"msg": "nope"}
+        return 200, {"headers": ["c"], "data": [["1"]], "total": 1}
+
+    common = {
+        "base_url": "http://localhost:3000",
+        "rest_url": "http://127.0.0.1:8888/api/v1.0",
+        "email": "a@b.c",
+        "password": "pw",
+        "jdbc_user": "fab",
+        "jdbc_password": "dbpw",
+    }
+    lines, key = register(post, **common)  # type: ignore[arg-type]
+    assert key == ""
+    assert any("api key not created status=403" in line for line in lines)
+    assert not any(line.startswith(("sql failed", "login failed")) for line in lines)
+    lines, key = register(post, api_key="kept-key", **common)  # type: ignore[arg-type]
+    assert key == "kept-key"
+    assert not any("api key" in line for line in lines)
+
+
+def test_credentials_prefer_fab_pg_names_and_fall_back_to_postgres(tmp_path: Path) -> None:
+    new = tmp_path / "env"
+    new.write_bytes(
+        b"FAB_PG_USER=fab\r\nFAB_PG_PASSWORD=Abc123\r\nZETARIS_USER=z@x.io\r\n"
+        b"ZETARIS_PASSWORD=zpw\r\nexport ZETARIS_API=http://127.0.0.1:9999/api/v1.0\r\n"
+    )
+    found = credentials({}, _read_env_file(new), {})
+    assert found["jdbc_user"] == "fab"
+    assert found["jdbc_password"] == "Abc123"
+    assert found["email"] == "z@x.io"
+    assert found["password"] == "zpw"
+    assert found["rest_url"] == "http://127.0.0.1:9999/api/v1.0"
+    assert found["base_url"] == "http://localhost:3000"
+
+    old = {"POSTGRES_USER": "olduser", "POSTGRES_PASSWORD": "oldpw"}
+    admin = {"ZETARIS_ADMIN_EMAIL": "admin@zetaris.com", "ZETARIS_ADMIN_PASSWORD": "apw"}
+    found = credentials(admin, old, {"ZETARIS_REST_URL": "http://h/api/v1.0"})
+    assert (found["jdbc_user"], found["jdbc_password"]) == ("olduser", "oldpw")
+    assert (found["email"], found["password"]) == ("admin@zetaris.com", "apw")
+    assert found["rest_url"] == "http://h/api/v1.0"
+    both = {**old, "FAB_PG_USER": "fab", "FAB_PG_PASSWORD": "newpw"}
+    assert credentials({}, both, {})["jdbc_password"] == "newpw"
+    assert credentials({}, {}, {})["email"] == "admin@zetaris.com"

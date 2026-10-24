@@ -88,6 +88,13 @@ DATASOURCE_FOR_DATABASE: dict[str, str] = {
     "fab_erp": "fab_erp",
 }
 
+# DESCRIBE BY text per database, as in the owner's verified setup script.
+DESCRIBE_FOR_DATABASE: dict[str, str] = {
+    "fab_mes": "ResiliMES_MES.fab_mes",
+    "fab_cmms": "Maintenance_CMMS.fab_cmms",
+    "fab_erp": "ERP_materials_bom.fab_erp",
+}
+
 # The owner's federated check. Spark SQL: no casts, datasource-qualified names.
 # On the sample seed this join is LITHO-02's fault rows, not a fixed 12.
 FEDERATED_SQL = """
@@ -219,7 +226,7 @@ def datasource_ddl(database: str, *, user: str, password: str) -> list[str]:
     if not _SECRET.match(password or ""):
         raise ValueError("JDBC password must be alphanumeric so it cannot break the DDL")
     name = DATASOURCE_FOR_DATABASE[database]
-    describe = f"{database}.resilimes"
+    describe = DESCRIBE_FOR_DATABASE[database]
     jdbc = f"jdbc:postgresql://fab-mes:5432/{database}"
     options = (
         f'jdbcdriver "org.postgresql.Driver", '
@@ -241,7 +248,12 @@ def datasource_ddl(database: str, *, user: str, password: str) -> list[str]:
 
 def write_split(sql_paths: list[Path], directory: Path) -> dict[str, Path]:
     """Write one SQL file per database. Each file replaces schema ``resilimes``."""
-    chunks = [path.read_text(encoding="utf-8") for path in sql_paths if path.is_file()]
+    # A Windows checkout without .gitattributes may hand us CRLF; Postgres gets LF.
+    chunks = [
+        path.read_text(encoding="utf-8").replace("\r\n", "\n")
+        for path in sql_paths
+        if path.is_file()
+    ]
     if not chunks:
         raise ValueError("No SQL files to split")
     directory.mkdir(parents=True, exist_ok=True)
