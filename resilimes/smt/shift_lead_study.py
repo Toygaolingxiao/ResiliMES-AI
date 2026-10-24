@@ -33,7 +33,7 @@ import time
 from multiprocessing import get_all_start_methods, get_context
 from typing import Any
 
-from resilimes.smt.progress import Progress, progress_path
+from resilimes.smt.progress import Progress, follow, progress_path
 
 BOOKS = ("published", "litho", "hot", "pm_enforced")
 SEEDS = (1, 2, 3)
@@ -219,6 +219,9 @@ def main(argv: list[str] | None = None) -> None:
         path=None if args.no_progress or not path else path,
         console=not args.no_progress,
         log_every=args.progress_every,
+        # A thread keeps the line moving while a model call blocks; none
+        # beside a pool, which may fork a fresh worker at any time.
+        background=workers == 1,
     )
     if not args.no_progress:
         print(
@@ -230,24 +233,25 @@ def main(argv: list[str] | None = None) -> None:
             file=sys.stderr,
             flush=True,
         )
-    with progress:
-        if workers == 1:
-            # In-process: no fork needed (Windows has none), and live calls stay sequential.
+    if workers == 1:
+        # In-process: no fork needed (Windows has none), and live calls stay sequential.
+        with progress:
             if not args.no_progress:
                 _LIVE.append(progress)
             try:
                 rows = [_run(item) for item in items]
             finally:
                 _LIVE.clear()
-        else:
-            method = "fork" if "fork" in get_all_start_methods() else "spawn"
-            with get_context(method).Pool(
-                workers, maxtasksperchild=4, initializer=_init_args, initargs=(dict(_ARGS),)
-            ) as pool:
-                rows = []
-                for row in pool.imap(_run, items, chunksize=1):
-                    rows.append(row)
-                    progress.absorb(row)
+            _write(args, rows)
+        return
+    method = "fork" if "fork" in get_all_start_methods() else "spawn"
+    with (
+        get_context(method).Pool(
+            workers, maxtasksperchild=4, initializer=_init_args, initargs=(dict(_ARGS),)
+        ) as pool,
+        progress,
+    ):
+        rows = list(follow(pool.imap(_run, items, chunksize=1), progress))
         _write(args, rows)
 
 

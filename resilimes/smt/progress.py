@@ -27,8 +27,9 @@ import shutil
 import sys
 import threading
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime
+from multiprocessing import TimeoutError as MpTimeout
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -153,6 +154,7 @@ class Progress:
         file_every: float = 2.0,
         clock: Callable[[], float] = time.monotonic,
         wall: Callable[[], float] = time.time,
+        background: bool = True,
     ) -> None:
         self.study = study
         self.plan = list(plan)
@@ -171,6 +173,7 @@ class Progress:
         self.file_every = file_every
         self.clock = clock
         self.wall = wall
+        self.background = background
         self.lock = threading.RLock()
         self.status = "running"
         self.error: str | None = None
@@ -185,6 +188,7 @@ class Progress:
         self.sim_t = 0.0
         self.horizon = 0.0
         self.call_since: float | None = None
+        self._last_absorb = self.started
         self._last_line = 0.0
         self._last_file = 0.0
         self._width = 0
@@ -193,7 +197,7 @@ class Progress:
 
     # Lifecycle ---------------------------------------------------------------
     def __enter__(self) -> Progress:
-        return self.start()
+        return self.start(self.background)
 
     def __exit__(self, kind: Any, value: Any, trace: Any) -> None:
         if value is None:
@@ -287,7 +291,11 @@ class Progress:
             self.current = None
 
     def absorb(self, row: dict[str, Any]) -> None:
-        """A finished run from a worker process (no live hooks there)."""
+        """A finished run from a worker pool (no live hooks there).
+
+        Its time for the ETA is the gap since the previous finished run, so
+        the ETA reflects the pool's throughput, not one run's wall time.
+        """
         summary = row.get("shift_lead") or {}
         counts = _counters()
         counts["exceptions"] = int(summary.get("exceptions", 0))
@@ -305,7 +313,10 @@ class Progress:
             }
             self.run = counts
             self.horizon = 0.0
-        self.end_run(str(self.current["arm"]), row.get("wall_s"))
+            now = self.clock()
+            gap = now - self._last_absorb
+            self._last_absorb = now
+        self.end_run(str(self.current["arm"]), gap)
 
     # Numbers -----------------------------------------------------------------
     def fraction(self) -> float | None:
@@ -411,8 +422,12 @@ class Progress:
                 f"sim {sim['t_h']:.1f}/{sim['horizon_h']:.0f}h {sim['pct']:3.0f}% "
                 + bar(sim["pct"] / 100.0)
             )
+        elif runs["total"] > 1:
+            share = runs["done"] / runs["total"]
+            parts.append(f"runs {runs['done']}/{runs['total']} {100 * share:3.0f}% " + bar(share))
         ai = snap["ai"]
-        if current is not None and current["arm"] != "rules":
+        live = current is not None and sim["pct"] is not None
+        if live and current["arm"] != "rules":
             budget = "-" if ai["budget"] is None else ai["budget"]
             text = f"exc {ai['exceptions']} | AI {ai['calls']}/{budget} ok {ai['accepted']}"
             text += f" fb {ai['fallback']}"
@@ -428,7 +443,7 @@ class Progress:
                 if ai["wait_s"] is not None:
                     text += f" wait {ai['wait_s']:.0f}s"
                 parts.append(text)
-        elif current is None and snap["totals"]["exceptions"]:
+        elif snap["totals"]["exceptions"]:
             totals = snap["totals"]
             parts.append(
                 f"exc {totals['exceptions']} ok {totals['accepted']} fb {totals['fallback']}"
@@ -486,6 +501,25 @@ class Progress:
             self.stream.flush()
         except (OSError, ValueError):
             pass
+
+
+def follow(results: Any, progress: Progress, step: float = 1.0) -> Iterator[Any]:
+    """Rows of ``pool.imap(...)`` in order, absorbed into ``progress``.
+
+    Waits with a timeout and pumps the line and the file in between, so a
+    pool study needs no progress thread (no thread alive when the pool forks
+    a worker).
+    """
+    while True:
+        try:
+            row = results.next(timeout=step)
+        except StopIteration:
+            return
+        except MpTimeout:
+            progress.pump()
+            continue
+        progress.absorb(row)
+        yield row
 
 
 def _ms(value: float) -> str:

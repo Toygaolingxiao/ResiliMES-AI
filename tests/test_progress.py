@@ -143,8 +143,10 @@ def test_eta_without_sim_time_uses_the_arm_mean() -> None:
 
 
 def test_absorb_counts_a_worker_row() -> None:
-    progress, _clock, _stream = _progress(plan=["rules", "mock"])
-    progress.absorb({"book": "hot", "seed": 2, "arm": "rules", "wall_s": 12.0})
+    progress, clock, _stream = _progress(plan=["rules", "mock", "rules", "mock"])
+    clock.t += 12.0
+    progress.absorb({"book": "hot", "seed": 2, "arm": "rules", "wall_s": 24.0})
+    clock.t += 20.0
     summary = {
         "exceptions": 10,
         "differs": 3,
@@ -154,7 +156,11 @@ def test_absorb_counts_a_worker_row() -> None:
         {"book": "hot", "seed": 2, "arm": "mock", "wall_s": 20.0, "shift_lead": summary}
     )
     snap = progress.snapshot()
-    assert snap["runs"] == {"done": 2, "total": 2}
+    assert snap["runs"] == {"done": 2, "total": 4}
+    assert snap["eta_s"] == 32.0
+    line = progress.line(snap)
+    assert "runs 2/4  50% [##########----------]" in line
+    assert "exc 10 ok 6 fb 4" in line
     assert snap["totals"]["exceptions"] == 10
     assert snap["totals"]["accepted"] == 6
     assert snap["totals"]["calls"] == 9
@@ -285,3 +291,31 @@ def test_unknown_later_arm_shows_a_lower_bound() -> None:
     assert snap["eta_s"] is None
     assert snap["run_eta_s"] == 10.0
     assert progress.line(snap).endswith("0:00:10 ETA >0:00:10")
+
+
+def test_follow_pumps_while_waiting_and_keeps_order() -> None:
+    from multiprocessing import TimeoutError as MpTimeout
+
+    from resilimes.smt.progress import follow
+
+    class Results:
+        def __init__(self) -> None:
+            self.steps: list[Any] = [
+                MpTimeout(),
+                {"book": "b", "seed": 1, "arm": "rules"},
+                MpTimeout(),
+                {"book": "b", "seed": 1, "arm": "mock"},
+            ]
+
+        def next(self, timeout: float) -> Any:
+            if not self.steps:
+                raise StopIteration
+            step = self.steps.pop(0)
+            if isinstance(step, Exception):
+                raise step
+            return step
+
+    progress, _clock, _stream = _progress(plan=["rules", "mock"])
+    rows = list(follow(Results(), progress, step=0.01))
+    assert [row["arm"] for row in rows] == ["rules", "mock"]
+    assert progress.snapshot()["runs"]["done"] == 2

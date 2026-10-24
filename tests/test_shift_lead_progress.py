@@ -71,3 +71,27 @@ def test_cli_writes_the_progress_file_and_same_rows(
     off = json.loads((tmp_path / "off.json").read_text(encoding="utf-8"))
     assert [_strip(row) for row in on["rows"]] == [_strip(row) for row in off["rows"]]
     assert on["report"] == off["report"]
+
+
+def test_qtime_study_arms_report_finished_runs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from resilimes.smt import qtime_study
+
+    monkeypatch.setenv("RESILIMES_STUDY_HORIZON_H", "2")
+    monkeypatch.setenv("RESILIMES_STUDY_KPI", "0")
+    monkeypatch.setenv("RESILIMES_STUDY_WORKERS", "2")
+    monkeypatch.setattr(qtime_study, "BOOKS", ("published",))
+    monkeypatch.setattr(qtime_study, "_seeds", lambda book: (1, 2))
+    monkeypatch.setattr(qtime_study, "_ARM", [])
+    monkeypatch.setattr(qtime_study, "_FAB", [])
+    out = tmp_path / "mech.json"
+    monkeypatch.setattr("sys.argv", ["qtime_study", "mech", str(out)])
+    qtime_study.main()
+    err = capsys.readouterr().err
+    assert "qtime_study:mech 2/2 DONE" in err
+    body = json.loads((tmp_path / "mech.json.progress.json").read_text(encoding="utf-8"))
+    assert body["status"] == "done"
+    assert body["runs"] == {"done": 2, "total": 2}
+    rows = json.loads(out.read_text(encoding="utf-8"))["rows"]
+    assert [(row["book"], row["seed"]) for row in rows] == [("published", 1), ("published", 2)]
