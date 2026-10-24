@@ -657,6 +657,11 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
 
 
 def main() -> None:
+    if sys.argv[1:2] == ["shift_lead"]:
+        from resilimes.smt.shift_lead_study import main as shift_lead_main
+
+        shift_lead_main(sys.argv[2:])
+        return
     arm, out = sys.argv[1], sys.argv[2]
     _ARM.append(arm)
     _FAB.append(load_fab())
