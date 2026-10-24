@@ -14,7 +14,15 @@ from typing import Any
 from resilimes.config import ROOT, Settings
 from resilimes.engines.scout.engine import default_scout
 from resilimes.llm.factory import build_provider
-from resilimes.smt.fab import DATA_SOURCE, LITHO_MTTR_MIN, READ_QUERY, Fab, initial_queues, load_fab
+from resilimes.smt.fab import (
+    DATA_SOURCE,
+    LITHO_MTTR_MIN,
+    READ_QUERY,
+    Fab,
+    fab_source,
+    initial_queues,
+    load_fab,
+)
 from resilimes.smt.qtime_kpi import qtime_buckets
 from resilimes.smt.simulate import (
     X_FACTOR,
@@ -208,6 +216,7 @@ def scenario_payload(fab: Fab | None = None) -> dict[str, Any]:
         "counts": _counts(plant),
         "query": READ_QUERY,
         "data_source": DATA_SOURCE,
+        "smt_source": fab_source(plant),
     }
 
 
@@ -233,7 +242,8 @@ def run_smt(
     scenario = SCENARIOS.get(scenario_id)
     if scenario is None:
         raise KeyError(scenario_id)
-    fab = load_fab()
+    fab = load_fab(settings)
+    master = fab_source(fab)
     if horizon_sec is None:
         horizon = (
             TIGHT_HORIZON_SEC
@@ -277,8 +287,9 @@ def run_smt(
             "narrative": decision.risk.get("reason") or "Scout refused the request.",
             "scout": _scout_public(decision),
             "verdict": {"verdict": "reject"},
-            "mode": {"label": "SMT2020", "data": DATA_SOURCE},
+            "mode": {"label": "SMT2020", "data": DATA_SOURCE, "master_data": master["label"]},
             "data_source": DATA_SOURCE,
+            "smt_source": master,
             "query": READ_QUERY,
         }
     benchmark = read_benchmark(settings, fab)
@@ -305,7 +316,14 @@ def run_smt(
         },
         evidence=[item["sql"] for item in benchmark["queries"]],
     )
-    _emit(on_event, "sim", "dispatcher", "Full fab", _count_line(fab), {"lots": len(fab.lot_id)})
+    _emit(
+        on_event,
+        "sim",
+        "dispatcher",
+        "Full fab",
+        f"{master['label']}. {_count_line(fab)}",
+        {"lots": len(fab.lot_id), "master_data": master["label"], "source": master["source"]},
+    )
     report = simulate_pair(fab, scenario, seed=seed, horizon=horizon)
     refusal = refusal_from_trace(list(report.get("down_starts") or []))
     report["refusal"] = refusal
@@ -340,6 +358,7 @@ def run_smt(
     )
     report["scout"] = _scout_public(decision)
     report["zetaris"] = benchmark
+    report["smt_source"] = master
     report["query"] = benchmark["queries"][0]["sql"] if benchmark["queries"] else READ_QUERY
     report["blocked"] = False
     report["verdict"] = {"verdict": "reject" if refusal else "accept"}
@@ -348,6 +367,7 @@ def run_smt(
         "label": "NIGHTSHIFT" if provider_name == "nightshift" else "SMT2020",
         "data": DATA_SOURCE,
         "llm": provider_name,
+        "master_data": master["label"],
     }
     logger.info(
         "data source: smt2020",

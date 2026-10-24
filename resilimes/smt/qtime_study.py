@@ -610,6 +610,10 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
         variant = str(item[3])
         kwargs["r2_fixes"] = tuple(int(part) for part in variant.split("+"))
         row["variant"] = variant
+    else:
+        # Full r2 arm stays fixes 1-3 explicitly so study results reproduce
+        # regardless of the run_policy default / RESILIMES_QTIME_FIX1.
+        kwargs.setdefault("r2_fixes", (1, 2, 3))
     result = run_policy(plant, **kwargs)
     for key in (
         "on_time_pct",

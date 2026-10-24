@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import heapq
 import math
+import os
 import random
 import time
 from bisect import bisect_left
@@ -51,6 +52,8 @@ from resilimes.smt.fab import (
     release_at,
     transport_seconds,
 )
+from resilimes.smt.faults import FaultPlan
+from resilimes.smt.freeze import FreezeConfig, Freezer
 
 _DONE = 0
 _DOWN_START = 1
@@ -146,6 +149,11 @@ class RunResult:
     down_starts: list[dict[str, Any]] = field(default_factory=list)
     # Filled only with ``record=True``. Read by ``resilimes.smt.invariants``.
     events: list[tuple[Any, ...]] = field(default_factory=list)
+    # Filled only with ``lot_log=True`` (evidence toolkit): "ready" rows
+    # (ready_t, lot, step, n_events) at every queue entry, "setup" rows
+    # (t, tool, setup_sec, n_events) at every start. ``n_events`` is
+    # len(events) at append time, which orders a row against ``events``.
+    lot_log: dict[str, list[tuple[Any, ...]]] = field(default_factory=dict)
     # Batch starts, lots in them, and why each under-BATCHMN batch started.
     batch_starts: int = 0
     batch_lots: int = 0
@@ -222,6 +230,9 @@ class RunResult:
     replan_tick_p95_ms: float = 0.0
     replan_tick_total_s: float = 0.0
     flow_wait_ratio: float = 0.0
+    # Frozen dispatch zone and plan-stability KPIs (``resilimes.smt.freeze``);
+    # empty unless the freeze or tick tracking is on.
+    sched_freeze: dict[str, Any] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -374,6 +385,17 @@ def macro_aps_ms(fab: Fab) -> tuple[float, int]:
     return elapsed_ms, len(jobs)
 
 
+DEFAULT_R2_FIXES: tuple[int, ...] = (2, 3)
+
+
+def default_r2_fixes() -> tuple[int, ...]:
+    """Q-time r2 fixes used when ``r2_fixes`` is not passed. Fix 1 (shortlist
+    admission) is off by default; RESILIMES_QTIME_FIX1=1 turns it back on."""
+    if os.environ.get("RESILIMES_QTIME_FIX1", "").strip() == "1":
+        return (1, 2, 3)
+    return DEFAULT_R2_FIXES
+
+
 def run_policy(
     fab: Fab,
     *,
@@ -394,19 +416,26 @@ def run_policy(
     transport: bool = True,
     deadline_event: bool = True,
     r2_policy: bool = True,
-    r2_fixes: tuple[int, ...] = (1, 2, 3),
+    r2_fixes: tuple[int, ...] | None = None,
     replan_sec: float = REPLAN_SEC,
     plan: PlanningOutput | None = None,
     shift_lead: Any = None,
     plan_wait: str = "position",
     progress: Callable[[float], None] | None = None,
+    lot_log: bool = False,
+    faults: FaultPlan | None = None,
+    freeze: FreezeConfig | None = None,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
     ResiliMES-only Q-time r2 dispatch rules (shortlist admission, graded
     urgency, bounded tool reservation); False is the ablation. ``r2_fixes``
-    picks which of fixes 1-3 are on (per-fix ablation). ``replan_sec`` is the
+    picks which of fixes 1-3 are on (per-fix ablation); unset means
+    ``default_r2_fixes()``: (2, 3), or (1, 2, 3) if RESILIMES_QTIME_FIX1=1. ``replan_sec`` is the
     re-evaluation tick period for every policy (0 turns the tick off).
+    ``freeze`` is the frozen dispatch zone and tick log
+    (``resilimes.smt.freeze``); unset reads RESILIMES_SCHED_FREEZE and friends
+    from the environment, default off.
     ``plan`` (the planning layer's output, computed once before the run) turns
     on the step-due risk for ResiliMES fix 2, the plan band/rank tie-break, the
     per-tool schedule at each tick and the deviation log; None is the
@@ -449,6 +478,9 @@ def run_policy(
         plan=plan,
         shift_lead=shift_lead,
         plan_wait=plan_wait,
+        lot_log=lot_log,
+        faults=faults,
+        freeze=FreezeConfig.from_env() if freeze is None else freeze,
     )
     sim.progress = progress
     return sim.run()
@@ -517,18 +549,28 @@ class _Sim:
         transport: bool = True,
         deadline_event: bool = True,
         r2_policy: bool = True,
-        r2_fixes: tuple[int, ...] = (1, 2, 3),
+        r2_fixes: tuple[int, ...] | None = None,
         replan_sec: float = REPLAN_SEC,
         plan: PlanningOutput | None = None,
         shift_lead: Any = None,
         plan_wait: str = "position",
+        lot_log: bool = False,
+        faults: FaultPlan | None = None,
+        freeze: FreezeConfig | None = None,
     ) -> None:
         self.fab = fab
         # AI shift lead hook (off when None): asked at exceptions in tick().
         self.lead = shift_lead
         # Progress callback (off when None): reads the clock, changes nothing.
         self.progress: Callable[[float], None] | None = None
+        # Opt-in evidence hooks; None keeps the default path unchanged.
+        self.lot_log: dict[str, list[tuple[Any, ...]]] | None = (
+            {"ready": [], "setup": []} if lot_log else None
+        )
+        self.faults = faults
         self.r2 = r2_policy and policy == "resilimes"
+        if r2_fixes is None:
+            r2_fixes = default_r2_fixes()
         # Per-fix switches: 1 shortlist admission, 2 dynamic risk order,
         # 3 bounded tool reservation.
         self.fix1 = self.r2 and 1 in r2_fixes
@@ -736,6 +778,10 @@ class _Sim:
                 else:
                     self.plan_rank.append(float(row.rank))
                     self.plan_band.append(float(BANDS.index(row.band)))
+        # Frozen dispatch zone / tick tracking; None (no hook runs) when off.
+        self.fz: Freezer | None = None
+        if freeze is not None and freeze.active:
+            self.fz = Freezer(self, freeze, wafers=_WAFERS, wake_kind=_WAKE)
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -749,9 +795,12 @@ class _Sim:
         started = time.perf_counter()
         for lot, origin, target, limit in inherited_windows(self.fab):
             self.open_window(lot, origin, target, limit, 0.0, inherited=True)
+        held = self.faults.hold_until if self.faults is not None else {}
         for lot in range(self.n):
             release = self.entry[lot]
-            if release > 0.0:
+            if lot in held:
+                self.push(max(held[lot], release), _ARRIVE, lot)
+            elif release > 0.0:
                 self.push(release, _ARRIVE, lot)
             else:
                 self.enqueue(lot, 0.0)
@@ -854,6 +903,8 @@ class _Sim:
             return
         index = self.step[lot]
         target = self.cqt_at[lot]
+        if self.fz is not None:
+            self.fz.on_hold(lot, moment)
         self.close_window(lot, "held")
         if queued:
             self.waiting[lot] = False
@@ -875,6 +926,8 @@ class _Sim:
         self.in_hold[lot] = False
         route = self.fab.routes[self.fab.lot_route[lot]]
         fam = route.family[self.step[lot]]
+        if self.lot_log is not None:
+            self.lot_log["ready"].append((moment, lot, self.step[lot], len(self.events)))
         self.ready[lot] = moment
         self.waiting[lot] = True
         self.queues[fam].append(lot)
@@ -946,6 +999,8 @@ class _Sim:
         t0 = time.perf_counter()
         fam = self.fab.tool_family[tool]
         pool = [lot for lot in self.live(fam) if self.eligible(lot, tool, moment)]
+        if self.fz is not None and self.fz.enabled:
+            pool = [lot for lot in pool if self.fz.free_for(lot, tool)]
         if not pool:
             self._sample(t0, False)
             return [], None, ""
@@ -1104,6 +1159,9 @@ class _Sim:
         index = self.step[lot]
         fam = self.fab.tool_family[tool]
         setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[index])
+        if self.faults is not None:
+            changeover = self.tool_recipe[tool] != route.recipe[index]
+            setup += self.faults.setup_extra(fam, changeover, self.clock)
         return route.cycle[index] + setup
 
     def _open_limit(self, lot: int) -> float:
@@ -1170,6 +1228,9 @@ class _Sim:
             index = self.step[head]
             cap = route.batch_max[index]
             floor = route.batch_min[index] or cap
+            if self.faults is not None:
+                cap = self.faults.batch_cap(fam, cap, moment)
+                floor = min(floor, cap)
             taken = ordered[: max(1, cap // _WAFERS)] if cap else ordered
             wafers = len(taken) * _WAFERS
             reason, until = self.batch_rule(taken, group, fam, recipe, wafers, floor, moment)
@@ -1667,6 +1728,8 @@ class _Sim:
                 self.events.append(("tick_stall", moment, tool, len(ready), batch))
         if self.plan is not None:
             self.build_schedule(moment)
+        if self.fz is not None:
+            self.fz.on_tick(moment)
         if self.record:
             self.snapshot(moment)
         self.tick_samples.append(time.perf_counter() - t0)
@@ -1934,7 +1997,7 @@ class _Sim:
                 if tool not in self.idle[fam]:
                     self.idle[fam].append(tool)
                 return
-        chosen, wake_at, reason = self.choose(tool, moment)
+        chosen, wake_at, reason = self.dispatch(tool, moment)
         # A chosen lot that missed its Q-time window goes back to re-clean
         # before the start, and the tool chooses again. Every lot of the final
         # choice starts.
@@ -1946,7 +2009,7 @@ class _Sim:
                 self._reclean(lot, fam, moment)
             if self.running[tool] >= 0:
                 return
-            chosen, wake_at, reason = self.choose(tool, moment)
+            chosen, wake_at, reason = self.dispatch(tool, moment)
         if not chosen:
             if wake_at is not None and wake_at > moment:
                 self.push(wake_at, _WAKE, tool)
@@ -1956,6 +2019,12 @@ class _Sim:
         if self.fix3 and self.maybe_reserve(tool, fam, chosen, moment):
             return
         self._start(tool, fam, moment, chosen, reason)
+
+    def dispatch(self, tool: int, moment: float) -> tuple[list[int], float | None, str]:
+        """``choose``, through the frozen zone when it is on."""
+        if self.fz is not None and self.fz.enabled:
+            return self.fz.choose(tool, moment)
+        return self.choose(tool, moment)
 
     def _start(self, tool: int, fam: int, moment: float, chosen: list[int], reason: str) -> None:
         started: list[int] = []
@@ -1984,6 +2053,8 @@ class _Sim:
             for lot in started:
                 self.start_gen[lot] += 1
         self.res_cool[tool] = False
+        if self.fz is not None:
+            self.fz.on_start(tool, started, moment)
         # A started lot leaves this queue now. Left in place, it is still
         # listed here when it waits again for its next step in another family.
         gone = set(started)
@@ -2005,7 +2076,12 @@ class _Sim:
         piece = max(self.piece_seconds(lot, tool) for lot in started)
         head_route = self.fab.routes[self.fab.lot_route[started[0]]]
         recipe = head_route.recipe[steps[0]]
-        self.setup_sec += setup_seconds(self.fab, fam, self.tool_recipe[tool], recipe)
+        paid = setup_seconds(self.fab, fam, self.tool_recipe[tool], recipe)
+        if self.faults is not None:
+            paid += self.faults.setup_extra(fam, self.tool_recipe[tool] != recipe, self.clock)
+        self.setup_sec += paid
+        if self.lot_log is not None:
+            self.lot_log["setup"].append((moment, tool, paid, len(self.events)))
         self.tool_gen[tool] += 1
         self.running[tool] = started[0]
         self.on_tool[tool] = started
@@ -2207,6 +2283,8 @@ class _Sim:
         index = self.step[lot]
         origin = self.cqt_from[lot]
         self.recleans += 1
+        if self.fz is not None:
+            self.fz.on_hold(lot, moment)
         self.rework[lot] += 1
         self.close_window(lot, "recleaned")
         self.deadline[lot] = 0.0
@@ -2342,6 +2420,8 @@ class _Sim:
                 if self.record:
                     self.events.append(("rework", moment, tool, lot, self.step[lot]))
                 self.enqueue(lot, rework_ready(moment))
+        if self.fz is not None:
+            self.fz.on_down(tool, moment)
         self._queue_down_ends(tool, moment)
         # Lots pinned to this scanner may now run on an idle sibling.
         self.wake_family(self.fab.tool_family[tool])
@@ -2453,6 +2533,7 @@ class _Sim:
             recleans=self.recleans,
             down_starts=self.down_starts,
             events=self.events,
+            lot_log=self.lot_log or {},
             batch_starts=self.batch_starts,
             batch_lots=self.batch_lots,
             batch_reasons=dict(sorted(self.batch_reasons.items())),
@@ -2500,6 +2581,7 @@ class _Sim:
             replan_tick_p95_ms=round(_percentile(self.tick_samples, 95) * 1000.0, 4),
             replan_tick_total_s=round(sum(self.tick_samples), 4),
             flow_wait_ratio=round(self.wait_sum / self.proc_sum, 4) if self.proc_sum else 0.0,
+            sched_freeze=self.fz.summary() if self.fz is not None else {},
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)

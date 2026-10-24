@@ -680,3 +680,11 @@ On ui-r1:
 4. In `kpi.py`, map a window closed by a re-clean to `recleaned` and an open window whose deadline is
    at or before the horizon to `open_expired`. Then compute the rate with `bucket_counts` instead of
    met / (met + violated).
+
+## Fix 1 default (shortlist admission)
+
+Fix 1 is **off by default** on main: `run_policy` / `_Sim` use `r2_fixes=(2, 3)` when `r2_fixes` is not
+passed. With fix 1 on, completed routes fell by ~12 % and X-factor on-time dropped from 99 % to 64 %.
+The switch is kept: set `RESILIMES_QTIME_FIX1=1` to re-enable it (explicit `r2_fixes` always wins).
+`qtime_study` passes `r2_fixes` explicitly (full arm 1+2+3, ablation variants as named), so study
+results stay reproducible.

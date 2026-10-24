@@ -187,33 +187,117 @@ Main avoids this because its Q-time term (PED) is exponential in the share of th
 jump does save windows (163 vs 249 misses on published seed 1), but about 1,785 window-level jumps
 bought ~86 saved windows on that run.
 
-### Proposed fix (one, principled, not implemented)
+### Fix tried: position-in-queue wait at the risk-1 gate (commit 7e1ebee)
 
-**Make "expected wait" in `risk()` the lot's own expected wait at its position in the queue, not the
-family-average wait.** For a lot at family *f*, the expected wait is the process time of the lots ranked
-ahead of it at *f* under the below-1 order (setup, risk, plan rank), divided by the qualified, up tools of
-*f* (plus the time until the first of them frees). Apply it to both the Q-time and the due term, so
-"risk ≥ 1" means "this lot misses at its current place in line", which is what the jump-the-queue branch
-is meant to act on.
+**What changed.** For plan runs, the "expected to miss" gate in `plain_rank` (risk ≥ 1 → ahead of setup
+and of every lot below 1) now reads `place_risk`: the same max(Q-time, step-due) ratio, but with each
+lot's **own** expected wait instead of the family-average wait. Wait at a place = time until a tool of
+the family is back (none up) + (busy residual of the up tools + raw process time of the lots ahead) /
+up tools. "Ahead" is the dispatch order below the gate without the tool-specific setup term:
+(urgency band, class tier, −risk, plan band, plan rank, lot). The same place model is used for the
+downstream measured Q-time steps (the lot is inserted into each downstream queue by the same key), and
+for both terms, so each term is wait over its own slack and 1 means "misses at its place in line".
+No constant, weight, threshold, seed or due was added or changed. `run_policy(plan_wait="family")`
+(study arm `plan_famwait`) keeps the old behaviour; non-plan runs and `main` are unchanged.
 
-- No constant, weight or threshold is added; it replaces an estimate with a better-posed one from live
-  state that the tick already holds (queue order, tool states, process times).
-- It removes the whole-queue alarm of point 2 above: a windowed lot near the head of its queue stays
-  below 1 and keeps its normal place; a windowed lot deep in a long queue still jumps.
-- It keeps the master-data step targets unchanged (no queue allowance is spread into the plan).
+**One deviation from the proposal, on design grounds.** The ordering *below* the gate (−risk after
+setup) still uses the family-average risk. Using the position wait there too makes the order
+self-referential: the lot ranked last gets the largest wait, hence the largest risk, hence goes first,
+which reverses the plan order (it broke `test_schedule_head_is_the_rank_1_lot...`; on published seed 1,
+2 d it gave 124 completed vs 133). With the family risk in the key, the place key does not depend on
+the place it produces. The ~95× scale gap between the Q-time and step-due ratios *below* 1 is therefore
+not normalised by this fix; I did not add a second normalisation because every candidate (scaling by
+segment length or remaining cycle) is a flow-factor-like weight, i.e. tuning.
 
-Verification to pre-register before running it: same 9 books × 5 policies × 5 seeds, 2 d and 7 d,
-closed and releases; report flip count and share of Q-only risk ≥ 1 starts, completions and on-time
-(pooled and X-factor books), true Q-time rate, and every balance KPI above. It counts as a fix only if
-2 d completions are within seed noise of main and the true Q-time rate stays at or above main's. No
-weight, seed or due may be changed alongside it.
+**Mechanism check (published seed 1, 2 d, ResiliMES plan):** `plain_rank` calls with risk ≥ 1 fell from
+16,133 (family wait) to 10,117 (own place), −37 %; 1,987 of the remaining are windows already lost
+(Q slack ≤ 0, risk = ∞).
+
+### Result (same 9 books × 5 policies × 5 seeds, closed fab, 225 runs per arm)
+
+`plan_famwait` on the fixed branch reproduces the old plan rows exactly (7 d: 90.6 / 455.6 / 94.6 /
+16,897), so the old/new difference is the fix alone. "main current" = `main` 4f8461f + the PED overflow
+fix (PR #27): it contains qtime-r2 (fix 1 off) and gives the same ResiliMES numbers as dyn to 0.1.
+
+| Horizon | Arm | On-time % | Completed/run | True Q-time % | W. tardiness min/run | Mean X-factor | Route on-time max−min (pt) | Route completed CV | Route X-factor CV | Litho_FE_92 starved % | Litho_BE_110 starved % | Queue CV | End WIP Q1..Q5 % |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 7 d closed | main 641d988 (pre-r2) | 93.5 | 456.3 | 92.8 | 15,189 | 2.18 | 22.2 | 0.388 | 0.227 | 1.9 | 0.59 | 3.00 | 11.1 / 18.3 / 29.2 / 24.8 / 16.6 |
+| 7 d closed | main 4f8461f+ped (current) | 92.5 | 333.2 | 97.1 | 15,102 | 3.42 | 26.1 | 0.428 | 0.344 | 15.4 | 3.08 | 2.95 | 5.3 / 23.4 / 27.0 / 18.6 / 25.7 |
+| 7 d closed | plan old (family wait) | 90.6 | 455.6 | 94.6 | 16,897 | 2.36 | 27.8 | 0.402 | 0.263 | 19.8 | 1.14 | 2.72 | 9.4 / 17.8 / 29.4 / 26.2 / 17.1 |
+| 7 d closed | plan new (position gate) | 90.2 | 455.7 | 94.5 | 16,660 | 2.36 | 24.2 | 0.402 | 0.260 | 20.0 | 1.18 | 2.74 | 9.4 / 18.0 / 29.2 / 26.4 / 17.0 |
+| 7 d closed | dyn (qtime-r2) | 92.5 | 333.2 | 97.1 | 15,103 | 3.42 | 26.1 | 0.428 | 0.344 | 15.4 | 3.06 | 2.95 | 5.2 / 23.4 / 27.1 / 18.6 / 25.7 |
+| 7 d closed | EDD | 93.6 | 464.7 | 88.8 | 14,985 | 2.07 | 15.6 | 0.374 | 0.254 | 23.8 | 0.63 | 2.98 | 17.2 / 17.5 / 21.7 / 27.0 / 16.5 |
+| 7 d closed | FIFO | 75.3 | 396.7 | 83.1 | 80,946 | 2.54 | 49.3 | 0.342 | 0.167 | 25.1 | 1.37 | 3.61 | 12.3 / 22.3 / 25.5 / 18.8 / 21.0 |
+| 2 d closed | main 641d988 (pre-r2) | 69.7 | 126.8 | 93.6 | 14,421 | 2.27 | 78.7 | 0.539 | 0.446 | 5.0 | 0.65 | 2.80 | 15.6 / 19.6 / 26.1 / 19.9 / 18.9 |
+| 2 d closed | main 4f8461f+ped (current) | 66.1 | 82.0 | 96.6 | 14,304 | 2.77 | 92.4 | 0.618 | 0.688 | 16.7 | 2.90 | 2.36 | 15.1 / 21.1 / 25.5 / 17.0 / 21.3 |
+| 2 d closed | plan old (family wait) | 65.4 | 108.9 | 94.9 | 14,554 | 2.31 | 85.9 | 0.562 | 0.456 | 17.4 | 1.11 | 2.36 | 15.4 / 19.6 / 25.7 / 19.7 / 19.5 |
+| 2 d closed | plan new (position gate) | 63.5 | 109.1 | 94.9 | 14,664 | 2.31 | 83.9 | 0.568 | 0.453 | 17.4 | 1.02 | 2.36 | 15.4 / 19.6 / 25.8 / 19.7 / 19.5 |
+| 2 d closed | dyn (qtime-r2) | 66.1 | 82.0 | 96.6 | 14,304 | 2.77 | 92.4 | 0.618 | 0.688 | 16.7 | 2.90 | 2.36 | 15.1 / 21.1 / 25.5 / 17.0 / 21.3 |
+| 2 d closed | EDD | 69.6 | 148.2 | 82.4 | 14,178 | 2.16 | 71.8 | 0.544 | 0.396 | 18.7 | 0.32 | 2.48 | 17.3 / 19.2 / 25.2 / 20.3 / 17.9 |
+| 2 d closed | FIFO | 42.0 | 89.4 | 74.1 | 32,683 | 2.83 | 88.5 | 0.600 | 0.319 | 14.7 | 1.13 | 2.69 | 16.7 / 19.2 / 25.7 / 17.3 / 21.0 |
+
+EDD and FIFO are the branch-code baselines (identical in every plan/dyn file).
+
+Paired by book and seed (45 pairs), ResiliMES:
+
+| Horizon | Pair (b − a) | n | Completed/run (sd) | Runs better / worse | On-time lots/run | W. tardiness min/run | Q windows met/run |
+|---|---|---|---|---|---|---|---|
+| 7 d | plan new − plan old | 45 | +0.1 (1.7) | 17 / 16 | -1.1 | -237 | -13.5 |
+| 7 d | plan new − main 641d988 | 45 | -0.6 (3.5) | 18 / 16 | -9.6 | +1,472 | +353.6 |
+| 7 d | plan new − main current | 45 | +122.6 (44.7) | 40 / 0 | -6.7 | +1,559 | -303.3 |
+| 2 d | plan new − plan old | 45 | +0.2 (2.4) | 19 / 15 | -1.1 | +110 | -15.2 |
+| 2 d | plan new − main 641d988 | 45 | -17.7 (9.2) | 1 / 40 | -3.6 | +243 | +93.4 |
+| 2 d | plan new − main current | 45 | +27.1 (23.9) | 32 / 8 | -1.6 | +360 | -65.6 |
+
+On-time % / completed per run by book where the arms differ (ResiliMES):
+
+| Horizon | Book | main 641d988 | plan old | plan new |
+|---|---|---|---|---|
+| 7 d | heldout_xfactor | 100.0 / 514.0 | 86.5 / 515.8 | 84.2 / 516.2 |
+| 7 d | xfactor_eta600 | 100.0 / 509.2 | 91.2 / 507.4 | 90.6 / 509.2 |
+| 7 d | tight_vip | 25.7 / 26.6 | 24.8 / 27.0 | 27.6 / 27.0 |
+| 2 d | heldout_xfactor | 100.0 / 140.8 | 93.6 / 113.0 | 88.3 / 111.6 |
+| 2 d | xfactor_eta600 | 99.1 / 138.0 | 80.9 / 113.4 | 73.3 / 110.8 |
+| 2 d | published | 57.1 / 135.8 | 56.8 / 118.0 | 56.4 / 118.4 |
+
+**Verdict, honestly: the fix does not fix the regression.**
+
+- Plan new vs plan old is within seed noise on every outcome KPI: completed +0.1 (7 d) / +0.2 (2 d)
+  per run, on-time −0.4 / −1.9 points, Q-time −0.1 / 0.0, weighted tardiness −237 / +110 min per run.
+  The only visible gain is the route on-time spread at 7 d (24.2 vs 27.8 points); route completed and
+  X-factor CV are unchanged. On the X-factor books the new gate is slightly *worse* (2 d xfactor_eta600
+  80.9 → 73.3 %).
+- **Pre-registered criterion: fails.** 2 d completions are 17.7 per run below main 641d988 (1 / 40 runs
+  better), not within seed noise. The Q-time rate does stay above main's (94.9 vs 93.6).
+- Plan new vs current main (= dyn): +27 (2 d) and +123 (7 d) completions per run, 40 / 0 runs better
+  at 7 d, but −2.6 / −2.3 points on-time, +360 / +1,559 min weighted tardiness and 1.7 / 2.6 points lower
+  true Q-time rate.
+- **EDD is still at least as good as every ResiliMES arm on on-time, completed and weighted tardiness**
+  (7 d 93.6 % / 464.7 / 14,985), and has the narrowest route on-time spread (15.6); its Q-time rate is
+  the worst of the non-FIFO arms (88.8 %).
+- Litho_FE_92 starvation is unchanged by the fix (20.0 vs 19.8 %); EDD under the same simulator code
+  starves it more (23.8 %).
+
+Why it is not enough: cutting the whole-queue alarm removed 37 % of the risk ≥ 1 decisions, but the
+remaining Q-time pressure works through the *below-1* order, where the Q-time ratio (minutes of window
+slack) is still ~95× the step-due ratio (whole-lot slack), so windowed lots keep outranking near-finish
+lots after setup. The earlier counterfactual (Q-time term removed: 69.8 % / 128.5 at 2 d) shows that is
+where the loss sits. A real fix has to make the two terms commensurable below 1 (e.g. express both as
+expected lateness cost in the same unit) and that needs a decision on the relative cost of a missed
+window vs a minute of lateness; it is a modelling choice to make explicitly, not something to fit on
+these results.
 
 ## Caveats
 
 - The counterfactual and mechanism numbers come from a diagnosis harness that monkey-patches `_Sim`
   (not committed); the instrumented published seeds 1–3 reproduce the study rows exactly (133 / 93 / 107
   completed).
-- The 7 d main arm needed the harness-only overflow guard above; at 48 h main is unchanged.
+- The 7 d main 641d988 arm needed the harness-only overflow guard above; at 48 h main is unchanged. The
+  overflow is now fixed in code (`PED_EXP_CAP`, PR #27, also on this branch); "main current" runs use it.
+- The 2 d "old" rows (main 641d988, plan old, dyn, EDD, FIFO) are the earlier Table S1/K1 runs with the
+  same books, seeds and settings; the 7 d plan-old row was rerun on this branch (`plan_famwait`).
 - One plan built at t = 0, no replan, and no MES actuals; litho is the only finite capacity in the plan.
 - At 7 d most WIP lots that are due inside the horizon finish in every arm, so on-time at 7 d mainly
   separates arms on the X-factor and tight books.
+- The position-gate fix was run on the closed fab only (2 d and 7 d); the "7 d + releases" rows above
+  are the pre-fix runs. Releases did not change any arm's ranking before the fix.
