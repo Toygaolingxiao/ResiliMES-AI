@@ -1,8 +1,8 @@
 /* Fab views for the full SMT2020 run: overview, tools, product flow, lots,
    furnace batches, event log and daily KPIs. Every number comes from the
    read-only /api/fab/* endpoints, which replay the recorded 48 h simulation.
-   State colours follow Schedule_Viewer (processing #667eea, waiting #ffb74d,
-   setup #FFA400, PM #808080, idle #e0e0e0). */
+   State colours keep Schedule_Viewer's hue mapping (processing blue, waiting amber, setup orange,
+   PM grey, idle light grey, down red), retuned to IBM Carbon shades (see DESIGN.md). */
 (() => {
   "use strict";
 
@@ -10,16 +10,17 @@
   const TABS = ["overview", "tools", "flow", "lots", "batches", "events", "kpis"];
   const BOOKS = ["base", "litho_down", "hot_lot", "pm_avoid"];
   const STATE_COLOR = {
-    run: "#667eea",
-    setup: "#FFA400",
+    run: "#4589ff",
+    setup: "#eb6200",
     idle: "#e0e0e0",
-    pm: "#808080",
-    down: "#d64545",
-    batch_wait: "#ffb74d",
-    wait: "#ffb74d",
+    pm: "#6f6f6f",
+    down: "#da1e28",
+    batch_wait: "#f1c21b",
+    wait: "#f1c21b",
   };
-  const CLASS_COLOR = { VIP: "#7c3aed", hot: "#ea580c", normal: "#64748b" };
-  const RISK_COLOR = { late: "#d64545", risk: "#e0a100", ok: "transparent" };
+  const CLASS_COLOR = { VIP: "#8a3ffc", hot: "#d02670", normal: "#8d8d8d" };
+  const RISK_COLOR = { late: "#da1e28", risk: "#b28600", ok: "transparent" };
+  const DONE_COLOR = "#24a148";
   const STATUS = ["wait", "run", "hold", "done"];
 
   const S = {
@@ -293,7 +294,7 @@
         fill(c.ov.kPrioSub, { n: o.priority.length }), o.priority.some((row) => row.risk === "late") ? "bad" : ""));
     const toolBar = stacked(o.tools, ["run", "setup", "batch_wait", "idle", "pm", "down"], c.states);
     const lotBar = stacked(o.lots, ["run", "wait", "hold", "done"], c.status,
-      { run: STATE_COLOR.run, wait: STATE_COLOR.wait, hold: "#d64545", done: "#4caf7d" });
+      { run: STATE_COLOR.run, wait: STATE_COLOR.wait, hold: STATE_COLOR.down, done: DONE_COLOR });
     const states = card(c.ov.toolStates, null, toolBar, el("h4", { text: c.ov.lotStates }), lotBar);
 
     const maxQ = Math.max(1, ...o.bottlenecks.map((b) => b.queue));
@@ -329,7 +330,7 @@
       el("span", { class: "fx-fam-name" }, el("strong", { text: b.family }), el("small", { text: `${b.group} · ${fill(c.tl.tools, { n: b.tools })}` })),
       el("span", { class: "fx-fam-metric" }, el("small", { text: `${c.ov.util} ${pct(b.util)}` }), bar(b.util, 1, b.util >= 0.85 ? "var(--alarm)" : "var(--accent)")),
       el("span", { class: "fx-fam-metric" }, el("small", { text: `${c.ov.queue} ${b.queue} · ${fill(c.ov.limit, { n: b.threshold })}` }),
-        bar(b.queue, maxQ, b.queue > b.threshold ? "var(--amber)" : "var(--accent)")),
+        bar(b.queue, maxQ, b.queue > b.threshold ? "var(--amber-mark)" : "var(--accent)")),
       el("span", { class: `fx-trend ${b.trend > 0 ? "up" : ""}`, text: trend }));
   }
   function alertRow(b) {
@@ -452,7 +453,7 @@
       f.pileup ? el("span", { class: "fx-badge warn", text: c.tl.pileup }) : null,
       el("span", { class: "fx-fam-metric wide" }, el("small", { text: `${c.ov.util} ${pct(f.util)}` }), bar(f.util, 1, f.util >= 0.85 ? "var(--alarm)" : "var(--accent)")),
       el("span", { class: "fx-fam-metric wide" }, el("small", { text: `${c.ov.queue} ${f.queue} · ${fill(c.ov.limit, { n: f.threshold })}` }),
-        bar(f.queue, Math.max(f.queue, f.threshold * 2), f.queue > f.threshold ? "var(--amber)" : "var(--accent)")));
+        bar(f.queue, Math.max(f.queue, f.threshold * 2), f.queue > f.threshold ? "var(--amber-mark)" : "var(--accent)")));
     const rows = el("div", { class: "fx-toolrows" },
       el("div", { class: "fx-toolrow head" },
         el("span", { text: C().lot.colTool }), el("span", { text: c.tl.onTool }), el("span", { text: c.tl.timeline }), el("span", { text: c.tl.next })),
@@ -523,7 +524,7 @@
       ["VIP", "hot", "normal"].map((k) => el("span", {}, el("i", { class: "round", style: `background:${CLASS_COLOR[k]}` }), c.classes[k])),
       el("span", { class: "fx-legend-title", text: c.fl.legendRisk }),
       ["late", "risk"].map((k) => el("span", {}, el("i", { class: "round ring", style: `border-color:${RISK_COLOR[k]}` }), c.risk[k])),
-      el("span", {}, el("i", { class: "round", style: "background:#4caf7d" }), c.status.done));
+      el("span", {}, el("i", { class: "round", style: `background:${DONE_COLOR}` }), c.status.done));
     const lanes = data.products.map((p) => swimlane(p, meta));
     const maxW = Math.max(1, ...data.wip_by_group.map((g) => g.wait + g.run + g.hold));
     const wip = card(c.fl.wip, null, el("div", { class: "fx-rows" }, data.wip_by_group.map((g) => el("div", { class: "fx-wiprow" },
@@ -531,7 +532,7 @@
       el("span", { class: "fx-stack small", style: `width:${((g.wait + g.run + g.hold) / maxW) * 100}%` },
         g.run ? el("i", { style: `flex:${g.run};background:${STATE_COLOR.run}`, title: `${c.fl.running} ${g.run}` }) : null,
         g.wait ? el("i", { style: `flex:${g.wait};background:${STATE_COLOR.wait}`, title: `${c.fl.waiting} ${g.wait}` }) : null,
-        g.hold ? el("i", { style: `flex:${g.hold};background:#d64545`, title: `${c.fl.hold} ${g.hold}` }) : null),
+        g.hold ? el("i", { style: `flex:${g.hold};background:${STATE_COLOR.down}`, title: `${c.fl.hold} ${g.hold}` }) : null),
       el("small", { class: "num", text: `${g.run} / ${g.wait}${g.hold ? ` / ${g.hold}` : ""}` })))),
       el("div", { class: "fx-legend" }, el("span", {}, el("i", { style: `background:${STATE_COLOR.run}` }), c.fl.running),
         el("span", {}, el("i", { style: `background:${STATE_COLOR.wait}` }), c.fl.waiting)));
@@ -577,7 +578,7 @@
         cx: Math.min(W - 4, Math.max(4, (step / p.steps) * W)),
         cy: 20 + offset,
         r,
-        fill: status === 3 ? "#4caf7d" : CLASS_COLOR[kind],
+        fill: status === 3 ? DONE_COLOR : CLASS_COLOR[kind],
         "fill-opacity": status === 0 ? 0.55 : 1,
         stroke: RISK_COLOR[risk] === "transparent" ? "none" : RISK_COLOR[risk],
         "stroke-width": risk === "ok" ? 0 : 1.6,
@@ -714,7 +715,7 @@
     const x = (v) => (Math.min(v, max) / max) * W;
     return svg("svg", { class: "fx-gauge", viewBox: `0 0 ${W} 16`, width: "100%", height: 16, preserveAspectRatio: "none" },
       svg("rect", { x: 0, y: 3, width: W, height: 10, rx: 5, fill: "var(--track)" }),
-      svg("rect", { x: 0, y: 3, width: x(wafers), height: 10, rx: 5, fill: wafers >= min ? "#4caf7d" : STATE_COLOR.wait }),
+      svg("rect", { x: 0, y: 3, width: x(wafers), height: 10, rx: 5, fill: wafers >= min ? DONE_COLOR : STATE_COLOR.wait }),
       svg("line", { x1: x(min), x2: x(min), y1: 0, y2: 16, stroke: "var(--ink)", "stroke-width": 1.5 }));
   }
 
