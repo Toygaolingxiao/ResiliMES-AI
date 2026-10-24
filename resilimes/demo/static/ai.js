@@ -4,6 +4,11 @@
 const AI = { busy: {}, out: {}, cases: null };
 const AI_SECTIONS = [];
 
+function aiCause(copy, id) {
+  if (!id) return "—";
+  return (copy.causes && copy.causes[id]) || id;
+}
+
 async function aiPost(url, body) {
   const response = await fetch(url, {
     method: "POST",
@@ -69,8 +74,8 @@ AI_SECTIONS.push({
     }
     const answer = result.answer || {};
     const head = aiEl("p", "");
-    head.append(aiBadge(copy, result), aiEl("strong", "", ` ${copy.cause}: ${answer.primary_cause || "—"}`));
-    if (answer.secondary_cause) head.append(aiEl("span", "muted", ` (${copy.second}: ${answer.secondary_cause})`));
+    head.append(aiBadge(copy, result), aiEl("strong", "", ` ${copy.cause}: ${aiCause(copy, answer.primary_cause)}`));
+    if (answer.secondary_cause) head.append(aiEl("span", "muted", ` (${copy.second}: ${aiCause(copy, answer.secondary_cause)})`));
     host.appendChild(head);
     const list = aiEl("ol", "");
     for (const step of answer.causal_chain || []) list.appendChild(aiEl("li", "", step));
@@ -79,7 +84,7 @@ AI_SECTIONS.push({
     host.appendChild(aiEl("p", "muted", `${copy.calls}: ${(answer.calls || []).map((c) => c.tool).join(" → ")}`));
     host.appendChild(aiFact(copy, answer.fact_ok, answer.fact_misses));
     host.appendChild(
-      aiEl("p", "muted", `${copy.truth}: ${result.truth} · ${copy.baseline}: ${(result.baseline || []).join(", ")}`),
+      aiEl("p", "muted", `${copy.truth}: ${aiCause(copy, result.truth)} · ${copy.baseline}: ${(result.baseline || []).map((x) => aiCause(copy, x)).join(", ")}`),
     );
   },
 });

@@ -458,7 +458,15 @@
       "adviceOnly": "advice only, not applied",
       "calls": "Evidence calls",
       "truth": "Injected fault",
-      "baseline": "Biggest-anomaly baseline"
+      "baseline": "Biggest-anomaly baseline",
+      "causes": {
+        "tool_down": "tool down",
+        "pm_in_peak": "PM in the arrival peak",
+        "release_burst": "release burst",
+        "setup_thrash": "setup thrash",
+        "batch_cap": "batch size cap",
+        "upstream_starvation": "upstream starvation"
+      }
     }
   },
   "zh": {
@@ -920,7 +928,15 @@
       "adviceOnly": "仅为建议，未执行",
       "calls": "证据调用",
       "truth": "注入的故障",
-      "baseline": "最大异常基线"
+      "baseline": "最大异常基线",
+      "causes": {
+        "tool_down": "机台宕机",
+        "pm_in_peak": "到货高峰期间做 PM",
+        "release_burst": "集中投料",
+        "setup_thrash": "频繁换线",
+        "batch_cap": "批量上限",
+        "upstream_starvation": "上游断料"
+      }
     }
   },
   "ja": {
@@ -1382,7 +1398,15 @@
       "adviceOnly": "助言のみ・未適用",
       "calls": "証拠の呼び出し",
       "truth": "注入した故障",
-      "baseline": "最大異常ベースライン"
+      "baseline": "最大異常ベースライン",
+      "causes": {
+        "tool_down": "装置ダウン",
+        "pm_in_peak": "到着ピーク中の PM",
+        "release_burst": "投入の集中",
+        "setup_thrash": "段取り替えの多発",
+        "batch_cap": "バッチサイズ上限",
+        "upstream_starvation": "上流からの供給切れ"
+      }
     }
   }
 }

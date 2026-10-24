@@ -411,6 +411,12 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `ai.calls` | Evidence calls | 证据调用 | 証拠の呼び出し |
 | `ai.truth` | Injected fault | 注入的故障 | 注入した故障 |
 | `ai.baseline` | Biggest-anomaly baseline | 最大异常基线 | 最大異常ベースライン |
+| `ai.causes.tool_down` | tool down | 机台宕机 | 装置ダウン |
+| `ai.causes.pm_in_peak` | PM in the arrival peak | 到货高峰期间做 PM | 到着ピーク中の PM |
+| `ai.causes.release_burst` | release burst | 集中投料 | 投入の集中 |
+| `ai.causes.setup_thrash` | setup thrash | 频繁换线 | 段取り替えの多発 |
+| `ai.causes.batch_cap` | batch size cap | 批量上限 | バッチサイズ上限 |
+| `ai.causes.upstream_starvation` | upstream starvation | 上游断料 | 上流からの供給切れ |
 
 ## zh / ja strings for owner review
 
