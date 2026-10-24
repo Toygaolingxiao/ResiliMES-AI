@@ -466,6 +466,36 @@
         "setup_thrash": "setup thrash",
         "batch_cap": "batch size cap",
         "upstream_starvation": "upstream starvation"
+      },
+      "expTitle": "Late-lot explainer",
+      "expHelp": "Pick a late lot from the 48 h run. Its lateness is split into exact parts; the model explains it and proposes one change, which is checked by re-running the simulation.",
+      "expRun": "Explain",
+      "lateBy": "late by",
+      "sumOk": "The parts add up exactly to the lateness.",
+      "sumBad": "The parts do not add up to the lateness.",
+      "cfTitle": "What-if",
+      "cfExpected": "expected saving",
+      "cfActual": "re-run saving",
+      "cfHit": "confirmed",
+      "cfMiss": "not confirmed",
+      "buckets": {
+        "processing": "processing",
+        "setup": "setup",
+        "transport": "transport",
+        "down": "tool down",
+        "pm": "PM",
+        "batch_wait": "waiting for a batch",
+        "lots_ahead": "lots ahead",
+        "qtime": "Q-time",
+        "ai_decision": "AI decision",
+        "dispatch_other": "other dispatch",
+        "release_hold": "release hold",
+        "late_at_snapshot": "already late at the start"
+      },
+      "levers": {
+        "prioritise": "make it the hot lot",
+        "clear_down": "no tool down while it waits",
+        "skip_pm": "defer PM while it waits"
       }
     }
   },
@@ -936,6 +966,36 @@
         "setup_thrash": "频繁换线",
         "batch_cap": "批量上限",
         "upstream_starvation": "上游断料"
+      },
+      "expTitle": "迟交批次解释",
+      "expHelp": "从 48 小时仿真中选择一个迟交批次。迟交时间被精确拆分；模型给出解释并提出一项改动，再通过重跑仿真来验证。",
+      "expRun": "解释",
+      "lateBy": "迟交",
+      "sumOk": "各部分之和与迟交时间完全一致。",
+      "sumBad": "各部分之和与迟交时间不一致。",
+      "cfTitle": "假设分析",
+      "cfExpected": "预计节省",
+      "cfActual": "重跑后节省",
+      "cfHit": "已证实",
+      "cfMiss": "未证实",
+      "buckets": {
+        "processing": "加工",
+        "setup": "换线",
+        "transport": "搬送",
+        "down": "机台宕机",
+        "pm": "PM",
+        "batch_wait": "等待凑批",
+        "lots_ahead": "前方排队批次",
+        "qtime": "Q-time",
+        "ai_decision": "AI 决策",
+        "dispatch_other": "其他派工原因",
+        "release_hold": "投料保留",
+        "late_at_snapshot": "开始时已迟交"
+      },
+      "levers": {
+        "prioritise": "设为急件",
+        "clear_down": "等待期间机台不宕机",
+        "skip_pm": "等待期间推迟 PM"
       }
     }
   },
@@ -1406,6 +1466,36 @@
         "setup_thrash": "段取り替えの多発",
         "batch_cap": "バッチサイズ上限",
         "upstream_starvation": "上流からの供給切れ"
+      },
+      "expTitle": "遅延ロットの説明",
+      "expHelp": "48 時間シミュレーションから遅延ロットを選びます。遅延時間を正確に内訳し、モデルが説明と変更案を 1 つ示し、シミュレーションの再実行で検証します。",
+      "expRun": "説明する",
+      "lateBy": "遅延",
+      "sumOk": "内訳の合計は遅延時間と完全に一致します。",
+      "sumBad": "内訳の合計が遅延時間と一致しません。",
+      "cfTitle": "もしも分析",
+      "cfExpected": "想定短縮",
+      "cfActual": "再実行での短縮",
+      "cfHit": "確認済み",
+      "cfMiss": "未確認",
+      "buckets": {
+        "processing": "処理",
+        "setup": "段取り",
+        "transport": "搬送",
+        "down": "装置ダウン",
+        "pm": "PM",
+        "batch_wait": "バッチ待ち",
+        "lots_ahead": "先行ロット",
+        "qtime": "Q-time",
+        "ai_decision": "AI の判断",
+        "dispatch_other": "その他の払い出し要因",
+        "release_hold": "投入保留",
+        "late_at_snapshot": "開始時点で遅延"
+      },
+      "levers": {
+        "prioritise": "特急ロットにする",
+        "clear_down": "待ち中に装置ダウンなし",
+        "skip_pm": "待ち中の PM を延期"
       }
     }
   }

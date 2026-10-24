@@ -7,9 +7,10 @@ Nightshift every answer comes from the offline stand-in and says so
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -83,5 +84,55 @@ def investigate_case(body: InvestigateBody, request: Request) -> dict[str, Any]:
         "baseline": rank[:2],
         "truth": case.fault,
         "score": score(case.fault, answer.primary_cause, answer.secondary_cause),
+        "advice_only": True,
+    }
+
+
+# ---- late-lot explainer --------------------------------------------------------------------
+class ExplainBody(BaseModel):
+    lot_id: str = Field(max_length=60)
+    seed: int = Field(default=1, ge=1, le=4)
+    lang: str = Field(default="en", pattern="^(en|zh|ja)$")
+
+
+@lru_cache(maxsize=2)
+def _explainer_base(seed: int) -> Any:
+    from resilimes.insight.explainer import base_run
+
+    return base_run(_fab(), seed)
+
+
+@router.get("/explainer/lots")
+def explainer_lots(seed: int = Query(default=1, ge=1, le=4)) -> dict[str, Any]:
+    """Late lots of the 48 h explainer run, latest first."""
+    from resilimes.evidence.toolkit import Toolkit
+    from resilimes.insight.explainer import HORIZON_H
+
+    rows = Toolkit(_explainer_base(seed)).late_lots(limit=60)["late_lots"]
+    return {"seed": seed, "horizon_h": HORIZON_H, "lots": rows}
+
+
+@router.post("/explain")
+def explain_lot(body: ExplainBody, request: Request) -> dict[str, Any]:
+    """Exact lateness split, model explanation and one counterfactual verified by a re-run."""
+    from resilimes.evidence.toolkit import Toolkit
+    from resilimes.insight.explainer import exact_split, explain, verify
+
+    base = _explainer_base(body.seed)
+    if body.lot_id not in base.fab.lot_id:
+        raise HTTPException(status_code=404, detail="unknown lot")
+    lot = base.fab.lot_id.index(body.lot_id)
+    kit = Toolkit(base)
+    lateness = kit.lot_lateness(body.lot_id)
+    if lateness["late_min"] <= 0:
+        raise HTTPException(status_code=400, detail="lot is not late")
+    answer = explain(kit, body.lot_id, _provider(request), language=body.lang)
+    return {
+        "lot": body.lot_id,
+        "seed": body.seed,
+        "split": exact_split(base, lot),
+        "lateness": lateness,
+        "answer": answer.to_json(),
+        "counterfactual": verify(base, body.lot_id, answer) if answer.lever else None,
         "advice_only": True,
     }
