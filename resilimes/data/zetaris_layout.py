@@ -34,6 +34,31 @@ KERNEL_TABLE_SOURCES: dict[str, str] = {
     "orders": "fab_erp",
 }
 
+# SMT2020 master data (data/sql/smt2020_seed.sql). MES files stay in the
+# ``resilimes`` datasource; calendars live with CMMS, the order book with ERP.
+SMT_TABLE_SOURCES: dict[str, str] = {
+    "smt_pmcal": "fab_cmms",
+    "smt_attach": "fab_cmms",
+    "smt_downcal": "fab_cmms",
+    "smt_order": "fab_erp",
+}
+
+SMT_DATABASE_FOR_TABLE: dict[str, str] = {
+    "smt_tool": "fab_mes",
+    "smt_wip": "fab_mes",
+    "smt_part": "fab_mes",
+    "smt_route": "fab_mes",
+    "smt_setup": "fab_mes",
+    "smt_setupgrp": "fab_mes",
+    "smt_fromto": "fab_mes",
+    "smt_files": "fab_mes",
+    "smt_columns": "fab_mes",
+    "smt_pmcal": "fab_cmms",
+    "smt_attach": "fab_cmms",
+    "smt_downcal": "fab_cmms",
+    "smt_order": "fab_erp",
+}
+
 # Postgres database that owns the table. The schema inside each database is
 # ``resilimes``. Kernel tables follow the same ownership as the spec.
 DATABASE_FOR_TABLE: dict[str, str] = {
@@ -54,6 +79,7 @@ DATABASE_FOR_TABLE: dict[str, str] = {
     "bom": "fab_erp",
     "materials": "fab_erp",
     "orders": "fab_erp",
+    **SMT_DATABASE_FOR_TABLE,
 }
 
 DATASOURCE_FOR_DATABASE: dict[str, str] = {
