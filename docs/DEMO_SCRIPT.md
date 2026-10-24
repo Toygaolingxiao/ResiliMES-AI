@@ -24,10 +24,10 @@ Do not start recording until all of these are true:
 
 Mock mode inserts a 680 ms pause after each stepper event so a viewer can read the rail. `make demo-live` with a Nightshift token sets that pause to 0. This recording uses the 0 ms pace. The 680 ms delay is not part of the dispatcher.
 
-If the local Zetaris platform is not loaded yet (UI `localhost:3000`, API `localhost:8888`):
+If the local Zetaris platform is not loaded yet (UI `localhost:3000`, API `localhost:8888`), from `C:\code\ResiliMES-AI`:
 
-```bash
-wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh
+```powershell
+wsl -d Ubuntu -- bash scripts/zetaris_setup.sh
 ```
 
 That registers datasources `resilimes`, `fab_cmms`, and `fab_erp` and loads the kernel tables.
