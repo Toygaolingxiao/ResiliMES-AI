@@ -1,0 +1,541 @@
+{
+ "horizon_h": 16.0,
+ "cases": [
+  {
+   "case_id": "tool_down-s1",
+   "fault": "tool_down",
+   "seed": 1,
+   "family": "Diffusion_FE_94",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 8.0,
+   "direction": "rise",
+   "wip_t1": 54,
+   "wip_t2": 90,
+   "base_wip_t2": 22,
+   "injection": {
+    "tools_down": [
+     "Diffusion_FE_94-1",
+     "Diffusion_FE_94-2",
+     "Diffusion_FE_94-3",
+     "Diffusion_FE_94-4",
+     "Diffusion_FE_94-5",
+     "Diffusion_FE_94-6",
+     "Diffusion_FE_94-7"
+    ],
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did Diffusion_FE_94 WIP rise between 6 h and 8 h (waiting lots 54 -> 90)?"
+  },
+  {
+   "case_id": "pm_in_peak-s1",
+   "fault": "pm_in_peak",
+   "seed": 1,
+   "family": "TF_BE_26",
+   "upstream": null,
+   "t1_h": 7.0,
+   "t2_h": 10.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 19,
+   "base_wip_t2": 0,
+   "injection": {
+    "tools_pm": [
+     "TF_BE_26-1",
+     "TF_BE_26-2",
+     "TF_BE_26-3",
+     "TF_BE_26-4",
+     "TF_BE_26-5",
+     "TF_BE_26-6",
+     "TF_BE_26-7"
+    ],
+    "window_h": [
+     7.0,
+     11.0
+    ]
+   },
+   "question": "Why did TF_BE_26 WIP rise between 7 h and 10 h (waiting lots 0 -> 19)?"
+  },
+  {
+   "case_id": "release_burst-s1",
+   "fault": "release_burst",
+   "seed": 1,
+   "family": "Dielectric_BE_27",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 9.0,
+   "direction": "rise",
+   "wip_t1": 14,
+   "wip_t2": 85,
+   "base_wip_t2": 44,
+   "injection": {
+    "lots_held_until_6h": 101,
+    "family": "Dielectric_BE_27"
+   },
+   "question": "Why did Dielectric_BE_27 WIP double between 6 h and 9 h (waiting lots 14 -> 85)?"
+  },
+  {
+   "case_id": "setup_thrash-s1",
+   "fault": "setup_thrash",
+   "seed": 1,
+   "family": "LithoTrack_FE_115",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 13.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 21,
+   "base_wip_t2": 0,
+   "injection": {
+    "extra_setup_min_per_changeover": 45.0,
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did LithoTrack_FE_115 WIP rise between 6 h and 13 h (waiting lots 0 -> 21)?"
+  },
+  {
+   "case_id": "batch_cap-s1",
+   "fault": "batch_cap",
+   "seed": 1,
+   "family": "Diffusion_FE_44",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 13.0,
+   "direction": "rise",
+   "wip_t1": 12,
+   "wip_t2": 33,
+   "base_wip_t2": 17,
+   "injection": {
+    "batch_cap_wafers": 25,
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did Diffusion_FE_44 WIP double between 6 h and 13 h (waiting lots 12 -> 33)?"
+  },
+  {
+   "case_id": "upstream_starvation-s1",
+   "fault": "upstream_starvation",
+   "seed": 1,
+   "family": "WE_BE_82",
+   "upstream": "WE_BE_81",
+   "t1_h": 6.0,
+   "t2_h": 10.0,
+   "direction": "fall",
+   "wip_t1": 19,
+   "wip_t2": 0,
+   "base_wip_t2": 22,
+   "injection": {
+    "upstream_family_down": "WE_BE_81",
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did WE_BE_82 WIP fall between 6 h and 10 h (waiting lots 19 -> 0)?"
+  },
+  {
+   "case_id": "tool_down-s2",
+   "fault": "tool_down",
+   "seed": 2,
+   "family": "Litho_REG_FE_64",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 12.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 58,
+   "base_wip_t2": 0,
+   "injection": {
+    "tools_down": [
+     "Litho_REG_FE_64-1",
+     "Litho_REG_FE_64-2",
+     "Litho_REG_FE_64-3",
+     "Litho_REG_FE_64-4",
+     "Litho_REG_FE_64-5",
+     "Litho_REG_FE_64-6"
+    ],
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did Litho_REG_FE_64 WIP rise between 6 h and 12 h (waiting lots 0 -> 58)?"
+  },
+  {
+   "case_id": "pm_in_peak-s2",
+   "fault": "pm_in_peak",
+   "seed": 2,
+   "family": "WE_FE_8",
+   "upstream": null,
+   "t1_h": 4.0,
+   "t2_h": 9.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 13,
+   "base_wip_t2": 3,
+   "injection": {
+    "tools_pm": [
+     "WE_FE_8-1"
+    ],
+    "window_h": [
+     4.0,
+     8.0
+    ]
+   },
+   "question": "Why did WE_FE_8 WIP rise between 4 h and 9 h (waiting lots 0 -> 13)?"
+  },
+  {
+   "case_id": "release_burst-s2",
+   "fault": "release_burst",
+   "seed": 2,
+   "family": "Planar_BE_75",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 8.0,
+   "direction": "rise",
+   "wip_t1": 7,
+   "wip_t2": 22,
+   "base_wip_t2": 3,
+   "injection": {
+    "lots_held_until_6h": 33,
+    "family": "Planar_BE_75"
+   },
+   "question": "Why did Planar_BE_75 WIP double between 6 h and 8 h (waiting lots 7 -> 22)?"
+  },
+  {
+   "case_id": "setup_thrash-s2",
+   "fault": "setup_thrash",
+   "seed": 2,
+   "family": "Implant_132",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 14.0,
+   "direction": "rise",
+   "wip_t1": 14,
+   "wip_t2": 33,
+   "base_wip_t2": 20,
+   "injection": {
+    "extra_setup_min_per_changeover": 45.0,
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did Implant_132 WIP double between 6 h and 14 h (waiting lots 14 -> 33)?"
+  },
+  {
+   "case_id": "batch_cap-s2",
+   "fault": "batch_cap",
+   "seed": 2,
+   "family": "Diffusion_FE_122",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 14.0,
+   "direction": "rise",
+   "wip_t1": 13,
+   "wip_t2": 40,
+   "base_wip_t2": 14,
+   "injection": {
+    "batch_cap_wafers": 25,
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did Diffusion_FE_122 WIP double between 6 h and 14 h (waiting lots 13 -> 40)?"
+  },
+  {
+   "case_id": "upstream_starvation-s2",
+   "fault": "upstream_starvation",
+   "seed": 2,
+   "family": "DE_FE_71",
+   "upstream": "Litho_REG_FE_64",
+   "t1_h": 6.0,
+   "t2_h": 13.0,
+   "direction": "fall",
+   "wip_t1": 55,
+   "wip_t2": 26,
+   "base_wip_t2": 62,
+   "injection": {
+    "upstream_family_down": "Litho_REG_FE_64",
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did DE_FE_71 WIP fall between 6 h and 13 h (waiting lots 55 -> 26)?"
+  },
+  {
+   "case_id": "tool_down-s3",
+   "fault": "tool_down",
+   "seed": 3,
+   "family": "WE_FE_47",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 14.0,
+   "direction": "rise",
+   "wip_t1": 2,
+   "wip_t2": 102,
+   "base_wip_t2": 65,
+   "injection": {
+    "tools_down": [
+     "WE_FE_47-1",
+     "WE_FE_47-2",
+     "WE_FE_47-3"
+    ],
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did WE_FE_47 WIP double between 6 h and 14 h (waiting lots 2 -> 102)?"
+  },
+  {
+   "case_id": "pm_in_peak-s3",
+   "fault": "pm_in_peak",
+   "seed": 3,
+   "family": "WE_BE_9",
+   "upstream": null,
+   "t1_h": 5.0,
+   "t2_h": 10.0,
+   "direction": "rise",
+   "wip_t1": 23,
+   "wip_t2": 69,
+   "base_wip_t2": 47,
+   "injection": {
+    "tools_pm": [
+     "WE_BE_9-1",
+     "WE_BE_9-2",
+     "WE_BE_9-3"
+    ],
+    "window_h": [
+     5.0,
+     9.0
+    ]
+   },
+   "question": "Why did WE_BE_9 WIP double between 5 h and 10 h (waiting lots 23 -> 69)?"
+  },
+  {
+   "case_id": "release_burst-s3",
+   "fault": "release_burst",
+   "seed": 3,
+   "family": "Litho_BE_99",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 8.0,
+   "direction": "rise",
+   "wip_t1": 6,
+   "wip_t2": 15,
+   "base_wip_t2": 9,
+   "injection": {
+    "lots_held_until_6h": 15,
+    "family": "Litho_BE_99"
+   },
+   "question": "Why did Litho_BE_99 WIP double between 6 h and 8 h (waiting lots 6 -> 15)?"
+  },
+  {
+   "case_id": "setup_thrash-s3",
+   "fault": "setup_thrash",
+   "seed": 3,
+   "family": "LithoTrack_FE_115",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 13.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 17,
+   "base_wip_t2": 0,
+   "injection": {
+    "extra_setup_min_per_changeover": 45.0,
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did LithoTrack_FE_115 WIP rise between 6 h and 13 h (waiting lots 0 -> 17)?"
+  },
+  {
+   "case_id": "batch_cap-s3",
+   "fault": "batch_cap",
+   "seed": 3,
+   "family": "Diffusion_FE_127",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 14.0,
+   "direction": "rise",
+   "wip_t1": 19,
+   "wip_t2": 47,
+   "base_wip_t2": 12,
+   "injection": {
+    "batch_cap_wafers": 25,
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did Diffusion_FE_127 WIP double between 6 h and 14 h (waiting lots 19 -> 47)?"
+  },
+  {
+   "case_id": "upstream_starvation-s3",
+   "fault": "upstream_starvation",
+   "seed": 3,
+   "family": "LithoMet_FE_19",
+   "upstream": "Litho_FE_111",
+   "t1_h": 6.0,
+   "t2_h": 8.0,
+   "direction": "fall",
+   "wip_t1": 9,
+   "wip_t2": 0,
+   "base_wip_t2": 3,
+   "injection": {
+    "upstream_family_down": "Litho_FE_111",
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did LithoMet_FE_19 WIP fall between 6 h and 8 h (waiting lots 9 -> 0)?"
+  },
+  {
+   "case_id": "tool_down-s4",
+   "fault": "tool_down",
+   "seed": 4,
+   "family": "TF_FE_5",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 13.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 16,
+   "base_wip_t2": 5,
+   "injection": {
+    "tools_down": [
+     "TF_FE_5-1",
+     "TF_FE_5-2"
+    ],
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did TF_FE_5 WIP rise between 6 h and 13 h (waiting lots 0 -> 16)?"
+  },
+  {
+   "case_id": "pm_in_peak-s4",
+   "fault": "pm_in_peak",
+   "seed": 4,
+   "family": "LithoMet_FE_19",
+   "upstream": null,
+   "t1_h": 5.0,
+   "t2_h": 9.0,
+   "direction": "rise",
+   "wip_t1": 14,
+   "wip_t2": 68,
+   "base_wip_t2": 2,
+   "injection": {
+    "tools_pm": [
+     "LithoMet_FE_19-1",
+     "LithoMet_FE_19-2",
+     "LithoMet_FE_19-3",
+     "LithoMet_FE_19-4",
+     "LithoMet_FE_19-5",
+     "LithoMet_FE_19-6",
+     "LithoMet_FE_19-7"
+    ],
+    "window_h": [
+     5.0,
+     9.0
+    ]
+   },
+   "question": "Why did LithoMet_FE_19 WIP double between 5 h and 9 h (waiting lots 14 -> 68)?"
+  },
+  {
+   "case_id": "release_burst-s4",
+   "fault": "release_burst",
+   "seed": 4,
+   "family": "Litho_BE_99",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 8.0,
+   "direction": "rise",
+   "wip_t1": 4,
+   "wip_t2": 14,
+   "base_wip_t2": 4,
+   "injection": {
+    "lots_held_until_6h": 15,
+    "family": "Litho_BE_99"
+   },
+   "question": "Why did Litho_BE_99 WIP double between 6 h and 8 h (waiting lots 4 -> 14)?"
+  },
+  {
+   "case_id": "setup_thrash-s4",
+   "fault": "setup_thrash",
+   "seed": 4,
+   "family": "LithoTrack_FE_115",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 12.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 23,
+   "base_wip_t2": 0,
+   "injection": {
+    "extra_setup_min_per_changeover": 45.0,
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did LithoTrack_FE_115 WIP rise between 6 h and 12 h (waiting lots 0 -> 23)?"
+  },
+  {
+   "case_id": "batch_cap-s4",
+   "fault": "batch_cap",
+   "seed": 4,
+   "family": "Diffusion_FE_44",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 13.0,
+   "direction": "rise",
+   "wip_t1": 20,
+   "wip_t2": 42,
+   "base_wip_t2": 23,
+   "injection": {
+    "batch_cap_wafers": 25,
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did Diffusion_FE_44 WIP double between 6 h and 13 h (waiting lots 20 -> 42)?"
+  },
+  {
+   "case_id": "upstream_starvation-s4",
+   "fault": "upstream_starvation",
+   "seed": 4,
+   "family": "DE_BE_50",
+   "upstream": "Litho_REG_BE_63",
+   "t1_h": 6.0,
+   "t2_h": 10.0,
+   "direction": "fall",
+   "wip_t1": 19,
+   "wip_t2": 0,
+   "base_wip_t2": 12,
+   "injection": {
+    "upstream_family_down": "Litho_REG_BE_63",
+    "window_h": [
+     6,
+     12
+    ]
+   },
+   "question": "Why did DE_BE_50 WIP fall between 6 h and 10 h (waiting lots 19 -> 0)?"
+  }
+ ]
+}

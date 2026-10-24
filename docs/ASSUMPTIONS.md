@@ -14,7 +14,7 @@ Confirmed from the scaffold, the Zetaris knowledge base article on pipeline sche
 - Organisation id `1` is returned by `POST /api/auth/login` as `orgId`. Every REST call sends it as `X-Org-ID`. A call without it returns 400. `X-API-Key` alone returns 401.
 - Login returns `idToken` (about 900 seconds), `refreshToken`, and `orgId`. Refresh is `GET /auth/refresh` with the refresh token as Bearer plus `X-Org-ID`. The app uses a long-lived key from `POST /auth/api-key`, sent as `Authorization: Bearer`.
 - Success is `{headers, data, total, timeUsed}` and every value is a string. Failure is `{msg}` with status 400.
-- Postgres is container `fab-mes`. Zetaris datasources are `resilimes` (`fab_mes`), `fab_cmms`, and `fab_erp`, each with schema `resilimes`. The JDBC `schema` option is required. Tables are `<datasource>.<table>`. Cross-datasource views are not created.
+- Postgres is container `fab-mes`. Zetaris datasources are `resilimes` (`fab_mes`), `fab_cmms`, `fab_erp`, and `fab_ops` (simulator operations log for the AI evidence toolkit), each with schema `resilimes`. The JDBC `schema` option is required. Tables are `<datasource>.<table>`. Cross-datasource views are not created.
 
 The factory tables are created in Postgres by `scripts/zetaris_setup.sh`, then registered. `data/sql/seed.sql` is still all-`VARCHAR` sample data. `data/sql/kernel.sql` is typed SMT2020 data. The recovery path only `SELECT`s. `ZETARIS_SCHEMA` and every datasource in `ZETARIS_TABLE_SOURCES` must match `^[A-Za-z_][A-Za-z0-9_]*$`.
 
@@ -115,6 +115,15 @@ These are ResiliMES defaults on the SMT2020 simulator (`resilimes/smt`). None is
 - **Metrology sampling.** A step with `StepPercent` p < 100 is sampled. With n = lot number (the trailing number of the lot ID) + STEP, the lot is measured when floor((n + 1) p / 100) > floor(n p / 100). That selects exactly p of every 100 consecutive lot numbers, evenly spaced, and the STEP offset spreads the selection across layers. An unmeasured lot skips the step with no time; if that step was the lot's Q-time target, the Q-time clock is dropped. The lot's step at the snapshot is never skipped.
 - **Dispatch priority (ResiliMES).** Tiered key: class tier (VIP, then hot, then normal, from PRIOR), then late or not, then Q-time risk (PED), then setup seconds, then slack. DPI-style terms only order lots inside a tier. Weights, dues, tool sets, and seeds are unchanged.
 
+## SMT2020 lot transport and the Q-time-urgent override (qtime-urgent)
+
+- **Lot transport, all policies.** After a lot finishes a step, or is sent back to re-clean, it joins the next family's queue only after a fixed move: `TRANSPORT_SAME_BAY_SEC` = 60 s when both families are in the same bay, `TRANSPORT_OTHER_BAY_SEC` = 180 s otherwise. The 1 and 3 minute values are a project assumption, not SMT2020 data. Rework after a breakdown redoes the step in the same family, so it has no move. The lot's step at the snapshot has no move.
+- **Bay mapping.** SMT2020 has no bay column. Every family in `tool.txt.1l` has `STNFAMLOC` = `Fab`, and `fromto.txt` has a single `Fab`-to-`Fab` row (uniform 7.5 ± 2.5 min), which is not used. A family's bay is its `STNGRP` station group, 13 groups: Def_Met, Delay, Delay_32, Dielectric, Diffusion, Dry_Etch, Implant, Litho, Litho_Met, Planar, TF, TF_Met, Wet_Etch. Same group = same bay.
+- **No AMHS.** No vehicles, no vehicle limit, no stocker, no congestion. Any number of lots can move at once.
+- **Q-time keeps running during a move.** A CQT deadline is still the origin step end plus the published limit, so the move eats into the window.
+- **Invariant.** `transport` in [invariants.md](invariants.md): every start is at least the move time after the lot's previous step ended.
+- **Q-time-urgent override (ResiliMES only).** A waiting lot inside an open dataset CQT window (264 of 4,013 route steps carry a CQT) is urgent when need <= remaining <= need + 900 s, where need is the dataset process time of the steps still to run before the target plus the fixed moves. Urgent lots jump the class tier, but VIP and hot lots that are late or urgent themselves stay ahead. The same order applies inside batches. Pre-registration, before/after, and the recommendation are in [QTIME_URGENT.md](QTIME_URGENT.md).
+
 ## Production would add
 
 A production line would also carry these constraints. They are out of this demo:
@@ -122,7 +131,7 @@ A production line would also carry these constraints. They are out of this demo:
 - Furnace batching
 - Implant
 - Metal PVD
-- Transfer and AMHS capacity
+- Transfer and AMHS capacity (the SMT2020 simulator charges only a fixed 1 or 3 minute move between tools, with no vehicle limit)
 - Conditioning dummy wafers
 - Cumulative maintenance counters
 - Interval setups

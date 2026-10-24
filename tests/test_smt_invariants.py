@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from resilimes.smt.fab import Fab, Family, Route, load_fab, lot_number, measured
@@ -205,3 +207,191 @@ def test_full_fab_skips_sampled_steps_at_the_dataset_rate() -> None:
         pm=pm_windows(fab, horizon),
     )
     assert result.skipped > 0
+
+
+def _qtime_fab(*, cqt_limit: float, second: str, second_due: float = 100_000.0) -> Fab:
+    """Labeled unit fixture, not SMT2020 data.
+
+    ``Etch_A-1`` runs ``L_Q`` (normal) at step A for 100 s. If ``cqt_limit`` is
+    set, that opens a Q-time window to step B. ``Clean_B-1`` (500 s per lot)
+    has ``L_V1`` (VIP) and ``L_2`` (class ``second``) waiting at B from 0 s.
+    At 500 s ``L_Q`` has ``cqt_limit - 400`` s left before B must start.
+    ``L_V1`` and ``L_2`` follow route ``B`` (B only), so they are not inside a
+    Q-time span at t=0 and carry no inherited window.
+    """
+    fab = _two_family_fab(cqt_limit=cqt_limit)
+    route = fab.routes[0]
+    route.cycle[:] = [100.0, 500.0]
+    route.remain[:] = [600.0, 500.0]
+    only_b = Route(
+        route_id="B",
+        family=[1],
+        cycle=[500.0],
+        recipe=[0],
+        batch_min=[0],
+        batch_max=[0],
+        cqt_limit=[0.0],
+        cqt_target=[-1],
+        remain=[500.0],
+        step_index={2: 0},
+        dedicate_root=[-1],
+    )
+    fab.routes.append(only_b)
+    fab.route_index["B"] = 1
+    fab.lot_id[:] = ["L_Q", "L_V1", "L_2"]
+    fab.lot_product[:] = ["p", "p", "p"]
+    fab.lot_route[:] = [0, 1, 1]
+    fab.lot_step[:] = [0, 0, 0]
+    fab.lot_due[:] = [100_000.0, 100_000.0, second_due]
+    fab.lot_value[:] = [1.0, 1.0, 1.0]
+    fab.lot_class[:] = ["normal", "VIP", second]
+    fab.lot_priority[:] = [10, 30, 30 if second == "VIP" else 20]
+    return fab
+
+
+def _b_order(fab: Fab, policy: str) -> tuple[list[str], Any]:
+    result = run_policy(
+        fab, policy=policy, seed=1, horizon=5000, downs=[[], []], pm=[[], []], record=True
+    )
+    order = [fab.lot_id[e[3][0]] for e in result.events if e[0] == "start" and e[2] == 1]
+    return order, result
+
+
+def test_qtime_urgent_normal_lot_jumps_a_waiting_vip() -> None:
+    fab = _qtime_fab(cqt_limit=700.0, second="VIP")
+    order, result = _b_order(fab, "resilimes")
+    assert order == ["L_V1", "L_Q", "L_2"]
+    assert result.qtime_overrides == 1
+    assert result.qtime_override_displaced == {"VIP": 1}
+    assert result.qtime_violations == 0
+    overrides = [e for e in result.events if e[0] == "override"]
+    assert len(overrides) == 1 and fab.lot_id[overrides[0][3]] == "L_Q"
+    assert check_trace(fab, result, downs=[[], []], pm=[[], []])["total"] == 0
+    # EDD has no override: the VIP goes first and L_Q misses its window.
+    order, result = _b_order(fab, "edd")
+    assert order == ["L_V1", "L_2", "L_Q"]
+    assert result.qtime_overrides == 0
+    assert result.qtime_violations == 1
+
+
+def test_qtime_override_needs_the_window_to_be_close() -> None:
+    # 4600 s left at 500 s: far beyond need + 900 s, so the VIP keeps its turn.
+    order, result = _b_order(_qtime_fab(cqt_limit=5000.0, second="VIP"), "resilimes")
+    assert order == ["L_V1", "L_2", "L_Q"]
+    assert result.qtime_overrides == 0
+
+
+def test_no_override_on_a_step_without_dataset_cqt() -> None:
+    fab = _qtime_fab(cqt_limit=0.0, second="VIP")
+    order, result = _b_order(fab, "resilimes")
+    assert order == ["L_V1", "L_2", "L_Q"]
+    assert result.qtime_overrides == 0
+    assert not [e for e in result.events if e[0] == "override"]
+
+
+def test_late_hot_lot_stays_ahead_of_a_qtime_urgent_lot() -> None:
+    fab = _qtime_fab(cqt_limit=700.0, second="hot", second_due=0.0)
+    order, result = _b_order(fab, "resilimes")
+    # The late hot lot leads at 0 s (band 0), the urgent normal lot then jumps
+    # the on-time VIP at 500 s.
+    assert order == ["L_2", "L_Q", "L_V1"]
+    assert result.qtime_overrides == 1
+    assert check_trace(fab, result, downs=[[], []], pm=[[], []])["total"] == 0
+
+
+def test_override_check_flags_an_override_outside_a_cqt_window() -> None:
+    fab = _qtime_fab(cqt_limit=0.0, second="VIP")
+    _order, result = _b_order(fab, "resilimes")
+    start = next(i for i, e in enumerate(result.events) if e[0] == "start" and e[2] == 1)
+    lead = result.events[start][3][0]
+    forged = ("override", result.events[start][1], 1, lead, 1, 2, 100.0, 0.0, "VIP")
+    result.events.insert(start, forged)
+    report = check_trace(fab, result, downs=[[], []], pm=[[], []])
+    assert report["counts"]["qtime_override"] == 1
+
+
+def test_full_fab_overrides_only_on_dataset_cqt_windows() -> None:
+    fab = load_fab()
+    horizon = 12 * 3600.0
+    downs = sample_downs(fab, 1, horizon)
+    pm = pm_windows(fab, horizon)
+    spans = set()
+    for route_i, route in enumerate(fab.routes):
+        for origin, limit in enumerate(route.cqt_limit):
+            if limit > 0 and route.cqt_target[origin] >= 0:
+                for index in range(origin + 1, route.cqt_target[origin] + 1):
+                    spans.add((route_i, index))
+    result = run_policy(
+        fab, policy="resilimes", seed=1, horizon=horizon, downs=downs, pm=pm, record=True
+    )
+    rows = [e for e in result.events if e[0] == "override"]
+    assert rows and len(rows) == result.qtime_overrides
+    assert all((fab.lot_route[e[3]], e[4]) in spans for e in rows)
+    assert check_trace(fab, result, downs=downs, pm=pm)["counts"]["qtime_override"] == 0
+    edd = run_policy(fab, policy="edd", seed=1, horizon=horizon, downs=downs, pm=pm)
+    assert edd.qtime_overrides == 0
+
+
+def test_transport_delays_the_next_start_by_the_bay_move() -> None:
+    # Etch_A and Clean_B are different STNGRP bays: 3 min from A to B.
+    fab = _qtime_fab(cqt_limit=0.0, second="VIP")
+    fab.lot_route[:] = [0, 0, 0]
+    fab.lot_step[:] = [0, 0, 0]
+    result = run_policy(
+        fab, policy="edd", seed=1, horizon=5000, downs=[[], []], pm=[[], []], record=True
+    )
+    ends = {e[2]: e[1] for e in result.events if e[0] == "end" and e[3] == 0}
+    first_b = {}
+    for e in result.events:
+        if e[0] == "start" and e[2] == 1:
+            for lot in e[3]:
+                first_b.setdefault(lot, e[1])
+    assert first_b and all(first_b[lot] >= ends[lot] + 180.0 - 1e-6 for lot in first_b)
+    assert min(first_b[lot] - ends[lot] for lot in first_b) == pytest.approx(180.0)
+    assert check_trace(fab, result, downs=[[], []], pm=[[], []])["counts"]["transport"] == 0
+    # Same bay: 1 min.
+    fab.families[1].group = "Etch"
+    result = run_policy(
+        fab, policy="edd", seed=1, horizon=5000, downs=[[], []], pm=[[], []], record=True
+    )
+    ends = {e[2]: e[1] for e in result.events if e[0] == "end" and e[3] == 0}
+    first = next(e for e in result.events if e[0] == "start" and e[2] == 1)
+    assert first[1] == pytest.approx(ends[first[3][0]] + 60.0)
+
+
+def test_transport_check_flags_a_start_before_the_move_is_over() -> None:
+    fab = _qtime_fab(cqt_limit=0.0, second="VIP")
+    fab.lot_route[:] = [0, 0, 0]
+    fab.lot_step[:] = [0, 0, 0]
+    result = run_policy(
+        fab, policy="edd", seed=1, horizon=5000, downs=[[], []], pm=[[], []], record=True
+    )
+    at = next(i for i, e in enumerate(result.events) if e[0] == "start" and e[2] == 1)
+    row = list(result.events[at])
+    lot = row[3][0]
+    end = next(e[1] for e in result.events if e[0] == "end" and e[2] == lot and e[3] == 0)
+    row[1] = end + 30.0
+    result.events[at] = tuple(row)
+    report = check_trace(fab, result, downs=[[], []], pm=[[], []])
+    assert report["counts"]["transport"] >= 1
+
+
+def test_no_transport_ablation_is_a_separate_flag() -> None:
+    fab = _qtime_fab(cqt_limit=0.0, second="VIP")
+    fab.lot_route[:] = [0, 0, 0]
+    fab.lot_step[:] = [0, 0, 0]
+    result = run_policy(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=5000,
+        downs=[[], []],
+        pm=[[], []],
+        record=True,
+        transport=False,
+    )
+    ends = {e[2]: e[1] for e in result.events if e[0] == "end" and e[3] == 0}
+    first = next(e for e in result.events if e[0] == "start" and e[2] == 1)
+    assert first[1] == pytest.approx(ends[first[3][0]])
+    assert result.transport is False
+    assert check_trace(fab, result, downs=[[], []], pm=[[], []])["total"] == 0

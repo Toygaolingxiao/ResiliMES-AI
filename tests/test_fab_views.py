@@ -69,7 +69,8 @@ def test_overview_accounts_for_every_lot_and_tool(client: TestClient) -> None:
     assert body["bottlenecks"]
     assert all(row["util"] <= 1.0 for row in body["bottlenecks"])
     assert all(row["kind"] in {"VIP", "hot"} for row in body["priority"])
-    assert body["counters"]["completed_routes"] == 159
+    # 80 on main after qtime-r2, transport and later sim changes (159 on the ui-r1 base).
+    assert body["counters"]["completed_routes"] == 80
 
 
 def test_tools_view_states_and_reasons(client: TestClient) -> None:

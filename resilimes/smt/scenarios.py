@@ -14,7 +14,16 @@ from typing import Any
 from resilimes.config import ROOT, Settings
 from resilimes.engines.scout.engine import default_scout
 from resilimes.llm.factory import build_provider
-from resilimes.smt.fab import DATA_SOURCE, LITHO_MTTR_MIN, READ_QUERY, Fab, initial_queues, load_fab
+from resilimes.smt.fab import (
+    DATA_SOURCE,
+    LITHO_MTTR_MIN,
+    READ_QUERY,
+    Fab,
+    fab_source,
+    initial_queues,
+    load_fab,
+)
+from resilimes.smt.qtime_kpi import qtime_buckets
 from resilimes.smt.simulate import (
     X_FACTOR,
     RunResult,
@@ -137,13 +146,13 @@ SCENARIOS: dict[str, SmtScenario] = {
         title="Tight VIP dues",
         summary=(
             "Dues rewritten for this stress test. Not the published book. "
-            "21 lots, 24 h, five seeds: ResiliMES 5/21, 6/21, 6/21, 6/21, 5/21 (28/105), "
-            "EDD 4/21, 4/21, 3/21, 4/21, 4/21 (19/105). "
-            "Seed 1 weighted tardiness is 6,842.1 under EDD and 3,616.9 under ResiliMES. "
-            "Init_Lot_2_13 is the save here: 5.03 h late under EDD, on time under ResiliMES. "
-            "Published dues, 48 h, 56 lots: ResiliMES 159/280 over five seeds "
-            "(mean 56.78%). EDD 163/280 (mean 58.21%). "
-            "EDD is ahead by 4 lots on that book."
+            "21 lots, 24 h, five seeds: ResiliMES 6/21, 5/21, 5/21, 6/21, 5/21 (27/105), "
+            "EDD 3/21, 3/21, 1/21, 3/21, 3/21 (13/105). "
+            "Seed 1 weighted tardiness is 7,471.6 under EDD and 3,573.8 under ResiliMES. "
+            "Init_Lot_2_13 is the save here: 5.66 h late under EDD, on time under ResiliMES. "
+            "Published dues, 48 h, 56 lots: ResiliMES 160/280 over five seeds "
+            "(mean 57.14%). EDD 161/280 (mean 57.50%). "
+            "EDD is ahead by 1 lot on that book."
         ),
         incident=(
             "Stress test with dues rewritten. Dielectric_BE_28-1 is down. "
@@ -159,15 +168,15 @@ SCENARIOS: dict[str, SmtScenario] = {
         title="X-factor dues",
         summary=(
             "This run is seed 1, 48 h, 87 lots due. EDD and ResiliMES are both 87/87 on time. "
-            "Re-cleans are 44 under EDD and 57 under ResiliMES. "
-            "Q-time violations are 494 under EDD and 448 under ResiliMES. "
-            "Five-seed mean, not this click: re-cleans 53.4 vs 48.8, Q-time 436.8 vs 479.0. "
-            "That mean is ResiliMES 99.54% and EDD 99.54% on time, FIFO 47.13%, CR 76.55%. "
-            "Versus EDD the five-seed mean ties on 433 of 435 pooled lots."
+            "Re-cleans are 52 under EDD and 48 under ResiliMES. "
+            "Q-time violations are 492 under EDD and 244 under ResiliMES. "
+            "Five-seed mean, not this click: re-cleans 44.2 vs 55.0, Q-time 231.2 vs 470.2. "
+            "That mean is ResiliMES 99.08% and EDD 99.54% on time, FIFO 45.29%, CR 76.09%. "
+            "EDD is ahead on the five-seed mean: 433 against 431 of 435 pooled lots."
         ),
         incident=(
             "Litho_FE_92-1 down for 600 minutes. This click is seed 1: EDD and "
-            "ResiliMES 87/87 on time, re-cleans 44 to 57, Q-time 494 to 448. "
+            "ResiliMES 87/87 on time, re-cleans 52 to 48, Q-time 492 to 244. "
             "The five-seed mean is a separate study."
         ),
         before_policy="edd",
@@ -207,6 +216,7 @@ def scenario_payload(fab: Fab | None = None) -> dict[str, Any]:
         "counts": _counts(plant),
         "query": READ_QUERY,
         "data_source": DATA_SOURCE,
+        "smt_source": fab_source(plant),
     }
 
 
@@ -232,7 +242,8 @@ def run_smt(
     scenario = SCENARIOS.get(scenario_id)
     if scenario is None:
         raise KeyError(scenario_id)
-    fab = load_fab()
+    fab = load_fab(settings)
+    master = fab_source(fab)
     if horizon_sec is None:
         horizon = (
             TIGHT_HORIZON_SEC
@@ -276,8 +287,9 @@ def run_smt(
             "narrative": decision.risk.get("reason") or "Scout refused the request.",
             "scout": _scout_public(decision),
             "verdict": {"verdict": "reject"},
-            "mode": {"label": "SMT2020", "data": DATA_SOURCE},
+            "mode": {"label": "SMT2020", "data": DATA_SOURCE, "master_data": master["label"]},
             "data_source": DATA_SOURCE,
+            "smt_source": master,
             "query": READ_QUERY,
         }
     benchmark = read_benchmark(settings, fab)
@@ -304,7 +316,14 @@ def run_smt(
         },
         evidence=[item["sql"] for item in benchmark["queries"]],
     )
-    _emit(on_event, "sim", "dispatcher", "Full fab", _count_line(fab), {"lots": len(fab.lot_id)})
+    _emit(
+        on_event,
+        "sim",
+        "dispatcher",
+        "Full fab",
+        f"{master['label']}. {_count_line(fab)}",
+        {"lots": len(fab.lot_id), "master_data": master["label"], "source": master["source"]},
+    )
     report = simulate_pair(fab, scenario, seed=seed, horizon=horizon)
     refusal = refusal_from_trace(list(report.get("down_starts") or []))
     report["refusal"] = refusal
@@ -339,6 +358,7 @@ def run_smt(
     )
     report["scout"] = _scout_public(decision)
     report["zetaris"] = benchmark
+    report["smt_source"] = master
     report["query"] = benchmark["queries"][0]["sql"] if benchmark["queries"] else READ_QUERY
     report["blocked"] = False
     report["verdict"] = {"verdict": "reject" if refusal else "accept"}
@@ -347,6 +367,7 @@ def run_smt(
         "label": "NIGHTSHIFT" if provider_name == "nightshift" else "SMT2020",
         "data": DATA_SOURCE,
         "llm": provider_name,
+        "master_data": master["label"],
     }
     logger.info(
         "data source: smt2020",
@@ -561,7 +582,17 @@ def _report(
             ),
             "cycle_time_h": "Mean completion time of lots that finish the route inside the horizon.",
             "litho_util_pct": "Busy time on the 102 Litho_* tools divided by tools times horizon.",
-            "qtime_violations": "CQT target started after the limit, or the limit expired inside the horizon.",
+            "qtime_violations": (
+                "Windows this run opened that were missed: target started late (directly "
+                "or after a Q-time hold), re-cleaned, or still open with the deadline "
+                "inside the horizon."
+            ),
+            "qtime": (
+                "Four buckets per dataset CQT window: met, started late, re-cleaned, open "
+                "and expired at the horizon. rate_pct is met over all four. Windows "
+                "inherited from the snapshot (433 lots inside a CQT span at t=0, taken "
+                "to open at t=0) are counted under inherited, not in the rate."
+            ),
             "recleans": (
                 "One return through the wet step that opened the missed window. "
                 "Not the published rework probability."
@@ -706,12 +737,16 @@ def _kpi(result: RunResult) -> dict[str, Any]:
         "litho_util_pct": result.litho_util_pct,
         "scanner_util_pct": result.scanner_util_pct,
         "qtime_violations": result.qtime_violations,
+        "qtime": qtime_buckets(result),
         "recleans": result.recleans,
         "mean_x_factor": result.mean_x_factor,
         "qtime_gates": result.qtime_gates,
         "pm_avoided": result.pm_avoided,
         "pm_overlaps": result.pm_overlaps,
         "wip_replans": result.wip_replans,
+        "batch_fill_pct": result.batch_fill_pct,
+        "tool_reservations": result.tool_reservations,
+        "reserved_min": result.reserved_min,
     }
 
 

@@ -83,6 +83,7 @@ const state = {
   smtEnd: 720,
   smtDrill: "",
   smtPinned: "",
+  shiftLead: null,
 };
 
 const $ = (id) => document.querySelector(id);
@@ -100,6 +101,7 @@ async function init() {
   state.overview = payload.overview || null;
   applyTheme();
   paint();
+  pollShiftLead();
   $("#theme").addEventListener("click", () => {
     state.theme = state.theme === "dark" ? "light" : "dark";
     applyTheme();
@@ -209,12 +211,14 @@ function paint() {
     button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
   });
   if (state.report && state.report.board) state.bay = state.report.board;
+  paintShiftLead(copy);
   paintTabs();
   paintScenarios();
   paintBay();
   paintRecover();
   paintAnalyze();
   paintVerify();
+  if (typeof paintAi === "function") paintAi();
   if (state.running && !state.report) $("#status").textContent = copy.working;
   else if (state.report) $("#status").textContent = state.report.blocked ? copy.refused : doneStatus(state.report);
   else $("#status").textContent = "";
@@ -224,9 +228,9 @@ function paintTabs() {
   const copy = t();
   const host = $("#tabs");
   host.innerHTML = "";
-  const tips = { recover: copy.tabRecoverTip, analyze: copy.tabAnalyzeTip, verify: copy.tabVerifyTip };
+  const tips = { recover: copy.tabRecoverTip, analyze: copy.tabAnalyzeTip, verify: copy.tabVerifyTip, ai: copy.tabAiTip };
   const fabTabs = fabEnabled() ? window.Fab.tabs() : [];
-  const base = [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify]];
+  const base = [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify], ["ai", copy.tabAi]];
   for (const [id, label] of [...fabTabs, ...base]) {
     if (fabTabs.length && id === "recover") {
       const gap = document.createElement("span");
@@ -256,9 +260,9 @@ function fabEnabled() {
 
 function showPanel() {
   const fab = fabEnabled() && state.tab.startsWith("fab-");
-  for (const id of ["recover", "analyze", "verify"]) {
+  for (const id of ["recover", "analyze", "verify", "ai"]) {
     const panel = $(`#panel-${id}`);
-    panel.hidden = fab || state.tab !== id;
+    if (panel) panel.hidden = fab || state.tab !== id;
   }
   const fabPanel = $("#panel-fab");
   if (fabPanel) fabPanel.hidden = !fab;
@@ -2771,4 +2775,84 @@ function escapeHtml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+// AI shift lead study progress: the latest <out>.progress.json, polled every 5 s.
+async function pollShiftLead() {
+  let response;
+  try {
+    response = await fetch("/api/shift-lead/status", { cache: "no-store" });
+  } catch (_error) {
+    response = null;
+  }
+  if (response && response.status === 404) return;
+  if (response && response.ok) {
+    state.shiftLead = await response.json();
+    paintShiftLead(t());
+  }
+  setTimeout(pollShiftLead, 5000);
+}
+
+function clockText(seconds) {
+  if (seconds === null || seconds === undefined) return "?";
+  const total = Math.max(0, Math.round(seconds));
+  const h = Math.floor(total / 3600);
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+function msText(value) {
+  if (value === null || value === undefined) return "-";
+  return value < 1000 ? `${Math.round(value)}ms` : `${(value / 1000).toFixed(1)}s`;
+}
+
+function paintShiftLead(copy) {
+  const box = $("#sl-progress");
+  if (!box) return;
+  const body = state.shiftLead;
+  box.hidden = !(body && body.available);
+  if (box.hidden) return;
+  const words = copy.shiftLead || {};
+  const runs = body.runs || { done: 0, total: 0 };
+  const current = body.current;
+  const sim = body.sim || {};
+  const live = body.status === "running" && current && sim.pct !== null && sim.pct !== undefined;
+  const share = live ? sim.pct / 100 : runs.total ? runs.done / runs.total : 0;
+  const status = words[body.status] || body.status;
+  const index = current ? current.index : runs.done;
+  const where = current ? ` · ${current.book} s${current.seed} · ${current.arm}` : "";
+  $("#sl-title").textContent = words.title || "";
+  $("#sl-head").textContent = `${status} · ${words.runs} ${index}/${runs.total}${where}${body.stale ? ` · ${words.stale}` : ""}`;
+  box.classList.toggle("stale", Boolean(body.stale));
+  box.classList.toggle("failed", body.status === "failed");
+  $("#sl-fill").style.width = `${Math.max(0, Math.min(1, share)) * 100}%`;
+  const simLine = $("#sl-sim");
+  simLine.hidden = !live;
+  if (live) simLine.textContent = `${words.sim} ${sim.t_h.toFixed(1)}/${Math.round(sim.horizon_h)} h · ${Math.round(sim.pct)}%`;
+  const ai = live ? body.ai || {} : body.totals || {};
+  const causes = Object.entries(ai.fallbacks || {})
+    .filter(([, count]) => count)
+    .map(([kind, count]) => `${words[kind] || kind} ${count}`);
+  const budget = live && ai.budget !== null && ai.budget !== undefined ? `/${ai.budget}` : "";
+  $("#sl-counts").textContent = [
+    `${words.exceptions} ${ai.exceptions || 0}`,
+    `${words.calls} ${ai.calls || 0}${budget}`,
+    `${words.accepted} ${ai.accepted || 0}`,
+    `${words.fallback} ${ai.fallback || 0}${causes.length ? ` (${causes.join(", ")})` : ""}`,
+  ].join(" · ");
+  const latency = (body.ai && body.ai.latency_ms) || {};
+  const latencyLine = $("#sl-latency");
+  const waiting = live && body.ai && body.ai.wait_s !== null && body.ai.wait_s !== undefined;
+  latencyLine.hidden = latency.avg === null || latency.avg === undefined ? !waiting : false;
+  let latencyText = latency.avg === null || latency.avg === undefined ? "" : `${words.latency} ${msText(latency.avg)} / ${msText(latency.last)}`;
+  if (waiting) latencyText += `${latencyText ? " · " : ""}${words.waiting} ${Math.round(body.ai.wait_s)}s`;
+  latencyLine.textContent = latencyText;
+  let timing = `${words.elapsed} ${clockText(body.elapsed_s)}`;
+  if (body.status === "running") {
+    const eta = body.eta_s !== null && body.eta_s !== undefined ? clockText(body.eta_s) : body.run_eta_s !== null && body.run_eta_s !== undefined ? `>${clockText(body.run_eta_s)}` : "?";
+    timing += ` · ${words.eta} ${eta}`;
+  }
+  if (body.status === "failed" && body.error) timing += ` · ${body.error}`;
+  $("#sl-time").textContent = timing;
 }
