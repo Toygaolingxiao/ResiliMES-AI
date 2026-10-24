@@ -136,6 +136,15 @@ The image sets `RESILIMES_MODE=mock`.
 wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh
 ```
 
+The script reads the Postgres login from `~/.config/fab-mes/env` in WSL (`FAB_PG_USER` / `FAB_PG_PASSWORD`, or the older `POSTGRES_USER` / `POSTGRES_PASSWORD`) and the Zetaris admin login from `~/zetaris-platform/.env` (or `ZETARIS_USER` / `ZETARIS_PASSWORD` in the same fab-mes file). It never creates a new password for an existing `fab-mes` container.
+
+`.gitattributes` keeps every text file LF on Windows. A clone made before it may still hold CRLF copies (bash then fails with `set: pipefail: invalid option name`). Refresh them once from PowerShell (commit or stash local edits under `scripts/` and `data/` first):
+
+```powershell
+Remove-Item scripts\*.sh, data\sql\*.sql, data\smt2020\*
+git checkout -- scripts data
+```
+
 The same script on the Linux tree is `bash scripts/zetaris_setup.sh`. It loads the sample warehouse and the full SMT2020 fab (`data/sql/seed.sql`, `data/sql/smt2020_seed.sql`), writes the API key to `~/.config/fab-mes/api-key` and does not print it. `python scripts/check_zetaris_smt.py` then prints per-table row counts through Zetaris and `PARITY OK` against `data/smt2020`. The recipe is [docs/ZETARIS.md](docs/ZETARIS.md).
 
 4. Set `ZETARIS_REST_URL`, `ZETARIS_ORG_ID`, `ZETARIS_API_KEY`, `ZETARIS_TABLE_SOURCES`, and `ZETARIS_TIMEOUT_S`. The SQL path default is `/sql-editor/sqls/run-query`.

@@ -31,8 +31,9 @@ only `public` is visible. Tables are addressed as `<datasource>.<table>`.
 The `smt_*` tables are the SMT2020 fab (next section).
 
 `CREATE DATASOURCE` is sent through `run-query`. `DESCRIBE BY` allows only
-`[A-Za-z0-9_.,-]`, so the description is `fab_mes.resilimes` and the JDBC user
-and password are alphanumeric. `REGISTER DATASOURCE TABLES FROM <name>` follows.
+`[A-Za-z0-9_.,-]`, so the descriptions are `ResiliMES_MES.fab_mes`,
+`Maintenance_CMMS.fab_cmms` and `ERP_materials_bom.fab_erp` (as in the owner's
+verified setup) and the JDBC user and password are alphanumeric. `REGISTER DATASOURCE TABLES FROM <name>` follows.
 `DROP DATASOURCE VIEW` also unregisters a table of the same name, so this
 recipe never creates those views. A cross-datasource view fails with
 `NoSuchElementException`. The client keeps a per-table source map instead.
@@ -169,6 +170,12 @@ fails loudly and `auto` falls back to files with the fallback label.
 
 ## One-command reload
 
+All text files are LF on every checkout (`.gitattributes`). A Windows clone
+made before that file existed may still have CRLF in `scripts/*.sh` and
+`data/sql/*.sql` (bash then fails with `set: pipefail: invalid option name`);
+re-checkout once as shown in the README. The SMT2020 hashes and the seed
+renderer also read CRLF as LF, so parity does not depend on line endings.
+
 From Windows:
 
 ```bash
@@ -181,28 +188,41 @@ Arguments replace that list (paths may be relative to the repository).
 is idempotent: every run rebuilds schema `resilimes` in all three databases from
 exactly the seeds given, so list every seed you want to keep.
 
-1. Create or start Docker network `fab-net` and container `fab-mes`
-   (`postgres:16-alpine`, `127.0.0.1:5433`).
-2. Attach `zetaris-driver-1` when that container exists.
-3. Write `~/.config/fab-mes/env` once (`POSTGRES_USER`, `POSTGRES_PASSWORD`,
-   mode `0600`). A later run reuses it. If the container already exists and
-   the file is missing, the script stops instead of inventing a password.
-4. Read `ZETARIS_ADMIN_EMAIL` and `ZETARIS_ADMIN_PASSWORD` from
-   `~/zetaris-platform/.env`.
-5. Split the SQL by table. Each database file starts with
+1. Read `~/.config/fab-mes/env` without sourcing it (CR stripped, last value
+   wins). The Postgres login is `FAB_PG_USER` / `FAB_PG_PASSWORD`; an older file
+   with `POSTGRES_USER` / `POSTGRES_PASSWORD` still works. When neither the file
+   nor the container exists, the file is written once (`FAB_PG_USER=fab`, a
+   24-character alphanumeric `FAB_PG_PASSWORD`, mode `0600`). If the container
+   exists and the file is missing, the script stops instead of inventing a
+   password.
+2. Create or start Docker network `fab-net` and container `fab-mes`
+   (`postgres:16-alpine`, `127.0.0.1:${FAB_PORT:-5433}`, `POSTGRES_DB=fab_mes`,
+   volume `fab-mes-data`, `--restart unless-stopped`). Attach
+   `${DRIVER_CONTAINER:-zetaris-driver-1}` to `fab-net` when it exists.
+3. Split the SQL by table. Each database file starts with
    `DROP SCHEMA IF EXISTS resilimes CASCADE` and then only that database's
-   tables, so a reload does not leave another source's tables behind.
-6. `DROP` / `CREATE` / `REGISTER` the three datasources. A missing datasource
-   makes `DROP` return 400, which is ignored.
-7. Login at `POST http://localhost:3000/api/auth/login`. The id token lasts
-   about 900 seconds. Mint `POST /auth/api-key` with name `resilimes-ai` when
-   `~/.config/fab-mes/api-key` is absent (mode `0600`). A user can hold three
-   keys, so the file is reused.
-8. `SELECT * FROM <datasource>.<table> LIMIT 1` for every table that was
-   loaded, then the federated join below when the sample tables were loaded.
+   tables, so a reload does not leave another source's tables behind. Create
+   `fab_cmms` / `fab_erp` when missing and load all three.
+4. Zetaris admin login: `ZETARIS_ADMIN_EMAIL` / `ZETARIS_ADMIN_PASSWORD` from
+   `${ZETARIS_HOME:-~/zetaris-platform}/.env`, else `ZETARIS_USER` /
+   `ZETARIS_PASSWORD` from `~/.config/fab-mes/env` (email defaults to
+   `admin@zetaris.com`). REST base: `ZETARIS_REST_URL`, else `ZETARIS_API`,
+   else `http://127.0.0.1:8888/api/v1.0`. `POST http://localhost:3000/api/auth/login`
+   (override with `ZETARIS_BASE_URL`).
+5. With the login `idToken` (Bearer, `X-Org-ID`, a fresh `X-Request-ID`):
+   `SHOW DATASOURCES`; `DROP DATASOURCE` only for the ones that exist (a 400 is
+   still ignored); `CREATE DATASOURCE`; `REGISTER DATASOURCE TABLES FROM`;
+   `SHOW TABLES FROM` (logged).
+6. `SELECT * FROM <datasource>.<table>` for every table that was loaded
+   (rows and column counts logged), then the federated join below when the
+   sample tables were loaded.
+7. When `~/.config/fab-mes/api-key` is absent (and `ZETARIS_API_KEY` is not
+   set), mint `POST /auth/api-key` with name `resilimes-ai` and store it there
+   (mode `0600`). A failed mint is reported but does not fail the reload; the
+   app then needs `ZETARIS_API_KEY` in `.env`.
 
-The script never prints the password, the admin password, the id token, or the
-API key. Those strings are scrubbed from the registration log.
+The script never prints the Postgres password, the admin email or password,
+the id token, or the API key. Those strings are scrubbed from the registration log.
 
 `scripts/load_zetaris.py` does not send SQL anymore. It prints this recipe.
 
