@@ -1141,7 +1141,24 @@ class _Sim:
     def ped(self, lot: int, moment: float) -> float:
         if self.cqt_at[lot] < 0 or self.deadline[lot] <= 0:
             return 0.0
+        if self.r2:
+            return self.qtime_grade(lot, moment)
         return ped_risk(self.deadline[lot] - moment, self.cqt_limit[lot], 6.0)
+
+    def qtime_grade(self, lot: int, moment: float) -> float:
+        """Q-time r2 graded urgency in [0, 1] (ResiliMES), the PED slot of the tiered key.
+
+        ``slack = deadline - now - need``, where ``need`` is the process and
+        transport time still due before the target (``qtime_need``), so a lot
+        at an upstream step of the span is graded by its own latest start.
+        Grade ``1 - slack / limit``, clipped to [0, 1]: 0 with a full window
+        of slack, rising linearly, 1 at the latest start. Past it the grade
+        stays 1 (monotonic). Only for a lot inside an open window.
+        """
+        if not self.in_window(lot) or self.cqt_limit[lot] <= 0:
+            return 0.0
+        slack = self.deadline[lot] - moment - self.qtime_need(lot)
+        return 1.0 - min(1.0, max(0.0, slack / self.cqt_limit[lot]))
 
     def next_pm_start(self, tool: int, moment: float) -> float | None:
         found: float | None = None

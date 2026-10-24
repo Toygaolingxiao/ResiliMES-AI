@@ -254,3 +254,75 @@ def test_open_window_lot_is_admitted_to_a_capped_shortlist() -> None:
 def test_shortlist_admission_is_resilimes_only() -> None:
     result = _run(_crowded_b_fab(), policy="edd", horizon=25_000.0)
     assert result.qtime_shortlist_added == 0
+
+
+# Fix 2: graded urgency -------------------------------------------------------
+
+
+def _sim(fab, policy="resilimes", r2_policy=True):
+    from resilimes.smt.simulate import _Sim
+
+    return _Sim(
+        fab,
+        policy=policy,
+        seed=1,
+        horizon=10_000.0,
+        downs=[[] for _ in fab.tool_name],
+        pm=[[] for _ in fab.tool_name],
+        hot_lot=None,
+        hot_due=None,
+        promote_hot=False,
+        trace=False,
+        focus_down_until=0.0,
+        r2_policy=r2_policy,
+    )
+
+
+def _three_step_fab() -> Fab:
+    """Route A, B, B with a 1000 s window from the A step to the second B step.
+
+    ``L_AB`` sits at the first B step (an upstream step of the span) and
+    ``L_B`` at the target. B takes 300 s; B to B is a same-bay move (60 s).
+    """
+    fab = _two_family_fab(cqt_limit=1000.0)
+    route = fab.routes[0]
+    route.family[:] = [0, 1, 1]
+    route.cycle[:] = [100.0, 300.0, 300.0]
+    route.recipe[:] = [0, 0, 0]
+    route.batch_min[:] = [0, 0, 0]
+    route.batch_max[:] = [0, 0, 0]
+    route.cqt_limit[:] = [1000.0, 0.0, 0.0]
+    route.cqt_target[:] = [2, -1, -1]
+    route.remain[:] = [700.0, 600.0, 300.0]
+    route.step_index.clear()
+    route.step_index.update({1: 0, 2: 1, 3: 2})
+    route.dedicate_root[:] = [-1, -1, -1]
+    fab.lot_step[:] = [1, 2]
+    return fab
+
+
+def test_graded_urgency_is_monotonic_and_peaks_at_the_latest_start() -> None:
+    sim = _sim(_three_step_fab())
+    for lot in (0, 1):
+        sim.open_window(lot, 0, 2, 1000.0, 0.0, inherited=True)
+    # Target lot: need 0, latest start 1000 s.
+    grades = [sim.qtime_grade(1, t) for t in (0.0, 250.0, 500.0, 999.0, 1000.0, 1500.0)]
+    assert grades == sorted(grades)
+    assert grades[0] == 0.0 and grades[2] == 0.5
+    assert grades[4] == 1.0 and grades[5] == 1.0
+    # Upstream lot: still needs 300 s at B plus the 60 s move, so its latest
+    # start here is 640 s and it is graded ahead of the target lot.
+    assert sim.qtime_need(0) == 360.0
+    assert sim.qtime_grade(0, 640.0) == 1.0
+    assert sim.qtime_grade(0, 320.0) > sim.qtime_grade(1, 320.0)
+    # Same value through the PED slot of the tiered key; 0 outside a window.
+    assert sim.ped(1, 500.0) == 0.5
+    sim.close_window(1, "met")
+    assert sim.ped(1, 500.0) == 0.0
+
+
+def test_graded_urgency_is_resilimes_only() -> None:
+    sim = _sim(_three_step_fab(), r2_policy=False)
+    sim.open_window(1, 0, 2, 1000.0, 0.0, inherited=True)
+    # The PR #18 PED curve (exp) is kept for the ablation: not linear.
+    assert sim.ped(1, 500.0) != 0.5
