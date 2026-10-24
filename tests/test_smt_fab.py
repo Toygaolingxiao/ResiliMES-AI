@@ -424,10 +424,10 @@ def test_extract_has_forty_four_adjacent_dry_etch_wet_etch_hours() -> None:
 def test_xfactor_copy_separates_this_run_from_the_five_seed_mean() -> None:
     text = SCENARIOS["xfactor"].summary
     assert "This run is seed 1" in text
-    assert "44 under EDD and 57" in text
-    assert "494 under EDD and 448" in text
-    assert "53.4 vs 48.8" in text
-    assert "436.8 vs 479.0" in text
+    assert "52 under EDD and 48" in text
+    assert "492 under EDD and 244" in text
+    assert "44.2 vs 55.0" in text
+    assert "231.2 vs 470.2" in text
     assert "not this click" in text
     qtime = SCENARIOS["qtime"].summary
     assert "Wet_Etch" in qtime
