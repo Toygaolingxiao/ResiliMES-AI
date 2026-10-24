@@ -5,7 +5,9 @@ and only at a bounded look-ahead inside that queue. Breakdown clocks are
 exponential MTTF/MTTR from ``downcal.txt``, one clock per tool. Every policy
 refuses a start that falls inside a PM or whose process would cross the next PM.
 
-Transport (``fromto`` is one Fab-to-Fab row), operators, reticle copies, and
+Transport is a fixed move between steps (same STNGRP bay 1 min, other bay
+3 min, ``transport_seconds``), the same for every policy; the SMT2020
+``fromto`` row (one Fab-to-Fab distribution) is not used. Operators, reticle copies, and
 the published fractional rework probability are not in this loop. A litho
 layer with ``SVESTN`` / ``FORSTEP`` stays on the scanner that ran the first
 layer of that chain, once this run has chosen it. WIP does not name a tool,
@@ -14,8 +16,8 @@ when a tool breaks goes to rework: it waits ``REWORK_SEC`` (30 minutes), then
 redoes the whole operation from the family queue on any qualified tool. No
 start is ever made on a tool inside a down window. A litho lot whose
 dedicated scanner is down may run on another scanner of the family and is
-re-pinned there. A lot becomes ready for the next step when the current step
-ends. Same-recipe lots batch together even when their step numbers differ.
+re-pinned there. A lot becomes ready for the next step one transport time
+after the current step ends. Same-recipe lots batch together even when their step numbers differ.
 """
 
 from __future__ import annotations
@@ -31,18 +33,22 @@ from resilimes.smt.fab import (
     BATCH_MAX_WAIT_SEC,
     HOT_BATCH_WAIT_SEC,
     LOOKAHEAD,
+    QTIME_URGENT_MARGIN_SEC,
     REWORK_SEC,
     WIP_FLOOR,
     WIP_PER_TOOL,
     Fab,
     lot_number,
     measured,
+    transport_seconds,
 )
 
 _DONE = 0
 _DOWN_START = 1
 _DOWN_END = 2
 _WAKE = 3
+# A lot reaches the next family's queue after its transport. The slot holds the lot.
+_ARRIVE = 4
 _BIN_SEC = 900.0
 _WAFERS = 25
 # Due dates in the X-factor book. Middle of the 2.5-3 range.
@@ -115,6 +121,12 @@ class RunResult:
     # and Q-time windows that ended because their target step was skipped.
     skipped: int = 0
     qtime_skipped: int = 0
+    # Q-time-urgent overrides (ResiliMES only): starts led by a lot that would
+    # miss its open dataset CQT window, ahead of the lot the plain tiered key
+    # picks. Counted by the class of the displaced lot.
+    transport: bool = True
+    qtime_overrides: int = 0
+    qtime_override_displaced: dict[str, int] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -284,6 +296,7 @@ def run_policy(
     bar_family: int | None = None,
     bar_until: float | None = None,
     record: bool = False,
+    transport: bool = True,
 ) -> RunResult:
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
@@ -303,6 +316,7 @@ def run_policy(
         bar_family=bar_family,
         bar_until=bar_until,
         record=record,
+        transport=transport,
     )
     return sim.run()
 
@@ -367,9 +381,11 @@ class _Sim:
         bar_family: int | None = None,
         bar_until: float | None = None,
         record: bool = False,
+        transport: bool = True,
     ) -> None:
         self.fab = fab
         self.record = record
+        self.transport = transport
         self.events: list[tuple[Any, ...]] = []
         self.policy = policy
         self.seed = seed
@@ -463,6 +479,10 @@ class _Sim:
         self.qtime_skipped = 0
         self.lot_no = [lot_number(name, lot) for lot, name in enumerate(fab.lot_id)]
         self.class_starts: dict[str, int] = {}
+        self.overrides = 0
+        self.override_displaced: dict[str, int] = {}
+        # Set by choose(): (lead lot, displaced lot, remaining s, need s).
+        self.pending_override: tuple[int, int, float, float] | None = None
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -494,6 +514,8 @@ class _Sim:
                 self.complete(tool, moment, gen)
             elif kind == _DOWN_START:
                 self.down_start(tool, moment)
+            elif kind == _ARRIVE:
+                self.enqueue(tool, moment)
             elif kind in (_DOWN_END, _WAKE):
                 self.release_idle(tool)
                 self.try_start(tool, moment)
@@ -518,6 +540,20 @@ class _Sim:
         elif self.depth[fam] <= self.threshold[fam]:
             self.seen_over[fam] = False
         self.wake_family(fam)
+
+    def send(self, lot: int, moment: float, origin: int, target: int) -> None:
+        """Queue the lot at ``target`` once it has been moved there from ``origin``."""
+        move = self.move_seconds(origin, target)
+        if move <= 0:
+            self.enqueue(lot, moment)
+        else:
+            self.push(moment + move, _ARRIVE, lot)
+
+    def move_seconds(self, origin: int, target: int) -> float:
+        """Transport from one family to the next. 0 only for the no-transport ablation."""
+        if not self.transport:
+            return 0.0
+        return transport_seconds(self.fab, origin, target)
 
     def wake_family(self, fam: int) -> None:
         """Every idle tool in the family gets one look.
@@ -637,6 +673,13 @@ class _Sim:
                 chosen = [single]
                 reason = ""
         wake_at = batch_wake if not chosen else None
+        self.pending_override = None
+        if chosen and self.policy == "resilimes":
+            urgent = self.qtime_urgent(chosen[0], moment)
+            if urgent is not None:
+                plain = min(feasible, key=lambda lot: self.plain_rank(lot, tool, moment))
+                if plain not in chosen:
+                    self.pending_override = (chosen[0], plain, urgent[0], urgent[1])
         self._sample(t0, True)
         return chosen, wake_at, reason
 
@@ -683,7 +726,8 @@ class _Sim:
         if self.fab.families[route.family[index]].group != "Wet_Etch":
             return None
         target = route.family[index + 1]
-        return self._earliest_tool(target, moment + proc)
+        move = self.move_seconds(route.family[index], target)
+        return self._earliest_tool(target, moment + proc + move)
 
     def _earliest_tool(self, target: int, arrival: float) -> float | None:
         family = self.fab.families[target]
@@ -757,6 +801,10 @@ class _Sim:
         """
         if wafers >= floor:
             return "min_met", None
+        if self.policy == "resilimes" and any(
+            self.qtime_urgent(lot, moment) is not None for lot in taken
+        ):
+            return "qtime_urgent", None
         cap_at = min(self.ready[lot] for lot in group) + BATCH_MAX_WAIT_SEC
         hot = [self.ready[lot] for lot in taken if self.tier(lot) < 2]
         if hot and min(hot) + HOT_BATCH_WAIT_SEC < cap_at:
@@ -795,10 +843,64 @@ class _Sim:
         if self.policy == "resilimes":
             slack = self._slack(lot, moment)
             late = 0.0 if slack <= 0.0 else 1.0
-            return (float(self.tier(lot)), late, slack, self.ready[lot], lot)
+            band = float(self.urgency_band(lot, moment))
+            return (band, float(self.tier(lot)), late, slack, self.ready[lot], lot)
         return (self.ready[lot], self.due[lot], lot)
 
     def rank(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
+        if self.policy == "resilimes":
+            return (float(self.urgency_band(lot, moment)), *self.plain_rank(lot, tool, moment))
+        return self.plain_rank(lot, tool, moment)
+
+    def qtime_need(self, lot: int) -> float:
+        """Seconds the lot still needs before its CQT target can start.
+
+        Dataset process time of the current step and of each later measured
+        step before the target, plus the fixed transport legs between them and
+        into the target. No setup.
+        """
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        here = self.step[lot]
+        target = self.cqt_at[lot]
+        number = self.lot_no[lot]
+        need = 0.0
+        last = here
+        for index in range(here, target):
+            if index == here or measured(route, index, number):
+                if index != here:
+                    need += self.move_seconds(route.family[last], route.family[index])
+                need += route.cycle[index]
+                last = index
+        if last != target:
+            need += self.move_seconds(route.family[last], route.family[target])
+        return need
+
+    def qtime_urgent(self, lot: int, moment: float) -> tuple[float, float] | None:
+        """(remaining, need) when the open dataset CQT window is lost unless started now.
+
+        Only a lot inside an open window (opened at the end of a step whose
+        SMT2020 CQT column is set) can be urgent. Urgent means
+        ``need <= remaining <= need + QTIME_URGENT_MARGIN_SEC``.
+        """
+        target = self.cqt_at[lot]
+        if target < 0 or self.deadline[lot] <= 0 or self.step[lot] > target:
+            return None
+        remaining = self.deadline[lot] - moment
+        if remaining < 0:
+            return None
+        need = self.qtime_need(lot)
+        if remaining < need or remaining > need + QTIME_URGENT_MARGIN_SEC:
+            return None
+        return remaining, need
+
+    def urgency_band(self, lot: int, moment: float) -> int:
+        """0 VIP/hot that is late or Q-time-urgent, 1 other Q-time-urgent, 2 the rest."""
+        urgent = self.qtime_urgent(lot, moment) is not None
+        if self.tier(lot) < 2 and (urgent or self._slack(lot, moment) <= 0.0):
+            return 0
+        return 1 if urgent else 2
+
+    def plain_rank(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
         if self.policy == "fifo":
             return (self.ready[lot], self.due[lot], lot)
         if self.policy == "edd":
@@ -975,6 +1077,17 @@ class _Sim:
         self.piece_proc[tool] = piece
         if self.overlaps_pm(tool, moment, piece):
             self.pm_overlaps += 1
+        override = self.pending_override
+        self.pending_override = None
+        if override is not None and override[0] == started[0]:
+            lead, plain, remaining, need = override
+            displaced = ("VIP", "hot", "normal")[self.tier(plain)]
+            self.overrides += 1
+            self.override_displaced[displaced] = self.override_displaced.get(displaced, 0) + 1
+            if self.record:
+                self.events.append(
+                    ("override", moment, tool, lead, steps[0], plain, remaining, need, displaced)
+                )
         if self.record:
             self.events.append(
                 ("start", moment, tool, tuple(started), tuple(steps), finish, reason, tuple(chosen))
@@ -1013,7 +1126,8 @@ class _Sim:
         if self.record:
             self.events.append(("reclean", moment, lot, index, origin))
         self.step[lot] = origin
-        self.enqueue(lot, moment)
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        self.send(lot, moment, fam, route.family[origin])
         return True
 
     def account(
@@ -1099,7 +1213,7 @@ class _Sim:
             self.finished_at[lot] = moment
             return
         self.step[lot] = nxt
-        self.enqueue(lot, moment)
+        self.send(lot, moment, route.family[index], route.family[nxt])
 
     def _leave_tool(self, lot: int, index: int) -> None:
         self.lot_tool[lot] = -1
@@ -1251,6 +1365,9 @@ class _Sim:
             repins=self.repins,
             skipped=self.skipped,
             qtime_skipped=self.qtime_skipped,
+            transport=self.transport,
+            qtime_overrides=self.overrides,
+            qtime_override_displaced=dict(sorted(self.override_displaced.items())),
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)

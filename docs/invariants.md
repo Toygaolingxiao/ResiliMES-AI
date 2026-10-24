@@ -30,9 +30,11 @@ Weights, due dates, tool sets, and seeds are unchanged. This is a correctness fi
 | `pm_overlap` | no processing window crosses a PM window |
 | `batch` | a multi-lot start is a batch step for every member (each on its own route step), one recipe, within capacity |
 | `batch_all_started` | every lot the dispatcher chose for a start started (fab-logic-r1) |
-| `batch_min` | a batch under BATCHMN started only with a logged reason: `hot_cap`, `max_wait`, or `no_arrivals` (fab-logic-r1) |
+| `batch_min` | a batch under BATCHMN started only with a logged reason: `hot_cap`, `max_wait`, `no_arrivals` (fab-logic-r1), or `qtime_urgent` (qtime-urgent) |
 | `qtime_recount` | Q-time violations recounted from the trace (strict `>`) match the reported count |
 | `sampling` | a lot skips only the metrology steps the lot-ID rule leaves unmeasured, and never runs one (its snapshot step excepted) (fab-logic-r1) |
+| `qtime_override` | every logged Q-time-urgent override is a ResiliMES start whose leading lot is inside an open dataset CQT window, on a step from the CQT origin up to its target, with need <= remaining <= need + 900 s, and is followed at once by the start that lot leads (qtime-urgent) |
+| `transport` | every start is at least the fixed transport time after the lot's previous step ended (or after its re-clean was ordered): 60 s inside one STNGRP station group, 180 s across groups, 0 when the run has transport off (qtime-urgent) |
 
 Run it on the full fab:
 
@@ -147,3 +149,32 @@ Seeds 9-13 control, sums over five seeds:
 | tight_vip | smt_rule | 100,288 | 0 |
 
 Start counts rose against the table above mainly because every lot chosen for a batch now starts (before, about half were dropped) and because one breakdown can cause a second start of the same step (rework). Skipped metrology steps are not starts.
+
+## qtime-urgent sweep, seeds 1-5 summed
+
+`make smt-invariants` after the Q-time-urgent override (ResiliMES only) and the fixed lot transport (all policies). Fifteen checks, the same four books, five policies and five seeds: 100 runs, 4 worker processes, 85 s wall clock on the 8-core box. Every check is 0 on every run, including the two new ones.
+
+| Book | Policy | Starts | Failures, all 15 checks |
+| --- | --- | ---: | ---: |
+| published | resilimes | 196,380 | 0 |
+| published | edd | 180,261 | 0 |
+| published | fifo | 185,309 | 0 |
+| published | cr | 184,702 | 0 |
+| published | smt_rule | 198,976 | 0 |
+| xfactor_eta600 | resilimes | 195,276 | 0 |
+| xfactor_eta600 | edd | 179,393 | 0 |
+| xfactor_eta600 | fifo | 184,935 | 0 |
+| xfactor_eta600 | cr | 185,178 | 0 |
+| xfactor_eta600 | smt_rule | 197,224 | 0 |
+| pm_enforced | resilimes | 193,186 | 0 |
+| pm_enforced | edd | 177,406 | 0 |
+| pm_enforced | fifo | 182,113 | 0 |
+| pm_enforced | cr | 181,936 | 0 |
+| pm_enforced | smt_rule | 196,227 | 0 |
+| tight_vip | resilimes | 99,052 | 0 |
+| tight_vip | edd | 97,889 | 0 |
+| tight_vip | fifo | 97,864 | 0 |
+| tight_vip | cr | 95,014 | 0 |
+| tight_vip | smt_rule | 99,741 | 0 |
+
+Start counts moved by under 1% against the fab-logic-r1 table: transport delays arrivals, so batches fill slightly differently. Details of the rule and the move model are in [QTIME_URGENT.md](QTIME_URGENT.md).

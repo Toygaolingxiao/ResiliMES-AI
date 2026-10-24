@@ -18,11 +18,11 @@ Team names. One line: "On the public SMT2020 benchmark, the supervisor gets a sc
 
 Lead with this slide. Horizon 48 hours from the 2018-01-01 snapshot. 56 lots are due inside the horizon. 10 of those lots are already late at the snapshot, so the maximum on-time count is 46/56.
 
-Five seeds, ResiliMES: 32, 32, 32, 32, 31 of 56 (159/280, mean 56.78%).
+Five seeds, ResiliMES: 32 of 56 on every seed (160/280, mean 57.14%).
 
-Five seeds, earliest-due: 33, 33, 32, 33, 32 of 56 (163/280, mean 58.21%).
+Five seeds, earliest-due: 33, 32, 32, 32, 32 of 56 (161/280, mean 57.50%).
 
-Earliest-due is ahead by 4 pooled lots on on-time delivery, and slightly ahead on weighted tardiness (19,033 minutes against 19,095). ResiliMES has fewer Q-time violations (388.8 against 432.6) and re-cleans (47.0 against 57.2).
+Earliest-due is ahead by 1 pooled lot on on-time delivery, and ahead on weighted tardiness (19,702 minutes against 20,098). ResiliMES has fewer than half the Q-time violations (187.8 against 421.6) and fewer re-cleans (40.0 against 53.2).
 
 These are the published routes and the published dues. Nothing on this slide was retuned to manufacture a win.
 
@@ -30,10 +30,10 @@ These are the published routes and the published dues. Nothing on this slide was
 
 Same fab. Three books. Read them in this order.
 
-- Published dues, above. Earliest-due wins on on-time (163 against 159 of 280). ResiliMES does not win this book.
-- X-factor dues (remaining process time times 2.75, 87 lots, 48 hours). Five-seed mean: ResiliMES and earliest-due both 99.54% on time (433/435 pooled), weighted tardiness 0.76 minutes each. Both beat FIFO (47.1%) and critical ratio (76.6%). Five-seed means for the side metrics: Q-time violations 436.8 vs 479.0 (ResiliMES fewer), re-cleans 53.4 vs 48.8 (ResiliMES more). The console click is seed 1, and the cards on that click are earliest-due 87/87 against ResiliMES 87/87, re-cleans 44 to 57, Q-time 494 to 448. Speak the cards. The five-seed mean is the line under the cards.
-- Tight VIP dues. This book rewrites the dues. It is a stress test, not the published order book. 21 lots, 24 hours. ResiliMES is 5/21, 6/21, 6/21, 6/21, 5/21 (28/105). Earliest-due is 4/21, 4/21, 3/21, 4/21, 4/21 (19/105). Seed 1 weighted tardiness is 6,842.1 under earliest-due and 3,616.9 under ResiliMES. `Init_Lot_2_13` is the save on this book (5.03 h late under earliest-due, on time under ResiliMES).
-- Every number on these slides is after the simulator stale-queue fix and the fab-logic-r1 operation logic ([FAB_LOGIC_R1.md](FAB_LOGIC_R1.md)), and passes the trace invariant checker with 0 violations ([invariants.md](invariants.md)).
+- Published dues, above. Earliest-due wins on on-time (161 against 160 of 280). ResiliMES does not win this book.
+- X-factor dues (remaining process time times 2.75, 87 lots, 48 hours). Five-seed mean: earliest-due 99.54% on time (433/435 pooled) against ResiliMES 99.08% (431/435), weighted tardiness 0.78 against 11.5 minutes. Earliest-due is ahead by 2 lots here. Both beat FIFO (45.3%) and critical ratio (76.1%). Five-seed means for the side metrics: Q-time violations 231.2 vs 470.2 (ResiliMES fewer), re-cleans 44.2 vs 55.0 (ResiliMES fewer). The console click is seed 1, and the cards on that click are earliest-due 87/87 against ResiliMES 87/87, re-cleans 52 to 48, Q-time 492 to 244. Speak the cards. The five-seed mean is the line under the cards.
+- Tight VIP dues. This book rewrites the dues. It is a stress test, not the published order book. 21 lots, 24 hours. ResiliMES is 6/21, 5/21, 5/21, 6/21, 5/21 (27/105). Earliest-due is 3/21, 3/21, 1/21, 3/21, 3/21 (13/105). Seed 1 weighted tardiness is 7,471.6 under earliest-due and 3,573.8 under ResiliMES. `Init_Lot_2_13` is the save on this book (5.66 h late under earliest-due, on time under ResiliMES).
+- Every number on these slides is after the simulator stale-queue fix and the fab-logic-r1 operation logic ([FAB_LOGIC_R1.md](FAB_LOGIC_R1.md)), the Q-time-urgent override and fixed lot transport ([QTIME_URGENT.md](QTIME_URGENT.md)), and passes the trace invariant checker with 0 violations ([invariants.md](invariants.md)).
 
 Screenshot: the X-factor cards from seed 1, then the tight VIP cards. The study line under the X-factor cards has to be visible so a judge can see which number is the click and which number is the five-seed mean.
 
