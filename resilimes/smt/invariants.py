@@ -20,11 +20,19 @@ Checks, one counter each:
   own route step), one recipe, within capacity.
 - ``batch_all_started``: every lot the dispatcher chose for a start started.
 - ``batch_min``: a batch under BATCHMN started only with a logged wait-rule
-  reason (``hot_cap``, ``max_wait``, ``no_arrivals``).
+  reason (``hot_cap``, ``max_wait``, ``no_arrivals``, ``qtime_urgent``).
 - ``qtime_recount``: Q-time violations recounted from the trace, with the
   simulator's strict ``>``, differ from the reported count.
 - ``sampling``: a lot skips only steps the lot-ID rule leaves unmeasured,
   and never runs such a step (its snapshot step excepted).
+- ``qtime_override``: a Q-time-urgent override happens only under ResiliMES,
+  only on a lot inside an open window that a dataset CQT step opened (so never
+  on a step outside a CQT origin-to-target span), only while the window can
+  still be met (need <= remaining <= need + margin), and is followed at once
+  by the start that lot leads.
+- ``transport``: every start of a lot comes at least the fixed transport time
+  (same STNGRP bay 1 min, other bay 3 min) after the lot's previous step
+  ended, or after the re-clean that sent it back to its CQT origin.
 
 This is a replay of the simulator's own events, not a second simulator.
 """
@@ -33,7 +41,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from resilimes.smt.fab import REWORK_SEC, Fab, lot_number, measured
+from resilimes.smt.fab import (
+    QTIME_URGENT_MARGIN_SEC,
+    REWORK_SEC,
+    Fab,
+    lot_number,
+    measured,
+    transport_seconds,
+)
 
 _WAFERS = 25
 CHECKS = (
@@ -50,8 +65,10 @@ CHECKS = (
     "batch_min",
     "qtime_recount",
     "sampling",
+    "qtime_override",
+    "transport",
 )
-UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals")
+UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent")
 
 
 def check_trace(
@@ -81,11 +98,45 @@ def check_trace(
     dropped_at = [-1.0] * n
     q_target = [-1] * n
     q_deadline = [0.0] * n
+    q_origin = [-1] * n
+    # (tool, time, lead lot) of an override not yet matched to its start.
+    open_override: tuple[int, float, int] | None = None
+    policy = str(getattr(result, "policy", ""))
+    moves = bool(getattr(result, "transport", True))
+    # (moment, family) the lot last left: a step end or a re-clean.
+    released: list[tuple[float, int] | None] = [None] * n
     holding: list[set[int]] = [set() for _ in fab.tool_name]
     violations = 0
     starts = 0
     for event in result.events:
         kind = event[0]
+        if open_override is not None:
+            o_tool, o_time, o_lot = open_override
+            ok = kind == "start" and event[2] == o_tool and event[1] == o_time
+            if not ok or event[3][0] != o_lot:
+                flag("qtime_override", f"{fab.lot_id[o_lot]} override not followed by its start")
+            open_override = None
+        if kind == "override":
+            _kind, moment, tool, lot, index, _plain, remaining, need, _displaced = event
+            route = fab.routes[fab.lot_route[lot]]
+            origin = q_origin[lot]
+            target = q_target[lot]
+            in_window = (
+                target >= 0
+                and 0 <= origin < index <= target
+                and route.cqt_limit[origin] > 0
+                and route.cqt_target[origin] == target
+                and step[lot] == index
+            )
+            exact = abs((q_deadline[lot] - moment) - remaining) < 1e-6
+            band = need - 1e-6 <= remaining <= need + QTIME_URGENT_MARGIN_SEC + 1e-6
+            if policy != "resilimes" or not in_window or not exact or not band:
+                flag(
+                    "qtime_override",
+                    f"{fab.lot_id[lot]} step {index} t={moment:.1f} target={target} origin={origin}",
+                )
+            open_override = (tool, moment, lot)
+            continue
         if kind == "start":
             _kind, moment, tool, lots, steps, finish, reason, chosen = event
             starts += 1
@@ -135,6 +186,14 @@ def check_trace(
                     flag("family", f"{lot_id} step {index} on {name}, needs {want}")
                 if running[lot] or step[lot] != index:
                     flag("route_order", f"{lot_id} started step {index}, next is {step[lot]}")
+                last = released[lot]
+                if last is not None:
+                    move = transport_seconds(fab, last[1], fam) if moves else 0.0
+                    if moment < last[0] + move - 1e-6:
+                        flag(
+                            "transport",
+                            f"{lot_id} step {index} at {moment:.1f}, left {last[0]:.1f}",
+                        )
                 start_step = fab.lot_step[lot]
                 number = lot_number(lot_id, lot)
                 if index != start_step and not measured(route, index, number):
@@ -155,6 +214,7 @@ def check_trace(
                     if moment > q_deadline[lot]:
                         violations += 1
                     q_target[lot] = -1
+                    q_origin[lot] = -1
                 running[lot] = True
                 holding[tool].add(lot)
         elif kind == "interrupt":
@@ -182,9 +242,11 @@ def check_trace(
             for held in holding:
                 held.discard(lot)
             route = fab.routes[fab.lot_route[lot]]
+            released[lot] = (moment, route.family[index])
             if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
                 q_deadline[lot] = moment + route.cqt_limit[index]
                 q_target[lot] = route.cqt_target[index]
+                q_origin[lot] = index
             step[lot] = index + 1
         elif kind == "skip":
             _kind, moment, lot, index = event
@@ -193,6 +255,7 @@ def check_trace(
                 flag("sampling", f"{fab.lot_id[lot]} skipped step {index}")
             if q_target[lot] == index:
                 q_target[lot] = -1
+                q_origin[lot] = -1
             step[lot] = index + 1
         elif kind == "reclean":
             _kind, moment, lot, index, origin = event
@@ -201,7 +264,9 @@ def check_trace(
             else:
                 flag("qtime_recount", f"{fab.lot_id[lot]} re-clean without a missed window")
             q_target[lot] = -1
+            q_origin[lot] = -1
             q_deadline[lot] = 0.0
+            released[lot] = (moment, fab.routes[fab.lot_route[lot]].family[index])
             step[lot] = origin
     horizon = float(result.horizon_sec)
     for lot, when in left_at.items():

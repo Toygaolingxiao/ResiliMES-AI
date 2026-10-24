@@ -50,6 +50,14 @@ REWORK_SEC = 1800.0
 # published book), so an urgent lot sees at least one dispatch on its family,
 # and a quarter of the shortest SMT2020 CQT limit (1 h). Not tuned across seeds.
 QTIME_URGENT_MARGIN_SEC = 900.0
+# Fixed lot transport between steps, the same for every policy. ResiliMES
+# assumption, not the SMT2020 value: fromto.txt has a single Fab-to-Fab row
+# (uniform 7.5 +/- 2.5 min) and every tool family's STNFAMLOC is "Fab", so the
+# dataset names no bays. The bay of a family is its STNGRP station group
+# (Dry_Etch, Litho, Wet_Etch, Delay, ...; 14 groups). Same group 1 min, other
+# group 3 min. No AMHS, no vehicle limit. Q-time windows keep running.
+TRANSPORT_SAME_BAY_SEC = 60.0
+TRANSPORT_OTHER_BAY_SEC = 180.0
 # ResiliMES parameter. Not an SMT2020 column.
 WIP_PER_TOOL = 2
 WIP_FLOOR = 8
@@ -95,6 +103,13 @@ class Route:
     sample_pct: list[float] = field(default_factory=list)
     # Published STEP number per step index, used by the sampling rule.
     step_no: list[int] = field(default_factory=list)
+
+
+def transport_seconds(fab: Fab, origin: int, target: int) -> float:
+    """Fixed move time from a family to the next: same STNGRP bay 1 min, else 3 min."""
+    if fab.families[origin].group == fab.families[target].group:
+        return TRANSPORT_SAME_BAY_SEC
+    return TRANSPORT_OTHER_BAY_SEC
 
 
 def lot_number(lot_id: str, fallback: int) -> int:

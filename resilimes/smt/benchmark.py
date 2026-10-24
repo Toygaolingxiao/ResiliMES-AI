@@ -62,6 +62,7 @@ _KEYS = (
     "repins",
     "skipped",
     "qtime_skipped",
+    "qtime_overrides",
 )
 
 _X_ETAS = (180.0, 300.0, 600.0, LITHO_MTTR_MIN)
@@ -154,6 +155,9 @@ def main() -> None:
     litho = _matrix(fab, horizon, ("resilimes", "edd"), kind="litho")
     pm = _matrix(fab, horizon, ("resilimes", "edd"), kind="pm")
     hot = _matrix(fab, horizon, ("resilimes", "fifo"), kind="hot")
+    still = _matrix(
+        fab, horizon, ("resilimes", "edd", "fifo", "cr", "smt_rule"), kind="no_transport"
+    )
     payload = {
         "horizon_h": horizon / 3600.0,
         "seeds": list(SEEDS),
@@ -176,6 +180,7 @@ def main() -> None:
         "litho": _pack(litho),
         "pm": _pack(pm),
         "hot": _pack(hot),
+        "steady_no_transport": _pack(still),
         "tight": _pack(_tight_matrix(fab)),
         "xfactor": _xfactor(fab),
         "repair_mc": _repair_mc(),
@@ -262,6 +267,7 @@ def _matrix(
                         "promote_hot": kind == "hot" and policy == "resilimes",
                         "trace": False,
                         "focus_down_until": forced_until,
+                        "transport": kind != "no_transport",
                     },
                 )
             )
@@ -414,6 +420,7 @@ def _public(result: RunResult) -> dict[str, Any]:
     row = {key: getattr(result, key) for key in ("seed", *_KEYS)}
     row["batch_reasons"] = dict(result.batch_reasons)
     row["class_wait_min"] = dict(result.class_wait_min)
+    row["qtime_override_displaced"] = dict(result.qtime_override_displaced)
     return row
 
 
@@ -581,6 +588,35 @@ def _busy_latency(payload: dict[str, Any]) -> str:
     )
 
 
+def _transport_note(payload: dict[str, Any]) -> str:
+    """Published book with and without the fixed lot transport, seeds 1-5."""
+    off = payload.get("steady_no_transport")
+    if not off:
+        return ""
+    lines = [
+        "### Lot transport (published book, with and without)",
+        "",
+        "Every table above moves a lot 1 min to a family in the same STNGRP bay "
+        "and 3 min to another bay, for every policy. This ablation turns the move "
+        "off and changes nothing else.",
+        "",
+        "| Policy | On-time with | On-time without | Q-time with | Q-time without "
+        "| Re-cleans with | Re-cleans without | Cycle h with | Cycle h without |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for policy, body in payload["steady"].items():
+        if policy not in off:
+            continue
+        on, no = body["mean"], off[policy]["mean"]
+        lines.append(
+            f"| {policy} | {on['on_time_pct']:.1f}% | {no['on_time_pct']:.1f}% "
+            f"| {on['qtime_violations']:.1f} | {no['qtime_violations']:.1f} "
+            f"| {on['recleans']:.1f} | {no['recleans']:.1f} "
+            f"| {on['cycle_time_h']:.2f} | {no['cycle_time_h']:.2f} |"
+        )
+    return "\n".join(lines)
+
+
 def _markdown(payload: dict[str, Any]) -> str:
     counts = payload["counts"]
     lines = [
@@ -718,6 +754,8 @@ def _markdown(payload: dict[str, Any]) -> str:
         _table(payload["hot"]),
         "",
         _hot_note(payload),
+        "",
+        _transport_note(payload),
         "",
         _heldout(payload),
         "",
