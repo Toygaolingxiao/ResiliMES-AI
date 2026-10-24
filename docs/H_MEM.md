@@ -56,8 +56,11 @@ without writing back, so held-out runs are independent.
 
 Scope note: H-MEM is evaluated minimally (store → recall → used in the
 decision; covered by the 13 conformance vectors + shift-memory tests). The
-`sim_hmem` arm runs in the same box study as `sim` and is reported in
-`study_sim_select/report.md`; no separate H-MEM benchmark was run.
+`sim_hmem` arm ran in the same box study as `sim` (real sim, no LLM, held-out
+seeds 9–13, 24 h): wt 14332.9 vs 14411.5 for `sim` and 14355.3 for `rules`;
+Q-time violations 37.0 vs 36.0 (`sim`) and 38.2 (`rules`); ≈58 of ≈150
+escalations per run skipped the twin via recalled cases. Small effects,
+5 seeds, not significant. No separate H-MEM benchmark was run.
 
 The live comparison (`sim_llm` vs `sim_llm_hmem`, Nemotron) runs on the PC
 with `python scripts\run_live_eval.py` (see [AI_SIM_SELECT.md](AI_SIM_SELECT.md)).

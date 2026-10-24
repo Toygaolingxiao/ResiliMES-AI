@@ -80,18 +80,24 @@ W/T/L counts seeds where the arm is better/tied/worse than `rules`.
 | rules | 14355.3 | 0 | – | 38.2 | 0 | – | 25.0 | – | 52 |
 | heuristic (one-step lookahead, no twin) | 15082.6 | +727.3 | 0/0/5 | 42.6 | +4.4 | 1/0/4 | 25.0 | – | 77 |
 | sim (twin + Pareto) | 14411.5 | **+56.2 (worse)** | 1/0/4 | 36.0 | **−2.2 (better)** | 4/1/0 | 25.0 | 143 | 1730 |
+| sim_hmem (twin + Pareto + H-MEM) | 14332.9 | −22.4 (better) | 4/0/1 | 37.0 | −1.2 (better) | 3/0/2 | 25.0 | 150 (≈58 twin skips) | 718 |
 
 Per seed (wt / Q-viol): rules 14549.5/40, 13932.4/41, 14332.8/38, 14452.9/35,
-14508.9/37; sim 14680.6/36, 13976.4/40, 14301.2/37, 14520.0/35, 14579.4/32.
+14508.9/37; sim 14680.6/36, 13976.4/40, 14301.2/37, 14520.0/35, 14579.4/32;
+sim_hmem 14498.4/37, 13859.8/42, 14326.4/36, 14445.2/37, 14534.6/33.
 
 Honest reading: the twin trades a little waiting time (+0.4 %) for fewer
 Q-time violations (−5.8 %, never worse on any seed). It is not a clear win on
 waiting time, and on-time % does not move in 24 h. Five seeds and one horizon
 are too few for significance; nothing was tuned on these seeds. The plain
 look-ahead heuristic is worse than rules on every seed, which is why the twin
-(resampled futures) is the part worth keeping. `sim_hmem` and the mock-LLM
-plumbing arm (`sim_mock`, labelled MOCK — canned replies, not a model result)
-are still running; see `study_sim_select/report.md`.
+(resampled futures) is the part worth keeping. With H-MEM, about 39 % of
+escalations skip the twin (≥3 matching past cases where the rule default
+held) and keep the rule default; that recovers the waiting-time loss
+(−22 min vs rules, 4/0/1) while keeping part of the Q-time gain (−1.2 vs
+rules, but +1.0 vs `sim`). Differences are within ~0.5 % and not
+significant at 5 seeds. Wall-clock is not comparable across arms (box load
+varied). The mock-LLM plumbing arm (`sim_mock`, canned replies, not a model result) is labelled MOCK and is a plumbing check only; see `study_sim_select/report.md`.
 
 ### Live arms (Nemotron) — run on the PC
 
