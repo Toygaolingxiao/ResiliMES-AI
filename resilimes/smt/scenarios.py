@@ -137,13 +137,13 @@ SCENARIOS: dict[str, SmtScenario] = {
         title="Tight VIP dues",
         summary=(
             "Dues rewritten for this stress test. Not the published book. "
-            "21 lots, 24 h, five seeds: ResiliMES 4/21 on every seed (20/105), "
-            "EDD 3/21, 3/21, 2/21, 2/21, 3/21 (13/105). "
-            "Seed 1 weighted tardiness is 7,696.8 under EDD and 3,988.6 under ResiliMES. "
-            "Init_Lot_2_23 is the save here: 5.45 h late under EDD, on time under ResiliMES. "
-            "Published dues, 48 h, 56 lots: ResiliMES 32/56 on every seed "
-            "(mean 57.14%). EDD 32/56 on every seed (mean 57.14%). "
-            "The two tie on that book."
+            "21 lots, 24 h, five seeds: ResiliMES 5/21, 6/21, 6/21, 6/21, 5/21 (28/105), "
+            "EDD 4/21, 4/21, 3/21, 4/21, 4/21 (19/105). "
+            "Seed 1 weighted tardiness is 6,842.1 under EDD and 3,616.9 under ResiliMES. "
+            "Init_Lot_2_13 is the save here: 5.03 h late under EDD, on time under ResiliMES. "
+            "Published dues, 48 h, 56 lots: ResiliMES 159/280 over five seeds "
+            "(mean 56.78%). EDD 163/280 (mean 58.21%). "
+            "EDD is ahead by 4 lots on that book."
         ),
         incident=(
             "Stress test with dues rewritten. Dielectric_BE_28-1 is down. "
@@ -158,16 +158,16 @@ SCENARIOS: dict[str, SmtScenario] = {
         id="xfactor",
         title="X-factor dues",
         summary=(
-            "This run is seed 1, 48 h, 87 lots due. EDD is 87/87 and ResiliMES 86/87 on time. "
-            "Re-cleans are 51 under EDD and 41 under ResiliMES. "
-            "Q-time violations are 452 under EDD and 450 under ResiliMES. "
-            "Five-seed mean, not this click: re-cleans 52.4 vs 73.4, Q-time 416.2 vs 441.8. "
-            "That mean is ResiliMES 98.62% and EDD 99.54% on time, FIFO 31.03%, CR 71.72%. "
-            "Versus EDD the five-seed mean gives up 4 of 435 pooled lots."
+            "This run is seed 1, 48 h, 87 lots due. EDD and ResiliMES are both 87/87 on time. "
+            "Re-cleans are 44 under EDD and 57 under ResiliMES. "
+            "Q-time violations are 494 under EDD and 448 under ResiliMES. "
+            "Five-seed mean, not this click: re-cleans 53.4 vs 48.8, Q-time 436.8 vs 479.0. "
+            "That mean is ResiliMES 99.54% and EDD 99.54% on time, FIFO 47.13%, CR 76.55%. "
+            "Versus EDD the five-seed mean ties on 433 of 435 pooled lots."
         ),
         incident=(
-            "Litho_FE_92-1 down for 600 minutes. This click is seed 1: EDD 87/87 and "
-            "ResiliMES 86/87 on time, re-cleans 51 to 41, Q-time 452 to 450. "
+            "Litho_FE_92-1 down for 600 minutes. This click is seed 1: EDD and "
+            "ResiliMES 87/87 on time, re-cleans 44 to 57, Q-time 494 to 448. "
             "The five-seed mean is a separate study."
         ),
         before_policy="edd",
