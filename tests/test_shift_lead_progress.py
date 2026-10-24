@@ -95,3 +95,36 @@ def test_qtime_study_arms_report_finished_runs(
     assert body["runs"] == {"done": 2, "total": 2}
     rows = json.loads(out.read_text(encoding="utf-8"))["rows"]
     assert [(row["book"], row["seed"]) for row in rows] == [("published", 1), ("published", 2)]
+
+
+def test_status_endpoint_reads_the_progress_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from resilimes.api.app import create_app
+    from resilimes.config import HORIZON, Settings
+    from resilimes.smt.progress import Progress
+
+    client = TestClient(create_app(Settings(mode="mock", fab="sample", horizon=HORIZON)))
+    monkeypatch.setenv("RESILIMES_PROGRESS_DIR", str(tmp_path))
+    monkeypatch.delenv("RESILIMES_PROGRESS_FILE", raising=False)
+    assert client.get("/api/shift-lead/status").json() == {"available": False}
+
+    path = tmp_path / "run.json.progress.json"
+    progress = Progress(
+        study="shift_lead", plan=["rules", "mock"], provider="mock", path=path, console=False
+    )
+    progress.start(background=False)
+    progress.begin_run("published", 1, "rules", 3600.0)
+    progress.sim_time(1800.0)
+    progress.pump(force=True)
+    body = client.get("/api/shift-lead/status").json()
+    assert body["available"] is True
+    assert body["status"] == "running"
+    assert body["file"] == "run.json.progress.json"
+    assert body["sim"]["pct"] == 50.0
+    assert body["stale"] is False
+    progress.close("done")
+    monkeypatch.setenv("RESILIMES_PROGRESS_FILE", str(path))
+    assert client.get("/api/shift-lead/status").json()["status"] == "done"
