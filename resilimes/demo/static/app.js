@@ -1,11 +1,11 @@
 const AREA_TONE = {
   light: {
-    Lithography: { fill: "#dbe1fb", ink: "#1e1b4b" },
-    Etch: { fill: "#cff4f6", ink: "#0c4a4e" },
-    CMP: { fill: "#e6d9f7", ink: "#3b0764" },
-    Deposition: { fill: "#d4f3e8", ink: "#064e3b" },
-    Metrology: { fill: "#fde7c7", ink: "#7c4a03" },
-    Clean: { fill: "#d7e6f5", ink: "#1e3a5f" },
+    Lithography: { fill: "#d0e2ff", ink: "#002d9c" },
+    Etch: { fill: "#9ef0f0", ink: "#004144" },
+    CMP: { fill: "#e8daff", ink: "#491d8b" },
+    Deposition: { fill: "#a7f0ba", ink: "#044317" },
+    Metrology: { fill: "#fddc69", ink: "#483700" },
+    Clean: { fill: "#e0e0e0", ink: "#393939" },
   },
   dark: {
     Lithography: { fill: "#312e81", ink: "#e0e7ff" },
@@ -2826,6 +2826,7 @@ function paintShiftLead(copy) {
   $("#sl-head").textContent = `${status} · ${words.runs} ${index}/${runs.total}${where}${body.stale ? ` · ${words.stale}` : ""}`;
   box.classList.toggle("stale", Boolean(body.stale));
   box.classList.toggle("failed", body.status === "failed");
+  box.classList.toggle("running", body.status === "running");
   $("#sl-fill").style.width = `${Math.max(0, Math.min(1, share)) * 100}%`;
   const simLine = $("#sl-sim");
   simLine.hidden = !live;
