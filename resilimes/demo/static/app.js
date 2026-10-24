@@ -1647,6 +1647,7 @@ async function run(body) {
     $("#status").textContent = error.message;
   } finally {
     state.running = false;
+    paint();
     paintScenarios();
     paintStepper();
   }
