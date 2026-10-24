@@ -27,6 +27,9 @@ import math
 import random
 import time
 from dataclasses import dataclass, field
+from heapq import heapify as _sched_heapify
+from heapq import heappop as _sched_pop
+from heapq import heappush as _sched_push
 from typing import TYPE_CHECKING, Any
 
 from resilimes.kernel.score import class_tier, dynamic_priority, ped_risk, tiered_key
@@ -1520,11 +1523,14 @@ class _Sim:
             order = sorted(
                 rows, key=lambda lot: (self.urgency_band(lot, moment), self.plan_rank[lot], lot)
             )
+            # Tool free-time heap of the schedule, not the event heap: bound
+            # directly so a wrapper of ``simulate.heapq`` (the stress audit
+            # samples on event-heap pops) never sees it.
             heap = [(at, tool) for tool, at in free.items()]
-            heapq.heapify(heap)
+            _sched_heapify(heap)
             for lot in order:
                 while heap and heap[0][0] != free[heap[0][1]]:
-                    heapq.heappop(heap)
+                    _sched_pop(heap)
                 if not heap or heap[0][0] > limit:
                     break
                 index = self.step[lot]
@@ -1539,7 +1545,7 @@ class _Sim:
                 size = max(1, route.batch_max[index] // _WAFERS)
                 self.sched[tool].append((lot, index, self.start_gen[lot]))
                 free[tool] = max(free[tool], self.ready[lot]) + route.cycle[index] / size
-                heapq.heappush(heap, (free[tool], tool))
+                _sched_push(heap, (free[tool], tool))
         self.sched_samples.append(time.perf_counter() - t0)
 
     def sched_head(self, tool: int) -> int:

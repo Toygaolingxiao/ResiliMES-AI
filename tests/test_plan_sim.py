@@ -160,3 +160,29 @@ def test_no_plan_is_the_qtime_r2_path() -> None:
     explicit = _run(fab, policy="resilimes", horizon=20_000.0, plan=None)
     assert default.events == explicit.events
     assert not default.plan_used and default.sched_starts == 0 and default.deviations == {}
+
+
+def test_schedule_heap_is_not_the_event_heap(monkeypatch) -> None:
+    # The stress audit wraps ``simulate.heapq`` and samples on every pop; the
+    # schedule's tool free-time heap must not go through it.
+    import heapq
+
+    from resilimes.smt import simulate as sim_mod
+
+    pops: list[int] = []
+
+    class Counting:
+        def __getattr__(self, name: str):
+            return getattr(heapq, name)
+
+        def heappop(self, heap):
+            pops.append(1)
+            return heapq.heappop(heap)
+
+    fab = _crowded_b_fab(others=12)
+    monkeypatch.setattr(sim_mod, "heapq", Counting())
+    _run(fab, policy="edd", horizon=20_000.0)
+    plain = len(pops)
+    pops.clear()
+    _run(fab, policy="edd", horizon=20_000.0, plan=_plan(fab))
+    assert len(pops) == plain
