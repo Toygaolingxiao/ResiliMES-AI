@@ -65,6 +65,8 @@ RESERVE_MAX_SEC = 900.0
 # dataset names no bays. The bay of a family is its STNGRP station group
 # (Dry_Etch, Litho, Wet_Etch, Delay, ...; 13 groups). Same group 1 min, other
 # group 3 min. No AMHS, no vehicle limit. Q-time windows keep running.
+# An optional multi-building layout (resilimes.smt.layout, default off) adds a
+# fixed cross-building tier; that is a fab rule, not SMT2020 data.
 TRANSPORT_SAME_BAY_SEC = 60.0
 TRANSPORT_OTHER_BAY_SEC = 180.0
 # ResiliMES parameter. Not an SMT2020 column.
@@ -123,8 +125,21 @@ class Route:
     step_no: list[int] = field(default_factory=list)
 
 
-def transport_seconds(fab: Fab, origin: int, target: int) -> float:
-    """Fixed move time from a family to the next: same STNGRP bay 1 min, else 3 min."""
+def transport_seconds(
+    fab: Fab,
+    origin: int,
+    target: int,
+    buildings: list[str] | None = None,
+    cross_building_sec: float = 900.0,
+) -> float:
+    """Fixed move time from a family to the next: same STNGRP bay 1 min, else 3 min.
+
+    ``buildings`` (family -> building, ``resilimes.smt.layout``; None = one
+    building, as on main) adds a third tier: a move between buildings takes
+    ``cross_building_sec``. A bay is then a STNGRP group inside one building.
+    """
+    if buildings is not None and buildings[origin] != buildings[target]:
+        return cross_building_sec
     if fab.families[origin].group == fab.families[target].group:
         return TRANSPORT_SAME_BAY_SEC
     return TRANSPORT_OTHER_BAY_SEC
