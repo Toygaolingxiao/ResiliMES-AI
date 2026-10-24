@@ -31,6 +31,8 @@ from resilimes.smt.planning import (
     plan_input,
     plan_scenario,
     scenario_input,
+    standard_setup,
+    standard_time,
     visit_path,
 )
 
@@ -363,3 +365,60 @@ def test_pm_scenario_shifts_the_litho_pm_calendar() -> None:
 def test_unknown_scenario_raises() -> None:
     with pytest.raises(KeyError):
         scenario_input(_fab(), "no_such_scenario")
+
+
+# ------------------------------------------------ master-data standard times
+
+
+def _step(fab: Fab, route_id: str, step_no: int) -> tuple[Route, int]:
+    route = fab.routes[fab.route_index[route_id]]
+    return route, route.step_index[step_no]
+
+
+def test_standard_time_is_master_data_ptime_by_ptper() -> None:
+    fab = _fab()
+    # route_1 step 2 005_Wet_Etch: 1.14 min per_piece, no SETUP -> x 25 pieces.
+    route, index = _step(fab, "r_1", 2)
+    assert standard_time(fab, route, index) == pytest.approx(1.14 * 60 * 25)
+    # route_1 step 3 DefMEt_FE_118: 29.88 min per_lot, as published.
+    route, index = _step(fab, "r_1", 3)
+    assert standard_time(fab, route, index) == pytest.approx(29.88 * 60)
+    # route_1 step 1 Diffusion: 440.4 min per_batch, once per batch, not / lots.
+    route, index = _step(fab, "r_1", 1)
+    assert standard_time(fab, route, index) == pytest.approx(440.4 * 60)
+
+
+def test_standard_time_adds_the_setup_into_the_step_recipe() -> None:
+    fab = _fab()
+    # Implant_128 SU128_3 (setup.txt, blank from-recipe): 72 min.
+    route, index = _step(fab, "r_1", 17)
+    assert standard_setup(fab, route, index) == pytest.approx(72 * 60)
+    assert standard_time(fab, route, index) == pytest.approx(1.14 * 60 * 25 + 72 * 60)
+    # LithoTrack_FE_95 SU450_1: route STIME 15 min (no setup.txt row).
+    route, index = _step(fab, "r_1", 384)
+    assert standard_setup(fab, route, index) == pytest.approx(15 * 60)
+    # DE_BE_13: setup.txt pair only. Into _1 is 12 min, into _2 is 7 min.
+    route, index = _step(fab, "r_1", 469)
+    assert standard_setup(fab, route, index) == pytest.approx(12 * 60)
+    route, index = _step(fab, "r_10", 347)
+    assert standard_setup(fab, route, index) == pytest.approx(7 * 60)
+    # No SETUP column -> no setup.
+    route, index = _step(fab, "r_1", 2)
+    assert standard_setup(fab, route, index) == 0.0
+
+
+def test_step_targets_use_the_standard_time_hook() -> None:
+    fab = _fab()
+    inp = plan_input(fab, releases=False)
+    base = build_plan(fab, inp)
+    lot = base.lots[0]
+    route = fab.routes[fab.route_index[lot.route_id]]
+    need = sum(standard_time(fab, route, index) for index in lot.steps)
+    assert lot.step_due[-1] == lot.due_sec
+    assert lot.remaining_raw_sec >= need
+    # A replacement hook (what a future MES-actuals weighting would plug in)
+    # moves every target; here plain process time without setups.
+    other = build_plan(fab, inp, step_time=lambda _fab, r, i: r.cycle[i])
+    moved = other.lot(lot.lot_id)
+    setups = sum(standard_setup(fab, route, index) for index in lot.steps)
+    assert moved.remaining_raw_sec == pytest.approx(lot.remaining_raw_sec - setups)

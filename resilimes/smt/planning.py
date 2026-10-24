@@ -9,13 +9,19 @@ Method, all from dataset times and capacities, no tuned weights:
 1. Path. A lot visits its current step and then every later route step that
    its lot number samples (``fab.measured``), the same rule the simulator uses.
 2. Backward pass. From the lot due, each visited step gets a latest finish
-   (its step due) and a latest start: latest start = step due minus the raw
-   SMT2020 process time, and the step due of the step before is that latest
-   start minus the fixed transport (1 min inside a STNGRP group, 3 min across,
-   ``fab.transport_seconds``). No queueing is assumed anywhere.
+   (its step due) and a latest start: latest start = step due minus the step's
+   master-data standard time (``standard_time``), and the step due of the step
+   before is that latest start minus the fixed transport (1 min inside a
+   STNGRP group, 3 min across, ``fab.transport_seconds``). No queueing is
+   assumed anywhere. The standard time is the SMT2020 route PTIME (per_piece
+   times PIECES, per_lot as published, per_batch once per batch, the lot's
+   share being the whole batch cycle) plus, on a step with a SETUP, the
+   setup.txt (else route STIME) time into its recipe. There are no actuals:
+   no MES weighting is applied yet; ``standard_time`` is where it would go.
+   "Raw time" below means this standard time.
 3. Forward capacity check. Every ``Litho_*`` family (7 expose families and the
    2 REG families) is a finite pool of its published tools. Everything else is
-   infinite capacity at raw process time. A litho start may not overlap a PM
+   infinite capacity at standard time. A litho start may not overlap a PM
    window (published calendars, copied onto every tool of the family, as the
    simulator does) or a scenario's forced down. Random breakdowns are taken as
    the expected availability of the STNGRP down calendar,
@@ -44,7 +50,11 @@ plus the CQT limit. Windows a lot is already inside at the snapshot open at
 Releases follow ``order.txt``: each order row releases a lot of its part every
 REPEAT minutes from START, due DUE - START after its release.
 
-Not modelled here (left to scheduling): setups, batch forming, scanner
+Setups are planned as a full change into the step's recipe on every SETUP
+step (an upper bound: a tool that already holds the recipe skips it); which
+lots share a setup is left to scheduling.
+
+Not modelled here (left to scheduling): setup sequencing, batch forming, scanner
 dedication (SVESTN/FORSTEP pins), rework, and capacity outside litho.
 """
 
@@ -54,7 +64,7 @@ import heapq
 import math
 import time
 from bisect import bisect_right
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -502,6 +512,47 @@ def _merge(spans: list[tuple[float, float]]) -> list[tuple[float, float]]:
     return merged
 
 
+def standard_setup(fab: Fab, route: Route, step: int) -> float:
+    """Master-data setup into the step's recipe, seconds; 0 on a step without SETUP.
+
+    ``setup.txt`` wins over the route STIME (``fab.setup`` holds both, STIME as
+    the change from the blank recipe 0). With several from-recipes the longest
+    change into this recipe is taken; on this extract each recipe has one.
+    """
+    fam = route.family[step]
+    recipe = route.recipe[step]
+    exact = [sec for (f, src, dst), sec in fab.setup.items() if f == fam and dst == recipe and src]
+    if exact:
+        return max(exact)
+    return fab.setup.get((fam, 0, recipe), 0.0)
+
+
+def standard_time(fab: Fab, route: Route, step: int) -> float:
+    """Planned time of one route step, seconds. THE hook for step times.
+
+    Today this is master data only (there are no actuals): ``route.cycle``
+    (PTIME x PIECES for per_piece, PTIME for per_lot, PTIME once per batch for
+    per_batch; see ``smt2020_kernel._cycle_sec``) plus ``standard_setup``.
+    Transport is added between steps by the passes, not here; sampled steps
+    never reach this function (``visit_path`` skips them).
+
+    Future MES-actuals weighting (for example an EWMA of observed step times
+    blended with this standard) replaces this function, or is passed to
+    ``build_plan(step_time=...)``. It is not implemented.
+    """
+    return route.cycle[step] + standard_setup(fab, route, step)
+
+
+StepTime = Callable[[Fab, Route, int], float]
+
+
+def route_standard_times(fab: Fab, step_time: StepTime = standard_time) -> list[list[float]]:
+    """``step_time`` for every step of every route, indexed [route][step]."""
+    return [
+        [step_time(fab, route, step) for step in range(len(route.family))] for route in fab.routes
+    ]
+
+
 def visit_path(route: Route, step: int, number: int) -> list[int]:
     """The current step, then every later step this lot number is measured at."""
     return [step] + [
@@ -510,9 +561,18 @@ def visit_path(route: Route, step: int, number: int) -> list[int]:
 
 
 def backward(
-    fab: Fab, route: Route, path: Sequence[int], due: float
+    fab: Fab,
+    route: Route,
+    path: Sequence[int],
+    due: float,
+    times: Sequence[float] | None = None,
 ) -> tuple[list[float], list[float]]:
-    """(step due, latest start) per visited step, no queueing anywhere."""
+    """(step due, latest start) per visited step, no queueing anywhere.
+
+    ``times`` is the per-step time of this route (default ``standard_time``).
+    """
+    if times is None:
+        times = [standard_time(fab, route, step) for step in range(len(route.family))]
     count = len(path)
     finish = [0.0] * count
     start = [0.0] * count
@@ -520,7 +580,7 @@ def backward(
     for pos in range(count - 1, -1, -1):
         index = path[pos]
         finish[pos] = cursor
-        start[pos] = cursor - route.cycle[index]
+        start[pos] = cursor - times[index]
         if pos > 0:
             cursor = start[pos] - transport_seconds(
                 fab, route.family[path[pos - 1]], route.family[index]
@@ -528,9 +588,13 @@ def backward(
     return finish, start
 
 
-def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
-    """Backward dues, forward litho capacity check, bands and ranks."""
+def build_plan(fab: Fab, inp: PlanInput, *, step_time: StepTime = standard_time) -> PlanningOutput:
+    """Backward dues, forward litho capacity check, bands and ranks.
+
+    Every step time comes from ``step_time`` (default ``standard_time``).
+    """
     began = time.perf_counter()
+    std = route_standard_times(fab, step_time)
     now = inp.now
     n = len(inp.lot_id)
     avail = litho_availability(fab)
@@ -552,7 +616,7 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
             path = visit_path(route, inp.lot_step[lot], inp.lot_number[lot])
             path_cache[key] = path
         paths.append(path)
-        finish, start = backward(fab, route, path, inp.lot_due[lot])
+        finish, start = backward(fab, route, path, inp.lot_due[lot], std[inp.lot_route[lot]])
         sdue.append(finish)
         lstart.append(start)
         tiers.append(class_tier(inp.lot_class[lot]))
@@ -578,7 +642,7 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
     arrive_at: list[float] = [0.0] * n
 
     def flow(lot: int, pos: int, moment: float) -> None:
-        """Run non-litho steps at raw time from ``pos``; stop at the next litho step."""
+        """Run non-litho steps at standard time from ``pos``; stop at the next litho step."""
         nonlocal seq
         route = fab.routes[inp.lot_route[lot]]
         path = paths[lot]
@@ -594,7 +658,7 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
                 seq += 1
                 return
             starts[pos] = moment
-            end = moment + route.cycle[index]
+            end = moment + std[inp.lot_route[lot]][index]
             ends[pos] = end
             pos += 1
             if pos < last:
@@ -615,7 +679,7 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
             _tier, _ls, lot, pos = queue[0]
             route = fab.routes[inp.lot_route[lot]]
             index = paths[lot][pos]
-            proc = route.cycle[index] / rate
+            proc = std[inp.lot_route[lot]][index] / rate
             hit = bisect_right(ends, moment)
             if hit < len(spans) and spans[hit][0] < moment + proc:
                 # Starting now would run into the next PM; every tool of the
@@ -662,7 +726,7 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
             dispatch(fam, moment)
 
     lots = _lot_plans(fab, inp, paths, sdue, lstart, p_start, p_end, done_at, litho_wait, tiers)
-    days = _litho_days(fab, inp, paths, lstart, p_start, pm, avail)
+    days = _litho_days(fab, inp, paths, lstart, p_start, pm, avail, std)
     return PlanningOutput(
         scenario_id=inp.scenario_id,
         now=now,
@@ -809,6 +873,7 @@ def _litho_days(
     p_start: list[list[float]],
     pm: dict[int, list[tuple[float, float]]],
     avail: dict[int, float],
+    std: list[list[float]],
 ) -> list[LithoDay]:
     now = inp.now
     days = max(1, math.ceil((inp.release_until - now) / DAY_SEC))
@@ -820,7 +885,7 @@ def _litho_days(
             fam = route.family[index]
             if fam not in demand:
                 continue
-            hours = route.cycle[index] / 3600.0
+            hours = std[inp.lot_route[lot]][index] / 3600.0
             day = max(0, int((lstart[lot][pos] - now) // DAY_SEC))
             if day < days:
                 demand[fam][day] += hours
