@@ -102,7 +102,7 @@ then `--report out/layout_168h.json`. Published book, published seeds 1-3,
 Freeze tracking is on in every arm (dispatch unchanged with the freeze off), so
 the freeze-off second transports are the shadow count, as in
 `docs/SCHED_FREEZE.md`. Nothing was tuned: weights, due dates, seeds, freeze
-limits and the 15 min are as given. 18 runs, code `3dfcaa0`, run 2026-10-24
+limits and the 15 min are as given. 18 runs, code `3dfcaa0` (before merging main `eff6e91`, whose new hooks are opt-in; the off golden is unchanged), run 2026-10-24
 23:02-23:06 JST. Seeds are summed (945 due lots per policy and arm).
 
 | KPI | resilimes L0F0 | resilimes L1F0 | resilimes L1F1 | edd L0F0 | edd L1F0 | edd L1F1 |

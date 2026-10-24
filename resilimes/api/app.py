@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from resilimes import __version__
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
+from resilimes.api.insight import router as insight_router
 from resilimes.api.intents import (
     ConfirmationState,
     ConfirmBody,
@@ -266,6 +267,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not cfg.use_nightshift:
             return {"llm": "mock", "skipped": True, "detail": "Nightshift is not selected."}
         return {"llm": "nightshift", "skipped": False, **probe_nightshift(cfg)}
+
+    app.include_router(insight_router)
 
     if _STATIC.exists():
         app.mount("/assets", StaticFiles(directory=_STATIC), name="assets")

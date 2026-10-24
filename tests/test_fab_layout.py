@@ -76,7 +76,12 @@ def _run(fab: Fab, policy: str, **kwargs: object) -> RunResult:
 
 
 def _digest(result: RunResult) -> str:
-    data = {key: value for key, value in asdict(result).items() if key not in SKIP}
+    # lot_log (evidence toolkit, opt-in) is always {} here; main's golden ignores it too.
+    data = {
+        key: value
+        for key, value in asdict(result).items()
+        if key not in SKIP and not (key == "lot_log" and not value)
+    }
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
 
 

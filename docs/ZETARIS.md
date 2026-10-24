@@ -18,7 +18,7 @@ body is `{msg}`. `/sql-editor/sqls/run` accepts the same JSON.
 
 ## Datasources
 
-Postgres has three databases. Each one has schema `resilimes`. Zetaris registers
+Postgres has four databases. Each one has schema `resilimes`. Zetaris registers
 one datasource per database. The `schema` JDBC option is required; without it
 only `public` is visible. Tables are addressed as `<datasource>.<table>`.
 
@@ -27,13 +27,23 @@ only `public` is visible. Tables are addressed as `<datasource>.<table>`.
 | `fab_mes` | `resilimes` | equipment, inhibit, operators, products, qtime_rule, reticle, route, route_steps, wip_jobs, lots, operations, setup_matrix, smt_tool, smt_wip, smt_part, smt_route, smt_setup, smt_setupgrp, smt_fromto, smt_files, smt_columns |
 | `fab_cmms` | `fab_cmms` | maintenance_logs, pm_calendar, smt_pmcal, smt_attach, smt_downcal |
 | `fab_erp` | `fab_erp` | bom, materials, orders, smt_order |
+| `fab_ops` | `fab_ops` | ops_events, ops_ai_decisions, ops_kpi_hourly |
 
-The `smt_*` tables are the SMT2020 fab (next section).
+The `smt_*` tables are the SMT2020 fab (next section). `fab_ops` is the
+operations log of one recorded simulator run (seed 1, 12 h, policy
+`resilimes`), written by `python scripts/export_fab_ops_sql.py` into
+`data/sql/fab_ops_seed.sql`: start/rework/hold/override events and every
+down and PM window, the decision log (rule-based Q-time overrides on main,
+labelled `source='rule'`), and hourly KPIs per family. The AI evidence
+toolkit (`resilimes/evidence/`) reads it with guarded SQL: one `SELECT`,
+tables from the four datasources only, `LIMIT` at most 200
+(`resilimes/evidence/sqlguard.py`). Without Zetaris the same SQL runs on a
+read-only SQLite mirror of the same seed files.
 
 `CREATE DATASOURCE` is sent through `run-query`. `DESCRIBE BY` allows only
 `[A-Za-z0-9_.,-]`, so the descriptions are `ResiliMES_MES.fab_mes`,
-`Maintenance_CMMS.fab_cmms` and `ERP_materials_bom.fab_erp` (as in the owner's
-verified setup) and the JDBC user and password are alphanumeric. `REGISTER DATASOURCE TABLES FROM <name>` follows.
+`Maintenance_CMMS.fab_cmms`, `ERP_materials_bom.fab_erp` (as in the owner's
+verified setup) and `Fab_operations_log.fab_ops` and the JDBC user and password are alphanumeric. `REGISTER DATASOURCE TABLES FROM <name>` follows.
 `DROP DATASOURCE VIEW` also unregisters a table of the same name, so this
 recipe never creates those views. A cross-datasource view fails with
 `NoSuchElementException`. The client keeps a per-table source map instead.
@@ -191,7 +201,7 @@ datasources.
    tables, so a reload does not leave another source's tables behind. The
    splitter ignores `;` inside `--` / `/* */` comments, quoted strings and
    quoted identifiers, and drops comments. Create
-   `fab_cmms` / `fab_erp` when missing and load all three.
+   `fab_cmms` / `fab_erp` / `fab_ops` when missing and load all four.
 4. Zetaris admin login: `ZETARIS_ADMIN_EMAIL` / `ZETARIS_ADMIN_PASSWORD` from
    `~/zetaris-platform/.env`, else `ZETARIS_USER` / `ZETARIS_PASSWORD` from
    `~/.config/fab-mes/env` (email defaults to `admin@zetaris.com`), at
