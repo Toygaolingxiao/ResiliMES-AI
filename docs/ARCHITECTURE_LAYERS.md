@@ -164,11 +164,12 @@ two faster layers read:
   to decide which lots may claim scarce tools such as Q-time holds and
   batch-forming waits.
 - **Dispatching** uses `rank` as the tie-break once the hard constraints are
-  met: Q-time urgency, a ready batch, setup, eligibility. It uses
-  `step_due[next step]` to say how late a deviation makes a lot.
+  met: Q-time urgency, a ready batch, setup, eligibility. In PR #22 the
+  ResiliMES due risk is `wait here / (step_due − now − this step's process)`,
+  with `step_due` of the current step from the plan.
 
-A lot moves to another band only when the plan reruns (daily), so the band is
-stable. The scheduling layer works out short-term urgency from live state.
+A lot moves to another band only when the plan reruns, so the band is
+stable. In PR #22 the plan runs once at t=0 (see "Integration plan"). The scheduling layer works out short-term urgency from live state.
 
 ## 3. High-frequency scheduling
 
@@ -177,8 +178,8 @@ stable. The scheduling layer works out short-term urgency from live state.
 | **Cadence** | Every `REPLAN_SEC` = 300 s of sim time (the qtime-r2 tick) |
 | **Inputs** | `PlanningOutput`. Live queues per family. Tool state: up, down, PM, setup recipe. Open Q-time windows and their deadlines. Batch candidates. Inbound lots with arrival times. Live wait estimates per family. |
 | **Outputs** | An ordered queue per tool for the next few hours, holds for Q-time lots, batch-forming decisions, and stall counts. |
-| **Code today** | `simulate._Sim.tick` (qtime-r2, PR #21) does four things: refreshes the live wait estimates (`refresh_estimates`), sets the Q-time hold plan (`plan_holds`), counts stalls, and snapshots queue order. It does not read a baseline yet. |
-| **Target** | `tick` reads `PlanningOutput.rank`/`band`, projects each tool's queue over the next 2–4 h, and writes a `Schedule` with tool → [lot, planned start, reason]. |
+| **Code today** | `simulate._Sim.tick` (qtime-r2, PR #21) refreshes the live wait estimates (`refresh_estimates`), sets the Q-time hold plan (`plan_holds`), counts stalls, and snapshots queue order. With a plan (PR #22) it also runs `build_schedule`: each family's queue ordered by `(urgency_band, plan rank)` and laid onto the tools by earliest free time up to the next tick, into `sched[tool]` (1.8–2.0 ms p95). |
+| **Target** | Project each tool's queue over the next 2–4 h (batching, setup sequences, PM) and write a `Schedule` with tool → [lot, planned start, reason]. Today's schedule covers one tick only. |
 
 ## 4. Dispatching
 
@@ -187,7 +188,7 @@ stable. The scheduling layer works out short-term urgency from live state.
 | **Cadence** | Event-triggered: a tool frees, a lot arrives, a Q-time deadline falls, a down or PM starts or ends |
 | **Inputs** | The latest schedule and the live state at the event |
 | **Outputs** | A lot start (tool, lot, time). When the started lot is not the scheduled head, a deviation record with a reason. |
-| **Code today** | `simulate._Sim` dispatch with `rank`/`cheap`/`plain_rank` (policies `resilimes`, `edd`, `cr`, `fifo`, `smt_rule`). Q-time-urgent override, shortlist, reservation (qtime-r2). Lot and tool states and hold reasons are in `resilimes/smt/fsm.py` (PR #20). |
+| **Code today** | `simulate._Sim` dispatch with `rank`/`cheap`/`plain_rank` (policies `resilimes`, `edd`, `cr`, `fifo`, `smt_rule`). Q-time-urgent override, shortlist, reservation (qtime-r2). With a plan (PR #22): `_Sim.deviation` compares every start with `sched[tool]`'s head and logs `("deviation", t, tool, scheduled, started, reason)` with one of the nine reasons; the run reports counts (`deviations`, `sched_follow`, `sched_stale_detail`). Dispatch does not prefer the head yet: it is measured, not followed. Lot and tool states and hold reasons are in `resilimes/smt/fsm.py` (PR #20). |
 | **Target** | Dispatch takes the schedule head unless a hard rule overrides it. Each override logs `(time, tool, scheduled_lot, started_lot, reason)`, where the reason is one of `qtime_urgent`, `batch_ready`, `setup`, `not_arrived`, `ineligible`, `tool_down`, `pm`, `hold` or `schedule_stale`. |
 
 ## Current versus target code map
@@ -195,9 +196,9 @@ stable. The scheduling layer works out short-term urgency from live state.
 | Layer | Today | Target |
 |---|---|---|
 | Planning | `smt/planning.py` (new). `kernel/aps.py` and `simulate.macro_aps_ms` are naive and superseded. | `planning.py` called once per sim day from the sim, using live lot state |
-| Priority | `kernel/score.py` `class_tier` and `tiered_key`. Live slack inside the sim. | `PlanningOutput.rank`/`band` with the live risk from qtime-r2 on top |
-| Scheduling | `_Sim.tick` (300 s): wait estimates, Q-time hold plan, stall counter | Per-tool queue for the next few hours, seeded by rank |
-| Dispatching | `_Sim` rank keys, Q-time override, reservation | Follow the schedule head and log every deviation with a reason |
+| Priority | `kernel/score.py` `class_tier` and `tiered_key`. With a plan: step-due risk and plan band/rank tie-break (PR #22). | Done in the simplified form |
+| Scheduling | `_Sim.tick` (300 s): wait estimates, Q-time hold plan, stall counter; with a plan, `build_schedule` (one tick ahead) | Per-tool queue for the next few hours |
+| Dispatching | `_Sim` rank keys, Q-time override, reservation; with a plan, a reasoned deviation log | Follow the schedule head unless a hard rule overrides it |
 
 **Known gap.** The sim does not release `order.txt` lots yet. Only the 2,156
 WIP lots flow. The plan already includes the releases, so planned litho load
@@ -206,7 +207,22 @@ is higher than the sim's load. When the sim releases lots, it should use
 
 ## Integration plan (after PR #21 lands)
 
-**Simplified version, by Monday 2026-10-26 evening JST**
+**Simplified version: done in PR #22 (branch `planning-r1`).** Differences from
+the plan below, and why:
+
+- The plan is built once at t=0 from the WIP only (`releases=False`), because the
+  sim does not release `order.txt` lots yet.
+- No daily replan. Step dues depend only on the route and the due date (backward
+  pass, no queueing), so a replan gives the same step dues and could move only
+  band and rank. It is not worth the cost while dues do not depend on state.
+- Step 4's reasons come from a fixed check order on the live state at the start
+  (see `_Sim.deviation`), not from the branch that chose; anything else is
+  `schedule_stale`, split for diagnosis.
+- The stress run (`RESILIMES_STRESS_PLAN=1`) uses the same t=0 plan, which does
+  not know about the outage.
+- Results and regressions: `docs/QTIME_R2.md`, "Step-due risk".
+
+The original plan:
 
 1. Rebase onto `main` once #21 is merged. `planning.py` touches no existing
    file, so no conflict is expected.

@@ -6,7 +6,10 @@ changed, and the dynamic weight has no tuned constant. Q-time windows exist only
 CQT/STEP_CQT route steps (`route.cqt_limit > 0`); no window was added anywhere else.
 
 Three versions are compared throughout: **main**, **fixed** (PR #21 at 4719e1f: graded Q-time urgency
-ranked ahead of due slack) and **dynamic** (this revision: wait/slack risk, computed live).
+ranked ahead of due slack) and **dynamic** (wait/slack risk, computed live). A fourth version,
+**dynamic(step dues)** (branch `planning-r1`, PR #22), replaces the ρ-based due risk with a risk against
+per-step due dates from the long-term plan; see "Step-due risk (planning layer)". Where the text says
+"dynamic" without qualification it means dynamic(ratio), the ρ version.
 
 ## Summary
 
@@ -29,6 +32,11 @@ ranked ahead of due slack) and **dynamic** (this revision: wait/slack risk, comp
 - **Dispatch latency:** ResiliMES busy-decision p95 is 0.145 / 0.178 / **0.298 ms**; the p95 over all
   decisions is 0.0065 / 0.0073 / 0.0087 ms.
 - **Stress:** see "Stress".
+- **Step dues (PR #22):** with the plan's step due dates in place of ρ, ResiliMES on `published` keeps
+  57.1 % on-time and completes **118.8** routes per run instead of 80.2 (main 135.8). The Q-time true
+  rate is 95.1 % (dynamic(ratio) 97.8 %, fixed 94.9 %, main 94.0 %). On `xfactor_eta600` on-time is
+  81.4 % (ratio 84.4 %). Dispatch busy p95 is 0.34 ms. ResiliMES starts the head of the 300 s schedule
+  on 11.5 % of starts; every other start is logged as a deviation with a reason.
 
 ## Layers
 
@@ -37,12 +45,13 @@ The weight is computed by four separate layers. Only the dispatching layer start
 | Layer | Cadence | What it does here | Code |
 |---|---|---|---|
 | **Planning** | per run (offline) | Release plan, due dates, route data, Q-time windows from the dataset (CQT/STEP_CQT only), PM calendar, scanner dedication. Not changed by this work. | `fab.py`, run setup |
-| **Priority** | at each decision, from the latest estimates | ResiliMES dynamic risk per lot: expected wait / remaining slack, max over the due date and an open Q-time window. Class tiers (VIP/hot/normal) stay above it. | `_Sim.risk`, `plain_rank`, `cheap` |
-| **Scheduling** | **every 300 s of sim time** (`REPLAN_SEC`), all policies | (a) refresh the live wait estimate per family and the observed queue/process ratio ρ; (b) ResiliMES fix 3: re-evaluate tool holds, i.e. release holds no longer needed (`replan`) and set the hold plan (which inbound windowed lots warrant a held tool), so no hold decision is older than 5 min; (c) stall detector, **counter only**: an idle, up tool with an eligible ready lot and no pending wake; (d) `replan` snapshot (with `record`): per-family queue order and the next planned lot per tool, for the UI 已排程 overlay. It never starts a lot. | `_Sim.tick`, `refresh_estimates`, `plan_holds`, `snapshot` |
-| **Dispatching** | **event-triggered** (lot arrives, tool ends a piece, down or PM ends, wake, Q deadline) | Chooses and starts lots on a free tool with the latest schedule and live state: ranks by the priority layer; makes a hold only for a lot in the current hold plan, after every live tool check (busy until after the latest start, pin, PM overlap, no other tool free, ETA ≤ 15 min, one per family, cool-down). | `try_start`, `choose`, `maybe_reserve` |
+| **Priority** | at each decision, from the latest estimates | ResiliMES dynamic risk per lot: expected wait / remaining slack, max over the due date and an open Q-time window. Class tiers (VIP/hot/normal) stay above it. With a plan (`run_policy(plan=...)`) the due risk is taken against the plan's step due date, and plan band/rank break ties. | `_Sim.risk`, `plain_rank`, `cheap` |
+| **Scheduling** | **every 300 s of sim time** (`REPLAN_SEC`), all policies | (a) refresh the live wait estimate per family and the observed queue/process ratio ρ; (b) ResiliMES fix 3: re-evaluate tool holds, i.e. release holds no longer needed (`replan`) and set the hold plan (which inbound windowed lots warrant a held tool), so no hold decision is older than 5 min; (c) stall detector, **counter only**: an idle, up tool with an eligible ready lot and no pending wake; (d) `replan` snapshot (with `record`): per-family queue order and the next planned lot per tool, for the UI 已排程 overlay; (e) with a plan: per family, order the queue by (urgency band, plan rank) and lay it onto the tools by earliest free time over the next tick, giving `scheduled[tool]`. It never starts a lot. | `_Sim.tick`, `refresh_estimates`, `plan_holds`, `snapshot`, `build_schedule` |
+| **Dispatching** | **event-triggered** (lot arrives, tool ends a piece, down or PM ends, wake, Q deadline) | Chooses and starts lots on a free tool with the latest schedule and live state: ranks by the priority layer; with a plan, logs a reasoned deviation whenever the start is not the head of `scheduled[tool]`; makes a hold only for a lot in the current hold plan, after every live tool check (busy until after the latest start, pin, PM overlap, no other tool free, ETA ≤ 15 min, one per family, cool-down). | `try_start`, `choose`, `maybe_reserve` |
 
-Not built yet: a short-horizon scheduler that commits start times or sequences (pending the
-layer-split decision). The snapshot is a plan for display, not a commitment.
+The 300 s schedule (PR #22, only with a plan) is a sequence per tool, not a commitment: dispatch
+still decides from live state, and the schedule is used to measure adherence and log why dispatch left
+it. Without a plan (`plan=None`) nothing in this section changes, bit for bit.
 
 ## Dynamic weight (r2.1, ResiliMES fix 2)
 
@@ -81,6 +90,134 @@ the route.
   - fixes 4–6;
   - the class tiers;
   - the PR #18 urgency band (15 min margin).
+
+## Step-due risk (planning layer, PR #22)
+
+**What changed** (only when `run_policy(..., plan=PlanningOutput)` is given; `plan=None` is bit-identical
+to dynamic(ratio): all 225 study runs re-run with `plan=None` match on every non-timing field):
+
+- **Due risk:** `risk_due = W_here / (step_due − now − P_here)`.
+  - `step_due` = the lot's due date for its current step, from the plan's backward pass.
+  - `W_here` = live expected wait at the current family; `P_here` = this step's process time.
+  - Slack ≤ 0 gives infinite risk, as before.
+  - A lot-step that is not in the plan (56 lot-steps per run) falls back to the old slack and is counted
+    (`plan_due_fallbacks`).
+- **Q-time risk:** unchanged.
+- **Priority:** class tier, then `max(risk_due, risk_q)` as before, then plan band and rank as the
+  tie-break. No fab-wide ratio and no tuned constant: the ρ term is gone.
+- **Plan:** computed once at t=0 (`book_plan`: `build_plan` on the book's WIP, releases off, because the
+  simulator does not release `order.txt` lots). The plan's due for the hot lot is the same 43200 s the
+  simulator applies; every other lot's plan due equals its simulator due (checked).
+- **No daily replan.** Step dues come from the route and the lot's due date only (backward pass, no
+  queueing), so a replan would give the same step dues; it could only move band and rank. Not worth the
+  cost while dues do not depend on state.
+- **300 s schedule:** each tick orders every family's queue by (urgency band, plan rank) and lays it onto
+  the family's tools by earliest free time up to the next tick, giving `scheduled[tool]`. Build cost:
+  1.8–2.0 ms p95, about 0.9 s per 48 h run.
+- **Deviations:** whenever a start is not the head of `scheduled[tool]`, dispatch logs one reason, checked
+  in this order: `tool_down` (list dropped by a down) / `hold` / `qtime_urgent` / `hold` (head held
+  elsewhere) / `not_arrived` / `ineligible` / `tool_down` / `pm` / `batch_ready` / `setup`, otherwise
+  `schedule_stale`. `schedule_stale` is split for diagnosis by where the started lot was:
+  `new_since_tick`, `beyond_horizon` (queued at the tick, not booked before the next tick),
+  `other_tool`, `no_head`, `later_in_list`.
+- **Baselines:** EDD, FIFO, CR and SMT rule get the schedule and the deviation log, but their dispatch is
+  unchanged; their results are identical with and without the plan (study and stress).
+
+### Table P1. ResiliMES vs EDD: main / fixed / dynamic(ratio) / dynamic(step dues) (seed mean; on-time pooled)
+
+| Book | Policy | On-time % | Completed | Q true rate % |
+|---|---|---|---|---|
+| published | resilimes | 57.1 / 55.0 / 57.1 / **57.1** | 135.8 / 122.0 / 80.2 / **118.8** | 94.0 / 94.9 / 97.8 / **95.1** |
+| published | edd | 57.5 / 57.5 / 57.5 / **57.5** | 160.0 / 159.6 / 159.6 / **159.6** | 86.0 / 83.7 / 83.7 / **83.7** |
+| xfactor_eta600 | resilimes | 99.1 / 63.9 / 84.4 / **81.4** | 138.0 / 124.6 / 113.0 / **113.8** | 92.6 / 94.6 / 93.7 / **94.8** |
+| xfactor_eta600 | edd | 99.5 / 99.5 / 99.5 / **99.5** | 165.8 / 166.6 / 166.6 / **166.6** | 84.3 / 82.4 / 82.4 / **82.4** |
+| tight_vip | resilimes | 25.7 / 23.8 / 27.6 / **24.8** | 26.6 / 27.0 / 27.0 / **27.0** | 95.4 / 96.1 / 96.0 / **96.1** |
+| tight_vip | edd | 12.4 / 12.4 / 12.4 / **12.4** | 38.2 / 41.8 / 41.8 / **41.8** | 65.1 / 71.6 / 71.6 / **71.6** |
+| pm_enforced | resilimes | 57.1 / 55.0 / 56.8 / **56.8** | 139.6 / 124.0 / 76.2 / **124.8** | 93.4 / 93.5 / 96.9 / **93.4** |
+| pm_enforced | edd | 57.9 / 57.5 / 57.5 / **57.5** | 156.4 / 156.8 / 156.8 / **156.8** | 84.9 / 82.3 / 82.3 / **82.3** |
+| litho | resilimes | 57.1 / 55.4 / 56.8 / **56.8** | 138.4 / 121.2 / 80.8 / **118.6** | 94.0 / 95.0 / 97.7 / **95.3** |
+| litho | edd | 57.5 / 57.5 / 57.5 / **57.5** | 159.6 / 159.2 / 159.2 / **159.2** | 85.9 / 83.6 / 83.6 / **83.6** |
+| hot | resilimes | 56.1 / 54.4 / 55.8 / **55.8** | 138.4 / 122.2 / 80.4 / **118.6** | 93.9 / 95.1 / 97.8 / **95.1** |
+| hot | edd | 57.5 / 57.5 / 57.5 / **57.5** | 160.0 / 159.6 / 159.6 / **159.6** | 86.0 / 83.7 / 83.7 / **83.7** |
+| heldout_published | resilimes | 57.1 / 55.4 / 57.1 / **57.1** | 144.4 / 130.8 / 82.2 / **129.2** | 94.0 / 95.0 / 97.6 / **95.2** |
+| heldout_published | edd | 57.1 / 57.5 / 57.5 / **57.5** | 165.2 / 164.6 / 164.6 / **164.6** | 85.6 / 83.6 / 83.6 / **83.6** |
+| heldout_xfactor | resilimes | 100.0 / 77.9 / 93.6 / **92.4** | 140.8 / 126.8 / 117.0 / **112.4** | 92.5 / 95.1 / 93.8 / **95.2** |
+| heldout_xfactor | edd | 100.0 / 100.0 / 100.0 / **100.0** | 167.6 / 166.2 / 166.2 / **166.2** | 83.8 / 81.9 / 81.9 / **81.9** |
+| litho_family_2h | resilimes | 57.1 / 55.0 / 56.8 / **56.8** | 139.2 / 122.6 / 81.2 / **117.6** | 93.7 / 94.6 / 97.8 / **94.9** |
+| litho_family_2h | edd | 57.1 / 57.5 / 57.5 / **57.5** | 159.4 / 159.2 / 159.2 / **159.2** | 85.7 / 83.2 / 83.2 / **83.2** |
+
+### Table P2. Schedule adherence and deviations by reason (dynamic(step dues), seed mean per run)
+
+| Book | Policy | Starts | Follow head | qtime_urgent | batch_ready | setup | not_arrived | ineligible | tool_down | pm | hold | schedule_stale | stale: new since tick / beyond horizon / other tool / no head / later in list |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| published | resilimes | 39459 | 4518 (11.5 %) | 16 | 139 | 922 | 227 | 0 | 94 | 0 | 10 | 33533 | 19937 / 9722 / 3419 / 454 / 0 |
+| published | edd | 35887 | 3220 (9.0 %) | 0 | 157 | 379 | 169 | 0 | 84 | 0 | 60 | 31817 | 19486 / 9319 / 2675 / 337 / 0 |
+| xfactor_eta600 | resilimes | 39069 | 4688 (12.0 %) | 16 | 113 | 932 | 219 | 0 | 95 | 0 | 14 | 32993 | 18799 / 10061 / 3710 / 423 / 0 |
+| xfactor_eta600 | edd | 35527 | 2748 (7.7 %) | 0 | 140 | 385 | 164 | 0 | 88 | 0 | 61 | 31942 | 18510 / 10379 / 2757 / 296 / 0 |
+| tight_vip | resilimes | 19867 | 3135 (15.8 %) | 7 | 101 | 519 | 121 | 0 | 44 | 0 | 13 | 15927 | 9090 / 4351 / 2192 / 294 / 0 |
+| tight_vip | edd | 19512 | 1983 (10.2 %) | 0 | 106 | 197 | 90 | 0 | 48 | 0 | 55 | 17033 | 7431 / 6647 / 2523 / 432 / 0 |
+| pm_enforced | resilimes | 38693 | 4396 (11.4 %) | 21 | 143 | 900 | 223 | 0 | 214 | 8 | 11 | 32777 | 19330 / 9678 / 3353 / 416 / 0 |
+| pm_enforced | edd | 35291 | 3250 (9.2 %) | 0 | 154 | 364 | 168 | 0 | 215 | 4 | 57 | 31079 | 19041 / 9052 / 2671 / 315 / 0 |
+| litho | resilimes | 39383 | 4492 (11.4 %) | 18 | 140 | 941 | 235 | 0 | 90 | 0 | 11 | 33457 | 19831 / 9742 / 3436 / 448 / 0 |
+| litho | edd | 35882 | 3247 (9.0 %) | 0 | 155 | 388 | 172 | 0 | 81 | 0 | 63 | 31776 | 19468 / 9315 / 2660 / 333 / 0 |
+| hot | resilimes | 39356 | 4501 (11.4 %) | 19 | 145 | 894 | 230 | 0 | 88 | 0 | 10 | 33469 | 19919 / 9682 / 3428 / 440 / 0 |
+| hot | edd | 35887 | 3231 (9.0 %) | 0 | 155 | 382 | 170 | 0 | 84 | 0 | 61 | 31802 | 19487 / 9313 / 2675 / 328 / 0 |
+| heldout_published | resilimes | 39511 | 4554 (11.5 %) | 16 | 140 | 938 | 230 | 0 | 94 | 0 | 12 | 33528 | 19782 / 9894 / 3395 / 456 / 0 |
+| heldout_published | edd | 36027 | 3335 (9.3 %) | 0 | 153 | 366 | 188 | 0 | 85 | 0 | 56 | 31844 | 19410 / 9423 / 2686 / 325 / 0 |
+| heldout_xfactor | resilimes | 39135 | 4713 (12.0 %) | 14 | 112 | 954 | 244 | 0 | 94 | 0 | 13 | 32993 | 18792 / 10085 / 3690 / 425 / 0 |
+| heldout_xfactor | edd | 35698 | 2773 (7.8 %) | 0 | 146 | 405 | 179 | 0 | 89 | 0 | 64 | 32041 | 18500 / 10485 / 2758 / 297 / 0 |
+| litho_family_2h | resilimes | 39302 | 4467 (11.4 %) | 17 | 146 | 935 | 244 | 0 | 118 | 0 | 11 | 33363 | 19642 / 9849 / 3420 / 453 / 0 |
+| litho_family_2h | edd | 35879 | 3223 (9.0 %) | 0 | 158 | 387 | 169 | 0 | 110 | 0 | 69 | 31763 | 19375 / 9406 / 2672 / 310 / 0 |
+
+### Table P3. Latency (ResiliMES, seed mean): dynamic(ratio) → dynamic(step dues)
+
+| Book | Dispatch p95 ms | Dispatch busy-p95 ms | Tick p95 ms | Schedule build p95 ms | Schedule build total s | Sim s | Plan-due fallbacks (lot-steps) |
+|---|---|---|---|---|---|---|---|
+| published | 0.0089 → 0.0131 | 0.324 → 0.340 | 4.08 → 7.48 | 1.82 | 0.91 | 6.91 → 10.18 | 56 |
+| xfactor_eta600 | 0.0092 → 0.0140 | 0.297 → 0.349 | 4.38 → 8.35 | 2.03 | 0.98 | 6.78 → 10.59 | 56 |
+| tight_vip | 0.0092 → 0.0130 | 0.250 → 0.321 | 4.41 → 7.79 | 1.93 | 0.48 | 3.26 → 5.15 | 56 |
+| pm_enforced | 0.0088 → 0.0130 | 0.298 → 0.341 | 4.06 → 8.45 | 2.05 | 0.98 | 6.70 → 10.58 | 56 |
+| litho | 0.0082 → 0.0128 | 0.314 → 0.349 | 4.04 → 7.55 | 1.83 | 0.90 | 6.51 → 10.10 | 56 |
+| hot | 0.0080 → 0.0127 | 0.298 → 0.344 | 3.63 → 7.46 | 1.84 | 0.90 | 6.36 → 10.05 | 56 |
+| heldout_published | 0.0083 → 0.0126 | 0.298 → 0.353 | 3.62 → 7.12 | 1.74 | 0.88 | 6.43 → 9.88 | 56 |
+| heldout_xfactor | 0.0090 → 0.0130 | 0.293 → 0.324 | 4.32 → 7.47 | 1.83 | 0.92 | 6.65 → 9.84 | 56 |
+| litho_family_2h | 0.0086 → 0.0123 | 0.306 → 0.333 | 4.05 → 7.14 | 1.75 | 0.87 | 6.67 → 9.70 | 56 |
+
+Most deviations are `schedule_stale`, and most of those are lots that arrived after the tick or that the
+tick did not book (the schedule covers 300 s only). The schedule head is followed on 11.5 % of ResiliMES
+starts and 9 % of EDD starts. Among the reasoned deviations, setup dominates for ResiliMES (it still ranks
+setup avoidance first below risk 1).
+
+The tick p95 includes the schedule build (and the `record` snapshot). Sim times were measured with 5
+workers on a loaded 8-core box; compare them within a table only.
+
+### Table P4. Ablation of fixes 1–3, dynamic(ratio) / dynamic(step dues) (ResiliMES, seeds 1–5)
+
+| Fixes | published on-time % (ratio / step dues) | published completed | published Q rate % | xfactor_eta600 on-time % | xfactor completed | xfactor Q rate % |
+|---|---|---|---|---|---|---|
+| 1 | 55.4 / 55.4 | 121.6 / 121.6 | 94.9 / 94.9 | 60.7 / 60.7 | 123.6 / 123.6 | 94.5 / 94.5 |
+| 2 | 56.8 / 56.8 | 79.6 / 119.0 | 97.5 / 95.0 | 84.6 / 81.8 | 113.4 / 113.0 | 93.5 / 94.7 |
+| 3 | 57.1 / 57.1 | 138.2 / 138.2 | 93.7 / 93.7 | 99.8 / 99.8 | 137.0 / 137.0 | 92.4 / 92.4 |
+| 1+2 | 56.8 / 56.8 | 79.6 / 119.0 | 97.5 / 95.0 | 84.6 / 81.8 | 113.4 / 113.0 | 93.5 / 94.7 |
+| 2+3 | 57.1 / 57.1 | 80.2 / 118.8 | 97.8 / 95.1 | 84.4 / 81.4 | 113.0 / 113.8 | 93.7 / 94.8 |
+| 1+3 | 55.4 / 55.4 | 121.6 / 121.6 | 95.0 / 95.0 | 60.7 / 60.7 | 123.8 / 123.8 | 94.6 / 94.6 |
+| 1+2+3 (study) | 57.1 / 57.1 | 80.2 / 118.8 | 97.8 / 95.1 | 84.4 / 81.4 | 113.0 / 113.8 | 93.7 / 94.8 |
+
+Variants without fix 2 do not use the due risk, and their scores have no exact ties, so the plan rank
+never decides and they are unchanged by the plan.
+
+### Stress with the plan
+
+`RESILIMES_STRESS_PLAN=1`, the same 50 runs as "Stress". The plan does not foresee the outage.
+
+- Hard stalls 0, stranded 0, frozen WIP 0, invariant failures 0, longest late wait 29.7 min, minimum
+  fab steps/h in the outage 349. The four baselines are identical to the run without plan.
+- ResiliMES: on-time 53.6–58.9 % (mean 56.8, ratio 57.0), completed 96–133 (mean 118.2, ratio 80.6),
+  Q-time violations 133–179 per run (mean 160, ratio 72), holds 6–15 per run.
+- A first stress run reported 1 stall sample on `cr`. It was an audit artefact, not a stall: the audit
+  wraps `simulate.heapq` to sample on event-heap pops, and the schedule's own tool heap went through the
+  wrapper, so samples were taken mid-tick. The schedule now binds `heapq` functions directly (test:
+  `test_schedule_heap_is_not_the_event_heap`); the rerun above has 0.
 
 ## Root cause (why r1 Q-time still leaked)
 
@@ -378,14 +515,34 @@ failures on the dynamic version.
 7. **Reservations:** 6.4–12.8 per run and 24–44 held minutes per run (fixed: 8.4–12.8 and 29–62).
    Released by `replan`: 0–0.2 per run. Holds are now granted only from the tick's plan.
 
+8. **Step dues: Q-time true rate −2.7 points vs dynamic(ratio)** (`published` 97.8 → 95.1 %; Q-time
+   violations 71 → 155 per run, re-cleans 9 → 56). Still above fixed (94.9 %) and main (94.0 %).
+   - **Not a ranking change.** `published` seed 1: starts where a lot in an open window was passed
+     over fell 3779 → 264; passed over by a lot with due risk ≥ 1, 244 → 74.
+   - **Mechanism: WIP redistribution.** ρ held WIP at the front of the routes (family 99 queue
+     129 → 82), so the Q-time target families downstream were less loaded. With step dues the WIP
+     moves on: mean queue at Q-target families 497 → 540 (+8.7 %) with total WIP flat (1086 vs
+     1077). The ratio version's Q-time gain was a side effect of starving the back of the line.
+   - **Why not fixed:** recovering it would mean holding WIP back on purpose, i.e. a weight.
+9. **Step dues: `xfactor_eta600` on-time −3.0 points vs ratio** (84.4 → 81.4 %; held-out 93.6 → 92.4 %,
+   completed 117 → 112.4), mostly seed 2 (63 → 46 on-time lots, tardiness 2048 → 5089 min).
+   - **Mechanism:** the step dues come from a backward pass with no queueing (it is ρ = 0), so a lot
+     looks on plan until its slack to the step due is gone; lead lots with due risk ≥ 1 fell
+     1049 → 391. Still 17.7 points under main (99.1 %).
+10. **Step dues: `tight_vip` on-time −2.8 points** (27.6 → 24.8 %, still twice EDD's 12.4 %): 3 of 105
+    lots over 5 seeds (1 in seed 1, 2 in seed 4), the same mechanism; weighted tardiness +8 %.
+11. **Step dues: latency.** Dispatch busy p95 0.30 → 0.34 ms, tick p95 4 → 7.5 ms (schedule build
+    included), sim time 6.9 → 10.2 s per run (loaded box). Baselines get the tick cost too when a plan
+    is given.
+
 ## Open questions (need a decision; nothing tuned)
 
-- **Downstream term:** should the due risk count the route after the horizon? Options:
-  - due risk over the horizon only, i.e. `P_after` cut at the horizon;
-  - a per-family ρ instead of the fab-wide one;
-  - keep critical-ratio behaviour if WIP position matters more than completions in 48 h.
-- **Layer split:** confirm the split above before a short-horizon scheduler is built on the
-  scheduling layer.
+- **Downstream term:** answered in PR #22 by the plan's step due dates (no ρ). Open: should the plan's
+  backward pass include expected queueing (a per-family planned wait)? That would bring back part of the
+  downstream look-ahead (regression 9) and part of the WIP shift (regression 8); it needs a
+  planned-wait model, not a tuned factor.
+- **Schedule as commitment:** the 300 s schedule is followed on ~11 % of starts. Should dispatch prefer
+  the head (and how strongly), or stay a measurement? Not decided; nothing changed in dispatch.
 
 ## Caveats
 
@@ -402,6 +559,9 @@ failures on the dynamic version.
   (`tick_stalls_batch`).
 - **Inherited windows:** the 433 inherited windows are taken to open at t=0 with their full limit.
 - **Scope:** one snapshot, five training seeds and five held-out seeds.
+- **Plan (PR #22):** WIP only (no `order.txt` releases in the simulator), computed once at t=0 with no
+  knowledge of downs; the stress outage is not in the plan. `schedule_stale` counts every start the 300 s
+  schedule did not foresee, so it is large by construction (see its split in Table P2).
 
 ## Note for ui-r1 (PR #19, `resilimes/smt/kpi.py`)
 
