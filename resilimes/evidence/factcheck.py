@@ -48,7 +48,12 @@ class FactRegistry:
 def check(text: str, registry: FactRegistry) -> list[str]:
     """Unknown ids and numbers in ``text``. Empty list means it passes."""
     facts = registry.facts()
-    misses = narrative_mismatches(text, facts)
+    # Hyphenated words without a digit ("tool-hours", "re-run") are prose, not ids.
+    misses = [
+        item
+        for item in narrative_mismatches(text, facts)
+        if not item.startswith("unknown id ") or _HAS_DIGIT.search(item[len("unknown id ") :])
+    ]
     seen = {item.split(" ", 2)[-1].upper() for item in misses}
     for token in _UNDERSCORE_ID.findall(text):
         upper = token.upper()
