@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from resilimes.evidence.factcheck import FactRegistry
-from resilimes.evidence.lateness import decompose, late_lots, rounded_minutes
+from resilimes.evidence.lateness import decompose, late_lots, rounded_minutes, visit_waits
 from resilimes.evidence.timeline import BUSY, DOWN, IDLE, PM, RESERVED, Timeline, build_timeline
 from resilimes.smt.fab import Fab
 from resilimes.smt.faults import FaultPlan
@@ -49,13 +49,22 @@ def record_run(
     extra_downs: dict[int, list[tuple[float, float]]] | None = None,
     extra_pm: dict[int, list[tuple[float, float]]] | None = None,
     label: str = "baseline",
+    hot_lot: int | None = None,
+    drop_downs: dict[int, list[tuple[float, float]]] | None = None,
+    drop_pm: dict[int, list[tuple[float, float]]] | None = None,
 ) -> RecordedRun:
+    """One recorded run. ``hot_lot`` promotes one lot; ``drop_*`` remove the down or
+    PM spans of a tool that overlap the given windows (counterfactual re-runs)."""
     downs = [list(spans) for spans in sample_downs(fab, seed, horizon)]
     pm = [list(spans) for spans in pm_windows(fab, horizon)]
     for tool, spans in (extra_downs or {}).items():
         downs[tool] = sorted(downs[tool] + list(spans))
     for tool, spans in (extra_pm or {}).items():
         pm[tool] = sorted(pm[tool] + list(spans))
+    for tool, windows in (drop_downs or {}).items():
+        downs[tool] = [span for span in downs[tool] if not _overlaps(span, windows)]
+    for tool, windows in (drop_pm or {}).items():
+        pm[tool] = [span for span in pm[tool] if not _overlaps(span, windows)]
     result = run_policy(
         fab,
         policy=policy,
@@ -66,6 +75,8 @@ def record_run(
         record=True,
         lot_log=True,
         faults=faults,
+        hot_lot=hot_lot,
+        promote_hot=hot_lot is not None,
     )
     timeline = build_timeline(
         fab, result, downs=downs, pm=pm, hold_until=faults.hold_until if faults else None
@@ -82,6 +93,10 @@ def record_run(
         faults=faults,
         label=label,
     )
+
+
+def _overlaps(span: tuple[float, float], windows: list[tuple[float, float]]) -> bool:
+    return any(span[0] < right and left < span[1] for left, right in windows)
 
 
 def _h(seconds: float) -> float:
@@ -330,6 +345,37 @@ class Toolkit:
             "exact": raw["exact"],
         }
         return self._out("lot_lateness", {"lot_id": lot_id}, result)
+
+    def lot_waits(self, lot_id: str, top: int = 6) -> dict[str, Any]:
+        """Where the lot waited (whole stay): the longest queue waits by step, with buckets,
+        and how late it would still be with no waiting at all."""
+        lot = self.lot_index(lot_id)
+        end = self.tl.completed.get(lot, self.run.horizon)
+        rows = sorted(visit_waits(self.tl, lot, 0.0, end), key=lambda r: -r["wait_sec"])
+        history = decompose(self.tl, lot)["history_sec"]
+        work = history["processing"] + history["setup"] + history["transport"]
+        waits = []
+        for row in rows[:top]:
+            visit = row["visit"]
+            buckets = rounded_minutes(row["buckets"])
+            waits.append(
+                {
+                    "step": visit.step,
+                    "family": self.fab.families[visit.family].name,
+                    "from_h": _h(row["window"][0]),
+                    "to_h": _h(row["window"][1]),
+                    "wait_min": round(sum(buckets.values()), 1),
+                    "buckets_min": {k: v for k, v in buckets.items() if v},
+                }
+            )
+        result = {
+            "lot": lot_id,
+            "steps_waited": len(rows),
+            "total_wait_min": round(sum(r["wait_sec"] for r in rows) / 60.0, 1),
+            "longest_waits": waits,
+            "no_wait_late_min": round((work - self.fab.lot_due[lot]) / 60.0, 1),
+        }
+        return self._out("lot_waits", {"lot_id": lot_id}, result)
 
     def maintenance(self, family: str | int) -> dict[str, Any]:
         """Downtime model (downcal MTTF/MTTR) and PM calendar for the family's tool group."""
