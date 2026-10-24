@@ -249,3 +249,33 @@ def test_setup_probes_only_loaded_tables() -> None:
     )
     assert select_sql(loaded_tables(",".join(both)))[-1] == FEDERATED_SQL
     assert loaded_tables("") is None and select_sql(None) == select_sql()
+
+
+def _check_script() -> Any:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "check_zetaris_smt", ROOT / "scripts" / "check_zetaris_smt.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_check_script_reports_parity(seed: str, capsys: pytest.CaptureFixture[str]) -> None:
+    script = _check_script()
+    live = _settings(
+        zetaris_rest_url="http://zetaris.example", zetaris_org_id="1", zetaris_api_key="sekret-1"
+    )
+    assert script.check(live, FakeZetaris(seed)) == 0
+    out = capsys.readouterr().out
+    assert "PARITY OK" in out and "smt_route" in out and "fab_cmms" in out
+    assert "sekret-1" not in out and "zetaris.example" not in out
+    total = next(line for line in out.splitlines() if line.startswith("total"))
+    assert total.split()[1:] == ["6935", "6935"]
+
+    fake = FakeZetaris(seed)
+    fake.db.execute("UPDATE resilimes.smt_tool SET stn = stn || 'X' WHERE line_no = 1")
+    assert script.check(live, fake) == 1
+    assert "PARITY FAIL" in capsys.readouterr().out

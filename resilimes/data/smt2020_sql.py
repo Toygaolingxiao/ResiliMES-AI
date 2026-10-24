@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import json
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -334,3 +335,64 @@ class ZetarisRows:
         if table is None:
             raise SmtZetarisError(f"No SMT2020 table holds {file_name!r}")
         return [dict(row) for row in self._table(table)[file_name.strip()]]
+
+
+def rows_hash(rows: list[dict[str, str]]) -> str:
+    """Order-sensitive SHA-256 of a file's rows (header -> cell)."""
+    digest = hashlib.sha256()
+    for row in rows:
+        digest.update(json.dumps(row, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def parity_report(reader: ZetarisRows, root: Path) -> dict[str, Any]:
+    """Per table: rows and a row hash read through Zetaris vs the local files.
+
+    Also checks the ``smt_files`` sha256 against the local file bytes. Holds no
+    credentials, so it is safe to print.
+    """
+    catalog = reader.catalog()
+    tables: list[dict[str, Any]] = []
+    overall_z = hashlib.sha256()
+    overall_f = hashlib.sha256()
+    for spec in SMT_TABLES:
+        z_rows = 0
+        f_rows = 0
+        z_hash = hashlib.sha256()
+        f_hash = hashlib.sha256()
+        sha_ok = True
+        for file_name in spec.files:
+            path = root / file_name
+            local = read_file(path)[1]
+            remote = reader(file_name)
+            z_rows += len(remote)
+            f_rows += len(local)
+            z_hash.update(rows_hash(remote).encode())
+            f_hash.update(rows_hash(local).encode())
+            entry = catalog.get(file_name)
+            sha_ok = sha_ok and bool(
+                entry and entry[2] == hashlib.sha256(path.read_bytes()).hexdigest()
+            )
+        z_hex, f_hex = z_hash.hexdigest(), f_hash.hexdigest()
+        overall_z.update(z_hex.encode())
+        overall_f.update(f_hex.encode())
+        tables.append(
+            {
+                "table": spec.table,
+                "datasource": reader.qualified(spec.table).split(".", 1)[0],
+                "files": len(spec.files),
+                "zetaris_rows": z_rows,
+                "file_rows": f_rows,
+                "zetaris_hash": z_hex[:16],
+                "file_hash": f_hex[:16],
+                "file_sha_ok": sha_ok,
+                "ok": z_rows == f_rows and z_hex == f_hex and sha_ok,
+            }
+        )
+    return {
+        "tables": tables,
+        "zetaris_hash": overall_z.hexdigest(),
+        "file_hash": overall_f.hexdigest(),
+        "ok": all(item["ok"] for item in tables) and overall_z.digest() == overall_f.digest(),
+    }
