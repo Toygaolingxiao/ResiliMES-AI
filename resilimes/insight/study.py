@@ -127,7 +127,8 @@ def run_investigator(
             extra=(
                 f"{case.case_id} ai={ai_part.get('primary_cause')} "
                 f"| ai top1 {summary['ai_top1']}/{summary['n']} "
-                f"base top1 {summary['baseline_top1']}/{summary['n']}"
+                f"base top1 {summary['baseline_top1']}/{summary['n']} "
+                f"| non-nemotron {summary['model_audit']['non_nemotron_responses']}"
             ),
         )
     summary = summarize_investigator(rows, label)
@@ -146,6 +147,7 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         cell["base_top1"] += int(row["baseline_score"]["top1"])
     return {
         "label": label,
+        "model_audit": model_audit(rows),
         "n": len(rows),
         "errors": len(rows) - len(ok),
         "ai_top1": sum(int(r["ai_score"]["top1"]) for r in ok),
@@ -160,13 +162,118 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
     }
 
 
+# ---- model audit ---------------------------------------------------------------------------
+def is_nemotron(model: str) -> bool:
+    """The model the response reported. A response that reported none is not confirmed."""
+    model = model or ""
+    return not model.startswith("unreported:") and "nemotron" in model.lower()
+
+
+def model_audit(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Which model actually answered each response; flags any that is not Nemotron."""
+    counts: dict[str, int] = {}
+    flagged: list[str] = []
+    for row in rows:
+        for model in (row.get("ai") or {}).get("response_models") or []:
+            counts[model] = counts.get(model, 0) + 1
+            if not is_nemotron(model):
+                flagged.append(str(row.get("case_id") or row.get("lot") or row.get("id")))
+    return {
+        "responses": sum(counts.values()),
+        "models": counts,
+        "non_nemotron_responses": sum(n for m, n in counts.items() if not is_nemotron(m)),
+        "non_nemotron_items": sorted(set(flagged)),
+    }
+
+
+# ---- late-lot explainer --------------------------------------------------------------------
+def run_explainer(
+    fab: Fab,
+    provider: Completer | None,
+    out: Path,
+    *,
+    seeds: tuple[int, ...] | None = None,
+    limit: int = 0,
+    temperature: float = 0.2,
+) -> dict[str, Any]:
+    from resilimes.evidence.lateness import late_lots
+    from resilimes.insight import explainer as ex
+
+    label = "mock" if provider is None else f"real:{provider.model_for(ex.LANE)}"
+    seeds = seeds or ex.SEEDS
+    bases = {seed: ex.base_run(fab, seed) for seed in seeds}
+    work = [(seed, lot) for seed in seeds for lot in late_lots(bases[seed].timeline)]
+    if limit:
+        work = work[:limit]
+    progress = Progress("explainer", len(work))
+    rows: list[dict[str, Any]] = []
+    for index, (seed, lot) in enumerate(work):
+        base = bases[seed]
+        lot_id = fab.lot_id[lot]
+        row: dict[str, Any] = {"seed": seed, "lot": lot_id}
+        try:
+            row["split"] = ex.exact_split(base, lot)
+            late = Toolkit(base).lot_lateness(lot_id)["while_late_min"]
+            row["true_dominant"] = max(late, key=late.get) if late else None
+            answer = ex.explain(Toolkit(base), lot_id, provider, temperature=temperature)
+            row["ai"] = answer.to_json()
+            row["cf"] = ex.verify(base, lot_id, answer) if answer.lever else {"verified": False}
+        except Exception as exc:
+            row["error"] = redact(repr(exc))
+        rows.append(row)
+        summary = summarize_explainer(rows, label)
+        _write(out, {"summary": summary, "rows": rows})
+        cf: dict[str, Any] = row.get("cf") or {}
+        progress.update(
+            index + 1,
+            extra=(
+                f"s{seed} {lot_id} saved={cf.get('saving_min')} "
+                f"| exact {summary['exact_sum']}/{summary['n']} "
+                f"cf hit {summary['cf_hit']}/{summary['cf_verified']} "
+                f"| non-nemotron {summary['model_audit']['non_nemotron_responses']}"
+            ),
+        )
+    summary = summarize_explainer(rows, label)
+    progress.finish(extra=f"cf hit {summary['cf_hit']}/{summary['cf_verified']}")
+    _write(out, {"summary": summary, "rows": rows})
+    return summary
+
+
+def summarize_explainer(rows: list[dict[str, Any]], label: str) -> dict[str, Any]:
+    ok = [row for row in rows if "error" not in row]
+    answered = [row for row in ok if row["ai"]["lever"]]
+    verified = [row for row in ok if row["cf"].get("verified")]
+    levers: dict[str, int] = {}
+    for row in answered:
+        levers[row["ai"]["lever"]] = levers.get(row["ai"]["lever"], 0) + 1
+    savings = [row["cf"]["saving_min"] for row in verified]
+    return {
+        "label": label,
+        "model_audit": model_audit(rows),
+        "n": len(rows),
+        "errors": len(rows) - len(ok),
+        "exact_sum": sum(int(r["split"]["exact"]) for r in ok),
+        "shown_sum_ok": sum(int(r["split"]["shown_sum_ok"]) for r in ok),
+        "max_residual_sec": max((r["split"]["residual_sec"] for r in ok), default=0.0),
+        "answered": len(answered),
+        "fact_ok": sum(int(r["ai"]["fact_ok"]) for r in answered),
+        "repaired": sum(int(r["ai"]["repaired"]) for r in answered),
+        "dominant_match": sum(int(r["ai"]["dominant"] == r["true_dominant"]) for r in answered),
+        "cf_verified": len(verified),
+        "cf_hit": sum(int(r["cf"]["hit"]) for r in verified),
+        "cf_helped": sum(1 for s in savings if s > 0),
+        "mean_saving_min": round(sum(savings) / max(1, len(savings)), 1),
+        "levers": levers,
+    }
+
+
 # ---- CLI -----------------------------------------------------------------------------------
 STUDIES: dict[str, Callable[..., Any]] = {}
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m resilimes.insight.study")
-    parser.add_argument("study", choices=["cases", "investigator", "all"])
+    parser.add_argument("study", choices=["cases", "investigator", "explainer", "all"])
     parser.add_argument("--provider", choices=["mock", "nightshift"], default="mock")
     parser.add_argument("--cases", type=Path, default=CASES_PATH)
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
@@ -182,7 +289,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     provider = provider_for(args.provider, settings)
     tag = args.provider
-    arms = ["investigator"]
+    arms = ["investigator", "explainer"]
     studies = arms if args.study == "all" else [args.study]
     summaries: dict[str, Any] = {}
     for name in studies:
@@ -197,8 +304,32 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(summary, indent=1))
             print(f"wrote {out}")
             summaries[name] = summary
+        if name == "explainer":
+            out = args.out_dir / f"explainer_{tag}.json"
+            summary = run_explainer(
+                fab, provider, out, limit=args.limit, temperature=args.temperature
+            )
+            print(json.dumps(summary, indent=1))
+            print(f"wrote {out}")
+            summaries[name] = summary
     total = args.out_dir / f"summary_{tag}.json"
-    _write(total, {"provider": tag, "mocked": provider is None, "studies": summaries})
+    flagged = sum(int(item["model_audit"]["non_nemotron_responses"]) for item in summaries.values())
+    models: dict[str, int] = {}
+    for item in summaries.values():
+        for model, count in item["model_audit"]["models"].items():
+            models[model] = models.get(model, 0) + count
+    check = {
+        "models": models,
+        "non_nemotron_responses": flagged,
+        "all_nemotron": provider is not None and bool(models) and flagged == 0,
+    }
+    _write(
+        total,
+        {"provider": tag, "mocked": provider is None, "model_check": check, "studies": summaries},
+    )
+    if provider is not None:
+        verdict = "OK all Nemotron" if check["all_nemotron"] else "FLAG non-Nemotron responses"
+        print(f"MODEL CHECK: {verdict}: {flagged} flagged; models {models}")
     print(f"wrote {total}")
     return 0
 

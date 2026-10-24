@@ -131,6 +131,23 @@ def attribute(tl: Timeline, lot: int, lo: float, hi: float) -> dict[str, float]:
     return out
 
 
+def visit_waits(tl: Timeline, lot: int, lo: float, hi: float) -> list[dict[str, Any]]:
+    """Queue wait of each visit inside ``[lo, hi]``, split into the same buckets."""
+    rows: list[dict[str, Any]] = []
+    for visit in tl.visits.get(lot, []):
+        left_at = visit.leave if visit.leave is not None else hi
+        wait_end = visit.start if visit.start is not None else left_at
+        out = dict.fromkeys(BUCKETS, 0.0)
+        left, right = max(lo, visit.ready), min(hi, wait_end)
+        _wait(tl, visit, left, right, out)
+        total = sum(out.values())
+        if total > 0:
+            rows.append(
+                {"visit": visit, "wait_sec": total, "buckets": out, "window": (left, right)}
+            )
+    return rows
+
+
 def _wait(tl: Timeline, visit: Visit, left: float, right: float, out: dict[str, float]) -> None:
     if right <= left:
         return

@@ -903,3 +903,11 @@ html[data-theme="dark"] {
 }
 html[data-theme="dark"] body { background: var(--ground); }
 html[data-theme="dark"] .toggles button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+/* AI evidence panel */
+.ai-card { margin-bottom: 12px; }
+.ai-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ai-row select { max-width: 100%; flex: 1 1 320px; }
+.ai-ok { color: var(--good); }
+.ai-warn { color: var(--alarm); }
+.ai-split { columns: 2; margin: 4px 0; }

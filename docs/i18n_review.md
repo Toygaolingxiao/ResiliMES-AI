@@ -417,6 +417,32 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `ai.causes.setup_thrash` | setup thrash | 频繁换线 | 段取り替えの多発 |
 | `ai.causes.batch_cap` | batch size cap | 批量上限 | バッチサイズ上限 |
 | `ai.causes.upstream_starvation` | upstream starvation | 上游断料 | 上流からの供給切れ |
+| `ai.expTitle` | Late-lot explainer | 迟交批次解释 | 遅延ロットの説明 |
+| `ai.expHelp` | Pick a late lot from the 48 h run. Its lateness is split into exact parts; the model explains it and proposes one change, which is checked by re-running the simulation. | 从 48 小时仿真中选择一个迟交批次。迟交时间被精确拆分；模型给出解释并提出一项改动，再通过重跑仿真来验证。 | 48 時間シミュレーションから遅延ロットを選びます。遅延時間を正確に内訳し、モデルが説明と変更案を 1 つ示し、シミュレーションの再実行で検証します。 |
+| `ai.expRun` | Explain | 解释 | 説明する |
+| `ai.lateBy` | late by | 迟交 | 遅延 |
+| `ai.sumOk` | The parts add up exactly to the lateness. | 各部分之和与迟交时间完全一致。 | 内訳の合計は遅延時間と完全に一致します。 |
+| `ai.sumBad` | The parts do not add up to the lateness. | 各部分之和与迟交时间不一致。 | 内訳の合計が遅延時間と一致しません。 |
+| `ai.cfTitle` | What-if | 假设分析 | もしも分析 |
+| `ai.cfExpected` | expected saving | 预计节省 | 想定短縮 |
+| `ai.cfActual` | re-run saving | 重跑后节省 | 再実行での短縮 |
+| `ai.cfHit` | confirmed | 已证实 | 確認済み |
+| `ai.cfMiss` | not confirmed | 未证实 | 未確認 |
+| `ai.buckets.processing` | processing | 加工 | 処理 |
+| `ai.buckets.setup` | setup | 换线 | 段取り |
+| `ai.buckets.transport` | transport | 搬送 | 搬送 |
+| `ai.buckets.down` | tool down | 机台宕机 | 装置ダウン |
+| `ai.buckets.pm` | PM | PM | PM |
+| `ai.buckets.batch_wait` | waiting for a batch | 等待凑批 | バッチ待ち |
+| `ai.buckets.lots_ahead` | lots ahead | 前方排队批次 | 先行ロット |
+| `ai.buckets.qtime` | Q-time | Q-time | Q-time |
+| `ai.buckets.ai_decision` | AI decision | AI 决策 | AI の判断 |
+| `ai.buckets.dispatch_other` | other dispatch | 其他派工原因 | その他の払い出し要因 |
+| `ai.buckets.release_hold` | release hold | 投料保留 | 投入保留 |
+| `ai.buckets.late_at_snapshot` | already late at the start | 开始时已迟交 | 開始時点で遅延 |
+| `ai.levers.prioritise` | make it the hot lot | 设为急件 | 特急ロットにする |
+| `ai.levers.clear_down` | no tool down while it waits | 等待期间机台不宕机 | 待ち中に装置ダウンなし |
+| `ai.levers.skip_pm` | defer PM while it waits | 等待期间推迟 PM | 待ち中の PM を延期 |
 
 ## zh / ja strings for owner review
 
