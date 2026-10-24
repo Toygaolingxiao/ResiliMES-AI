@@ -31,7 +31,17 @@ from resilimes.kernel.score import lot_value, order_class_from_priority
 # Published BREAK_Litho MTTR. Used when a scenario holds one scanner down.
 LITHO_MTTR_MIN = 705.59
 LOOKAHEAD = 24
+# Batch wait rule (ResiliMES defaults, not SMT2020 columns; the extract has no
+# max-wait field). A batch under BATCHMN waits only while more same-recipe lots
+# are expected within the window, never longer than BATCH_MAX_WAIT_SEC after the
+# oldest member was ready, and never longer than HOT_BATCH_WAIT_SEC once a hot or
+# VIP lot has been ready in the batch.
 BATCH_MAX_WAIT_SEC = 1800.0
+HOT_BATCH_WAIT_SEC = 600.0
+# A lot that was in process when its tool broke goes to rework: a fixed hold for
+# disposition and strip/clean, then it redoes the whole operation on any
+# qualified tool of the family. ResiliMES default, not an SMT2020 column.
+REWORK_SEC = 1800.0
 # ResiliMES parameter. Not an SMT2020 column.
 WIP_PER_TOOL = 2
 WIP_FLOOR = 8
@@ -73,6 +83,34 @@ class Route:
     # Step index of the first litho layer that chose the scanner, or -1.
     # SVESTN/FORSTEP. Same station family, and the pointer is forward.
     dedicate_root: list[int]
+    # StepPercent: share of lots measured at a sampled metrology step (100 = all).
+    sample_pct: list[float] = field(default_factory=list)
+    # Published STEP number per step index, used by the sampling rule.
+    step_no: list[int] = field(default_factory=list)
+
+
+def lot_number(lot_id: str, fallback: int) -> int:
+    """Numeric suffix of a lot id (``Init_Lot_3_17`` -> 17)."""
+    tail = lot_id.rsplit("_", 1)[-1]
+    return int(tail) if tail.isdigit() else fallback
+
+
+def measured(route: Route, index: int, number: int) -> bool:
+    """Deterministic sampling: does this lot visit this metrology step?
+
+    StepPercent ``p`` < 100 marks a sampled step. With ``n = lot number + STEP``
+    the lot is measured when ``floor((n + 1) * p / 100) > floor(n * p / 100)``.
+    That picks exactly ``p`` of every 100 consecutive lot numbers, evenly spaced
+    (``p = 10`` is every tenth lot, ``p = 50`` every other one), and the STEP
+    offset spreads the measured lots differently on each layer.
+    """
+    if index >= len(route.sample_pct):
+        return True
+    pct = route.sample_pct[index]
+    if pct >= 100.0:
+        return True
+    n = number + route.step_no[index]
+    return int((n + 1) * pct // 100) > int(n * pct // 100)
 
 
 @dataclass
@@ -223,7 +261,10 @@ def _routes(
         batch_max: list[int] = []
         cqt_limit: list[float] = []
         cqt_target: list[int] = []
+        sample_pct: list[float] = []
         for step in steps:
+            pct = (step.get("StepPercent") or "").strip()
+            sample_pct.append(float(pct) if pct else 100.0)
             fam_name = step["STNFAM"].strip()
             if fam_name not in family_index:
                 raise ValueError(f"Route {route_id} uses unknown family {fam_name}")
@@ -269,6 +310,8 @@ def _routes(
                 remain=remain,
                 step_index={int(step["STEP"]): pos for pos, step in enumerate(steps)},
                 dedicate_root=dedicate_root,
+                sample_pct=sample_pct,
+                step_no=[int(step["STEP"]) for step in steps],
             )
         )
     return routes, index

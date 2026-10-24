@@ -78,8 +78,8 @@ def _starts(fab: Fab, policy: str) -> list[tuple[str, int, str]]:
     rows = []
     for event in result.events:
         if event[0] == "start":
-            for lot in event[3]:
-                rows.append((fab.lot_id[lot], event[4], fab.tool_name[event[2]]))
+            for lot, step in zip(event[3], event[4], strict=True):
+                rows.append((fab.lot_id[lot], step, fab.tool_name[event[2]]))
     return rows
 
 
@@ -117,9 +117,9 @@ def test_checker_flags_a_wrong_family_start() -> None:
     )
     assert check_trace(fab, result, downs=[[], []], pm=[[], []])["total"] == 0
     # Start lot L_AB's step 1 (Clean_B) on Etch_A-1, before the real start.
-    forged = [("start", 150.0, 0, (0,), 1, 1150.0)]
+    forged = [("start", 150.0, 0, (0,), (1,), 1150.0, "", (0,))]
     first_b = next(
-        i for i, e in enumerate(result.events) if e[0] == "start" and e[4] == 1 and 0 in e[3]
+        i for i, e in enumerate(result.events) if e[0] == "start" and e[4] == (1,) and 0 in e[3]
     )
     result.events[first_b:first_b] = forged
     report = check_trace(fab, result, downs=[[], []], pm=[[], []])

@@ -11,7 +11,11 @@ Checks, one counter each:
 - ``dedication``: a later litho layer runs on the scanner of the first layer.
 - ``down_start``: no start inside a breakdown window.
 - ``pm_overlap``: no processing window crosses a PM window.
-- ``batch``: a multi-lot start is a batch step, one recipe, within capacity.
+- ``batch``: a multi-lot start is a batch step for every member (each on its
+  own route step), one recipe, within capacity.
+- ``batch_all_started``: every lot the dispatcher chose for a start started.
+- ``batch_min``: a batch under BATCHMN started only with a logged wait-rule
+  reason (``hot_cap``, ``max_wait``, ``no_arrivals``).
 - ``qtime_recount``: Q-time violations recounted from the trace, with the
   simulator's strict ``>``, differ from the reported count.
 
@@ -34,8 +38,11 @@ CHECKS = (
     "down_start",
     "pm_overlap",
     "batch",
+    "batch_all_started",
+    "batch_min",
     "qtime_recount",
 )
+UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "resume")
 
 
 def check_trace(
@@ -69,7 +76,7 @@ def check_trace(
     for event in result.events:
         kind = event[0]
         if kind == "start":
-            _kind, moment, tool, lots, index, finish = event
+            _kind, moment, tool, lots, steps, finish, reason, chosen = event
             starts += 1
             name = fab.tool_name[tool]
             fam = fab.tool_family[tool]
@@ -83,13 +90,29 @@ def check_trace(
                 if moment < end_at and finish > start_at:
                     flag("pm_overlap", f"{name} {moment:.1f}-{finish:.1f} pm {start_at:.1f}")
                     break
-            if len(lots) > 1:
-                route0 = fab.routes[fab.lot_route[lots[0]]]
-                cap = route0.batch_max[index]
-                recipes = {fab.routes[fab.lot_route[lot]].recipe[index] for lot in lots}
-                if cap <= 0 or len(recipes) > 1 or len(lots) * _WAFERS > cap:
+            if set(chosen) != set(lots):
+                missing = len(set(chosen) - set(lots))
+                flag("batch_all_started", f"{name} t={moment:.1f} {missing} chosen lots left")
+            route0 = fab.routes[fab.lot_route[lots[0]]]
+            in_range = all(
+                index < len(fab.routes[fab.lot_route[lot]].family)
+                for lot, index in zip(lots, steps, strict=True)
+            )
+            if in_range and route0.batch_max[steps[0]] > 0:
+                cap = route0.batch_max[steps[0]]
+                floor = route0.batch_min[steps[0]] or cap
+                members = [fab.routes[fab.lot_route[lot]] for lot in lots]
+                recipes = {route.recipe[index] for route, index in zip(members, steps, strict=True)}
+                not_batch = any(
+                    route.batch_max[index] <= 0 for route, index in zip(members, steps, strict=True)
+                )
+                if not_batch or len(recipes) > 1 or len(lots) * _WAFERS > cap:
                     flag("batch", f"{name} t={moment:.1f} lots={len(lots)} cap={cap}")
-            for lot in lots:
+                if len(lots) * _WAFERS < floor and reason not in UNDER_MIN_REASONS:
+                    flag("batch_min", f"{name} t={moment:.1f} lots={len(lots)} reason={reason!r}")
+            elif len(lots) > 1:
+                flag("batch", f"{name} t={moment:.1f} lots={len(lots)} not a batch step")
+            for lot, index in zip(lots, steps, strict=True):
                 lot_id = fab.lot_id[lot]
                 route = fab.routes[fab.lot_route[lot]]
                 if index >= len(route.family) or route.family[index] != fam:
