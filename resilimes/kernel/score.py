@@ -124,14 +124,29 @@ def dynamic_priority(
     )
 
 
+# Largest exponent PED is evaluated at. math.exp overflows above ~709.78; a lot
+# far past its CQT deadline (remaining/limit very negative, e.g. ~117 windows
+# late with k = 6) would raise OverflowError. Below the cap the value is exactly
+# exp(k*(1-ratio)) - 1, so every ranking that did not overflow is unchanged;
+# at or above it the risk saturates at exp(700) - 1 (~1e304, finite).
+PED_EXP_CAP = 700.0
+
+
 def ped_risk(remaining_sec: float | None, limit_sec: float | None, k: float) -> float:
-    """Grows as remaining/limit falls. Zero at or outside the window."""
+    """Grows as remaining/limit falls. Zero at or outside the window.
+
+    Saturates (finite) once ``k * (1 - remaining/limit)`` reaches
+    ``PED_EXP_CAP``, so a lot far past its window never overflows.
+    """
     if remaining_sec is None or limit_sec is None or limit_sec <= 0:
         return 0.0
     ratio = remaining_sec / limit_sec
     if ratio >= 1.0:
         return 0.0
-    return math.exp(k * (1.0 - ratio)) - 1.0
+    exponent = k * (1.0 - ratio)
+    if not exponent < PED_EXP_CAP:  # also catches nan
+        exponent = PED_EXP_CAP
+    return math.exp(exponent) - 1.0
 
 
 def dispatch_score(
