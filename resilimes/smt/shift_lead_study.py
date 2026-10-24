@@ -23,7 +23,7 @@ import json
 import os
 import sys
 import time
-from multiprocessing import get_context
+from multiprocessing import get_all_start_methods, get_context
 from typing import Any
 
 BOOKS = ("published", "litho", "hot", "pm_enforced")
@@ -157,6 +157,10 @@ def table(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _init_args(values: dict[str, object]) -> None:
+    _ARGS.update(values)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="qtime_study shift_lead")
     parser.add_argument(
@@ -178,8 +182,15 @@ def main(argv: list[str] | None = None) -> None:
     workers = max(1, min(MAX_WORKERS, args.workers))
     if args.provider == "nightshift":
         workers = 1
-    with get_context("fork").Pool(workers, maxtasksperchild=4) as pool:
-        rows = pool.map(_run, items, chunksize=1)
+    if workers == 1:
+        # In-process: no fork needed (Windows has none), and live calls stay sequential.
+        rows = [_run(item) for item in items]
+    else:
+        method = "fork" if "fork" in get_all_start_methods() else "spawn"
+        with get_context(method).Pool(
+            workers, maxtasksperchild=4, initializer=_init_args, initargs=(dict(_ARGS),)
+        ) as pool:
+            rows = pool.map(_run, items, chunksize=1)
     report = compare(rows, args.provider)
     with open(args.out, "w", encoding="utf-8") as handle:
         json.dump(
