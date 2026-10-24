@@ -355,11 +355,16 @@ def test_write_split_on_the_committed_seeds_emits_only_sql(tmp_path: Path) -> No
     from resilimes.data.zetaris_layout import tables_in
 
     sql_dir = ROOT / "data" / "sql"
-    seeds = [sql_dir / "seed.sql", sql_dir / "smt2020_seed.sql", sql_dir / "kernel.sql"]
+    seeds = [
+        sql_dir / "seed.sql",
+        sql_dir / "smt2020_seed.sql",
+        sql_dir / "kernel.sql",
+        sql_dir / "fab_ops_seed.sql",
+    ]
     # The header that broke the PC load: a ';' inside a '--' comment.
     assert "hand; run:" in seeds[0].read_text(encoding="utf-8")
     written = write_split(seeds, tmp_path)
-    assert sorted(written) == ["fab_cmms", "fab_erp", "fab_mes"]
+    assert sorted(written) == ["fab_cmms", "fab_erp", "fab_mes", "fab_ops"]
     from resilimes.data.zetaris_layout import _sql_statements
 
     for database, path in written.items():
@@ -371,7 +376,7 @@ def test_write_split_on_the_committed_seeds_emits_only_sql(tmp_path: Path) -> No
         for statement in statements:
             assert statement.upper().startswith(_SQL_START), (database, statement[:80])
             assert "run: python" not in statement
-    assert len(tables_in(seeds)) == 30
+    assert len(tables_in(seeds)) == 33
     scale = sql_dir / "scale_seed.sql"
     if scale.is_file():
         for statement in _sql_statements(scale.read_text(encoding="utf-8")):
@@ -390,7 +395,7 @@ def _pg_bin() -> Path | None:
 
 @pytest.mark.skipif(_pg_bin() is None, reason="no local PostgreSQL binaries")
 def test_split_files_load_into_a_real_postgres(tmp_path: Path) -> None:
-    """Apply all three split files with ON_ERROR_STOP to a throwaway local cluster."""
+    """Apply all four split files with ON_ERROR_STOP to a throwaway local cluster."""
     import os
     import subprocess
 
@@ -402,7 +407,12 @@ def test_split_files_load_into_a_real_postgres(tmp_path: Path) -> None:
     assert bin_dir is not None
     sql_dir = ROOT / "data" / "sql"
     written = write_split(
-        [sql_dir / "seed.sql", sql_dir / "smt2020_seed.sql", sql_dir / "kernel.sql"],
+        [
+            sql_dir / "seed.sql",
+            sql_dir / "smt2020_seed.sql",
+            sql_dir / "kernel.sql",
+            sql_dir / "fab_ops_seed.sql",
+        ],
         tmp_path / "split",
     )
     data = tmp_path / "pgdata"
@@ -456,7 +466,7 @@ def test_split_files_load_into_a_real_postgres(tmp_path: Path) -> None:
                 text=True,
             )
             counts[database] = int(out.stdout.strip())
-        assert sum(counts.values()) == 30
+        assert sum(counts.values()) == 33
         assert all(counts.values())
         rows = run(
             [*psql, "-At", "-d", "fab_mes", "-c", "select count(*) from resilimes.smt_route"],

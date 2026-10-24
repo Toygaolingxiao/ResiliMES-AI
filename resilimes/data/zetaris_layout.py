@@ -59,6 +59,15 @@ SMT_DATABASE_FOR_TABLE: dict[str, str] = {
     "smt_order": "fab_erp",
 }
 
+# Operations log of recorded simulator runs (data/sql/fab_ops_seed.sql): what
+# happened, which decisions were taken, hourly KPIs. Read by the AI evidence
+# toolkit through the ``fab_ops`` datasource; never written by the agent.
+OPS_DATABASE_FOR_TABLE: dict[str, str] = {
+    "ops_events": "fab_ops",
+    "ops_ai_decisions": "fab_ops",
+    "ops_kpi_hourly": "fab_ops",
+}
+
 # Postgres database that owns the table. The schema inside each database is
 # ``resilimes``. Kernel tables follow the same ownership as the spec.
 DATABASE_FOR_TABLE: dict[str, str] = {
@@ -80,12 +89,14 @@ DATABASE_FOR_TABLE: dict[str, str] = {
     "materials": "fab_erp",
     "orders": "fab_erp",
     **SMT_DATABASE_FOR_TABLE,
+    **OPS_DATABASE_FOR_TABLE,
 }
 
 DATASOURCE_FOR_DATABASE: dict[str, str] = {
     "fab_mes": "resilimes",
     "fab_cmms": "fab_cmms",
     "fab_erp": "fab_erp",
+    "fab_ops": "fab_ops",
 }
 
 # DESCRIBE BY text per database, as in the owner's verified setup script.
@@ -93,6 +104,7 @@ DESCRIBE_FOR_DATABASE: dict[str, str] = {
     "fab_mes": "ResiliMES_MES.fab_mes",
     "fab_cmms": "Maintenance_CMMS.fab_cmms",
     "fab_erp": "ERP_materials_bom.fab_erp",
+    "fab_ops": "Fab_operations_log.fab_ops",
 }
 
 # The owner's federated check. Spark SQL: no casts, datasource-qualified names.

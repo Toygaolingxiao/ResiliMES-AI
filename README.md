@@ -130,14 +130,14 @@ The image sets `RESILIMES_MODE=mock`.
 
 1. Install a NVIDIA Nemotron model in [Meterless Nightshift](https://meterless.ai/) and copy the runtime token from `<stateDir>/proxy-token`. Do not use the placeholder `rt-local`.
 2. Set `METERLESS_BASE_URL`, `METERLESS_RUNTIME_TOKEN`, and `NEMOTRON_MODEL` to the id `GET /v1/models` returns.
-3. Load Postgres and register the three datasources, then check, from `C:\code\ResiliMES-AI` in PowerShell:
+3. Load Postgres and register the four datasources, then check, from `C:\code\ResiliMES-AI` in PowerShell:
 
 ```powershell
 wsl -d Ubuntu -- bash scripts/zetaris_setup.sh
 python scripts/check_zetaris_smt.py
 ```
 
-The first command loads the sample warehouse and the full SMT2020 fab and registers `resilimes`, `fab_cmms` and `fab_erp`. It takes no arguments and reads the logins already in WSL (`~/.config/fab-mes/env`, `~/zetaris-platform/.env`); it never prints them. The second prints per-table row counts through Zetaris and `PARITY OK` against `data/smt2020`.
+The first command loads the sample warehouse and the full SMT2020 fab and registers `resilimes`, `fab_cmms`, `fab_erp` and `fab_ops`. It takes no arguments and reads the logins already in WSL (`~/.config/fab-mes/env`, `~/zetaris-platform/.env`); it never prints them. The second prints per-table row counts through Zetaris and `PARITY OK` against `data/smt2020`.
 
 `.gitattributes` keeps every text file LF on Windows. A clone made before it may still hold CRLF copies (bash then fails with `set: pipefail: invalid option name`). Refresh them once from PowerShell (commit or stash local edits under `scripts/` and `data/` first):
 

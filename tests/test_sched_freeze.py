@@ -71,7 +71,12 @@ def _run(fab: Fab, policy: str, freeze: FreezeConfig | None, hours: float = HOUR
 
 
 def _digest(result: RunResult, *, freeze_events: bool = True) -> str:
-    data = {key: value for key, value in asdict(result).items() if key not in TIMING}
+    # lot_log is the evidence toolkit's opt-in field (always {} here); it is not dispatch output.
+    data = {
+        key: value
+        for key, value in asdict(result).items()
+        if key not in TIMING and not (key == "lot_log" and not value)
+    }
     if not freeze_events:
         data["events"] = [e for e in data["events"] if e[0] not in ("sched_tick", "unfreeze")]
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
