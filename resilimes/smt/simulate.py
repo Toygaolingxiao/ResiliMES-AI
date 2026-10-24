@@ -27,6 +27,7 @@ import math
 import random
 import time
 from bisect import bisect_left
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from heapq import heapify as _sched_heapify
 from heapq import heappop as _sched_pop
@@ -65,6 +66,8 @@ _QDEADLINE = 5
 # snapshot the plan. It never starts a lot: dispatch stays event-triggered.
 _TICK = 6
 REPLAN_SEC = 300.0
+# ``run_policy(progress=...)`` is called every 4096 events.
+_PROGRESS_MASK = 4095
 _BIN_SEC = 900.0
 _BUCKETS = ("met", "late", "held", "recleaned", "expired", "live", "skipped")
 _MISSED = ("late", "held", "recleaned", "expired")
@@ -396,6 +399,7 @@ def run_policy(
     plan: PlanningOutput | None = None,
     shift_lead: Any = None,
     plan_wait: str = "position",
+    progress: Callable[[float], None] | None = None,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
@@ -412,7 +416,9 @@ def run_policy(
     ``plan_wait`` (plan runs only) picks the expected
     wait in the risk: ``position`` (default) the lot's own place in the
     dispatch-ordered queue, ``family`` the family-average wait of planning-r1
-    before the fix (kept for the A/B study)."""
+    before the fix (kept for the A/B study). ``progress`` (default None) is
+    called with the simulated clock every few thousand events; it only reads
+    the clock, so a run is the same with or without it."""
     if plan_wait not in {"position", "family"}:
         raise ValueError(f"Unknown plan_wait {plan_wait}")
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
@@ -444,6 +450,7 @@ def run_policy(
         shift_lead=shift_lead,
         plan_wait=plan_wait,
     )
+    sim.progress = progress
     return sim.run()
 
 
@@ -519,6 +526,8 @@ class _Sim:
         self.fab = fab
         # AI shift lead hook (off when None): asked at exceptions in tick().
         self.lead = shift_lead
+        # Progress callback (off when None): reads the clock, changes nothing.
+        self.progress: Callable[[float], None] | None = None
         self.r2 = r2_policy and policy == "resilimes"
         # Per-fix switches: 1 shortlist admission, 2 dynamic risk order,
         # 3 bounded tool reservation.
@@ -783,6 +792,8 @@ class _Sim:
                 self.release_idle(tool)
                 self.try_start(tool, moment)
             steps += 1
+            if self.progress is not None and not steps & _PROGRESS_MASK:
+                self.progress(moment)
             if steps > 2_000_000:
                 raise RuntimeError("SMT simulation exceeded 2e6 events")
         return self.finish(time.perf_counter() - started)

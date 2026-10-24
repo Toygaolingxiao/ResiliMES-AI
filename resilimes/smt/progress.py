@@ -313,6 +313,20 @@ class Progress:
             return None
         return max(0.0, min(1.0, self.sim_t / self.horizon))
 
+    def run_eta(self) -> float | None:
+        """Seconds left in the current run (simulated-time rate, else the arm's mean)."""
+        with self.lock:
+            if self.current is None:
+                return None
+            spent = self.clock() - self.run_started
+            fraction = self.fraction()
+            if fraction is not None and fraction >= 0.005:
+                return spent / fraction - spent
+            known = self.walls.get(str(self.current["arm"]))
+            if not known:
+                return None
+            return max(0.0, sum(known) / len(known) - spent)
+
     def eta(self) -> float | None:
         """Seconds left: the current run by its simulated-time rate, later runs by arm means."""
         with self.lock:
@@ -331,7 +345,7 @@ class Progress:
                 else:
                     projected = spent / fraction
                     left += projected - spent
-                first = self.done + 1
+                first = int(self.current["index"])
             else:
                 first = self.done
             for arm in self.plan[first:]:
@@ -378,16 +392,18 @@ class Progress:
                 "totals": _public(total),
                 "elapsed_s": round(now - self.started, 1),
                 "eta_s": None if self.status != "running" else _round(self.eta()),
+                "run_eta_s": None if self.status != "running" else _round(self.run_eta()),
             }
 
     def line(self, snap: dict[str, Any] | None = None) -> str:
         snap = snap or self.snapshot()
         runs = snap["runs"]
         current = snap["current"]
-        parts = [f"{snap['study']} {min(runs['done'] + 1, runs['total'])}/{runs['total']}"]
+        index = current["index"] if current is not None else min(runs["done"] + 1, runs["total"])
+        parts = [f"{snap['study']} {index}/{runs['total']}"]
         if snap["status"] != "running":
             parts[0] = f"{snap['study']} {runs['done']}/{runs['total']} {snap['status'].upper()}"
-        if current is not None:
+        elif current is not None:
             parts[0] += f" {current['book']} s{current['seed']} {current['arm']}"
         sim = snap["sim"]
         if sim["pct"] is not None and current is not None:
@@ -408,7 +424,7 @@ class Progress:
             if latency["avg"] is not None or ai["wait_s"] is not None:
                 text = "LLM"
                 if latency["avg"] is not None:
-                    text += f" avg {latency['avg'] / 1000:.1f}s last {latency['last'] / 1000:.1f}s"
+                    text += f" avg {_ms(latency['avg'])} last {_ms(latency['last'])}"
                 if ai["wait_s"] is not None:
                     text += f" wait {ai['wait_s']:.0f}s"
                 parts.append(text)
@@ -417,7 +433,16 @@ class Progress:
             parts.append(
                 f"exc {totals['exceptions']} ok {totals['accepted']} fb {totals['fallback']}"
             )
-        parts.append(f"{clock_text(snap['elapsed_s'])} ETA {clock_text(snap['eta_s'])}")
+        timing = clock_text(snap["elapsed_s"])
+        if snap["status"] == "running":
+            if snap["eta_s"] is not None:
+                timing += f" ETA {clock_text(snap['eta_s'])}"
+            elif snap.get("run_eta_s") is not None:
+                # Later runs of an arm not seen yet: the current run's ETA, a lower bound.
+                timing += f" ETA >{clock_text(snap['run_eta_s'])}"
+            else:
+                timing += " ETA ?"
+        parts.append(timing)
         if snap["error"]:
             parts.append(snap["error"])
         return " | ".join(parts)
@@ -461,6 +486,10 @@ class Progress:
             self.stream.flush()
         except (OSError, ValueError):
             pass
+
+
+def _ms(value: float) -> str:
+    return f"{value:.0f}ms" if value < 1000 else f"{value / 1000:.1f}s"
 
 
 def _round(value: float | None) -> float | None:

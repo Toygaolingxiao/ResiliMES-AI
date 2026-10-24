@@ -264,3 +264,24 @@ def test_helpers() -> None:
 def test_redact_masks_key_like_values() -> None:
     assert "nvapi-abcdefgh1234" not in redact("401 for key nvapi-abcdefgh1234")
     assert redact("Bearer abc.def") == "Bearer=***"
+
+
+def test_eta_at_the_end_of_a_run_counts_the_runs_left() -> None:
+    progress, clock, _stream = _progress(plan=["rules", "rules", "rules"])
+    progress.begin_run("published", 1, "rules", 100.0)
+    clock.t += 30.0
+    progress.sim_time(100.0)
+    assert progress.eta() == 60.0
+    progress.end_run()
+    assert progress.eta() == 60.0
+
+
+def test_unknown_later_arm_shows_a_lower_bound() -> None:
+    progress, clock, _stream = _progress()
+    progress.begin_run("published", 1, "rules", 100.0)
+    clock.t += 10.0
+    progress.sim_time(50.0)
+    snap = progress.snapshot()
+    assert snap["eta_s"] is None
+    assert snap["run_eta_s"] == 10.0
+    assert progress.line(snap).endswith("0:00:10 ETA >0:00:10")

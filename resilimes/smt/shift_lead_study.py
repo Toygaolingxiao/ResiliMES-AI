@@ -14,6 +14,13 @@ Books ``published``, ``litho``, ``hot`` (plus ``pm_enforced``, the only
 book whose PM calendar falls inside a 2-day horizon, so PM conflicts occur),
 seeds 1-3, 2-day horizon (``RESILIMES_STUDY_HORIZON_H``, default 48), at most
 2 worker processes (``--workers``).
+
+Progress (on by default, ``--no-progress`` to turn off): a line on stderr,
+rewritten in place on a terminal and printed every 10 s when redirected, and
+``<out>.progress.json`` (``--progress-file``) rewritten every 2 s with status
+running / done / failed; see ``resilimes.smt.progress``. With one worker
+(always for ``nightshift``) it shows the simulated time and every AI call;
+with a worker pool it counts finished runs.
 """
 
 from __future__ import annotations
@@ -25,6 +32,8 @@ import sys
 import time
 from multiprocessing import get_all_start_methods, get_context
 from typing import Any
+
+from resilimes.smt.progress import Progress, progress_path
 
 BOOKS = ("published", "litho", "hot", "pm_enforced")
 SEEDS = (1, 2, 3)
@@ -48,6 +57,8 @@ BALANCE = ("queue_var_mean", "queue_cv_families", "wip_quintile_mean")
 BALANCE_PREFIX = ("util_", "starve_h_")
 
 _ARGS: dict[str, Any] = {}
+# The live tracker, set only for in-process runs (never inherited by a pool).
+_LIVE: list[Progress] = []
 
 
 def _run(item: tuple[str, int, str]) -> dict[str, Any]:
@@ -59,12 +70,20 @@ def _run(item: tuple[str, int, str]) -> dict[str, Any]:
     book, seed, arm = item
     fab = load_fab()
     plant, kwargs = _setup(fab, book, seed, "resilimes")
+    live = _LIVE[0] if _LIVE else None
     lead = None
     if arm != "rules":
         decider = build_decider(arm, lang=_ARGS["lang"], timeout_s=_ARGS["timeout"])
-        lead = ShiftLead(decider, budget=_ARGS["budget"])
+        lead = ShiftLead(decider, budget=_ARGS["budget"], progress=live)
+    if live is not None:
+        live.begin_run(book, seed, arm, kwargs["horizon"])
     started = time.perf_counter()
-    result = run_policy(plant, shift_lead=lead, **kwargs)
+    result = run_policy(
+        plant,
+        shift_lead=lead,
+        progress=live.sim_time if live is not None else None,
+        **kwargs,
+    )
     row: dict[str, Any] = {"book": book, "seed": seed, "arm": arm}
     row["wall_s"] = round(time.perf_counter() - started, 1)
     for key in KPIS:
@@ -83,6 +102,8 @@ def _run(item: tuple[str, int, str]) -> dict[str, Any]:
     if lead is not None:
         row["shift_lead"] = lead.summary()
         row["decisions"] = lead.log
+    if live is not None:
+        live.end_run(arm, row["wall_s"])
     return row
 
 
@@ -173,6 +194,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--lang", default="zh", choices=("zh", "ja", "en"))
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--budget", type=int, default=None, help="max decider calls per run")
+    parser.add_argument("--no-progress", action="store_true", help="no progress line or file")
+    parser.add_argument(
+        "--progress-file", default=None, help="default <out>.progress.json; '' for none"
+    )
+    parser.add_argument(
+        "--progress-every", type=float, default=10.0, help="seconds between lines in a log"
+    )
     args = parser.parse_args(argv)
     os.environ.setdefault("RESILIMES_STUDY_HORIZON_H", "48")
     _ARGS.update(lang=args.lang, timeout=args.timeout, budget=args.budget)
@@ -182,15 +210,48 @@ def main(argv: list[str] | None = None) -> None:
     workers = max(1, min(MAX_WORKERS, args.workers))
     if args.provider == "nightshift":
         workers = 1
-    if workers == 1:
-        # In-process: no fork needed (Windows has none), and live calls stay sequential.
-        rows = [_run(item) for item in items]
-    else:
-        method = "fork" if "fork" in get_all_start_methods() else "spawn"
-        with get_context(method).Pool(
-            workers, maxtasksperchild=4, initializer=_init_args, initargs=(dict(_ARGS),)
-        ) as pool:
-            rows = pool.map(_run, items, chunksize=1)
+    path = args.progress_file if args.progress_file is not None else progress_path(args.out)
+    progress = Progress(
+        study="shift_lead",
+        plan=[arm for _book, _seed, arm in items],
+        provider=args.provider,
+        budget=args.budget,
+        path=None if args.no_progress or not path else path,
+        console=not args.no_progress,
+        log_every=args.progress_every,
+    )
+    if not args.no_progress:
+        print(
+            f"shift_lead/{args.provider}: {len(items)} runs, books {','.join(books)}, "
+            f"seeds {','.join(str(seed) for seed in seeds)}, budget {args.budget}, "
+            f"timeout {args.timeout:g} s, lang {args.lang}, workers {workers}, "
+            f"horizon {os.environ['RESILIMES_STUDY_HORIZON_H']} h -> {args.out}"
+            + (f"; progress file {path}" if path else ""),
+            file=sys.stderr,
+            flush=True,
+        )
+    with progress:
+        if workers == 1:
+            # In-process: no fork needed (Windows has none), and live calls stay sequential.
+            if not args.no_progress:
+                _LIVE.append(progress)
+            try:
+                rows = [_run(item) for item in items]
+            finally:
+                _LIVE.clear()
+        else:
+            method = "fork" if "fork" in get_all_start_methods() else "spawn"
+            with get_context(method).Pool(
+                workers, maxtasksperchild=4, initializer=_init_args, initargs=(dict(_ARGS),)
+            ) as pool:
+                rows = []
+                for row in pool.imap(_run, items, chunksize=1):
+                    rows.append(row)
+                    progress.absorb(row)
+        _write(args, rows)
+
+
+def _write(args: argparse.Namespace, rows: list[dict[str, Any]]) -> None:
     report = compare(rows, args.provider)
     with open(args.out, "w", encoding="utf-8") as handle:
         json.dump(
@@ -199,9 +260,11 @@ def main(argv: list[str] | None = None) -> None:
             indent=1,
             ensure_ascii=False,
         )
-    print(table(report))
-    print(json.dumps(report["totals"], indent=1, ensure_ascii=False))
-    print(f"shift_lead/{args.provider}: {len(rows)} runs -> {args.out}", file=sys.stderr)
+    print(table(report), flush=True)
+    print(json.dumps(report["totals"], indent=1, ensure_ascii=False), flush=True)
+    print(
+        f"shift_lead/{args.provider}: {len(rows)} runs -> {args.out}", file=sys.stderr, flush=True
+    )
 
 
 if __name__ == "__main__":
