@@ -7,7 +7,9 @@ The interactive console uses a 12-hour horizon so a click stays short.
 from __future__ import annotations
 
 import json
+import os
 import random
+from multiprocessing import get_context
 from statistics import mean, pstdev
 from typing import Any
 
@@ -51,9 +53,48 @@ _KEYS = (
     "mean_x_factor",
     "qtime_gates",
     "recleans",
+    "setup_min",
+    "batch_starts",
+    "batch_lots",
+    "batch_dropped",
+    "reworks",
+    "rework_lot_min",
+    "repins",
+    "skipped",
+    "qtime_skipped",
 )
 
 _X_ETAS = (180.0, 300.0, 600.0, LITHO_MTTR_MIN)
+
+# Runs are independent, so seeds and policies go to a process pool. One
+# full-scale run peaks near 90 MB RSS and ~3 s; 6 workers on the 8-core,
+# ~4 GB box ran 25 runs in 14 s with no swap. Set RESILIMES_BENCH_WORKERS=1
+# for a serial run. Wall-clock fields (sim_s, dispatch ms) are measured
+# inside each run and can read a little higher under a busy pool.
+_WORKERS = max(1, int(os.environ.get("RESILIMES_BENCH_WORKERS", "6")))
+_FABS: dict[str, Fab] = {}
+
+
+def _job(item: tuple[str, dict[str, Any]]) -> RunResult:
+    book, kwargs = item
+    return run_policy(_FABS[book], **kwargs)
+
+
+def _run_all(items: list[tuple[str, dict[str, Any]]]) -> list[RunResult]:
+    """Run jobs in order. Workers fork after ``_FABS`` is filled."""
+    if _WORKERS <= 1 or len(items) <= 1:
+        return [_job(item) for item in items]
+    with get_context("fork").Pool(min(_WORKERS, len(items))) as pool:
+        return pool.map(_job, items, chunksize=1)
+
+
+def _collect(
+    keys: list[str], results: list[RunResult], found: dict[str, list[RunResult]]
+) -> dict[str, list[RunResult]]:
+    for key, result in zip(keys, results, strict=True):
+        found[key].append(result)
+    return found
+
 
 # One pre-registered run. Seeds 9-13. Not retuned after the numbers.
 _HELDOUT: dict[str, Any] = {
@@ -102,6 +143,10 @@ _HELDOUT: dict[str, Any] = {
 
 def main() -> None:
     fab = load_fab()
+    _FABS["base"] = fab
+    _FABS["xfactor"] = apply_xfactor(fab)
+    _FABS["tight"] = apply_tight(fab, horizon=TIGHT_HORIZON_SEC).fab
+    print(f"{_WORKERS} workers", flush=True)
     aps_ms, scanner_steps = macro_aps_ms(fab)
     horizon = STUDY_HORIZON_SEC
     print(f"APS {aps_ms:.1f} ms, {scanner_steps} scanner steps", flush=True)
@@ -151,26 +196,32 @@ def _tight_matrix(fab: Any) -> dict[str, list[RunResult]]:
         policy: [] for policy in ("resilimes", "edd", "fifo", "cr")
     }
     horizon = TIGHT_HORIZON_SEC
+    book = apply_tight(fab, horizon=horizon)
+    _FABS.setdefault("tight", book.fab)
+    keys: list[str] = []
+    items: list[tuple[str, dict[str, Any]]] = []
     for seed in SEEDS:
-        book = apply_tight(fab, horizon=horizon)
         downs = sample_downs(book.fab, seed, horizon)
         downs[book.down_tool].append((0.0, min(book.down_until, horizon)))
         pm = pm_windows(book.fab, horizon)
         for policy in found:
-            print(f"tight {policy} seed {seed}", flush=True)
-            found[policy].append(
-                run_policy(
-                    book.fab,
-                    policy=policy,
-                    seed=seed,
-                    horizon=horizon,
-                    downs=downs,
-                    pm=pm,
-                    trace=False,
-                    watch=book.watch,
+            keys.append(policy)
+            items.append(
+                (
+                    "tight",
+                    {
+                        "policy": policy,
+                        "seed": seed,
+                        "horizon": horizon,
+                        "downs": downs,
+                        "pm": pm,
+                        "trace": False,
+                        "watch": book.watch,
+                    },
                 )
             )
-    return found
+    print(f"tight: {len(items)} runs", flush=True)
+    return _collect(keys, _run_all(items), found)
 
 
 def _matrix(
@@ -183,6 +234,9 @@ def _matrix(
     found: dict[str, list[RunResult]] = {policy: [] for policy in policies}
     forced_until = LITHO_MTTR_MIN * 60.0 if kind == "litho" else 0.0
     shift = pm_shift_to_open(fab, fab.pm_calendar, 2 * 3600.0) if kind == "pm" else 0.0
+    _FABS.setdefault("base", fab)
+    keys: list[str] = []
+    items: list[tuple[str, dict[str, Any]]] = []
     for seed in SEEDS:
         downs = sample_downs(
             fab,
@@ -193,28 +247,32 @@ def _matrix(
         )
         pm = pm_windows(fab, horizon, shift_sec=shift)
         for policy in policies:
-            print(f"{kind} {policy} seed {seed}", flush=True)
-            found[policy].append(
-                run_policy(
-                    fab,
-                    policy=policy,
-                    seed=seed,
-                    horizon=horizon,
-                    downs=downs,
-                    pm=pm,
-                    hot_lot=fab.hot_lot if kind == "hot" else None,
-                    hot_due=12 * 3600.0 if kind == "hot" and policy == "resilimes" else None,
-                    promote_hot=kind == "hot" and policy == "resilimes",
-                    trace=False,
-                    focus_down_until=forced_until,
+            keys.append(policy)
+            items.append(
+                (
+                    "base",
+                    {
+                        "policy": policy,
+                        "seed": seed,
+                        "horizon": horizon,
+                        "downs": downs,
+                        "pm": pm,
+                        "hot_lot": fab.hot_lot if kind == "hot" else None,
+                        "hot_due": 12 * 3600.0 if kind == "hot" and policy == "resilimes" else None,
+                        "promote_hot": kind == "hot" and policy == "resilimes",
+                        "trace": False,
+                        "focus_down_until": forced_until,
+                    },
                 )
             )
-    return found
+    print(f"{kind}: {len(items)} runs", flush=True)
+    return _collect(keys, _run_all(items), found)
 
 
 def _xfactor(fab: Fab) -> dict[str, Any]:
     """Dues at 2.75 x remaining process. One scanner held for a fixed ETA."""
     plant = apply_xfactor(fab)
+    _FABS.setdefault("xfactor", plant)
     horizon = STUDY_HORIZON_SEC
     due = sum(1 for due_at in plant.lot_due if due_at <= horizon)
     found: dict[str, Any] = {
@@ -231,6 +289,8 @@ def _xfactor(fab: Fab) -> dict[str, Any]:
             else ("resilimes", "edd", "smt_rule")
         )
         rows: dict[str, list[RunResult]] = {policy: [] for policy in policies}
+        keys: list[str] = []
+        items: list[tuple[str, dict[str, Any]]] = []
         for seed in SEEDS:
             downs = sample_downs(
                 plant,
@@ -241,19 +301,23 @@ def _xfactor(fab: Fab) -> dict[str, Any]:
             )
             pm = pm_windows(plant, horizon)
             for policy in policies:
-                print(f"xfactor eta {eta} {policy} seed {seed}", flush=True)
-                rows[policy].append(
-                    run_policy(
-                        plant,
-                        policy=policy,
-                        seed=seed,
-                        horizon=horizon,
-                        downs=downs,
-                        pm=pm,
-                        trace=False,
-                        focus_down_until=eta * 60.0,
+                keys.append(policy)
+                items.append(
+                    (
+                        "xfactor",
+                        {
+                            "policy": policy,
+                            "seed": seed,
+                            "horizon": horizon,
+                            "downs": downs,
+                            "pm": pm,
+                            "trace": False,
+                            "focus_down_until": eta * 60.0,
+                        },
                     )
                 )
+        print(f"xfactor eta {eta}: {len(items)} runs", flush=True)
+        _collect(keys, _run_all(items), rows)
         found["etas"][str(eta)] = _pack(rows, spread=True)
     found["scanner_family_util_edd_seed1"] = _scanner_family_util(fab, plant, horizon)
     return found
@@ -347,7 +411,10 @@ def _pack(rows: dict[str, list[RunResult]], *, spread: bool = False) -> dict[str
 
 
 def _public(result: RunResult) -> dict[str, Any]:
-    return {key: getattr(result, key) for key in ("seed", *_KEYS)}
+    row = {key: getattr(result, key) for key in ("seed", *_KEYS)}
+    row["batch_reasons"] = dict(result.batch_reasons)
+    row["class_wait_min"] = dict(result.class_wait_min)
+    return row
 
 
 _LATENCY = {"dispatch_p50_ms", "dispatch_p95_ms", "dispatch_busy_p50_ms", "dispatch_busy_p95_ms"}
@@ -451,7 +518,12 @@ def _trade(payload: dict[str, Any]) -> str:
         "Every number in this file comes from the simulator after the stale-queue "
         "fix. Before it, a lot that had already started could stay in its old "
         "family queue and start its next step on a tool of the wrong family. "
-        "The trace checker and the pre-fix numbers are in [invariants.md](invariants.md)."
+        "The trace checker and the pre-fix numbers are in [invariants.md](invariants.md). "
+        "It also includes the fab-logic-r1 operation logic: every lot chosen for a "
+        "batch starts, same-recipe lots batch across operation numbers under a wait "
+        "rule, setup time is charged, a breakdown sends the lot in process to rework, "
+        "sampled metrology is skipped by a lot-ID rule, and ResiliMES ranks by class "
+        "tier first. Old against new numbers are in [FAB_LOGIC_R1.md](FAB_LOGIC_R1.md)."
     )
 
 
@@ -675,6 +747,9 @@ def _heldout_control(fab: Fab) -> dict[str, Any]:
             policy: {"on_time": 0, "due": 0, "qtime": 0, "recleans": 0, "per_seed": []}
             for policy in policies
         }
+        _FABS.setdefault(name if name == "xfactor" else "base", plant)
+        keys: list[str] = []
+        items: list[tuple[str, dict[str, Any]]] = []
         for seed in _HELDOUT_SEEDS:
             downs = sample_downs(
                 plant,
@@ -685,23 +760,29 @@ def _heldout_control(fab: Fab) -> dict[str, Any]:
             )
             pm = pm_windows(plant, horizon)
             for policy in policies:
-                print(f"heldout {name} {policy} seed {seed}", flush=True)
-                result = run_policy(
-                    plant,
-                    policy=policy,
-                    seed=seed,
-                    horizon=horizon,
-                    downs=downs,
-                    pm=pm,
-                    trace=False,
-                    focus_down_until=600.0 * 60.0 if name == "xfactor" else 0.0,
+                keys.append(policy)
+                items.append(
+                    (
+                        name if name == "xfactor" else "base",
+                        {
+                            "policy": policy,
+                            "seed": seed,
+                            "horizon": horizon,
+                            "downs": downs,
+                            "pm": pm,
+                            "trace": False,
+                            "focus_down_until": 600.0 * 60.0 if name == "xfactor" else 0.0,
+                        },
+                    )
                 )
-                num = _count(result.on_time_pct, result.due_in_horizon)
-                rows[policy]["on_time"] += num
-                rows[policy]["due"] += result.due_in_horizon
-                rows[policy]["qtime"] += result.qtime_violations
-                rows[policy]["recleans"] += result.recleans
-                rows[policy]["per_seed"].append(f"{num}/{result.due_in_horizon}")
+        print(f"heldout {name}: {len(items)} runs", flush=True)
+        for policy, result in zip(keys, _run_all(items), strict=True):
+            num = _count(result.on_time_pct, result.due_in_horizon)
+            rows[policy]["on_time"] += num
+            rows[policy]["due"] += result.due_in_horizon
+            rows[policy]["qtime"] += result.qtime_violations
+            rows[policy]["recleans"] += result.recleans
+            rows[policy]["per_seed"].append(f"{num}/{result.due_in_horizon}")
         books[name] = rows
     return {
         "seeds": list(_HELDOUT_SEEDS),
@@ -733,7 +814,7 @@ Control in this lab note is the score shipped at that one-shot: lot due inside `
 | Published | dry-etch queue gate | revert | 156/280 | 1850 | 131 |
 | Published | slack at or under 7200 s stays | keep | 156/280 | 1821 | 131 |
 
-The expose-step due raised X-factor on-time and cut re-cleans and Q-time, and lost one published-due lot (156 to 155) while raising that book's Q-time and re-cleans. Reverted. `dpi()` still uses the lot due. `rank()` still calls `dispatch_score`.
+The expose-step due raised X-factor on-time and cut re-cleans and Q-time, and lost one published-due lot (156 to 155) while raising that book's Q-time and re-cleans. Reverted. `dpi()` still uses the lot due. At that one-shot `rank()` called `dispatch_score`; since fab-logic-r1 it uses `tiered_key`.
 
 The dry-etch gate, aimed at the 44 adjacent 1-hour Dry_Etch to Wet_Etch pairs and counting lots already queued downstream, held X-factor on-time and cut that book's Q-time (2223 to 2198) and re-cleans (223 to 213). Published-due on-time stayed 156/280 and Q-time rose from 1821 to 1850. Reverted. The Wet_Etch gate remains, and it fired 0 times on the books above.
 
