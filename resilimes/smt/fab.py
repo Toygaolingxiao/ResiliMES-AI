@@ -42,6 +42,14 @@ HOT_BATCH_WAIT_SEC = 600.0
 # disposition and strip/clean, then it redoes the whole operation on any
 # qualified tool of the family. ResiliMES default, not an SMT2020 column.
 REWORK_SEC = 1800.0
+# Q-time-urgent override (ResiliMES dispatch only). A waiting lot inside an
+# open dataset CQT window is urgent when the time left before its target step
+# must start is at least the process time it still needs before that step and
+# at most that plus this margin. Pre-registered at 900 s (15 min) before any
+# run of the rule: about three times the mean VIP queue wait (5.7 min on the
+# published book), so an urgent lot sees at least one dispatch on its family,
+# and a quarter of the shortest SMT2020 CQT limit (1 h). Not tuned across seeds.
+QTIME_URGENT_MARGIN_SEC = 900.0
 # ResiliMES parameter. Not an SMT2020 column.
 WIP_PER_TOOL = 2
 WIP_FLOOR = 8
