@@ -16,8 +16,10 @@ Two parts, both read by ``simulate._Sim`` (see ``docs/HARD_QTIME.md``):
   the up tools of that family within the limit. Dataset process time, batch
   size, transport and the PM calendar only; future breakdowns are not used.
   A lot that missed (or is about to miss) its window is never gated and is
-  expedited: first at its target within its class tier, and through re-clean
-  and the re-opened window until its target step starts.
+  expedited: inside its class tier it ranks right behind lots whose open
+  window is lost unless they start now (the hot-lot rule of main) and ahead
+  of everyone else, at its target and through re-clean and the re-opened
+  window, until its target step starts.
 """
 
 from __future__ import annotations
