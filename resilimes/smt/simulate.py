@@ -7,7 +7,9 @@ refuses a start that falls inside a PM or whose process would cross the next PM.
 
 Transport is a fixed move between steps (same STNGRP bay 1 min, other bay
 3 min, ``transport_seconds``), the same for every policy; the SMT2020
-``fromto`` row (one Fab-to-Fab distribution) is not used. Operators, reticle copies, and
+``fromto`` row (one Fab-to-Fab distribution) is not used. An optional
+multi-building layout (``layout=``, default off, ``resilimes.smt.layout``) adds
+a fixed cross-building tier; see docs/FAB_LAYOUT.md. Operators, reticle copies, and
 the published fractional rework probability are not in this loop. A litho
 layer with ``SVESTN`` / ``FORSTEP`` stays on the scanner that ran the first
 layer of that chain, once this run has chosen it. WIP does not name a tool,
@@ -54,6 +56,7 @@ from resilimes.smt.fab import (
 )
 from resilimes.smt.faults import FaultPlan
 from resilimes.smt.freeze import FreezeConfig, Freezer
+from resilimes.smt.layout import FabLayout, family_buildings, resolve
 
 _DONE = 0
 _DOWN_START = 1
@@ -233,6 +236,11 @@ class RunResult:
     # Frozen dispatch zone and plan-stability KPIs (``resilimes.smt.freeze``);
     # empty unless the freeze or tick tracking is on.
     sched_freeze: dict[str, Any] = field(default_factory=dict)
+    # Transport KPIs and the multi-building layout (``resilimes.smt.layout``):
+    # layout name (None = one building, as main), moves, transport minutes,
+    # cross-building moves, and second transports (freeze tracking) weighted
+    # by their transport time.
+    layout: dict[str, Any] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -425,6 +433,7 @@ def run_policy(
     lot_log: bool = False,
     faults: FaultPlan | None = None,
     freeze: FreezeConfig | None = None,
+    layout: FabLayout | bool | str | None = None,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
@@ -435,7 +444,10 @@ def run_policy(
     re-evaluation tick period for every policy (0 turns the tick off).
     ``freeze`` is the frozen dispatch zone and tick log
     (``resilimes.smt.freeze``); unset reads RESILIMES_SCHED_FREEZE and friends
-    from the environment, default off.
+    from the environment, default off. ``layout`` is the multi-building
+    transport layout (``resilimes.smt.layout``): False off (one building, as
+    main), True the example two-building layout, or a ``FabLayout``; unset
+    reads RESILIMES_FAB_LAYOUT, default off.
     ``plan`` (the planning layer's output, computed once before the run) turns
     on the step-due risk for ResiliMES fix 2, the plan band/rank tie-break, the
     per-tool schedule at each tick and the deviation log; None is the
@@ -481,6 +493,7 @@ def run_policy(
         lot_log=lot_log,
         faults=faults,
         freeze=FreezeConfig.from_env() if freeze is None else freeze,
+        layout=resolve(layout),
     )
     sim.progress = progress
     return sim.run()
@@ -557,12 +570,19 @@ class _Sim:
         lot_log: bool = False,
         faults: FaultPlan | None = None,
         freeze: FreezeConfig | None = None,
+        layout: FabLayout | None = None,
     ) -> None:
         self.fab = fab
         # AI shift lead hook (off when None): asked at exceptions in tick().
         self.lead = shift_lead
         # Progress callback (off when None): reads the clock, changes nothing.
         self.progress: Callable[[float], None] | None = None
+        self.layout = layout
+        self.buildings = family_buildings(fab, layout) if layout is not None else None
+        self.cross_sec = layout.cross_building_sec if layout is not None else 0.0
+        self.moves = 0
+        self.move_sec = 0.0
+        self.cross_moves = 0
         # Opt-in evidence hooks; None keeps the default path unchanged.
         self.lot_log: dict[str, list[tuple[Any, ...]]] | None = (
             {"ready": [], "setup": []} if lot_log else None
@@ -945,16 +965,32 @@ class _Sim:
     def send(self, lot: int, moment: float, origin: int, target: int) -> None:
         """Queue the lot at ``target`` once it has been moved there from ``origin``."""
         move = self.move_seconds(origin, target)
+        if move > 0:
+            self.moves += 1
+            self.move_sec += move
+            if self.buildings is not None and self.buildings[origin] != self.buildings[target]:
+                self.cross_moves += 1
         if move <= 0:
             self.enqueue(lot, moment)
         else:
             self.push(moment + move, _ARRIVE, lot)
 
+    def _layout_kpis(self) -> dict[str, Any]:
+        second = self.fz.second_sec if self.fz is not None else 0.0
+        return {
+            "name": self.layout.name if self.layout is not None else None,
+            "cross_building_min": round(self.cross_sec / 60.0, 3),
+            "transport_moves": self.moves,
+            "transport_min": round(self.move_sec / 60.0, 1),
+            "cross_building_moves": self.cross_moves,
+            "second_transport_min": round(second / 60.0, 1),
+        }
+
     def move_seconds(self, origin: int, target: int) -> float:
         """Transport from one family to the next. 0 only for the no-transport ablation."""
         if not self.transport:
             return 0.0
-        return transport_seconds(self.fab, origin, target)
+        return transport_seconds(self.fab, origin, target, self.buildings, self.cross_sec)
 
     def wake_family(self, fam: int) -> None:
         """Every idle tool in the family gets one look.
@@ -2582,6 +2618,7 @@ class _Sim:
             replan_tick_total_s=round(sum(self.tick_samples), 4),
             flow_wait_ratio=round(self.wait_sum / self.proc_sum, 4) if self.proc_sum else 0.0,
             sched_freeze=self.fz.summary() if self.fz is not None else {},
+            layout=self._layout_kpis(),
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)

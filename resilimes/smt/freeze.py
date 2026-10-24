@@ -170,6 +170,8 @@ class Freezer:
         self.last_cause: dict[int, str] = {}
         self.unfreezes: dict[str, int] = dict.fromkeys(REASONS, 0)
         self.second: dict[str, int] = {}
+        # Second transports weighted by their move time (staged tool -> new tool).
+        self.second_sec = 0.0
         self.frozen_starts = 0
         self.hot_inserts = 0
         self.qtime_inserts = 0
@@ -423,6 +425,11 @@ class Freezer:
         wake = until if alt[1] is None else min(until, alt[1])
         return [], wake, ""
 
+    def _move(self, old_tool: int, new_tool: int) -> float:
+        """Transport time of a second transport, staged tool -> new tool."""
+        fam = self.sim.fab.tool_family
+        return float(self.sim.move_seconds(fam[old_tool], fam[new_tool]))
+
     # ---- event hooks --------------------------------------------------
 
     def on_start(self, tool: int, started: list[int], moment: float) -> None:
@@ -432,6 +439,7 @@ class Freezer:
             if staged is not None and staged[0] != tool and staged[1] == sim.step[lot]:
                 cause = self.last_cause.get(lot, "dispatch")
                 self.second[cause] = self.second.get(cause, 0) + 1
+                self.second_sec += self._move(staged[0], tool)
             self.last_cause.pop(lot, None)
             held = self.frozen_at.get(lot)
             if held is not None and held != tool:
@@ -640,6 +648,7 @@ class Freezer:
                 if old is not None and old[1] == step and old[0] != tool:
                     cause = self.last_cause.get(lot, "replan")
                     self.second[cause] = self.second.get(cause, 0) + 1
+                    self.second_sec += self._move(old[0], tool)
                     if len(retargeted) < LOG_CHANGES_MAX:
                         retargeted.append([lot, old[0], tool, cause])
                 self.last_cause.pop(lot, None)
@@ -819,6 +828,7 @@ class Freezer:
             "replanned_per_tick": round(self.replanned_sum / max(1, self.ticks), 2),
             "second_transports": sum(self.second.values()),
             "second_transport_causes": dict(sorted(self.second.items())),
+            "second_transport_min": round(self.second_sec / 60.0, 1),
             "unfreezes": dict(self.unfreezes),
             "unfreeze_total": sum(self.unfreezes.values()),
             "frozen_starts": self.frozen_starts,
