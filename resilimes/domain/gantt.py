@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from resilimes.domain.floor import board_state
 from resilimes.domain.kpis import completion_of
 from resilimes.domain.models import Plant, Schedule
 from resilimes.domain.plant import minutes_between
@@ -45,6 +46,8 @@ def build_gantt(plant: Plant, schedule: Schedule) -> dict[str, object]:
                 "available_at_min": equipment.available_at_min,
                 "bottleneck": bool(schedule.bottleneck_area)
                 and equipment.area == schedule.bottleneck_area,
+                "capability": list(equipment.capability),
+                "state": board_state(equipment.status, bars),
                 "bars": bars,
             }
         )
@@ -179,6 +182,8 @@ def _held_bars(plant: Plant, schedule: Schedule, equipment_id: str) -> list[dict
                 "rework": False,
                 "held": True,
                 "reason": item.reason,
+                "code": item.code,
+                "params": dict(item.params),
                 "moved": False,
                 "fresh": False,
             }

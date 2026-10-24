@@ -230,6 +230,8 @@ class Unscheduled(BaseModel):
     job_id: str
     step: str
     reason: str
+    code: str = ""
+    params: dict[str, str | int | float] = Field(default_factory=dict)
 
 
 class Action(BaseModel):
@@ -286,6 +288,8 @@ class Violation(BaseModel):
     severity: str
     detail: str
     fix_hint: str
+    code: str = ""
+    params: dict[str, str | int | float] = Field(default_factory=dict)
 
 
 class Critique(BaseModel):
@@ -293,6 +297,7 @@ class Critique(BaseModel):
     score: float
     violations: list[Violation] = Field(default_factory=list)
     rationale: str
+    rationale_code: str = ""
     confidence: float = 0.9
     source: str = "deterministic"
 

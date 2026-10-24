@@ -55,7 +55,7 @@ Weights used: Impact 30, Technical 20, Innovation 15, Demo 15, Product and UX 10
 
 Independent critique of the baseline:
 
-- The three-second read is the headline, the refusal, the three numbers, and the two charts. The lithography headline is "LOT-1001 leaves LITHO-02". If that bar has no id, the chart does not support the sentence.
+- The three-second read is the headline, the refusal, the three numbers, and the two charts. The lithography headline is "LOT-1001 leaves LITHO-02". Chinese reads "LOT-1001 调离 LITHO-02". Japanese reads "LOT-1001 を LITHO-02 から外す". If that bar has no id, the chart does not support the sentence.
 - The lithography after chart's empty right side is the win (on-time delivery 83.3 to 100, tardiness 840 to 0, makespan 965 to 420). Do not zoom that chart away from the before chart.
 - Rush, shortage, rework, and queue time currently spend the right half of the chart on a due the bars never reach. In a recording that reads as "nothing happened".
 - A new reticle row or a queue-time band would add a fourth idea to a frame that already has to land in one screen.

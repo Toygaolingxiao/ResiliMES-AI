@@ -32,6 +32,7 @@ from __future__ import annotations
 import bisect
 import heapq
 from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from .checks import inhibited, reticle_copies, reticle_for
 from .models import (
@@ -46,6 +47,17 @@ from .models import (
     Unscheduled,
 )
 from .plant import minutes_between
+
+
+class _Miss(NamedTuple):
+    reason: str
+    code: str = ""
+    params: tuple[tuple[str, str | int | float], ...] = ()
+
+
+def _miss(reason: str, code: str = "", **params: str | int | float) -> _Miss:
+    return _Miss(reason, code, tuple(params.items()))
+
 
 POLICY_FROZEN = "frozen"
 POLICY_RECOVER = "recover"
@@ -166,6 +178,8 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
                     job_id=step.job_id,
                     step=step.step,
                     reason=f"In-progress step could not stay on {step.assigned_equipment}.",
+                    code="hold_pin",
+                    params={"lot": step.job_id, "tool": step.assigned_equipment or ""},
                 )
             )
             continue
@@ -179,9 +193,17 @@ def schedule_plant(plant: Plant, policy: str) -> Schedule:
         sequence = _push(heap, step, bottleneck, sequence, policy)
     while heap:
         step = heapq.heappop(heap)[-1]
-        placed, reason = _place_flexible(step, plant, policy, board, inventory, consumed)
+        placed, miss = _place_flexible(step, plant, policy, board, inventory, consumed)
         if placed is None:
-            unscheduled.append(Unscheduled(job_id=step.job_id, step=step.step, reason=reason))
+            unscheduled.append(
+                Unscheduled(
+                    job_id=step.job_id,
+                    step=step.step,
+                    reason=miss.reason,
+                    code=miss.code,
+                    params=dict(miss.params),
+                )
+            )
             continue
         operations.append(placed)
         opened: list[StepWork] = []
@@ -547,7 +569,7 @@ def _place_flexible(
     board: _Board,
     inventory: dict[str, int],
     consumed: set[str],
-) -> tuple[ScheduledOp | None, str]:
+) -> tuple[ScheduledOp | None, _Miss]:
     if step.consumes_material and not _material_ok(step, plant, inventory, consumed):
         short = [
             (mid, qty, inventory.get(mid, 0))
@@ -555,10 +577,23 @@ def _place_flexible(
             if inventory.get(mid, 0) < qty
         ]
         detail = ", ".join(f"{mid} needs {qty} but on hand is {have}" for mid, qty, have in short)
-        return None, f"Material short for {step.job_id}: {detail}."
+        material, qty, have = short[0]
+        return None, _miss(
+            f"Material short for {step.job_id}: {detail}.",
+            "hold_material",
+            lot=step.job_id,
+            material=material,
+            qty=qty,
+            have=have,
+        )
     candidates = _candidates(step, plant, policy)
     if not candidates:
-        return None, f"No tool with capability {step.capability} for {step.step}."
+        return None, _miss(
+            f"No tool with capability {step.capability} for {step.step}.",
+            "hold_capability",
+            step=step.step,
+            capability=step.capability,
+        )
     best: tuple[tuple[int, int, int, str], ScheduledOp] | None = None
     blockers: list[str] = []
     qtime_missed = False
@@ -583,16 +618,36 @@ def _place_flexible(
             best = (score, placed)
     if best is None:
         if qtime_missed and step.qtime_latest is not None:
-            return None, (
-                f"Q-time would break for {step.job_id}: {step.qtime_from} ended at "
-                f"t={step.qtime_anchor} min; {step.step} must start by t={step.qtime_latest} min."
+            anchor = step.qtime_anchor if step.qtime_anchor is not None else 0
+            return None, _miss(
+                (
+                    f"Q-time would break for {step.job_id}: {step.qtime_from} ended at "
+                    f"t={anchor} min; {step.step} must start by t={step.qtime_latest} min."
+                ),
+                "hold_qtime",
+                lot=step.job_id,
+                from_step=step.qtime_from,
+                anchor_at=anchor,
+                step=step.step,
+                latest_at=step.qtime_latest,
             )
         if blockers:
-            return None, (
-                f"No feasible slot for {step.job_id} {step.step} "
-                f"on {', '.join(blockers)} (WIP, operators, or calendar)."
+            return None, _miss(
+                (
+                    f"No feasible slot for {step.job_id} {step.step} "
+                    f"on {', '.join(blockers)} (WIP, operators, or calendar)."
+                ),
+                "hold_slot",
+                lot=step.job_id,
+                step=step.step,
+                tools=", ".join(blockers),
             )
-        return None, f"No feasible tool for {step.job_id} {step.step}."
+        return None, _miss(
+            f"No feasible tool for {step.job_id} {step.step}.",
+            "hold_tool",
+            lot=step.job_id,
+            step=step.step,
+        )
     placed = best[1]
     machine = board.machines[placed.equipment_id]
     machine.available_at = placed.end_min
@@ -602,7 +657,7 @@ def _place_flexible(
     _occupy(board, placed.start_min, placed.end_min, need)
     _claim_copy(board, placed.reticle_id, placed.equipment_id, placed.end_min)
     _take_material(step, plant, inventory, consumed)
-    return placed, ""
+    return placed, _miss("")
 
 
 def _try_machine(

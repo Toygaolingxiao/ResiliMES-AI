@@ -28,6 +28,7 @@ from resilimes.api.intents import (
 from resilimes.config import ConfigError, Settings, get_settings
 from resilimes.data.factory import build_source
 from resilimes.data.zetaris_source import ZetarisDataError
+from resilimes.demo.overview import build_overview
 from resilimes.domain.plant import PlantDataError
 from resilimes.domain.scenarios import list_scenarios
 from resilimes.engines.contracts import ContractError
@@ -121,6 +122,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {
             "scenarios": [item.model_dump() for item in list_scenarios()],
             "bay": bay,
+            "overview": build_overview(plant),
         }
 
     @app.post("/api/intents")

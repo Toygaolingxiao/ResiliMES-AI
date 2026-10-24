@@ -26,6 +26,8 @@ class Finding:
     tool_id: str = ""
     severity: str = "high"
     constraint: str = ""
+    code: str = ""
+    params: dict[str, str | int | float] | None = None
 
     def violation(self, default_constraint: str) -> Violation:
         return Violation(
@@ -33,6 +35,8 @@ class Finding:
             severity=self.severity,
             detail=self.detail,
             fix_hint=self.fix_hint,
+            code=self.code,
+            params=dict(self.params or {}),
         )
 
 
@@ -123,6 +127,8 @@ def _calendar(plant: Plant, schedule: Schedule) -> list[Finding]:
                     tool_id=op.equipment_id,
                     detail=f"Schedule references unknown tool {op.equipment_id}.",
                     fix_hint="Rebuild the schedule from the current equipment list.",
+                    code="unknown_tool",
+                    params={"tool": op.equipment_id},
                 )
             )
             continue
@@ -136,6 +142,14 @@ def _calendar(plant: Plant, schedule: Schedule) -> list[Finding]:
                         f"t={op.start_min}, before it is up at t={machine.available_at_min}."
                     ),
                     fix_hint="Delay the start until the tool is available or move the lot.",
+                    code="starts_before_up",
+                    params={
+                        "lot": op.job_id,
+                        "step": op.step,
+                        "tool": op.equipment_id,
+                        "start_at": op.start_min,
+                        "up_at": machine.available_at_min,
+                    },
                 )
             )
     return found
@@ -163,6 +177,13 @@ def _capability(plant: Plant, schedule: Schedule) -> list[Finding]:
                         f"{op.job_id} {op.step}."
                     ),
                     fix_hint="Move the step to a qualified tool.",
+                    code="lacks_capability",
+                    params={
+                        "tool": op.equipment_id,
+                        "capability": needed.capability,
+                        "lot": op.job_id,
+                        "step": op.step,
+                    },
                 )
             )
     return found
@@ -188,6 +209,16 @@ def _overlap(_plant: Plant, schedule: Schedule) -> list[Finding]:
                             f"{current[2]} [{current[0]}, {current[1]})."
                         ),
                         fix_hint="Sequence the lots; a tool runs one lot at a time.",
+                        code="overlap",
+                        params={
+                            "tool": tool,
+                            "lot_a": prev[2],
+                            "a_start_at": prev[0],
+                            "a_end_at": prev[1],
+                            "lot_b": current[2],
+                            "b_start_at": current[0],
+                            "b_end_at": current[1],
+                        },
                     )
                 )
     return found
@@ -214,6 +245,13 @@ def _wip(plant: Plant, schedule: Schedule) -> list[Finding]:
                             f"{tool} has {present} lots at t={start}; max_wip is {machine.max_wip}."
                         ),
                         fix_hint="Spread overlapping lots across alternate qualified tools.",
+                        code="wip_over",
+                        params={
+                            "tool": tool,
+                            "count": present,
+                            "at_at": start,
+                            "max": machine.max_wip,
+                        },
                     )
                 )
                 break
@@ -244,6 +282,8 @@ def _operators(plant: Plant, schedule: Schedule) -> list[Finding]:
                         f"Operator demand {used} at t={point} exceeds pool {plant.operator_pool}."
                     ),
                     fix_hint="Stagger starts or release operators from lower-priority tools.",
+                    code="operators_over",
+                    params={"used": used, "at_at": point, "pool": plant.operator_pool},
                 )
             ]
     return []
@@ -274,6 +314,13 @@ def _material(plant: Plant, schedule: Schedule) -> list[Finding]:
                             f"but on-hand is {have}."
                         ),
                         fix_hint="Hold the lot until stock is released.",
+                        code="material_short",
+                        params={
+                            "lot": op.job_id,
+                            "material": need.material_id,
+                            "qty": need.qty_per_lot,
+                            "have": have,
+                        },
                     )
                 )
             else:
@@ -299,6 +346,12 @@ def _precedence(_plant: Plant, schedule: Schedule) -> list[Finding]:
                             f"{ops[index - 1].step} finishes."
                         ),
                         fix_hint="Keep the route order.",
+                        code="precedence",
+                        params={
+                            "lot": job_id,
+                            "step": ops[index].step,
+                            "prev": ops[index - 1].step,
+                        },
                     )
                 )
     return found
@@ -324,6 +377,8 @@ def _preemption(plant: Plant, schedule: Schedule) -> list[Finding]:
                     tool_id=job.assigned_equipment,
                     detail=f"{job.job_id} was moved off {job.assigned_equipment} while running.",
                     fix_hint="Keep the running lot on its current tool.",
+                    code="preemption_moved",
+                    params={"lot": job.job_id, "tool": job.assigned_equipment},
                 )
             )
     return found
@@ -364,6 +419,15 @@ def _qtime(plant: Plant, schedule: Schedule) -> list[Finding]:
                         f"past the {rule.max_min} min queue time."
                     ),
                     fix_hint="Start the next step inside the queue-time window, or hold the lot.",
+                    code="qtime_gap",
+                    params={
+                        "from_step": rule.from_step,
+                        "anchor_at": anchor,
+                        "lot": job_id,
+                        "to_step": rule.to_step,
+                        "start_at": right.start_min,
+                        "limit_min": rule.max_min,
+                    },
                 )
             )
     return found
@@ -402,6 +466,8 @@ def _rework_limit(plant: Plant, schedule: Schedule) -> list[Finding]:
                         f"{job_id} has {total} rework passes; the limit is {job.rework_limit}."
                     ),
                     fix_hint="Stop at the rework limit.",
+                    code="rework_over",
+                    params={"lot": job_id, "total": total, "limit": job.rework_limit},
                 )
             )
         expected = f"{job.rework_of}-RW" if job.rework_of else ""
@@ -415,6 +481,8 @@ def _rework_limit(plant: Plant, schedule: Schedule) -> list[Finding]:
                             f"{job_id} rework re-enters {op.step}; the return step is {expected}."
                         ),
                         fix_hint="Send the lot back to the failed step.",
+                        code="rework_return",
+                        params={"lot": job_id, "step": op.step, "expected": expected},
                     )
                 )
     return found
@@ -454,6 +522,18 @@ def _reticle(plant: Plant, schedule: Schedule) -> list[Finding]:
                             f"[{right[3]}, {right[4]}]."
                         ),
                         fix_hint="Keep each physical reticle on one scanner at a time.",
+                        code="reticle_overlap",
+                        params={
+                            "reticle": left[0],
+                            "tool_a": left[1],
+                            "lot_a": left[2],
+                            "a_start_at": left[3],
+                            "a_end_at": left[4],
+                            "tool_b": right[1],
+                            "lot_b": right[2],
+                            "b_start_at": right[3],
+                            "b_end_at": right[4],
+                        },
                     )
                 )
     return found
@@ -471,6 +551,8 @@ def _inhibit(plant: Plant, schedule: Schedule) -> list[Finding]:
                 tool_id=op.equipment_id,
                 detail=(f"{op.job_id} cannot run {recipe or op.step} on {op.equipment_id}."),
                 fix_hint="Use a tool that is not on the inhibit list.",
+                code="inhibit_run",
+                params={"lot": op.job_id, "recipe": recipe or op.step, "tool": op.equipment_id},
             )
         )
     return found
@@ -500,6 +582,12 @@ def _release_time(plant: Plant, schedule: Schedule) -> list[Finding]:
                         f"before its release at t={job.release_min} min."
                     ),
                     fix_hint="Wait until the lot is released.",
+                    code="release_early",
+                    params={
+                        "lot": job_id,
+                        "start_at": first.start_min,
+                        "release_at": job.release_min,
+                    },
                 )
             )
     return found
@@ -512,6 +600,8 @@ def _hold_release(_plant: Plant, schedule: Schedule) -> list[Finding]:
             detail=item.reason,
             fix_hint="Release the lot when the hold clears.",
             severity="low",
+            code=item.code,
+            params=dict(item.params),
         )
         for item in schedule.unscheduled
     ]
@@ -524,11 +614,11 @@ def _text(en: str, zh: str, ja: str) -> dict[str, str]:
 REGISTRY: tuple[Check, ...] = (
     Check(
         id="equipment_status",
-        name=_text("Tool calendar", "设备日历", "装置カレンダー"),
+        name=_text("Tool status", "装置状态", "装置状態"),
         description=_text(
             "A lot cannot start while the tool is down or in maintenance.",
-            "设备宕机或维护期间不能开工。",
-            "停止中または保全中の装置では着手できない。",
+            "装置宕机或保养期间不能开工。",
+            "停止中または保全中の装置には着工できない。",
         ),
         category="equipment",
         fields=("equipment.status", "equipment.available_at_min", "operation.start_min"),
@@ -538,11 +628,11 @@ REGISTRY: tuple[Check, ...] = (
     ),
     Check(
         id="capability",
-        name=_text("Capability", "能力", "能力"),
+        name=_text("Qualification", "工艺资格", "プロセス資格"),
         description=_text(
-            "The tool must list the step's capability.",
-            "设备必须具备该工序的能力。",
-            "装置がその工程の能力を持つこと。",
+            "The tool must be qualified for the step.",
+            "装置必须具备该工序的工艺资格。",
+            "装置がその工程の資格を持っていること。",
         ),
         category="equipment",
         fields=("equipment.capability", "route_step.capability"),
@@ -552,11 +642,11 @@ REGISTRY: tuple[Check, ...] = (
     ),
     Check(
         id="overlap",
-        name=_text("Overlap", "重叠", "重複"),
+        name=_text("One lot at a time", "同时只跑一批", "同時は1ロット"),
         description=_text(
             "A tool runs one lot at a time.",
-            "一台设备同时只加工一个批次。",
-            "装置は同時に一つのロットだけ加工する。",
+            "一台装置同时只加工一个批次。",
+            "装置は同時に1ロットだけ加工する。",
         ),
         category="equipment",
         fields=("operation.equipment_id", "operation.start_min", "operation.end_min"),
@@ -568,9 +658,9 @@ REGISTRY: tuple[Check, ...] = (
         id="wip",
         name=_text("WIP limit", "在制上限", "仕掛上限"),
         description=_text(
-            "Simultaneous lots cannot exceed the tool's max WIP.",
-            "同时在制不能超过设备上限。",
-            "同時仕掛は装置の上限を超えない。",
+            "Lots on the tool at one time cannot exceed its WIP limit.",
+            "同一时刻在制批次数不能超过装置上限。",
+            "同時に載るロット数は装置の仕掛上限を超えない。",
         ),
         category="equipment",
         fields=("equipment.max_wip", "operation.start_min", "operation.end_min"),
@@ -583,8 +673,8 @@ REGISTRY: tuple[Check, ...] = (
         name=_text("Operators", "人员", "人員"),
         description=_text(
             "Overlapping steps cannot exceed the operator pool.",
-            "重叠工序不能超过人员池。",
-            "重なる工程は人員プールを超えない。",
+            "重叠工序需要的人数不能超过当班人员。",
+            "重なる工程の必要人員は当直の人員を超えない。",
         ),
         category="equipment",
         fields=("equipment.operators_required", "plant.operator_pool"),
@@ -622,10 +712,10 @@ REGISTRY: tuple[Check, ...] = (
     ),
     Check(
         id="preemption",
-        name=_text("Preemption", "抢占", "割り込み"),
+        name=_text("Running lot", "加工中不撤批", "加工中は維持"),
         description=_text(
             "A lot running on an up tool stays there.",
-            "正在加工的批次留在可用设备上。",
+            "正在加工的批次留在可用装置上。",
             "加工中のロットは稼働中の装置に残す。",
         ),
         category="lot",
@@ -636,11 +726,11 @@ REGISTRY: tuple[Check, ...] = (
     ),
     Check(
         id="qtime",
-        name=_text("Queue time", "队列时间", "待ち時間"),
+        name=_text("Queue time", "等待时限", "キュータイム"),
         description=_text(
-            "The named later step must start within the limit after the named step ends.",
-            "规则指定的后道工序必须在时限内开始。",
-            "指定された後工程は制限時間内に始める。",
+            "The next named step must start within the limit after the previous step ends.",
+            "指定的后道工序必须在时限内开工。",
+            "指定の後工程は制限時間内に着工する。",
         ),
         category="time",
         fields=("qtime_rule.from_step", "qtime_rule.to_step", "qtime_rule.max_min"),
@@ -680,7 +770,7 @@ REGISTRY: tuple[Check, ...] = (
     ),
     Check(
         id="inhibit",
-        name=_text("Tool inhibit", "设备禁用", "装置禁止"),
+        name=_text("Inhibit", "装置禁用", "使用禁止"),
         description=_text(
             "A lot or recipe cannot run on an excluded tool.",
             "批次或配方不能在被禁用的设备上跑。",
@@ -695,7 +785,7 @@ REGISTRY: tuple[Check, ...] = (
     ),
     Check(
         id="release_time",
-        name=_text("Lot release", "批次放行", "ロット着手"),
+        name=_text("Release time", "放行时间", "着手時刻"),
         description=_text(
             "A lot cannot start before its release time.",
             "批次不能在放行时间之前开工。",
@@ -709,11 +799,11 @@ REGISTRY: tuple[Check, ...] = (
     ),
     Check(
         id="hold_release",
-        name=_text("Hold and release", "暂停与放行", "保留と解除"),
+        name=_text("Holds", "暂扣批次", "保留ロット"),
         description=_text(
-            "Held lots stay out of the book and are listed here.",
-            "暂停的批次不进账, 并在这里列出.",
-            "保留ロットは帳票に載せずここに出す.",
+            "Held lots stay off the plan and are listed here.",
+            "暂扣的批次不进入计划并列在这里。",
+            "保留ロットは計画に載せず、ここに出す。",
         ),
         category="lot",
         fields=("schedule.unscheduled",),
@@ -767,7 +857,13 @@ def validate(plant: Plant, schedule: Schedule) -> dict[str, Any]:
                 "constraint": check.constraint,
                 "status": status,
                 "violations": [
-                    {"lot_id": item.lot_id, "tool_id": item.tool_id, "detail": item.detail}
+                    {
+                        "lot_id": item.lot_id,
+                        "tool_id": item.tool_id,
+                        "detail": item.detail,
+                        "code": item.code,
+                        "params": dict(item.params or {}),
+                    }
                     for item in findings
                 ],
             }
@@ -842,6 +938,16 @@ def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
                         f"{action.to_equipment} at t={action.start_min}."
                     ),
                     fix_hint="Use a free copy, or wait until one is free.",
+                    code="reticle_busy",
+                    params={
+                        "reticle": reticle_id,
+                        "tool": tool,
+                        "holder": holder_id,
+                        "until_at": end,
+                        "lot": action.job_id,
+                        "dest": action.to_equipment,
+                        "start_at": action.start_min,
+                    },
                 )
             )
     recipe = recipe_for(plant, job.product_id, action.step)
@@ -852,6 +958,12 @@ def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
                 severity="high",
                 detail=f"{action.job_id} cannot run {recipe or action.step} on {action.to_equipment}.",
                 fix_hint="Use a tool that is not on the inhibit list.",
+                code="inhibit_run",
+                params={
+                    "lot": action.job_id,
+                    "recipe": recipe or action.step,
+                    "tool": action.to_equipment,
+                },
             )
         )
     if (
@@ -869,6 +981,12 @@ def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
                     f"release is t={job.release_min} min."
                 ),
                 fix_hint="Wait until the lot is released.",
+                code="release_block",
+                params={
+                    "lot": action.job_id,
+                    "start_at": action.start_min,
+                    "release_at": job.release_min,
+                },
             )
         )
     if action.step.endswith("-RW") and job.rework_count + 1 > job.rework_limit:
@@ -878,6 +996,8 @@ def extra_action_violations(plant: Plant, action: Action) -> list[Violation]:
                 severity="high",
                 detail=(f"{action.job_id} would exceed the rework limit of {job.rework_limit}."),
                 fix_hint="Stop at the rework limit.",
+                code="rework_limit_action",
+                params={"lot": action.job_id, "limit": job.rework_limit},
             )
         )
     return found

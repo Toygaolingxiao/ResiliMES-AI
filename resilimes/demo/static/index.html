@@ -33,6 +33,7 @@
             <button type="button" data-lang="ja">日本語</button>
           </div>
           <span id="mode-badge" class="badge"></span>
+          <span id="mode-detail" class="mode-detail"></span>
         </div>
       </header>
       <p id="banner" class="banner" hidden></p>
@@ -42,8 +43,15 @@
         <aside class="rail">
           <h2 id="disruption-label"></h2>
           <div id="scenarios" class="scenario-list"></div>
-          <h2 id="bay-label"></h2>
-          <ul id="bay" class="bay"></ul>
+          <h2 id="tools-label"></h2>
+          <ul id="bay-legend" class="bay-legend"></ul>
+          <ul id="tools" class="bay"></ul>
+          <h2 id="materials-label"></h2>
+          <ul id="materials" class="bay"></ul>
+          <form id="dispatch" class="dispatch">
+            <input id="dispatch-input" type="text" autocomplete="off" />
+            <button id="dispatch-run" class="run" type="submit"></button>
+          </form>
           <details class="custom-wrap">
             <summary id="describe-label"></summary>
             <textarea id="incident" rows="2"></textarea>
@@ -53,10 +61,20 @@
         </aside>
         <section class="workspace">
           <div id="panel-recover" class="panel" role="tabpanel">
-            <div id="empty" class="empty">
-              <span class="empty-mark" aria-hidden="true"></span>
-              <p id="empty-title"></p>
-              <p id="empty-hint"></p>
+            <div id="intent" class="intent" hidden></div>
+            <div id="empty" class="overview">
+              <p id="product-line" class="product-line"></p>
+              <div id="shift-kpis" class="shift-kpis"></div>
+              <p id="wip-line" class="wip-line" hidden></p>
+              <article class="plan-card">
+                <header>
+                  <h3 id="plan-label"></h3>
+                  <ul id="plan-legend" class="bay-legend"></ul>
+                </header>
+                <div id="queues" class="queues" hidden></div>
+                <div id="gantt-now"></div>
+              </article>
+              <div id="recommend" class="recommend"></div>
             </div>
             <div id="story" hidden>
               <h2 id="headline"></h2>
