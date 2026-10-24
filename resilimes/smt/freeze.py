@@ -479,8 +479,11 @@ class Freezer:
         """List scheduling of the family order: (zone per tool, planned per tool).
 
         Tools come free in order (now, end of the running piece, end of a PM;
-        a down or reserved tool takes nothing); each takes the first lot of the
-        order it is eligible for and can finish before its next PM. The first
+        a down or reserved tool takes nothing). A zone slot takes, among the
+        first LOOKAHEAD feasible lots ready by then, the one the policy's own
+        per-tool rank puts first (setup-aware, with the tool's planned recipe);
+        later slots take the first feasible lot of the order. Feasible means
+        eligible and able to finish before the tool's next PM. The first
         loads within ``max_lots`` and ``max_sec`` form the zone (frozen when
         enabled, carried over between ticks; a shadow when off).
         """
