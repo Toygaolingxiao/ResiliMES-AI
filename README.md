@@ -136,7 +136,7 @@ The image sets `RESILIMES_MODE=mock`.
 wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh
 ```
 
-The same script on the Linux tree is `bash scripts/zetaris_setup.sh`. It writes the API key to `~/.config/fab-mes/api-key` and does not print it. The recipe is [docs/ZETARIS.md](docs/ZETARIS.md).
+The same script on the Linux tree is `bash scripts/zetaris_setup.sh`. It loads the sample warehouse and the full SMT2020 fab (`data/sql/seed.sql`, `data/sql/smt2020_seed.sql`), writes the API key to `~/.config/fab-mes/api-key` and does not print it. `python scripts/check_zetaris_smt.py` then prints per-table row counts through Zetaris and `PARITY OK` against `data/smt2020`. The recipe is [docs/ZETARIS.md](docs/ZETARIS.md).
 
 4. Set `ZETARIS_REST_URL`, `ZETARIS_ORG_ID`, `ZETARIS_API_KEY`, `ZETARIS_TABLE_SOURCES`, and `ZETARIS_TIMEOUT_S`. The SQL path default is `/sql-editor/sqls/run-query`.
 5. Start with `make demo-live` or `RESILIMES_MODE=auto python -m resilimes serve`.
@@ -241,7 +241,7 @@ Verified on Python 3.12.3 with ruff 0.17.2. CI runs 3.11 and 3.12.
 
 | Layer | Technology | Where it shows up |
 | --- | --- | --- |
-| Data | Zetaris | `agent/tools_zetaris.py`, `resilimes/data/zetaris_source.py`, `data/sql/seed.sql` |
+| Data | Zetaris | The full SMT2020 fab master data (11 tables, 6,935 rows across the MES, CMMS and ERP datasources) loads through Zetaris: `resilimes/data/smt2020_sql.py`, `data/sql/smt2020_seed.sql`, `RESILIMES_SMT_SOURCE`. Plant reads: `agent/tools_zetaris.py`, `resilimes/data/zetaris_source.py`, `data/sql/seed.sql` |
 | Power | Meterless Nightshift routing to NVIDIA Nemotron | `resilimes/llm/nightshift.py` |
 | Engines | Scout Intent, World Model, Markovian | `resilimes/engines/` |
 | Build | Cursor | This repository was written in Cursor: architecture, scheduler, engines, console, tests, and docs. |
