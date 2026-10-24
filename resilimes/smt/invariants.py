@@ -20,7 +20,8 @@ Checks, one counter each:
   own route step), one recipe, within capacity.
 - ``batch_all_started``: every lot the dispatcher chose for a start started.
 - ``batch_min``: a batch under BATCHMN started only with a logged wait-rule
-  reason (``hot_cap``, ``max_wait``, ``no_arrivals``, ``qtime_urgent``).
+  reason (``hot_cap``, ``max_wait``, ``no_arrivals``, ``qtime_urgent``, or
+  ``shift_lead`` when an attached AI shift lead chose to start it now).
 - ``qtime_recount``: Q-time violations recounted from the trace, with the
   simulator's strict ``>``, differ from the reported count.
 - ``sampling``: a lot skips only steps the lot-ID rule leaves unmeasured,
@@ -82,7 +83,7 @@ CHECKS = (
     "reservation",
     "release",
 )
-UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent")
+UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent", "shift_lead")
 
 
 def check_trace(

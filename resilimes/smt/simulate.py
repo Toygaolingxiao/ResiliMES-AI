@@ -424,6 +424,7 @@ def run_policy(
     r2_fixes: tuple[int, ...] | None = None,
     replan_sec: float = REPLAN_SEC,
     plan: PlanningOutput | None = None,
+    shift_lead: Any = None,
     plan_wait: str = "position",
     lot_log: bool = False,
     faults: FaultPlan | None = None,
@@ -446,7 +447,10 @@ def run_policy(
     ``plan`` (the planning layer's output, computed once before the run) turns
     on the step-due risk for ResiliMES fix 2, the plan band/rank tie-break, the
     per-tool schedule at each tick and the deviation log; None is the
-    unchanged qtime-r2 path. ``plan_wait`` (plan runs only) picks the expected
+    unchanged qtime-r2 path. ``shift_lead`` (ResiliMES only, default None:
+    off and bit-identical) is a ``resilimes.agents.shift_lead.ShiftLead``
+    asked at scheduling exceptions; see ``docs/AI_SHIFT_LEAD.md``.
+    ``plan_wait`` (plan runs only) picks the expected
     wait in the risk: ``position`` (default) the lot's own place in the
     dispatch-ordered queue, ``family`` the family-average wait of planning-r1
     before the fix (kept for the A/B study)."""
@@ -454,6 +458,8 @@ def run_policy(
         raise ValueError(f"Unknown plan_wait {plan_wait}")
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
+    if shift_lead is not None and policy != "resilimes":
+        raise ValueError("shift_lead needs policy='resilimes'")
     sim = _Sim(
         fab,
         policy=policy,
@@ -476,6 +482,7 @@ def run_policy(
         r2_fixes=r2_fixes,
         replan_sec=replan_sec,
         plan=plan,
+        shift_lead=shift_lead,
         plan_wait=plan_wait,
         lot_log=lot_log,
         faults=faults,
@@ -551,6 +558,7 @@ class _Sim:
         r2_fixes: tuple[int, ...] | None = None,
         replan_sec: float = REPLAN_SEC,
         plan: PlanningOutput | None = None,
+        shift_lead: Any = None,
         plan_wait: str = "position",
         lot_log: bool = False,
         faults: FaultPlan | None = None,
@@ -558,6 +566,8 @@ class _Sim:
         layout: FabLayout | None = None,
     ) -> None:
         self.fab = fab
+        # AI shift lead hook (off when None): asked at exceptions in tick().
+        self.lead = shift_lead
         self.layout = layout
         self.buildings = family_buildings(fab, layout) if layout is not None else None
         self.cross_sec = layout.cross_building_sec if layout is not None else 0.0
@@ -1164,7 +1174,9 @@ class _Sim:
         pinned = self.pin_for(lot, self.step[lot])
         if pinned < 0 or pinned == tool:
             return True
-        return _covering(self.downs[pinned], moment) is not None
+        if _covering(self.downs[pinned], moment) is None:
+            return False
+        return self.lead is None or bool(self.lead.may_reroute(lot, moment))
 
     def piece_seconds(self, lot: int, tool: int) -> float:
         """Full process plus setup from the recipe the tool holds now."""
@@ -1277,6 +1289,8 @@ class _Sim:
         """
         if wafers >= floor:
             return "min_met", None
+        if self.lead is not None and self.lead.start_batch(fam, recipe, moment):
+            return "shift_lead", None
         if self.policy == "resilimes" and any(
             self.qtime_urgent(lot, moment) is not None for lot in taken
         ):
@@ -1317,7 +1331,7 @@ class _Sim:
         if self.policy == "cr":
             return (self.cr(lot, moment), self.due[lot], lot)
         if self.policy == "resilimes":
-            band = float(self.urgency_band(lot, moment))
+            band = float(self.urgency_band(lot, moment)) + self.lead_bias(lot)
             if self.fix2:
                 risk, least = self.risk(lot, moment)
                 if self.plan is not None:
@@ -1338,8 +1352,15 @@ class _Sim:
 
     def rank(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
         if self.policy == "resilimes":
-            return (float(self.urgency_band(lot, moment)), *self.plain_rank(lot, tool, moment))
+            band = float(self.urgency_band(lot, moment)) + self.lead_bias(lot)
+            return (band, *self.plain_rank(lot, tool, moment))
         return self.plain_rank(lot, tool, moment)
+
+    def lead_bias(self, lot: int) -> float:
+        """Shift-lead priority inside the urgency band; 0.0 without a shift lead."""
+        if self.lead is None:
+            return 0.0
+        return float(self.lead.bias(lot, self.step[lot]))
 
     def qtime_need(self, lot: int, here: int = -1, target: int = -1) -> float:
         """Seconds the lot still needs before its CQT target can start.
@@ -1704,6 +1725,8 @@ class _Sim:
         self.refresh_estimates(moment)
         if self.fix3:
             self.plan_holds(moment)
+        if self.lead is not None:
+            self.lead.on_tick(self, moment)
         for tool in range(len(self.running)):
             if self.running[tool] >= 0 or self.wakes[tool] > 0 or self.res_lot[tool] >= 0:
                 continue
@@ -1770,7 +1793,12 @@ class _Sim:
             if not rows:
                 continue
             order = sorted(
-                rows, key=lambda lot: (self.urgency_band(lot, moment), self.plan_rank[lot], lot)
+                rows,
+                key=lambda lot: (
+                    self.urgency_band(lot, moment) + self.lead_bias(lot),
+                    self.plan_rank[lot],
+                    lot,
+                ),
             )
             # Tool free-time heap of the schedule, not the event heap: bound
             # directly so a wrapper of ``simulate.heapq`` (the stress audit
