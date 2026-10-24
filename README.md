@@ -130,13 +130,14 @@ The image sets `RESILIMES_MODE=mock`.
 
 1. Install a NVIDIA Nemotron model in [Meterless Nightshift](https://meterless.ai/) and copy the runtime token from `<stateDir>/proxy-token`. Do not use the placeholder `rt-local`.
 2. Set `METERLESS_BASE_URL`, `METERLESS_RUNTIME_TOKEN`, and `NEMOTRON_MODEL` to the id `GET /v1/models` returns.
-3. Load Postgres and register the three datasources. From Windows:
+3. Load Postgres and register the three datasources, then check, from `C:\code\ResiliMES-AI` in PowerShell:
 
-```bash
-wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh
+```powershell
+wsl -d Ubuntu -- bash scripts/zetaris_setup.sh
+python scripts/check_zetaris_smt.py
 ```
 
-The script reads the Postgres login from `~/.config/fab-mes/env` in WSL (`FAB_PG_USER` / `FAB_PG_PASSWORD`, or the older `POSTGRES_USER` / `POSTGRES_PASSWORD`) and the Zetaris admin login from `~/zetaris-platform/.env` (or `ZETARIS_USER` / `ZETARIS_PASSWORD` in the same fab-mes file). It never creates a new password for an existing `fab-mes` container.
+The first command loads the sample warehouse and the full SMT2020 fab and registers `resilimes`, `fab_cmms` and `fab_erp`. It takes no arguments and reads the logins already in WSL (`~/.config/fab-mes/env`, `~/zetaris-platform/.env`); it never prints them. The second prints per-table row counts through Zetaris and `PARITY OK` against `data/smt2020`.
 
 `.gitattributes` keeps every text file LF on Windows. A clone made before it may still hold CRLF copies (bash then fails with `set: pipefail: invalid option name`). Refresh them once from PowerShell (commit or stash local edits under `scripts/` and `data/` first):
 
@@ -145,7 +146,7 @@ Remove-Item scripts\*.sh, data\sql\*.sql, data\smt2020\*
 git checkout -- scripts data
 ```
 
-The same script on the Linux tree is `bash scripts/zetaris_setup.sh`. It loads the sample warehouse and the full SMT2020 fab (`data/sql/seed.sql`, `data/sql/smt2020_seed.sql`), writes the API key to `~/.config/fab-mes/api-key` and does not print it. `python scripts/check_zetaris_smt.py` then prints per-table row counts through Zetaris and `PARITY OK` against `data/smt2020`. The recipe is [docs/ZETARIS.md](docs/ZETARIS.md).
+The recipe is [docs/ZETARIS.md](docs/ZETARIS.md).
 
 4. Set `ZETARIS_REST_URL`, `ZETARIS_ORG_ID`, `ZETARIS_API_KEY`, `ZETARIS_TABLE_SOURCES`, and `ZETARIS_TIMEOUT_S`. The SQL path default is `/sql-editor/sqls/run-query`.
 5. Start with `make demo-live` or `RESILIMES_MODE=auto python -m resilimes serve`.

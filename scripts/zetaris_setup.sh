@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ResiliMES-AI -> Zetaris: load the fab source databases and register them in a local Zetaris.
 #
-# From Windows: wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh [seed.sql ...]
-# Inside WSL:   bash scripts/zetaris_setup.sh [seed.sql ...]
+# One command, from C:\code\ResiliMES-AI in PowerShell (no arguments, no settings):
+#   wsl -d Ubuntu -- bash scripts/zetaris_setup.sh
 #
-# With no arguments it loads data/sql/seed.sql and data/sql/smt2020_seed.sql
-# (plus data/sql/kernel.sql). Idempotent: every run rebuilds schema resilimes in
+# It loads data/sql/seed.sql, data/sql/smt2020_seed.sql and data/sql/kernel.sql.
+# (Seed paths given as arguments replace the first two; not needed normally.) Idempotent: every run rebuilds schema resilimes in
 # fab_mes, fab_cmms and fab_erp from exactly the seeds given, re-registers the
 # Zetaris datasources resilimes / fab_cmms / fab_erp, and runs one SELECT per
 # loaded table plus the federated join through the Zetaris REST API.
