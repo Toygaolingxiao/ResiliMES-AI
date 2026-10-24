@@ -10,10 +10,13 @@
   ``after``, so only ResiliMES runs.
 * ``after``: this branch as shipped (dynamic risk weight, 300 s scheduling
   tick for every policy).
-* ``plan``: ``after`` plus the planning layer (``book_plan``): step-due
+* ``plan``: ``after`` plus the planning layer (``book_plan``) with raw step
+  targets (``targets="raw"``, the backward pass with no queueing): step-due
   risk and plan band/rank tie-break for ResiliMES, the per-tool schedule and
   the deviation log for every policy.
-* ``ablate_plan``: ``ablate`` with the plan.
+* ``std``: ``plan`` with standard lead time step targets (``targets=
+  "standard"``, ``order.txt`` DUE - START spread over the route).
+* ``ablate_plan``: ``ablate`` with the raw-target plan.
 * ``ablate``: ResiliMES only, published and X-factor books, each subset of
   fixes 1-3 on its own (``r2_fixes``); the row's ``variant`` names it.
 
@@ -137,23 +140,24 @@ BOOK_SCENARIO = {
 _PLANS: dict[str, Any] = {}
 
 
-def book_plan(fab: Fab, book: str) -> Any:
+def book_plan(fab: Fab, book: str, targets: str = "standard") -> Any:
     """The planning layer's output for one book, computed once (t=0, WIP only).
 
     WIP only: the sim does not release ``order.txt`` lots yet, so the plan's
     litho load is the load the sim runs. Seeds share the plan: it uses the
     expected availability (MTTF/(MTTF+MTTR)), not the sampled downs.
     """
-    if book not in _PLANS:
+    key = f"{book}:{targets}"
+    if key not in _PLANS:
         from resilimes.smt.planning import build_plan, scenario_input
 
-        inp = scenario_input(fab, BOOK_SCENARIO[book], releases=False)
+        inp = scenario_input(fab, BOOK_SCENARIO[book], releases=False, targets=targets)
         if book == "litho_family_2h":
             family = fab.families[fab.focus_family]
             for tool in range(family.tool0, family.tool0 + family.tools):
                 inp.down_until[tool] = _STRESS_HOURS * 3600.0
-        _PLANS[book] = build_plan(fab, inp)
-    return _PLANS[book]
+        _PLANS[key] = build_plan(fab, inp)
+    return _PLANS[key]
 
 
 def _inherited(fab: Fab) -> Iterator[tuple[int, int, int, float]]:
@@ -243,7 +247,9 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
     if _ARM[0] == "mech":
         kwargs["r2_policy"] = False
     if _ARM[0] in ("plan", "ablate_plan"):
-        kwargs["plan"] = book_plan(fab, book)
+        kwargs["plan"] = book_plan(fab, book, "raw")
+    elif _ARM[0] == "std":
+        kwargs["plan"] = book_plan(fab, book, "standard")
     row: dict[str, Any] = {"book": book, "seed": seed, "policy": policy}
     if len(item) == 4:
         variant = str(item[3])
