@@ -70,7 +70,28 @@ settings were fixed before the held-out runs; nothing was tuned on them.
 
 ### Results on the box (LLM-free arms; no model involved)
 
-_Running on the box; filled in when the run finishes._
+**Real simulation results, no LLM** (`sim` uses the deterministic rule
+proposer + Pareto selector). Book `heldout_published`, 24 h horizon,
+seeds 9–13, fork horizon 8 h, 3 resampled futures. Δ is paired against `rules`,
+W/T/L counts seeds where the arm is better/tied/worse than `rules`.
+
+| arm | wt min (mean) | Δwt vs rules | W/T/L (wt) | Q-time viol. | ΔQ vs rules | W/T/L (Q) | on-time % | escalations/run | wall s/run |
+|---|---|---|---|---|---|---|---|---|---|
+| rules | 14355.3 | 0 | – | 38.2 | 0 | – | 25.0 | – | 52 |
+| heuristic (one-step lookahead, no twin) | 15082.6 | +727.3 | 0/0/5 | 42.6 | +4.4 | 0/1/4 | 25.0 | – | 77 |
+| sim (twin + Pareto) | 14411.5 | **+56.2 (worse)** | 1/0/4 | 36.0 | **−2.2 (better)** | 4/1/0 | 25.0 | 143 | 1730 |
+
+Per seed (wt / Q-viol): rules 14549.5/40, 13932.4/41, 14332.8/38, 14452.9/35,
+14508.9/37; sim 14680.6/36, 13976.4/40, 14301.2/37, 14520.0/35, 14579.4/32.
+
+Honest reading: the twin trades a little waiting time (+0.4 %) for fewer
+Q-time violations (−5.8 %, never worse on any seed). It is not a clear win on
+waiting time, and on-time % does not move in 24 h. Five seeds and one horizon
+are too few for significance; nothing was tuned on these seeds. The plain
+look-ahead heuristic is worse than rules on every seed, which is why the twin
+(resampled futures) is the part worth keeping. `sim_hmem` and the mock-LLM
+plumbing arm (`sim_mock`, labelled MOCK — canned replies, not a model result)
+are still running; see `study_sim_select/report.md`.
 
 ### Live arms (Nemotron) — run on the PC
 

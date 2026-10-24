@@ -54,7 +54,10 @@ Memory is warm-started on dev seeds 1–3 (book `published`), saved to
 `memory_<arm>.json`, and every held-out run (seeds 9–13) loads that same file
 without writing back, so held-out runs are independent.
 
-_Running on the box; filled in when the run finishes._
+Scope note: H-MEM is evaluated minimally (store → recall → used in the
+decision; covered by the 13 conformance vectors + shift-memory tests). The
+`sim_hmem` arm runs in the same box study as `sim` and is reported in
+`study_sim_select/report.md`; no separate H-MEM benchmark was run.
 
 The live comparison (`sim_llm` vs `sim_llm_hmem`, Nemotron) runs on the PC
 with `python scripts\run_live_eval.py` (see [AI_SIM_SELECT.md](AI_SIM_SELECT.md)).
