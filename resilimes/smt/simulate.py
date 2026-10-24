@@ -46,6 +46,7 @@ from resilimes.smt.fab import (
     measured,
     transport_seconds,
 )
+from resilimes.smt.freeze import FreezeConfig, Freezer
 
 _DONE = 0
 _DOWN_START = 1
@@ -184,6 +185,9 @@ class RunResult:
     replan_tick_p95_ms: float = 0.0
     replan_tick_total_s: float = 0.0
     flow_wait_ratio: float = 0.0
+    # Frozen dispatch zone and plan-stability KPIs (``resilimes.smt.freeze``);
+    # empty unless the freeze or tick tracking is on.
+    sched_freeze: dict[str, Any] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -369,6 +373,7 @@ def run_policy(
     r2_policy: bool = True,
     r2_fixes: tuple[int, ...] | None = None,
     replan_sec: float = REPLAN_SEC,
+    freeze: FreezeConfig | None = None,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
@@ -376,7 +381,10 @@ def run_policy(
     urgency, bounded tool reservation); False is the ablation. ``r2_fixes``
     picks which of fixes 1-3 are on (per-fix ablation); unset means
     ``default_r2_fixes()``: (2, 3), or (1, 2, 3) if RESILIMES_QTIME_FIX1=1. ``replan_sec`` is the
-    re-evaluation tick period for every policy (0 turns the tick off)."""
+    re-evaluation tick period for every policy (0 turns the tick off).
+    ``freeze`` is the frozen dispatch zone and tick log
+    (``resilimes.smt.freeze``); unset reads RESILIMES_SCHED_FREEZE and friends
+    from the environment, default off."""
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     sim = _Sim(
@@ -400,6 +408,7 @@ def run_policy(
         r2_policy=r2_policy,
         r2_fixes=r2_fixes,
         replan_sec=replan_sec,
+        freeze=FreezeConfig.from_env() if freeze is None else freeze,
     )
     return sim.run()
 
@@ -469,6 +478,7 @@ class _Sim:
         r2_policy: bool = True,
         r2_fixes: tuple[int, ...] | None = None,
         replan_sec: float = REPLAN_SEC,
+        freeze: FreezeConfig | None = None,
     ) -> None:
         self.fab = fab
         self.r2 = r2_policy and policy == "resilimes"
@@ -634,6 +644,10 @@ class _Sim:
         self.held = 0
         self.q_pending = [False] * self.n
         self.deadline_event = deadline_event
+        # Frozen dispatch zone / tick tracking; None (no hook runs) when off.
+        self.fz: Freezer | None = None
+        if freeze is not None and freeze.active:
+            self.fz = Freezer(self, freeze, wafers=_WAFERS, wake_kind=_WAKE)
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -744,6 +758,8 @@ class _Sim:
             return
         index = self.step[lot]
         target = self.cqt_at[lot]
+        if self.fz is not None:
+            self.fz.on_hold(lot, moment)
         self.close_window(lot, "held")
         if queued:
             self.waiting[lot] = False
@@ -834,6 +850,8 @@ class _Sim:
         t0 = time.perf_counter()
         fam = self.fab.tool_family[tool]
         pool = [lot for lot in self.live(fam) if self.eligible(lot, tool, moment)]
+        if self.fz is not None and self.fz.enabled:
+            pool = [lot for lot in pool if self.fz.free_for(lot, tool)]
         if not pool:
             self._sample(t0, False)
             return [], None, ""
@@ -1384,6 +1402,8 @@ class _Sim:
                 self.tick_stalls_batch += 1
             if self.record:
                 self.events.append(("tick_stall", moment, tool, len(ready), batch))
+        if self.fz is not None:
+            self.fz.on_tick(moment)
         if self.record:
             self.snapshot(moment)
         self.tick_samples.append(time.perf_counter() - t0)
@@ -1504,7 +1524,7 @@ class _Sim:
                 if tool not in self.idle[fam]:
                     self.idle[fam].append(tool)
                 return
-        chosen, wake_at, reason = self.choose(tool, moment)
+        chosen, wake_at, reason = self.dispatch(tool, moment)
         # A chosen lot that missed its Q-time window goes back to re-clean
         # before the start, and the tool chooses again. Every lot of the final
         # choice starts.
@@ -1516,7 +1536,7 @@ class _Sim:
                 self._reclean(lot, fam, moment)
             if self.running[tool] >= 0:
                 return
-            chosen, wake_at, reason = self.choose(tool, moment)
+            chosen, wake_at, reason = self.dispatch(tool, moment)
         if not chosen:
             if wake_at is not None and wake_at > moment:
                 self.push(wake_at, _WAKE, tool)
@@ -1526,6 +1546,12 @@ class _Sim:
         if self.fix3 and self.maybe_reserve(tool, fam, chosen, moment):
             return
         self._start(tool, fam, moment, chosen, reason)
+
+    def dispatch(self, tool: int, moment: float) -> tuple[list[int], float | None, str]:
+        """``choose``, through the frozen zone when it is on."""
+        if self.fz is not None and self.fz.enabled:
+            return self.fz.choose(tool, moment)
+        return self.choose(tool, moment)
 
     def _start(self, tool: int, fam: int, moment: float, chosen: list[int], reason: str) -> None:
         started: list[int] = []
@@ -1550,6 +1576,8 @@ class _Sim:
                 self.idle[fam].append(tool)
             return
         self.res_cool[tool] = False
+        if self.fz is not None:
+            self.fz.on_start(tool, started, moment)
         # A started lot leaves this queue now. Left in place, it is still
         # listed here when it waits again for its next step in another family.
         gone = set(started)
@@ -1773,6 +1801,8 @@ class _Sim:
         index = self.step[lot]
         origin = self.cqt_from[lot]
         self.recleans += 1
+        if self.fz is not None:
+            self.fz.on_hold(lot, moment)
         self.rework[lot] += 1
         self.close_window(lot, "recleaned")
         self.deadline[lot] = 0.0
@@ -1908,6 +1938,8 @@ class _Sim:
                 if self.record:
                     self.events.append(("rework", moment, tool, lot, self.step[lot]))
                 self.enqueue(lot, rework_ready(moment))
+        if self.fz is not None:
+            self.fz.on_down(tool, moment)
         self._queue_down_ends(tool, moment)
         # Lots pinned to this scanner may now run on an idle sibling.
         self.wake_family(self.fab.tool_family[tool])
@@ -2066,6 +2098,7 @@ class _Sim:
             replan_tick_p95_ms=round(_percentile(self.tick_samples, 95) * 1000.0, 4),
             replan_tick_total_s=round(sum(self.tick_samples), 4),
             flow_wait_ratio=round(self.wait_sum / self.proc_sum, 4) if self.proc_sum else 0.0,
+            sched_freeze=self.fz.summary() if self.fz is not None else {},
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)
