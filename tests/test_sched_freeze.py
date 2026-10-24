@@ -34,6 +34,8 @@ TIMING = {
     "replan_tick_p95_ms",
     "replan_tick_total_s",
     "sched_freeze",
+    # Transport / layout KPI dict added after c75ff85 (tests/test_fab_layout.py).
+    "layout",
 }
 # Planning-layer fields (planning-r1): constant zeros/empty when no plan is passed,
 # so they are left out of the off-path digest like the empty lot_log.
