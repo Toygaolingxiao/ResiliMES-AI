@@ -37,6 +37,12 @@ per-step due dates from the long-term plan; see "Step-due risk (planning layer)"
   rate is 95.1 % (dynamic(ratio) 97.8 %, fixed 94.9 %, main 94.0 %). On `xfactor_eta600` on-time is
   81.4 % (ratio 84.4 %). Dispatch busy p95 is 0.34 ms. ResiliMES starts the head of the 300 s schedule
   on 11.5 % of starts; every other start is logged as a deviation with a reason.
+- **Standard lead time targets (PR #22, default plan):** step targets from `order.txt` DUE − START,
+  one flow factor per product. ResiliMES on `published`: 56.8 % on-time, **124.4** completed (raw step
+  dues 118.8, main 135.8), Q true rate **97.2 %**; `xfactor_eta600` 89.9 % on-time (raw 81.4, main
+  99.1). Worse on `tight_vip` (21.0 vs 24.8 %) and held-out X-factor (89.2 vs 92.4 %). Progress across
+  routes is the most even of all versions, but Litho_FE_92 starvation rises to 21.8 %. No version is
+  flagged for winning by skewing mix or WIP position. See "Standard lead time step targets".
 
 ## Layers
 
@@ -105,9 +111,9 @@ to dynamic(ratio): all 225 study runs re-run with `plan=None` match on every non
 - **Q-time risk:** unchanged.
 - **Priority:** class tier, then `max(risk_due, risk_q)` as before, then plan band and rank as the
   tie-break. No fab-wide ratio and no tuned constant: the ρ term is gone.
-- **Plan:** computed once at t=0 (`book_plan`: `build_plan` on the book's WIP, releases off, because the
-  simulator does not release `order.txt` lots). The plan's due for the hot lot is the same 43200 s the
-  simulator applies; every other lot's plan due equals its simulator due (checked).
+- **Plan:** computed once at t=0 (`book_plan`: `build_plan` on the lots the sim runs: the book's WIP,
+  plus the `order.txt` lots released inside the horizon when the releases flag is on; see "Releases").
+  The plan's due for the hot lot is the same 43200 s the simulator applies; every other lot's plan due equals its simulator due (checked).
 - **No daily replan.** Step dues come from the route and the lot's due date only (backward pass, no
   queueing), so a replan would give the same step dues; it could only move band and rank. Not worth the
   cost while dues do not depend on state.
@@ -218,6 +224,109 @@ never decides and they are unchanged by the plan.
   wraps `simulate.heapq` to sample on event-heap pops, and the schedule's own tool heap went through the
   wrapper, so samples were taken mid-tick. The schedule now binds `heapq` functions directly (test:
   `test_schedule_heap_is_not_the_event_heap`); the rerun above has 0.
+
+## Standard lead time step targets (planning layer, PR #22)
+
+**What changed** (`plan_scenario`/`build_plan(..., targets="standard")`, now the default; the public API
+`plan_scenario`, `step_due`, `priority_key`, `band_counts` is unchanged; `targets="raw"` keeps the
+backward pass above):
+
+- **Standard lead time:** LT of a product (part = route) and class = the dataset's own `order.txt`
+  DUE − START (normal 23.8–56.4 d, hot 16.9–38.3 d, SuperHot part_3 38.3 d).
+- **One flow factor per product:** `F = LT / raw`, raw = process + transport over the full visited
+  route (sampling skipped as the simulator does). Step standard time = `F × (process + transport in)`.
+- **Step target:** `step_due = lot due − F × raw still to run after the step`. For a released lot this
+  is release + the standard cumulative time to the step (its due is release + LT); WIP with no known
+  release is anchored at its due.
+- **Bands:** `progress` = standard start of the current step − ready time. `critical` = late even at
+  raw time; `behind` = progress < 0; `on_plan` = on the curve but the capacity plan finishes late;
+  `ahead` = on the curve and the capacity plan is on time. Rank = (tier, band, progress).
+- **Due tighter than standard:** in the published snapshot **510 of 2156** WIP lots are already behind
+  their standard curve (due − ready < standard remaining time), against **20** that are tighter than
+  raw time. These are the lots the standard targets push forward.
+- **Not done (later refinement):** one flow factor per tool family instead of per product, so that the
+  bottleneck families get more of the standard time. It needs the same order data only, no tuning.
+- **Dispatcher:** unchanged. It reads `step_due` exactly as in the step-due version; only the targets
+  moved. No new objective term.
+
+**Study:** same 225 runs per version (9 books × 5 policies × 5 seeds, 48 h, 6 workers on the 8-core box;
+wall 132 / 139 / 200 / 268 / 265 s for main / fixed / dyn / plan / std). EDD, FIFO, CR and SMT rule are
+identical in fixed, dyn, plan and std (they do not read the plan), so only ResiliMES is compared.
+
+### Table S1. ResiliMES: main / fixed / dynamic(ratio) / step dues (raw) / **step dues (standard LT)** (seed mean; on-time pooled)
+
+| Book | On-time % | Completed | Q true rate % | Mean X-factor |
+|---|---|---|---|---|
+| published | 57.1 / 55.0 / 57.1 / 57.1 / **56.8** | 135.8 / 122.0 / 80.2 / 118.8 / **124.4** | 94.0 / 94.9 / 97.8 / 95.1 / **97.2** | 2.58 / 2.56 / 3.16 / 2.52 / **2.80** |
+| xfactor_eta600 | 99.1 / 63.9 / 84.4 / 81.4 / **89.9** | 138.0 / 124.6 / 113.0 / 113.8 / **128.4** | 92.6 / 94.6 / 93.7 / 94.8 / **94.5** | 1.74 / 2.15 / 2.26 / 2.01 / **2.04** |
+| tight_vip | 25.7 / 23.8 / 27.6 / 24.8 / **21.0** | 26.6 / 27.0 / 27.0 / 27.0 / **27.0** | 95.4 / 96.2 / 96.0 / 96.1 / **96.9** | 1.75 / 1.72 / 1.72 / 1.76 / **1.76** |
+| pm_enforced | 57.1 / 55.0 / 56.8 / 56.8 / **56.8** | 139.6 / 124.0 / 76.2 / 124.8 / **125.8** | 93.4 / 93.5 / 96.9 / 93.4 / **96.1** | 2.65 / 2.53 / 3.04 / 2.53 / **2.85** |
+| litho | 57.1 / 55.4 / 56.8 / 56.8 / **56.8** | 138.4 / 121.2 / 80.8 / 118.6 / **124.4** | 94.0 / 95.0 / 97.7 / 95.3 / **97.2** | 2.59 / 2.57 / 3.14 / 2.52 / **2.80** |
+| hot | 56.1 / 54.4 / 55.8 / 55.8 / **55.8** | 138.4 / 122.2 / 80.4 / 118.6 / **124.8** | 93.9 / 95.1 / 97.8 / 95.1 / **97.3** | 2.51 / 2.57 / 3.12 / 2.50 / **2.81** |
+| heldout_published | 57.1 / 55.4 / 57.1 / 57.1 / **57.1** | 144.4 / 130.8 / 82.2 / 129.2 / **132.0** | 94.0 / 95.0 / 97.6 / 95.2 / **97.6** | 2.37 / 2.39 / 3.13 / 2.32 / **2.57** |
+| heldout_xfactor | 100.0 / 77.9 / 93.6 / 92.4 / **89.2** | 140.8 / 126.8 / 117.0 / 112.4 / **127.8** | 92.5 / 95.1 / 93.8 / 95.2 / **94.7** | 1.71 / 2.03 / 2.19 / 1.93 / **2.03** |
+| litho_family_2h | 57.1 / 55.0 / 56.8 / 56.8 / **56.8** | 139.2 / 122.6 / 81.2 / 117.6 / **124.0** | 93.7 / 94.6 / 97.8 / 94.9 / **97.1** | 2.57 / 2.56 / 3.14 / 2.50 / **2.78** |
+
+EDD for reference (fixed onward, every book): published 57.5 % / 159.6 completed / Q 83.7 %;
+xfactor_eta600 99.5 % / 166.6 / 82.4 %; tight_vip 12.4 % / 41.8 / 71.6 %.
+
+**Standard vs raw step dues (ResiliMES), honestly:**
+
+- **Better:** completed in 8 of 9 books (tight_vip equal), +5.6 on published, +14.6 on xfactor_eta600,
+  +15.4 on heldout_xfactor; Q true rate +1.9 to +2.7 points on the six published-type books (tight_vip +0.8, xfactor −0.3/−0.5); xfactor_eta600
+  on-time +8.5 points (81.4 → 89.9). The 300 s schedule head is followed on 24.4 % of starts (raw step
+  dues 11.8 %).
+- **Worse:** tight_vip on-time −3.8 points (24.8 → 21.0, still above EDD's 12.4); heldout_xfactor
+  on-time −3.2 (92.4 → 89.2); mean X-factor +0.28 on the published-type books (more long-running lots
+  finish); steps/day −1.2 %.
+- **Against main:** still below main on completed in every book and on on-time in the xfactor books
+  (99.1 / 100 on main). Pooled over all books, std recovers about a third of the raw step dues'
+  completion loss against main (109.0 → 115.4, main 126.8); it does not close the gap.
+
+### Table K1. Balance KPIs, all 9 books pooled (ResiliMES, 45 runs per version)
+
+Per-route figures pool every run per route (10 routes); spread = max − min / coefficient of variation.
+
+| Version | On-time % | Completed | Steps/day | Util mean / CV | BE_110 util | FE_92 util | BE_110 starve % / blocked h | FE_92 starve % / blocked h | Family queue CV | End WIP by route quintile % | Route on-time spread | Route completion % spread | Route X spread | Route steps/lot spread |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| main | 69.7 | 126.8 | 19573 | 0.743 / 0.320 | 0.986 | 0.731 | 0.65 / 7.1 | 4.97 / 247 | 2.80 | 15.6 / 19.6 / 26.1 / 19.8 / 18.9 | 59.5 / 0.25 | 9.3 / 0.44 | 3.56 / 0.46 | 14.3 / 0.28 |
+| fixed | 59.0 | 113.5 | 19609 | 0.743 / 0.323 | 0.979 | 0.738 | 0.92 / 11.7 | 17.0 / 106 | 2.39 | 15.5 / 19.4 / 25.8 / 19.8 / 19.4 | 59.2 / 0.29 | 8.1 / 0.46 | 3.60 / 0.47 | 13.8 / 0.27 |
+| dyn (ratio) | 66.1 | 82.0 | 19676 | 0.736 / 0.336 | 0.899 | 0.784 | 2.90 / 75.1 | 16.7 / 57 | 2.36 | 15.2 / 21.1 / 25.5 / 17.0 / 21.3 | 70.0 / 0.31 | 6.9 / 0.52 | 4.85 / 0.62 | 9.0 / 0.16 |
+| step dues (raw) | 65.3 | 109.0 | 19624 | 0.743 / 0.323 | 0.978 | 0.734 | 1.12 / 10.7 | 17.3 / 108 | 2.37 | 15.5 / 19.5 / 25.8 / 19.6 / 19.6 | 52.7 / 0.26 | 8.0 / 0.46 | 3.45 / 0.45 | 13.7 / 0.27 |
+| **step dues (std LT)** | **66.0** | **115.4** | **19387** | **0.737 / 0.330** | **0.952** | **0.719** | **1.40 / 34.6** | **21.8 / 72** | **2.42** | **16.0 / 20.6 / 25.7 / 18.1 / 19.6** | **59.9 / 0.29** | **8.5 / 0.47** | **3.87 / 0.48** | **5.9 / 0.10** |
+| EDD (fixed on) | 69.6 | 148.2 | 18059 | 0.712 / 0.356 | 0.990 | 0.720 | 0.32 / 6.1 | 18.7 / 107 | 2.48 | 17.3 / 19.2 / 25.2 / 20.3 / 18.0 | 61.0 / 0.28 | 13.7 / 0.50 | 2.25 / 0.33 | 17.9 / 0.31 |
+
+KPI definitions (`qtime_study.balance_kpis`, computed from the recorded events; 0.1 s per run; on the
+published seed-1 run its pooled on-time and completed match the simulator's exactly):
+
+- **Utilisation:** busy tool time / (horizon × tools) per family; mean and CV over families.
+- **Starved:** a tool is up and idle and its family queue is empty. **Blocked:** up and idle with WIP
+  queued at the family (pins, setup, batch forming, holds). Reported as % of up time and tool-hours.
+- **WIP balance:** WIP by route-position quintile (step index / route length) at the end and as a time
+  mean; family-queue CV over families.
+- **Fairness:** per-route on-time %, completion %, mean X-factor and steps per lot, spread across the
+  10 routes as max − min and CV.
+
+**What the KPIs show:**
+
+- **Std LT evens progress across routes:** the steps-per-lot spread across routes falls from 13.7 (raw
+  step dues) and 14.3 (main) to **5.9** (CV 0.27 → 0.10). Every product is pulled along its own standard
+  curve, so no route runs ahead; that is the intended effect of standard targets.
+- **But it starves Litho_FE_92 more:** starved 17.3 % → 21.8 % of up time (main 5.0 %), blocked
+  108 → 72 h, util 0.734 → 0.719; Litho_BE_110 util 0.978 → 0.952 with blocked 10.7 → 34.6 h.
+  Fab steps/day −1.2 %. Holding the per-product curve leaves less WIP queued in front of the litho
+  families. This is the case for a per-family flow factor (above).
+- **Main's FE_92 idle time is mostly blocked, not starved** (247 h blocked, 5 % starved): the
+  pinned/dedicated WIP is there but not runnable. Every r2 version lowers blocked time and raises
+  starvation.
+
+**Skew check** (`study_kpi/table.py`, reporting thresholds only: a version is flagged when it gains
+completed or on-time *and* its late-quintile end WIP falls by > 2 points, early-quintile WIP rises by
+> 2 points, or the per-route completion CV rises by > 25 %): **no version is flagged.** No ResiliMES
+version beats main on completed or on-time pooled, so none can win by skewing; the largest end-WIP
+shift is dyn(ratio) (quintile 3 −2.8 points, quintile 4 +2.4), std moves ≤ 1.7 points per quintile and
+route completion CV +0.03. Product mix: completed per route spreads are within 1 point of the raw
+step dues version.
 
 ## Root cause (why r1 Q-time still leaked)
 
