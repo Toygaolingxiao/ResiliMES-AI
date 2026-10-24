@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import heapq
 import math
+import os
 import random
 import time
 from dataclasses import dataclass, field
@@ -335,6 +336,17 @@ def macro_aps_ms(fab: Fab) -> tuple[float, int]:
     return elapsed_ms, len(jobs)
 
 
+DEFAULT_R2_FIXES: tuple[int, ...] = (2, 3)
+
+
+def default_r2_fixes() -> tuple[int, ...]:
+    """Q-time r2 fixes used when ``r2_fixes`` is not passed. Fix 1 (shortlist
+    admission) is off by default; RESILIMES_QTIME_FIX1=1 turns it back on."""
+    if os.environ.get("RESILIMES_QTIME_FIX1", "").strip() == "1":
+        return (1, 2, 3)
+    return DEFAULT_R2_FIXES
+
+
 def run_policy(
     fab: Fab,
     *,
@@ -355,14 +367,15 @@ def run_policy(
     transport: bool = True,
     deadline_event: bool = True,
     r2_policy: bool = True,
-    r2_fixes: tuple[int, ...] = (1, 2, 3),
+    r2_fixes: tuple[int, ...] | None = None,
     replan_sec: float = REPLAN_SEC,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
     ResiliMES-only Q-time r2 dispatch rules (shortlist admission, graded
     urgency, bounded tool reservation); False is the ablation. ``r2_fixes``
-    picks which of fixes 1-3 are on (per-fix ablation). ``replan_sec`` is the
+    picks which of fixes 1-3 are on (per-fix ablation); unset means
+    ``default_r2_fixes()``: (2, 3), or (1, 2, 3) if RESILIMES_QTIME_FIX1=1. ``replan_sec`` is the
     re-evaluation tick period for every policy (0 turns the tick off)."""
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
@@ -454,11 +467,13 @@ class _Sim:
         transport: bool = True,
         deadline_event: bool = True,
         r2_policy: bool = True,
-        r2_fixes: tuple[int, ...] = (1, 2, 3),
+        r2_fixes: tuple[int, ...] | None = None,
         replan_sec: float = REPLAN_SEC,
     ) -> None:
         self.fab = fab
         self.r2 = r2_policy and policy == "resilimes"
+        if r2_fixes is None:
+            r2_fixes = default_r2_fixes()
         # Per-fix switches: 1 shortlist admission, 2 dynamic risk order,
         # 3 bounded tool reservation.
         self.fix1 = self.r2 and 1 in r2_fixes
