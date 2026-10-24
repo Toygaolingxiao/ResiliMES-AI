@@ -216,15 +216,32 @@ def _qtime_fab(*, cqt_limit: float, second: str, second_due: float = 100_000.0) 
     set, that opens a Q-time window to step B. ``Clean_B-1`` (500 s per lot)
     has ``L_V1`` (VIP) and ``L_2`` (class ``second``) waiting at B from 0 s.
     At 500 s ``L_Q`` has ``cqt_limit - 400`` s left before B must start.
+    ``L_V1`` and ``L_2`` follow route ``B`` (B only), so they are not inside a
+    Q-time span at t=0 and carry no inherited window.
     """
     fab = _two_family_fab(cqt_limit=cqt_limit)
     route = fab.routes[0]
     route.cycle[:] = [100.0, 500.0]
     route.remain[:] = [600.0, 500.0]
+    only_b = Route(
+        route_id="B",
+        family=[1],
+        cycle=[500.0],
+        recipe=[0],
+        batch_min=[0],
+        batch_max=[0],
+        cqt_limit=[0.0],
+        cqt_target=[-1],
+        remain=[500.0],
+        step_index={2: 0},
+        dedicate_root=[-1],
+    )
+    fab.routes.append(only_b)
+    fab.route_index["B"] = 1
     fab.lot_id[:] = ["L_Q", "L_V1", "L_2"]
     fab.lot_product[:] = ["p", "p", "p"]
-    fab.lot_route[:] = [0, 0, 0]
-    fab.lot_step[:] = [0, 1, 1]
+    fab.lot_route[:] = [0, 1, 1]
+    fab.lot_step[:] = [0, 0, 0]
     fab.lot_due[:] = [100_000.0, 100_000.0, second_due]
     fab.lot_value[:] = [1.0, 1.0, 1.0]
     fab.lot_class[:] = ["normal", "VIP", second]
@@ -318,6 +335,7 @@ def test_full_fab_overrides_only_on_dataset_cqt_windows() -> None:
 def test_transport_delays_the_next_start_by_the_bay_move() -> None:
     # Etch_A and Clean_B are different STNGRP bays: 3 min from A to B.
     fab = _qtime_fab(cqt_limit=0.0, second="VIP")
+    fab.lot_route[:] = [0, 0, 0]
     fab.lot_step[:] = [0, 0, 0]
     result = run_policy(
         fab, policy="edd", seed=1, horizon=5000, downs=[[], []], pm=[[], []], record=True
@@ -343,6 +361,7 @@ def test_transport_delays_the_next_start_by_the_bay_move() -> None:
 
 def test_transport_check_flags_a_start_before_the_move_is_over() -> None:
     fab = _qtime_fab(cqt_limit=0.0, second="VIP")
+    fab.lot_route[:] = [0, 0, 0]
     fab.lot_step[:] = [0, 0, 0]
     result = run_policy(
         fab, policy="edd", seed=1, horizon=5000, downs=[[], []], pm=[[], []], record=True
@@ -359,6 +378,7 @@ def test_transport_check_flags_a_start_before_the_move_is_over() -> None:
 
 def test_no_transport_ablation_is_a_separate_flag() -> None:
     fab = _qtime_fab(cqt_limit=0.0, second="VIP")
+    fab.lot_route[:] = [0, 0, 0]
     fab.lot_step[:] = [0, 0, 0]
     result = run_policy(
         fab,

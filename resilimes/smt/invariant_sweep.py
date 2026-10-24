@@ -2,7 +2,12 @@
 
 Books: published dues (steady), X-factor dues with ``Litho_FE_92-1`` down
 600 minutes, the PM calendar shifted so ``Litho_FE_92_WK`` opens at 2 hours,
-and the tight VIP book. Prints one line per run and a total per book and
+the tight VIP book, and the litho stress book (every ``Litho_FE_92`` scanner
+down 2 hours in the busy window, see ``resilimes.smt.stress``), which also
+runs the stall audit: ``stall`` counts samples where an idle, up tool had a
+start ready and no pending event would ever start it, ``wip_frozen`` counts
+5-minute samples (after the first hour) with no step finished, ``stranded``
+is the most waiting lots no tool of their family may ever start. Prints one line per run and a total per book and
 policy. Exits non-zero when any check fails. ``make smt-invariants``.
 """
 
@@ -18,10 +23,13 @@ from resilimes.smt.fab import Fab, load_fab
 from resilimes.smt.invariants import CHECKS, check_trace
 from resilimes.smt.scenarios import SEEDS, STUDY_HORIZON_SEC
 from resilimes.smt.simulate import pm_shift_to_open, pm_windows, run_policy, sample_downs
+from resilimes.smt.stress import audited_run, stress_downs
 from resilimes.smt.tight import TIGHT_HORIZON_SEC, apply_tight, apply_xfactor
 
 POLICIES = ("resilimes", "edd", "fifo", "cr", "smt_rule")
 _ETA_SEC = 600.0 * 60.0
+BOOKS = ("published", "xfactor_eta600", "pm_enforced", "tight_vip", "litho_family_2h")
+SWEEP_CHECKS = (*CHECKS, "stall", "wip_frozen", "stranded")
 
 
 def _books(fab: Fab, seed: int) -> Iterator[tuple[str, Fab, float, Any, Any, float]]:
@@ -56,6 +64,14 @@ def _books(fab: Fab, seed: int) -> Iterator[tuple[str, Fab, float, Any, Any, flo
         pm_windows(book.fab, TIGHT_HORIZON_SEC),
         0.0,
     )
+    yield (
+        "litho_family_2h",
+        fab,
+        horizon,
+        stress_downs(fab, seed, horizon),
+        pm_windows(fab, horizon),
+        0.0,
+    )
 
 
 _FAB: list[Fab] = []
@@ -67,19 +83,26 @@ def _one(item: tuple[int, str, str]) -> tuple[int, str, str, dict[str, Any]]:
     for name, plant, horizon, downs, pm, focus in _books(fab, seed):
         if name != want:
             continue
-        result = run_policy(
-            plant,
-            policy=policy,
-            seed=seed,
-            horizon=horizon,
-            downs=downs,
-            pm=pm,
-            trace=False,
-            focus_down_until=focus,
-            record=True,
-        )
+        kwargs: dict[str, Any] = {
+            "policy": policy,
+            "seed": seed,
+            "horizon": horizon,
+            "downs": downs,
+            "pm": pm,
+            "trace": False,
+            "focus_down_until": focus,
+            "record": True,
+        }
+        audit = None
+        if name == "litho_family_2h":
+            result, audit = audited_run(plant, **kwargs)
+        else:
+            result = run_policy(plant, **kwargs)
         report = check_trace(plant, result, downs=downs, pm=pm)
         report.pop("examples", None)
+        report["counts"]["stall"] = audit.stall_samples if audit else 0
+        report["counts"]["wip_frozen"] = audit.wip_frozen if audit else 0
+        report["counts"]["stranded"] = audit.stranded_max if audit else 0
         return seed, name, policy, report
     raise KeyError(want)
 
@@ -95,8 +118,7 @@ def sweep(
     if not _FAB:
         _FAB.append(load_fab())
     count = workers or max(1, int(os.environ.get("RESILIMES_SWEEP_WORKERS", "4")))
-    books = ("published", "xfactor_eta600", "pm_enforced", "tight_vip")
-    items = [(seed, name, policy) for seed in seeds for name in books for policy in POLICIES]
+    items = [(seed, name, policy) for seed in seeds for name in BOOKS for policy in POLICIES]
     if count <= 1:
         done = [_one(item) for item in items]
     else:
@@ -105,7 +127,7 @@ def sweep(
     totals: dict[str, dict[str, dict[str, int]]] = {}
     for seed, name, policy, report in done:
         row = totals.setdefault(name, {}).setdefault(
-            policy, {"starts": 0, **{key: 0 for key in CHECKS}}
+            policy, {"starts": 0, **{key: 0 for key in SWEEP_CHECKS}}
         )
         row["starts"] += int(report["starts"])
         for key, value in report["counts"].items():
@@ -123,12 +145,12 @@ def sweep(
 def main() -> None:
     totals = sweep()
     bad = 0
-    print("| Book | Policy | Starts | " + " | ".join(CHECKS) + " |")
-    print("| --- | --- | ---: | " + " | ".join("---:" for _ in CHECKS) + " |")
+    print("| Book | Policy | Starts | " + " | ".join(SWEEP_CHECKS) + " |")
+    print("| --- | --- | ---: | " + " | ".join("---:" for _ in SWEEP_CHECKS) + " |")
     for name, rows in totals.items():
         for policy, row in rows.items():
-            bad += sum(row[key] for key in CHECKS)
-            cells = " | ".join(str(row[key]) for key in CHECKS)
+            bad += sum(row[key] for key in SWEEP_CHECKS)
+            cells = " | ".join(str(row[key]) for key in SWEEP_CHECKS)
             print(f"| {name} | {policy} | {row['starts']} | {cells} |")
     sys.exit(1 if bad else 0)
 

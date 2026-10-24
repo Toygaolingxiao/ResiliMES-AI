@@ -15,6 +15,7 @@ from resilimes.config import ROOT, Settings
 from resilimes.engines.scout.engine import default_scout
 from resilimes.llm.factory import build_provider
 from resilimes.smt.fab import DATA_SOURCE, LITHO_MTTR_MIN, READ_QUERY, Fab, initial_queues, load_fab
+from resilimes.smt.qtime_kpi import qtime_buckets
 from resilimes.smt.simulate import (
     X_FACTOR,
     RunResult,
@@ -561,7 +562,17 @@ def _report(
             ),
             "cycle_time_h": "Mean completion time of lots that finish the route inside the horizon.",
             "litho_util_pct": "Busy time on the 102 Litho_* tools divided by tools times horizon.",
-            "qtime_violations": "CQT target started after the limit, or the limit expired inside the horizon.",
+            "qtime_violations": (
+                "Windows this run opened that were missed: target started late (directly "
+                "or after a Q-time hold), re-cleaned, or still open with the deadline "
+                "inside the horizon."
+            ),
+            "qtime": (
+                "Four buckets per dataset CQT window: met, started late, re-cleaned, open "
+                "and expired at the horizon. rate_pct is met over all four. Windows "
+                "inherited from the snapshot (433 lots inside a CQT span at t=0, taken "
+                "to open at t=0) are counted under inherited, not in the rate."
+            ),
             "recleans": (
                 "One return through the wet step that opened the missed window. "
                 "Not the published rework probability."
@@ -706,12 +717,16 @@ def _kpi(result: RunResult) -> dict[str, Any]:
         "litho_util_pct": result.litho_util_pct,
         "scanner_util_pct": result.scanner_util_pct,
         "qtime_violations": result.qtime_violations,
+        "qtime": qtime_buckets(result),
         "recleans": result.recleans,
         "mean_x_factor": result.mean_x_factor,
         "qtime_gates": result.qtime_gates,
         "pm_avoided": result.pm_avoided,
         "pm_overlaps": result.pm_overlaps,
         "wip_replans": result.wip_replans,
+        "batch_fill_pct": result.batch_fill_pct,
+        "tool_reservations": result.tool_reservations,
+        "reserved_min": result.reserved_min,
     }
 
 

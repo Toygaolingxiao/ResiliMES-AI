@@ -33,6 +33,13 @@ Checks, one counter each:
 - ``transport``: every start of a lot comes at least the fixed transport time
   (same STNGRP bay 1 min, other bay 3 min) after the lot's previous step
   ended, or after the re-clean that sent it back to its CQT origin.
+- ``qtime_hold``: no start of a lot inside its Q-time hold.
+- ``reservation`` (Q-time r2 fix 3): only ResiliMES reserves; at most one
+  reserved tool per family at a time; a hold lasts at most RESERVE_MAX_SEC;
+  never on a tool that is down or in PM at the reservation, nor one whose PM
+  starts during the hold; a reserved tool starts nothing but its lot; every
+  reservation is released; a tool starts a lot between two reservations (no
+  chains); reserved minutes recount to the reported total.
 
 This is a replay of the simulator's own events, not a second simulator.
 """
@@ -43,8 +50,10 @@ from typing import Any
 
 from resilimes.smt.fab import (
     QTIME_URGENT_MARGIN_SEC,
+    RESERVE_MAX_SEC,
     REWORK_SEC,
     Fab,
+    inherited_windows,
     lot_number,
     measured,
     transport_seconds,
@@ -67,6 +76,8 @@ CHECKS = (
     "sampling",
     "qtime_override",
     "transport",
+    "qtime_hold",
+    "reservation",
 )
 UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent")
 
@@ -99,6 +110,14 @@ def check_trace(
     q_target = [-1] * n
     q_deadline = [0.0] * n
     q_origin = [-1] * n
+    # Windows inherited from the snapshot open at t=0 and are counted apart.
+    q_inherited = [False] * n
+    hold_until: dict[int, float] = {}
+    for lot, origin, target, limit in inherited_windows(fab):
+        q_target[lot] = target
+        q_origin[lot] = origin
+        q_deadline[lot] = limit
+        q_inherited[lot] = True
     # (tool, time, lead lot) of an override not yet matched to its start.
     open_override: tuple[int, float, int] | None = None
     policy = str(getattr(result, "policy", ""))
@@ -106,6 +125,11 @@ def check_trace(
     # (moment, family) the lot last left: a step end or a re-clean.
     released: list[tuple[float, int] | None] = [None] * n
     holding: list[set[int]] = [set() for _ in fab.tool_name]
+    # Reservations: tool -> (lot, since); family -> reserved tool.
+    reserved: dict[int, tuple[int, float]] = {}
+    fam_reserved: dict[int, int] = {}
+    cool = [False] * len(fab.tool_name)
+    reserved_sec = 0.0
     violations = 0
     starts = 0
     for event in result.events:
@@ -137,9 +161,48 @@ def check_trace(
                 )
             open_override = (tool, moment, lot)
             continue
+        if kind == "reserve":
+            _kind, moment, tool, lot, until, _eta = event
+            name = fab.tool_name[tool]
+            fam = fab.tool_family[tool]
+            bad = []
+            if policy != "resilimes":
+                bad.append("policy")
+            if tool in reserved or fam in fam_reserved:
+                bad.append("second hold in family")
+            if until - moment > RESERVE_MAX_SEC + 1e-6 or until < moment:
+                bad.append("too long")
+            if any(a <= moment < b for a, b in downs[tool]):
+                bad.append("tool down")
+            if any(moment < b and until > a for a, b in pm[tool]):
+                bad.append("PM")
+            if holding[tool]:
+                bad.append("tool busy")
+            if cool[tool]:
+                bad.append("chain")
+            if bad:
+                flag("reservation", f"{name} t={moment:.1f} {fab.lot_id[lot]}: {', '.join(bad)}")
+            reserved[tool] = (lot, moment)
+            fam_reserved[fam] = tool
+            continue
+        if kind == "release":
+            _kind, moment, tool, lot, _outcome = event
+            hold = reserved.pop(tool, None)
+            if hold is None or hold[0] != lot:
+                flag("reservation", f"{fab.tool_name[tool]} t={moment:.1f} release without hold")
+            else:
+                if moment - hold[1] > RESERVE_MAX_SEC + 1e-6:
+                    flag("reservation", f"{fab.tool_name[tool]} held {moment - hold[1]:.0f}s")
+                reserved_sec += max(0.0, min(moment, float(result.horizon_sec)) - hold[1])
+            fam_reserved.pop(fab.tool_family[tool], None)
+            cool[tool] = True
+            continue
         if kind == "start":
             _kind, moment, tool, lots, steps, finish, reason, chosen = event
             starts += 1
+            if tool in reserved:
+                flag("reservation", f"{fab.tool_name[tool]} t={moment:.1f} started while reserved")
+            cool[tool] = False
             name = fab.tool_name[tool]
             fam = fab.tool_family[tool]
             if holding[tool]:
@@ -198,6 +261,8 @@ def check_trace(
                 number = lot_number(lot_id, lot)
                 if index != start_step and not measured(route, index, number):
                     flag("sampling", f"{lot_id} ran unsampled step {index}")
+                if moment < hold_until.get(lot, 0.0) - 1e-6:
+                    flag("qtime_hold", f"{lot_id} started at {moment:.1f} inside its Q-time hold")
                 if rework_step[lot] >= 0:
                     early = moment < rework_at[lot] + REWORK_SEC - 1e-6
                     if index != rework_step[lot] or early:
@@ -205,16 +270,24 @@ def check_trace(
                     rework_step[lot] = -1
                 if 0 <= index < len(route.dedicate_root) and route.dedicate_root[index] >= 0:
                     old = pinned[lot]
-                    if old >= 0 and old != tool:
+                    # The pin binds the later steps of its own layer only (the
+                    # root step of a new layer, or another family, is free).
+                    binds = (
+                        route.dedicate_root[index] < index
+                        and old >= 0
+                        and fab.tool_family[old] == route.family[index]
+                    )
+                    if binds and old != tool:
                         down = any(a <= moment < b for a, b in downs[old])
                         if not down:
                             flag("dedication", f"{lot_id} step {index} on {name}")
                     pinned[lot] = tool
                 if q_target[lot] == index:
-                    if moment > q_deadline[lot]:
+                    if moment > q_deadline[lot] and not q_inherited[lot]:
                         violations += 1
                     q_target[lot] = -1
                     q_origin[lot] = -1
+                    q_inherited[lot] = False
                 running[lot] = True
                 holding[tool].add(lot)
         elif kind == "interrupt":
@@ -247,6 +320,7 @@ def check_trace(
                 q_deadline[lot] = moment + route.cqt_limit[index]
                 q_target[lot] = route.cqt_target[index]
                 q_origin[lot] = index
+                q_inherited[lot] = False
             step[lot] = index + 1
         elif kind == "skip":
             _kind, moment, lot, index = event
@@ -256,15 +330,27 @@ def check_trace(
             if q_target[lot] == index:
                 q_target[lot] = -1
                 q_origin[lot] = -1
+                q_inherited[lot] = False
             step[lot] = index + 1
-        elif kind == "reclean":
+        elif kind in ("reclean", "qhold"):
+            # The deadline passed with the target not started: the lot is at a
+            # step of the open span (origin excluded), waiting, not on a tool.
             _kind, moment, lot, index, origin = event
-            if q_target[lot] == index and moment > q_deadline[lot]:
-                violations += 1
+            in_span = q_origin[lot] < index <= q_target[lot] and step[lot] == index
+            if in_span and moment > q_deadline[lot] and not running[lot]:
+                violations += 0 if q_inherited[lot] else 1
             else:
-                flag("qtime_recount", f"{fab.lot_id[lot]} re-clean without a missed window")
+                flag("qtime_recount", f"{fab.lot_id[lot]} {kind} without a missed window")
+            rework_step[lot] = -1
+            if kind == "qhold":
+                hold_until[lot] = moment + REWORK_SEC
+                q_target[lot] = -1
+                q_origin[lot] = -1
+                q_inherited[lot] = False
+                continue
             q_target[lot] = -1
             q_origin[lot] = -1
+            q_inherited[lot] = False
             q_deadline[lot] = 0.0
             released[lot] = (moment, fab.routes[fab.lot_route[lot]].family[index])
             step[lot] = origin
@@ -275,8 +361,13 @@ def check_trace(
     for tool, held in enumerate(holding):
         if held and any(a <= horizon < b for a, b in downs[tool]):
             flag("stuck_on_down", f"{fab.tool_name[tool]} down at horizon holding {len(held)}")
+    for tool in reserved:
+        flag("reservation", f"{fab.tool_name[tool]} hold never released")
+    reported_min = getattr(result, "reserved_min", None)
+    if reported_min is not None and abs(round(reserved_sec / 60.0, 1) - reported_min) > 0.11:
+        flag("reservation", f"held {reserved_sec / 60.0:.1f} min vs reported {reported_min}")
     for lot in range(n):
-        if q_target[lot] >= 0 and 0 < q_deadline[lot] <= horizon:
+        if q_target[lot] >= 0 and 0 < q_deadline[lot] <= horizon and not q_inherited[lot]:
             violations += 1
     if violations != result.qtime_violations:
         flag(

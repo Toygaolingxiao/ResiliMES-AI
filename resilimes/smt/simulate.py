@@ -23,6 +23,7 @@ after the current step ends. Same-recipe lots batch together even when their ste
 from __future__ import annotations
 
 import heapq
+import math
 import random
 import time
 from dataclasses import dataclass, field
@@ -34,10 +35,12 @@ from resilimes.smt.fab import (
     HOT_BATCH_WAIT_SEC,
     LOOKAHEAD,
     QTIME_URGENT_MARGIN_SEC,
+    RESERVE_MAX_SEC,
     REWORK_SEC,
     WIP_FLOOR,
     WIP_PER_TOOL,
     Fab,
+    inherited_windows,
     lot_number,
     measured,
     transport_seconds,
@@ -49,8 +52,21 @@ _DOWN_END = 2
 _WAKE = 3
 # A lot reaches the next family's queue after its transport. The slot holds the lot.
 _ARRIVE = 4
+# The latest start of a lot's open Q-time window. The slot holds the lot and
+# gen holds the window generation (qgen), so a closed window's event is stale.
+_QDEADLINE = 5
+# Scheduling tick (all policies): refresh the live wait estimates, set the
+# reservation hold plan and release stale holds, count stalled idle tools,
+# snapshot the plan. It never starts a lot: dispatch stays event-triggered.
+_TICK = 6
+REPLAN_SEC = 300.0
 _BIN_SEC = 900.0
+_BUCKETS = ("met", "late", "held", "recleaned", "expired", "live", "skipped")
+_MISSED = ("late", "held", "recleaned", "expired")
 _WAFERS = 25
+# The deadline event fires just after the latest start, so a start exactly at
+# the deadline still counts as met.
+_DEADLINE_EPS = 1e-3
 # Due dates in the X-factor book. Middle of the 2.5-3 range.
 X_FACTOR = 2.75
 # Lots at least this tight stay in the candidate list when the family cap is on.
@@ -127,6 +143,46 @@ class RunResult:
     transport: bool = True
     qtime_overrides: int = 0
     qtime_override_displaced: dict[str, int] = field(default_factory=dict)
+    # Q-time window outcomes. Windows opened in this run (a CQT origin step
+    # ended): met (target started by the deadline), late (started after it),
+    # held (the deadline passed un-started and the lot went to Q-time hold),
+    # recleaned, expired (deadline at or before the horizon, still open), live
+    # (deadline after the horizon), skipped (sampling skipped the target).
+    # ``qtime_violations`` = late + held + recleaned + expired.
+    qtime_windows: dict[str, int] = field(default_factory=dict)
+    # The same buckets for windows inherited from the snapshot (a lot already
+    # inside a CQT span at t=0, ``inherited_windows``). Not in qtime_violations.
+    qtime_inherited: dict[str, int] = field(default_factory=dict)
+    qtime_met: int = 0
+    qtime_late: int = 0
+    qtime_held: int = 0
+    qtime_recleaned: int = 0
+    qtime_expired: int = 0
+    qtime_rate_pct: float | None = None
+    qtime_inherited_windows: int = 0
+    qtime_inherited_missed: int = 0
+    # Lot-minutes of Q-time hold (deadline passed, not reworkable), apart from
+    # the breakdown rework hold in rework_lot_min.
+    qtime_hold_lot_min: float = 0.0
+    qtime_holds: int = 0
+    batch_cap_lots: int = 0
+    batch_fill_pct: float | None = None
+    batch_short_full: int = 0
+    qtime_shortlist_added: int = 0
+    tool_reservations: int = 0
+    reserved_min: float = 0.0
+    reserve_used: int = 0
+    reserve_elsewhere: int = 0
+    reserve_expired: int = 0
+    reserve_cancelled: int = 0
+    reserve_replanned: int = 0
+    replan_ticks: int = 0
+    replan_stalls: int = 0
+    replan_stalls_batch: int = 0
+    replan_tick_p50_ms: float = 0.0
+    replan_tick_p95_ms: float = 0.0
+    replan_tick_total_s: float = 0.0
+    flow_wait_ratio: float = 0.0
 
 
 def rework_ready(moment: float) -> float:
@@ -297,7 +353,17 @@ def run_policy(
     bar_until: float | None = None,
     record: bool = False,
     transport: bool = True,
+    deadline_event: bool = True,
+    r2_policy: bool = True,
+    r2_fixes: tuple[int, ...] = (1, 2, 3),
+    replan_sec: float = REPLAN_SEC,
 ) -> RunResult:
+    """One run. ``deadline_event`` (all policies) sends an un-started lot to
+    re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
+    ResiliMES-only Q-time r2 dispatch rules (shortlist admission, graded
+    urgency, bounded tool reservation); False is the ablation. ``r2_fixes``
+    picks which of fixes 1-3 are on (per-fix ablation). ``replan_sec`` is the
+    re-evaluation tick period for every policy (0 turns the tick off)."""
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     sim = _Sim(
@@ -317,6 +383,10 @@ def run_policy(
         bar_until=bar_until,
         record=record,
         transport=transport,
+        deadline_event=deadline_event,
+        r2_policy=r2_policy,
+        r2_fixes=r2_fixes,
+        replan_sec=replan_sec,
     )
     return sim.run()
 
@@ -382,8 +452,19 @@ class _Sim:
         bar_until: float | None = None,
         record: bool = False,
         transport: bool = True,
+        deadline_event: bool = True,
+        r2_policy: bool = True,
+        r2_fixes: tuple[int, ...] = (1, 2, 3),
+        replan_sec: float = REPLAN_SEC,
     ) -> None:
         self.fab = fab
+        self.r2 = r2_policy and policy == "resilimes"
+        # Per-fix switches: 1 shortlist admission, 2 dynamic risk order,
+        # 3 bounded tool reservation.
+        self.fix1 = self.r2 and 1 in r2_fixes
+        self.fix2 = self.r2 and 2 in r2_fixes
+        self.fix3 = self.r2 and 3 in r2_fixes
+        self.replan_sec = replan_sec
         self.record = record
         self.transport = transport
         self.events: list[tuple[Any, ...]] = []
@@ -483,15 +564,74 @@ class _Sim:
         self.override_displaced: dict[str, int] = {}
         # Set by choose(): (lead lot, displaced lot, remaining s, need s).
         self.pending_override: tuple[int, int, float, float] | None = None
+        # Q-time window bookkeeping. qgen changes whenever a lot's window opens
+        # or closes, so a stale deadline event can be told apart.
+        self.inherited = [False] * self.n
+        self.qgen = [0] * self.n
+        self.qout: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
+        self.qinh: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
+        self.hold_sec = 0.0
+        # Q-time lots added to a capped shortlist by the r2 admission rule.
+        self.shortlist_added = 0
+        # Batch fill: lots started over batch capacity in lots (BATCHMX / 25).
+        self.batch_cap_lots = 0
+        # Batches started under capacity while the whole ready queue held a
+        # full batch of that recipe (eligible, PM and gate not checked).
+        self.batch_short_full = 0
+        self.last_recipe_ready: dict[int, int] = {}
+        # Q-time r2 fix 3: bounded tool reservation (ResiliMES). Lots heading
+        # to a family inside an open window: lot -> (eta, latest start, step).
+        self.inbound: list[dict[int, tuple[float, float, int]]] = [{} for _ in fab.families]
+        tools = len(fab.tool_family)
+        self.res_lot = [-1] * tools
+        self.res_since = [0.0] * tools
+        self.res_until = [0.0] * tools
+        # A tool must start a lot between two reservations (no chains).
+        self.res_cool = [False] * tools
+        self.res_fam = [-1] * len(fab.families)
+        self.res_by_lot: dict[int, int] = {}
+        self.res_count = 0
+        self.res_sec = 0.0
+        self.res_out = {"used": 0, "elsewhere": 0, "expired": 0, "cancelled": 0, "replan": 0}
+        # Live estimates, refreshed at every tick: expected wait (s) before a
+        # lot arriving now could start at each family, and the fab-wide ratio
+        # of observed queue time to raw process time.
+        self.fam_wait = [0.0] * len(fab.families)
+        self.flow_wait = 0.0
+        self.wait_sum = 0.0
+        self.proc_sum = 0.0
+        self.risk_at = -1.0
+        self.risk_memo: dict[int, tuple[int, int, float, float]] = {}
+        self.wakes = [0] * tools
+        self.ticks = 0
+        self.tick_stalls = 0
+        self.tick_stalls_batch = 0
+        # Scheduling layer, fix 3: inbound Q-time lots that warrant a held
+        # tool, per family, set at each tick. Dispatch honours it at events.
+        self.hold_plan: list[list[int]] = [[] for _ in fab.families]
+        self.tick_samples: list[float] = []
+        self.last_replan: tuple[float, dict[int, tuple[int, ...]], dict[int, int]] | None = None
+        self.batch_family = [False] * len(fab.families)
+        for route in fab.routes:
+            for index, cap in enumerate(route.batch_max):
+                if cap > 0:
+                    self.batch_family[route.family[index]] = True
+        self.held = 0
+        self.q_pending = [False] * self.n
+        self.deadline_event = deadline_event
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
             return
         self.seq += 1
+        if kind == _WAKE:
+            self.wakes[tool] += 1
         heapq.heappush(self.heap, (moment, self.seq, kind, tool, gen))
 
     def run(self) -> RunResult:
         started = time.perf_counter()
+        for lot, origin, target, limit in inherited_windows(self.fab):
+            self.open_window(lot, origin, target, limit, 0.0, inherited=True)
         for lot in range(self.n):
             self.enqueue(lot, 0.0)
         for tool, spans in enumerate(self.downs):
@@ -504,6 +644,9 @@ class _Sim:
                     self.push(start_at, _DOWN_START, tool)
             if not opened:
                 self.push(0.0, _WAKE, tool)
+        if self.replan_sec > 0:
+            self.refresh_estimates(0.0)
+            self.push(self.replan_sec, _TICK, -1)
         steps = 0
         while self.heap:
             moment, _seq, kind, tool, gen = heapq.heappop(self.heap)
@@ -516,7 +659,13 @@ class _Sim:
                 self.down_start(tool, moment)
             elif kind == _ARRIVE:
                 self.enqueue(tool, moment)
+            elif kind == _QDEADLINE:
+                self.q_deadline(tool, moment, gen)
+            elif kind == _TICK:
+                self.tick(moment)
             elif kind in (_DOWN_END, _WAKE):
+                if kind == _WAKE:
+                    self.wakes[tool] -= 1
                 self.release_idle(tool)
                 self.try_start(tool, moment)
             steps += 1
@@ -524,7 +673,79 @@ class _Sim:
                 raise RuntimeError("SMT simulation exceeded 2e6 events")
         return self.finish(time.perf_counter() - started)
 
+    def open_window(
+        self,
+        lot: int,
+        origin: int,
+        target: int,
+        limit: float,
+        moment: float,
+        *,
+        inherited: bool = False,
+    ) -> None:
+        """A dataset CQT window opens: ``target`` must start by moment + limit."""
+        self.deadline[lot] = moment + limit
+        self.cqt_limit[lot] = limit
+        self.cqt_at[lot] = target
+        self.cqt_from[lot] = origin
+        self.inherited[lot] = inherited
+        self.qgen[lot] += 1
+        self.q_pending[lot] = False
+        if self.deadline_event:
+            self.push(moment + limit + _DEADLINE_EPS, _QDEADLINE, lot, self.qgen[lot])
+
+    def close_window(self, lot: int, outcome: str) -> None:
+        """Count the window's outcome once and close it."""
+        bucket = self.qinh if self.inherited[lot] else self.qout
+        bucket[outcome] += 1
+        if lot in self.res_by_lot:
+            self.release(self.res_by_lot[lot], self.clock, "cancelled")
+        if outcome in _MISSED and not self.inherited[lot]:
+            self.violations += 1
+        self.cqt_at[lot] = -1
+        self.inherited[lot] = False
+        self.qgen[lot] += 1
+        self.q_pending[lot] = False
+
+    def q_deadline(self, lot: int, moment: float, gen: int) -> None:
+        """The latest start passed with the target step not started.
+
+        A lot waiting in a queue (at the target or an earlier step of the span)
+        is handled now. A lot in process, in transit or in breakdown rework is
+        handled when it next reaches a queue.
+        """
+        if gen != self.qgen[lot] or self.cqt_at[lot] < 0:
+            return
+        if self.waiting[lot]:
+            self.expire(lot, moment, queued=True)
+        else:
+            self.q_pending[lot] = True
+
+    def expire(self, lot: int, moment: float, *, queued: bool) -> None:
+        """Re-clean (Wet_Etch origin, first miss) or Q-time hold, then requeue."""
+        fam = self.step_family(lot)
+        if self._can_reclean(lot, moment):
+            self._reclean(lot, fam, moment, queued=queued)
+            return
+        index = self.step[lot]
+        target = self.cqt_at[lot]
+        self.close_window(lot, "held")
+        if queued:
+            self.waiting[lot] = False
+            self.depth[fam] = max(0, self.depth[fam] - 1)
+            if lot in self.queues[fam]:
+                self.queues[fam].remove(lot)
+        self.held += 1
+        self.hold_sec += max(0.0, min(REWORK_SEC, self.horizon - moment))
+        if self.record:
+            self.events.append(("qhold", moment, lot, index, target))
+        self.push(moment + REWORK_SEC, _ARRIVE, lot)
+
     def enqueue(self, lot: int, moment: float) -> None:
+        if self.q_pending[lot] and self.cqt_at[lot] >= 0:
+            self.expire(lot, moment, queued=False)
+            return
+        self.q_pending[lot] = False
         route = self.fab.routes[self.fab.lot_route[lot]]
         fam = route.family[self.step[lot]]
         self.ready[lot] = moment
@@ -607,6 +828,7 @@ class _Sim:
             self._sample(t0, False)
             return [], wake, ""
         pool = ready_pool
+        whole = pool
         over_cap = self.policy == "resilimes" and self.depth[fam] > self.threshold[fam]
         limit = 8 if over_cap else LOOKAHEAD
         if self.policy == "smt_rule":
@@ -627,12 +849,41 @@ class _Sim:
                         if lot not in kept and self._slack(lot, moment) <= SLACK_CANDIDATE_SEC:
                             ranked.append(lot)
                 pool = ranked
+            if self.fix1:
+                # Q-time r2 shortlist (ResiliMES): every lot inside an open
+                # dataset CQT window is a candidate, highest live risk first.
+                kept = set(pool)
+                windowed = [lot for lot in whole if lot not in kept and self.in_window(lot)]
+                windowed.sort(key=lambda lot: -self.risk(lot, moment)[0])
+                self.shortlist_added += len(windowed)
+                pool = pool + windowed
+        # Furnace batching sees the whole same-recipe family queue, not only
+        # the shortlist: a lot cut by the candidate cap can still fill a batch.
+        # Singles still come from the shortlist. Shared by every policy.
+        candidates = pool
+        self.last_recipe_ready = {}
+        if self.batch_family[fam]:
+            for lot in whole:
+                route = self.fab.routes[self.fab.lot_route[lot]]
+                index = self.step[lot]
+                if route.batch_max[index] > 0:
+                    recipe = route.recipe[index]
+                    self.last_recipe_ready[recipe] = self.last_recipe_ready.get(recipe, 0) + 1
+            if len(whole) > len(pool):
+                kept = set(pool)
+                extra = [
+                    lot
+                    for lot in whole
+                    if lot not in kept
+                    and self.fab.routes[self.fab.lot_route[lot]].batch_max[self.step[lot]] > 0
+                ]
+                candidates = pool + extra
         pm_start = self.next_pm_start(tool, moment)
         feasible: list[int] = []
         skipped = False
         gated = False
         gate_wake: float | None = None
-        for lot in pool:
+        for lot in candidates:
             proc = self.piece_seconds(lot, tool)
             if pm_start is not None and moment + proc > pm_start:
                 skipped = True
@@ -683,16 +934,38 @@ class _Sim:
         self._sample(t0, True)
         return chosen, wake_at, reason
 
+    def in_window(self, lot: int) -> bool:
+        """The lot is inside an open dataset CQT window (target not started)."""
+        return self.cqt_at[lot] >= self.step[lot] and self.deadline[lot] > 0
+
     def _slack(self, lot: int, moment: float) -> float:
         route = self.fab.routes[self.fab.lot_route[lot]]
         return self.due[lot] - moment - route.remain[self.step[lot]]
 
+    def pin_for(self, lot: int, index: int) -> int:
+        """The scanner this step is pinned to, or -1.
+
+        A pin binds only the later steps of the layer that set it: the step
+        has a dedication root before it, and the pinned scanner is in this
+        step's family. The root step of a new layer chooses freely. Before
+        Q-time r2 the pin from an earlier layer also bound the root of the
+        next layer, even in another litho family, and no tool there could
+        ever start the lot unless the old scanner was down (found by the
+        2-hour litho stress; ``docs/QTIME_R2.md``).
+        """
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        root = route.dedicate_root[index]
+        pinned = self.dedicate_tool[lot]
+        if root < 0 or root >= index or pinned < 0:
+            return -1
+        if self.fab.tool_family[pinned] != route.family[index]:
+            return -1
+        return pinned
+
     def eligible(self, lot: int, tool: int, moment: float) -> bool:
         """The dedicated scanner after layer 1, unless that scanner is down."""
-        route = self.fab.routes[self.fab.lot_route[lot]]
-        root = route.dedicate_root[self.step[lot]]
-        pinned = self.dedicate_tool[lot]
-        if root < 0 or pinned < 0 or pinned == tool:
+        pinned = self.pin_for(lot, self.step[lot])
+        if pinned < 0 or pinned == tool:
             return True
         return _covering(self.downs[pinned], moment) is not None
 
@@ -841,9 +1114,12 @@ class _Sim:
         if self.policy == "cr":
             return (self.cr(lot, moment), self.due[lot], lot)
         if self.policy == "resilimes":
+            band = float(self.urgency_band(lot, moment))
+            if self.fix2:
+                risk, least = self.risk(lot, moment)
+                return (band, float(self.tier(lot)), -risk, least, self.ready[lot], lot)
             slack = self._slack(lot, moment)
             late = 0.0 if slack <= 0.0 else 1.0
-            band = float(self.urgency_band(lot, moment))
             return (band, float(self.tier(lot)), late, slack, self.ready[lot], lot)
         return (self.ready[lot], self.due[lot], lot)
 
@@ -852,7 +1128,7 @@ class _Sim:
             return (float(self.urgency_band(lot, moment)), *self.plain_rank(lot, tool, moment))
         return self.plain_rank(lot, tool, moment)
 
-    def qtime_need(self, lot: int) -> float:
+    def qtime_need(self, lot: int, here: int = -1, target: int = -1) -> float:
         """Seconds the lot still needs before its CQT target can start.
 
         Dataset process time of the current step and of each later measured
@@ -860,8 +1136,8 @@ class _Sim:
         into the target. No setup.
         """
         route = self.fab.routes[self.fab.lot_route[lot]]
-        here = self.step[lot]
-        target = self.cqt_at[lot]
+        here = self.step[lot] if here < 0 else here
+        target = self.cqt_at[lot] if target < 0 else target
         number = self.lot_no[lot]
         need = 0.0
         last = here
@@ -913,6 +1189,15 @@ class _Sim:
         fam = self.fab.tool_family[tool]
         route = self.fab.routes[self.fab.lot_route[lot]]
         setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[self.step[lot]])
+        if self.fix2:
+            # Q-time r2 dynamic weight: one live risk for Q-time and due date.
+            # A lot expected to miss (risk >= 1) goes first, most at risk
+            # first. Below 1 setup avoidance comes first, then risk.
+            risk, least = self.risk(lot, moment)
+            tier = float(self.tier(lot))
+            if risk >= 1.0:
+                return (tier, 0.0, -risk, setup, least, self.ready[lot], float(lot))
+            return (tier, 1.0, setup, -risk, least, self.ready[lot], float(lot))
         key = tiered_key(
             order_class=self.lot_kind(lot),
             slack_sec=self._slack(lot, moment),
@@ -966,6 +1251,205 @@ class _Sim:
             return 0.0
         return ped_risk(self.deadline[lot] - moment, self.cqt_limit[lot], 6.0)
 
+    def risk(self, lot: int, moment: float) -> tuple[float, float]:
+        """Q-time r2 dynamic weight (ResiliMES): (risk, least slack).
+
+        risk = expected wait / remaining slack, per constraint, and the max of
+        the two. No tuned constant: every term is live fab state.
+
+        * Q-time (lot inside an open window): slack = deadline - now - need,
+          need = process and transport still due before the target
+          (``qtime_need``). Expected wait = live wait estimate here plus at
+          every later measured step up to and including the target.
+        * Due date: slack = due - now - remaining raw process. Expected wait =
+          live wait estimate here plus the observed fab-wide queue/process
+          ratio times the raw process still due after this step.
+
+        Slack <= 0 is infinite risk. Wait estimates come from the last tick
+        (``refresh_estimates``), so they are at most ``replan_sec`` old.
+        """
+        if moment != self.risk_at:
+            self.risk_at = moment
+            self.risk_memo = {}
+        memo = self.risk_memo.get(lot)
+        if memo is not None and memo[0] == self.step[lot] and memo[1] == self.qgen[lot]:
+            return memo[2], memo[3]
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        index = self.step[lot]
+        here = self.fam_wait[route.family[index]]
+        slack = self._slack(lot, moment)
+        after = max(0.0, route.remain[index] - route.cycle[index])
+        wait = here + self.flow_wait * after
+        risk = math.inf if slack <= 0.0 else wait / slack
+        least = slack
+        if self.in_window(lot):
+            q_slack = self.deadline[lot] - moment - self.qtime_need(lot)
+            number = self.lot_no[lot]
+            q_wait = here
+            for nxt in range(index + 1, self.cqt_at[lot] + 1):
+                if measured(route, nxt, number):
+                    q_wait += self.fam_wait[route.family[nxt]]
+            q_risk = math.inf if q_slack <= 0.0 else q_wait / q_slack
+            risk = max(risk, q_risk)
+            least = min(least, q_slack)
+        self.risk_memo[lot] = (self.step[lot], self.qgen[lot], risk, least)
+        return risk, least
+
+    def refresh_estimates(self, moment: float) -> None:
+        """Live expected wait per family and the fab-wide queue/process ratio.
+
+        Wait at a family = (raw work queued there, a batch step counted per
+        lot as its time over the batch size in lots, plus the residual time of
+        its busy up tools) / tools up now. With no tool up: time until the
+        first one is back plus the queued work over all tools.
+        """
+        self.risk_at = -1.0
+        self.flow_wait = self.wait_sum / self.proc_sum if self.proc_sum > 0 else 0.0
+        for fam, family in enumerate(self.fab.families):
+            work = 0.0
+            for lot in self.live(fam):
+                route = self.fab.routes[self.fab.lot_route[lot]]
+                index = self.step[lot]
+                size = route.batch_max[index] // _WAFERS
+                work += route.cycle[index] / max(1, size)
+            up = 0
+            back = math.inf
+            for tool in range(family.tool0, family.tool0 + family.tools):
+                gone = _covering(self.downs[tool], moment) or _covering(self.pm[tool], moment)
+                if gone is not None:
+                    back = min(back, gone[1])
+                    continue
+                up += 1
+                if self.running[tool] >= 0:
+                    work += max(0.0, self.busy_until[tool] - moment)
+            if up:
+                self.fam_wait[fam] = work / up
+            elif family.tools:
+                back = min(back, self.horizon)
+                self.fam_wait[fam] = max(0.0, back - moment) + work / family.tools
+
+    def tick(self, moment: float) -> None:
+        """Scheduling tick, every ``replan_sec`` of sim time, all policies.
+
+        Scheduling layer only; it never starts a lot (dispatch stays
+        event-triggered and reads what the tick left behind):
+        (a) refresh the live wait estimates; (b) ResiliMES fix 3: release a
+        hold no longer needed and set the hold plan (which inbound Q-time
+        lots warrant a held tool); (c) count an idle, up tool with an
+        eligible ready lot and no pending wake (stall detector, count only);
+        (d) with ``record``, snapshot each family's queue order and the next
+        planned lot per tool.
+        """
+        t0 = time.perf_counter()
+        self.ticks += 1
+        self.refresh_estimates(moment)
+        if self.fix3:
+            self.plan_holds(moment)
+        for tool in range(len(self.running)):
+            if self.running[tool] >= 0 or self.wakes[tool] > 0 or self.res_lot[tool] >= 0:
+                continue
+            fam = self.fab.tool_family[tool]
+            if not self.queues[fam]:
+                continue
+            if _covering(self.downs[tool], moment) or _covering(self.pm[tool], moment):
+                continue
+            ready = [
+                lot
+                for lot in self.live(fam)
+                if self.ready[lot] <= moment + 1e-6 and self.eligible(lot, tool, moment)
+            ]
+            if not ready:
+                continue
+            self.tick_stalls += 1
+            batch = all(
+                self.fab.routes[self.fab.lot_route[lot]].batch_max[self.step[lot]] > 0
+                for lot in ready
+            )
+            if batch:
+                self.tick_stalls_batch += 1
+            if self.record:
+                self.events.append(("tick_stall", moment, tool, len(ready), batch))
+        if self.record:
+            self.snapshot(moment)
+        self.tick_samples.append(time.perf_counter() - t0)
+        self.push(moment + self.replan_sec, _TICK, -1)
+
+    def plan_holds(self, moment: float) -> None:
+        """Fix 3, scheduling side: review holds and set the hold plan.
+
+        A held tool is released ("replan") when its lot is gone or no longer
+        needs it: the live wait at the family is below the lot's Q-time slack
+        on arrival. The plan lists, per family, the inbound lots that arrive
+        before their latest start and within RESERVE_MAX_SEC of the next tick,
+        whose Q-time risk on arrival is at least 1 (live wait at the family >=
+        latest start - arrival), tightest first.
+        """
+        for tool in range(len(self.res_lot)):
+            lot = self.res_lot[tool]
+            if lot < 0:
+                continue
+            fam = self.fab.tool_family[tool]
+            row = self.inbound[fam].get(lot)
+            if (
+                row is None
+                or not self._inbound_live(lot, row[0], row[2], moment)
+                or self.fam_wait[fam] < row[1] - max(moment, row[0])
+            ):
+                self.release(tool, moment, "replan")
+        horizon = moment + self.replan_sec + RESERVE_MAX_SEC
+        for fam, rows in enumerate(self.inbound):
+            plan: list[tuple[float, int]] = []
+            for lot in list(rows):
+                eta, latest, nxt = rows[lot]
+                if not self._inbound_live(lot, eta, nxt, moment):
+                    del rows[lot]
+                    continue
+                if eta > latest or eta > horizon:
+                    continue
+                if self.fam_wait[fam] >= latest - eta:
+                    plan.append((latest, lot))
+            plan.sort()
+            self.hold_plan[fam] = [lot for _latest, lot in plan]
+
+    def snapshot(self, moment: float) -> None:
+        """'replan' record: queue order per family, next planned lot per tool.
+
+        Order is the policy's own shortlist key (``cheap``; FIFO by ready
+        time). Tools take the head of the order in the order they come free
+        (now, end of the running piece, end of a down or PM), each the first
+        lot it is eligible for. A plan, not a promise: the event chain decides.
+        """
+        orders: dict[int, tuple[int, ...]] = {}
+        plan: dict[int, int] = {}
+        for fam, family in enumerate(self.fab.families):
+            if not self.queues[fam]:
+                continue
+            rows = self.live(fam)
+            if not rows:
+                continue
+            order = sorted(rows, key=lambda lot: self.cheap(lot, moment))
+            orders[fam] = tuple(order)
+            free: list[tuple[float, int]] = []
+            for tool in range(family.tool0, family.tool0 + family.tools):
+                gone = _covering(self.downs[tool], moment) or _covering(self.pm[tool], moment)
+                if gone is not None:
+                    at = gone[1]
+                elif self.running[tool] >= 0:
+                    at = self.busy_until[tool]
+                else:
+                    at = moment
+                free.append((at, tool))
+            free.sort()
+            taken: set[int] = set()
+            for _at, tool in free:
+                for lot in order[:64]:
+                    if lot not in taken and self.eligible(lot, tool, moment):
+                        plan[tool] = lot
+                        taken.add(lot)
+                        break
+        self.last_replan = (moment, orders, plan)
+        self.events.append(("replan", moment, orders, plan))
+
     def next_pm_start(self, tool: int, moment: float) -> float | None:
         found: float | None = None
         for start_at, _end in self.pm[tool]:
@@ -989,10 +1473,23 @@ class _Sim:
             return
         in_pm = _covering(self.pm[tool], moment)
         if in_pm is not None:
+            if self.res_lot[tool] >= 0:
+                self.release(tool, moment, "cancelled")
             self.push(in_pm[1], _WAKE, tool)
             return
-        chosen, wake_at, reason = self.choose(tool, moment)
         fam = self.fab.tool_family[tool]
+        if self.res_lot[tool] >= 0:
+            held = self.res_lot[tool]
+            if moment >= self.res_until[tool] - 1e-9:
+                self.release(tool, moment, "expired")
+            elif self.waiting[held] and self.step_family(held) == fam:
+                self._start(tool, fam, moment, [held], "reserved")
+                return
+            else:
+                if tool not in self.idle[fam]:
+                    self.idle[fam].append(tool)
+                return
+        chosen, wake_at, reason = self.choose(tool, moment)
         # A chosen lot that missed its Q-time window goes back to re-clean
         # before the start, and the tool chooses again. Every lot of the final
         # choice starts.
@@ -1011,17 +1508,24 @@ class _Sim:
             if tool not in self.idle[fam]:
                 self.idle[fam].append(tool)
             return
+        if self.fix3 and self.maybe_reserve(tool, fam, chosen, moment):
+            return
+        self._start(tool, fam, moment, chosen, reason)
+
+    def _start(self, tool: int, fam: int, moment: float, chosen: list[int], reason: str) -> None:
         started: list[int] = []
         steps: list[int] = []
         for lot in chosen:
             if not self.waiting[lot] or self.step_family(lot) != fam:
                 self.batch_dropped += 1
                 continue
+            if lot in self.res_by_lot:
+                holder = self.res_by_lot[lot]
+                self.release(holder, moment, "used" if holder == tool else "elsewhere")
             index = self.step[lot]
-            if self.cqt_at[lot] == index and self.deadline[lot] > 0 and moment > self.deadline[lot]:
-                self.violations += 1
             if self.cqt_at[lot] == index:
-                self.cqt_at[lot] = -1
+                late = self.deadline[lot] > 0 and moment > self.deadline[lot]
+                self.close_window(lot, "late" if late else "met")
             self.waiting[lot] = False
             self.depth[fam] -= 1
             started.append(lot)
@@ -1030,6 +1534,7 @@ class _Sim:
             if tool not in self.idle[fam]:
                 self.idle[fam].append(tool)
             return
+        self.res_cool[tool] = False
         # A started lot leaves this queue now. Left in place, it is still
         # listed here when it waits again for its next step in another family.
         gone = set(started)
@@ -1059,17 +1564,23 @@ class _Sim:
         for lot, index in zip(started, steps, strict=True):
             route = self.fab.routes[self.fab.lot_route[lot]]
             if route.dedicate_root[index] >= 0 and self.dedicate_tool[lot] != tool:
-                if self.dedicate_tool[lot] >= 0:
+                if self.pin_for(lot, index) >= 0:
                     self.repins += 1
                 self.dedicate_tool[lot] = tool
             self.lot_tool[lot] = tool
             kind = ("VIP", "hot", "normal")[self.tier(lot)]
             self.class_wait[kind] = self.class_wait.get(kind, 0.0) + moment - self.ready[lot]
+            self.wait_sum += max(0.0, moment - self.ready[lot])
+            self.proc_sum += route.cycle[index]
             self.class_starts[kind] = self.class_starts.get(kind, 0) + 1
             self.inproc.setdefault(_step_key(self.fab.lot_route[lot], index), set()).add(lot)
         if head_route.batch_max[steps[0]] > 0:
             self.batch_starts += 1
             self.batch_lots += len(started)
+            cap_lots = max(1, head_route.batch_max[steps[0]] // _WAFERS)
+            self.batch_cap_lots += cap_lots
+            if len(started) < cap_lots and self.last_recipe_ready.get(recipe, 0) >= cap_lots:
+                self.batch_short_full += 1
             if reason != "min_met":
                 self.batch_reasons[reason] = self.batch_reasons.get(reason, 0) + 1
         finish = moment + piece
@@ -1094,35 +1605,167 @@ class _Sim:
             )
         self.push(finish, _DONE, tool, self.tool_gen[tool])
         self.busy_until[tool] = finish
+        if self.fix3:
+            for lot, index in zip(started, steps, strict=True):
+                self.note_inbound(lot, fam, index, finish)
         self.busy_litho[tool] = self.fab.families[fam].litho
         self.busy_scanner[tool] = self.fab.families[fam].scanner
         self.account(tool, fam, moment, finish, started)
 
-    def _can_reclean(self, lot: int, moment: float) -> bool:
-        index = self.step[lot]
-        if self.cqt_at[lot] != index or self.deadline[lot] <= 0 or moment <= self.deadline[lot]:
+    def note_inbound(self, lot: int, fam: int, index: int, finish: float) -> None:
+        """Remember a started lot that reaches its next step inside an open window."""
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        number = self.lot_no[lot]
+        nxt = index + 1
+        while nxt < len(route.family) and not measured(route, nxt, number):
+            nxt += 1
+        if nxt >= len(route.family):
+            return
+        if route.cqt_limit[index] > 0 and route.cqt_target[index] >= nxt:
+            deadline = finish + route.cqt_limit[index]
+            target = route.cqt_target[index]
+        elif self.cqt_at[lot] >= nxt and self.deadline[lot] > 0:
+            deadline = self.deadline[lot]
+            target = self.cqt_at[lot]
+        else:
+            return
+        fam2 = route.family[nxt]
+        eta = finish + self.move_seconds(fam, fam2)
+        latest = deadline - self.qtime_need(lot, nxt, target)
+        self.inbound[fam2][lot] = (eta, latest, nxt)
+
+    def _inbound_live(self, lot: int, eta: float, nxt: int, moment: float) -> bool:
+        if self.waiting[lot] or self.finished_at[lot] >= 0 or eta < moment - 1e-6:
             return False
+        if self.lot_tool[lot] >= 0:
+            return self.step[lot] < nxt
+        return self.step[lot] == nxt and self.in_window(lot)
+
+    def maybe_reserve(self, tool: int, fam: int, chosen: list[int], moment: float) -> bool:
+        """Q-time r2 fix 3, dispatch side: honour the tick's hold plan.
+
+        The lot must be on the family's hold plan (set by the scheduling tick,
+        ``plan_holds``: Q-time risk on arrival >= 1). Then only when the chosen lead is an ordinary lot (normal class, band 2,
+        not in a window, not a batch step), the inbound lot arrives within
+        RESERVE_MAX_SEC and before its latest start, starting the lead here
+        would run past that latest start, no other tool of the family is
+        free by then, and the tool has no PM before the inbound piece ends.
+        At most one tool per family, at most RESERVE_MAX_SEC, and a tool must
+        start a lot between two reservations.
+        """
+        if self.res_fam[fam] >= 0 or self.res_cool[tool] or not self.hold_plan[fam]:
+            return False
+        lead = chosen[0]
+        route = self.fab.routes[self.fab.lot_route[lead]]
+        if route.batch_max[self.step[lead]] > 0 or len(chosen) > 1:
+            return False
+        if self.tier(lead) < 2 or self.in_window(lead) or self.urgency_band(lead, moment) < 2:
+            return False
+        if _covering(self.downs[tool], moment) is not None:
+            return False
+        done_at = moment + self.piece_seconds(lead, tool)
+        family = self.fab.families[fam]
+        best: tuple[float, int, float] | None = None
+        rows = self.inbound[fam]
+        for lot in self.hold_plan[fam]:
+            if lot not in rows:
+                continue
+            eta, latest, nxt = rows[lot]
+            if not self._inbound_live(lot, eta, nxt, moment):
+                continue
+            if lot in self.res_by_lot or eta > moment + RESERVE_MAX_SEC or eta > latest:
+                continue
+            if done_at <= latest:
+                continue
+            lot_route = self.fab.routes[self.fab.lot_route[lot]]
+            pinned = self.pin_for(lot, nxt)
+            pinned_up = pinned >= 0 and _covering(self.downs[pinned], moment) is None
+            if pinned != tool and pinned_up:
+                continue
+            setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], lot_route.recipe[nxt])
+            if self.overlaps_pm(
+                tool, moment, max(0.0, eta - moment) + lot_route.cycle[nxt] + setup
+            ):
+                continue
+            free = False
+            for other in range(family.tool0, family.tool0 + family.tools):
+                if other == tool or self.res_lot[other] >= 0:
+                    continue
+                if _covering(self.downs[other], moment) is not None:
+                    continue
+                if _covering(self.pm[other], moment) is not None:
+                    continue
+                free_at = self.busy_until[other] if self.running[other] >= 0 else moment
+                if free_at <= latest:
+                    free = True
+                    break
+            if free:
+                continue
+            if best is None or latest < best[0]:
+                best = (latest, lot, eta)
+        if best is None:
+            return False
+        latest, lot, eta = best
+        until = min(moment + RESERVE_MAX_SEC, latest)
+        self.res_lot[tool] = lot
+        self.res_since[tool] = moment
+        self.res_until[tool] = until
+        self.res_fam[fam] = tool
+        self.res_by_lot[lot] = tool
+        self.res_count += 1
+        if self.record:
+            self.events.append(("reserve", moment, tool, lot, until, eta))
+        self.push(until, _WAKE, tool)
+        if tool not in self.idle[fam]:
+            self.idle[fam].append(tool)
+        return True
+
+    def release(self, tool: int, moment: float, outcome: str) -> None:
+        """End a reservation: used, used elsewhere, expired or cancelled."""
+        lot = self.res_lot[tool]
+        if lot < 0:
+            return
+        fam = self.fab.tool_family[tool]
+        self.res_sec += max(0.0, min(moment, self.horizon) - self.res_since[tool])
+        self.res_out[outcome] += 1
+        self.res_lot[tool] = -1
+        self.res_fam[fam] = -1
+        self.res_by_lot.pop(lot, None)
+        self.res_cool[tool] = True
+        if self.record:
+            self.events.append(("release", moment, tool, lot, outcome))
+        if outcome in ("cancelled", "elsewhere", "replan") and self.running[tool] < 0:
+            self.push(moment, _WAKE, tool)
+
+    def _can_reclean(self, lot: int, moment: float) -> bool:
+        # Any step of the span, origin excluded: with the deadline event a lot
+        # can miss its window while still upstream of the target.
+        index = self.step[lot]
         origin = self.cqt_from[lot]
+        if not origin < index <= self.cqt_at[lot]:
+            return False
+        if self.deadline[lot] <= 0 or moment <= self.deadline[lot]:
+            return False
         if origin < 0 or self.rework[lot] >= 1:
             return False
         route = self.fab.routes[self.fab.lot_route[lot]]
         return self.fab.families[route.family[origin]].group == "Wet_Etch"
 
-    def _reclean(self, lot: int, fam: int, moment: float) -> bool:
-        """One re-clean. The lot is not held. A second miss just counts."""
+    def _reclean(self, lot: int, fam: int, moment: float, *, queued: bool = True) -> bool:
+        """One re-clean. The lot is not held. A second miss goes to Q-time hold."""
         if not self._can_reclean(lot, moment):
             return False
         index = self.step[lot]
         origin = self.cqt_from[lot]
-        self.violations += 1
         self.recleans += 1
         self.rework[lot] += 1
-        self.cqt_at[lot] = -1
+        self.close_window(lot, "recleaned")
         self.deadline[lot] = 0.0
-        self.waiting[lot] = False
-        self.depth[fam] = max(0, self.depth[fam] - 1)
-        if lot in self.queues[fam]:
-            self.queues[fam].remove(lot)
+        if queued:
+            self.waiting[lot] = False
+            self.depth[fam] = max(0, self.depth[fam] - 1)
+            if lot in self.queues[fam]:
+                self.queues[fam].remove(lot)
         if self.record:
             self.events.append(("reclean", moment, lot, index, origin))
         self.step[lot] = origin
@@ -1191,10 +1834,8 @@ class _Sim:
         if self.record:
             self.events.append(("end", moment, lot, index))
         if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
-            self.deadline[lot] = moment + route.cqt_limit[index]
-            self.cqt_limit[lot] = route.cqt_limit[index]
-            self.cqt_at[lot] = route.cqt_target[index]
-            self.cqt_from[lot] = index
+            limit = route.cqt_limit[index]
+            self.open_window(lot, index, route.cqt_target[index], limit, moment)
         nxt = index + 1
         # Sampled metrology: a lot not picked by the lot-ID rule moves past
         # the step with no queue and no process time.
@@ -1205,7 +1846,7 @@ class _Sim:
             if self.cqt_at[lot] == nxt:
                 # The Q-time window ends at its target step; an unmeasured lot
                 # never visits it, so the window is closed without a check.
-                self.cqt_at[lot] = -1
+                self.close_window(lot, "skipped")
                 self.qtime_skipped += 1
             nxt += 1
         if nxt >= len(route.family):
@@ -1223,6 +1864,8 @@ class _Sim:
 
     def down_start(self, tool: int, moment: float) -> None:
         self.release_idle(tool)
+        if self.res_lot[tool] >= 0:
+            self.release(tool, moment, "cancelled")
         lots = self.on_tool[tool]
         if lots:
             self.tool_gen[tool] += 1
@@ -1269,6 +1912,9 @@ class _Sim:
 
     def finish(self, elapsed: float) -> RunResult:
         fab = self.fab
+        for tool, lot in enumerate(self.res_lot):
+            if lot >= 0:
+                self.release(tool, min(self.horizon, self.res_until[tool]), "expired")
         due_lots = [lot for lot in range(self.n) if self.due[lot] <= self.horizon]
         already = sum(1 for lot in due_lots if self.due[lot] <= 0)
         on_time = 0
@@ -1288,8 +1934,11 @@ class _Sim:
             if end >= 0 and end <= self.due[lot]:
                 on_time += 1
         for lot in range(self.n):
-            if self.cqt_at[lot] >= 0 and 0 < self.deadline[lot] <= self.horizon:
-                self.violations += 1
+            if self.cqt_at[lot] >= 0:
+                expired = 0 < self.deadline[lot] <= self.horizon
+                self.close_window(lot, "expired" if expired else "live")
+        qout, qinh = self.qout, self.qinh
+        scored = qout["met"] + sum(qout[key] for key in _MISSED)
         denom = len(due_lots)
         xs = [
             self.finished_at[lot] / self.raw_remain[lot]
@@ -1368,6 +2017,40 @@ class _Sim:
             transport=self.transport,
             qtime_overrides=self.overrides,
             qtime_override_displaced=dict(sorted(self.override_displaced.items())),
+            qtime_windows=dict(qout),
+            qtime_inherited=dict(qinh),
+            qtime_met=qout["met"],
+            qtime_late=qout["late"],
+            qtime_held=qout["held"],
+            qtime_recleaned=qout["recleaned"],
+            qtime_expired=qout["expired"],
+            qtime_rate_pct=round(100.0 * qout["met"] / scored, 2) if scored else None,
+            qtime_inherited_windows=sum(qinh.values()),
+            qtime_inherited_missed=sum(qinh[key] for key in _MISSED),
+            qtime_hold_lot_min=round(self.hold_sec / 60.0, 1),
+            qtime_holds=self.held,
+            batch_cap_lots=self.batch_cap_lots,
+            batch_fill_pct=(
+                round(100.0 * self.batch_lots / self.batch_cap_lots, 1)
+                if self.batch_cap_lots
+                else None
+            ),
+            batch_short_full=self.batch_short_full,
+            qtime_shortlist_added=self.shortlist_added,
+            tool_reservations=self.res_count,
+            reserved_min=round(self.res_sec / 60.0, 1),
+            reserve_used=self.res_out["used"],
+            reserve_elsewhere=self.res_out["elsewhere"],
+            reserve_expired=self.res_out["expired"],
+            reserve_cancelled=self.res_out["cancelled"],
+            reserve_replanned=self.res_out["replan"],
+            replan_ticks=self.ticks,
+            replan_stalls=self.tick_stalls,
+            replan_stalls_batch=self.tick_stalls_batch,
+            replan_tick_p50_ms=round(_percentile(self.tick_samples, 50) * 1000.0, 4),
+            replan_tick_p95_ms=round(_percentile(self.tick_samples, 95) * 1000.0, 4),
+            replan_tick_total_s=round(sum(self.tick_samples), 4),
+            flow_wait_ratio=round(self.wait_sum / self.proc_sum, 4) if self.proc_sum else 0.0,
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)
