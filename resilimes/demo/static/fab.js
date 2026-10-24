@@ -11,7 +11,7 @@
   const BOOKS = ["base", "litho_down", "hot_lot", "pm_avoid"];
   const STATE_COLOR = {
     run: "#4589ff",
-    setup: "#ff832b",
+    setup: "#eb6200",
     idle: "#e0e0e0",
     pm: "#6f6f6f",
     down: "#da1e28",
