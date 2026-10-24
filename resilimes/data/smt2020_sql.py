@@ -112,6 +112,11 @@ def read_file(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     return headers, rows
 
 
+def file_sha256(path: Path) -> str:
+    """SHA-256 of the file with CRLF read as LF, so a Windows checkout hashes the same."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def columns_for(headers: list[str], file_name: str) -> list[str]:
     names = [sanitize(item) for item in headers]
     if len(set(names)) != len(names):
@@ -162,7 +167,7 @@ def render_smt_sql(root: Path) -> str:
                     cells.append(_q(file_name))
                 cells.extend(_q(row[header]) for header in headers)
                 values.append(cells)
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            digest = file_sha256(path)
             file_rows.append([_q(file_name), _q(spec.table), str(len(rows)), _q(digest)])
         assert columns is not None and headers0 is not None
         meta = ["line_no"] + (["route_file"] if len(spec.files) > 1 else [])
@@ -371,9 +376,7 @@ def parity_report(reader: ZetarisRows, root: Path) -> dict[str, Any]:
             z_hash.update(rows_hash(remote).encode())
             f_hash.update(rows_hash(local).encode())
             entry = catalog.get(file_name)
-            sha_ok = sha_ok and bool(
-                entry and entry[2] == hashlib.sha256(path.read_bytes()).hexdigest()
-            )
+            sha_ok = sha_ok and bool(entry and entry[2] == file_sha256(path))
         z_hex, f_hex = z_hash.hexdigest(), f_hash.hexdigest()
         overall_z.update(z_hex.encode())
         overall_f.update(f_hex.encode())

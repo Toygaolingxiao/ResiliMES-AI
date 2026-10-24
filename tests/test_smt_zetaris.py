@@ -21,6 +21,7 @@ from resilimes.data.smt2020_sql import (
     TABLE_FOR_FILE,
     SmtZetarisError,
     ZetarisRows,
+    parity_report,
     read_file,
     render_smt_sql,
     sanitize,
@@ -72,6 +73,18 @@ def _settings(**extra: Any) -> Settings:
 
 def test_committed_seed_matches_the_files(seed: str) -> None:
     assert render_smt_sql(SMT) == seed
+
+
+def test_a_crlf_checkout_renders_the_same_seed_and_keeps_parity(seed: str, tmp_path: Path) -> None:
+    # A Windows checkout without .gitattributes turns every LF into CRLF.
+    for path in SMT.iterdir():
+        if path.is_file():
+            (tmp_path / path.name).write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    assert render_smt_sql(tmp_path) == seed
+    crlf_seed = tmp_path / "seed.sql"
+    crlf_seed.write_bytes(seed.encode("utf-8").replace(b"\n", b"\r\n"))
+    assert crlf_seed.read_text(encoding="utf-8") == seed
+    assert parity_report(ZetarisRows(FakeZetaris(seed)), tmp_path)["ok"]
 
 
 def test_every_table_has_one_owner_and_routes(seed: str) -> None:
