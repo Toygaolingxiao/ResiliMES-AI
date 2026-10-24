@@ -112,6 +112,8 @@ class HardQtime:
         self.gate_blocks = 0
         # Base feasibility per family, valid for one (moment, version) pair.
         self.version = 0
+        self.waiters: dict[int, set[int]] = {}
+        self.blocked_fam = -1
         self.base: dict[int, tuple[float, int, bool]] = {}
         self.exempt_starts = 0
         self.expedited_lots = 0
@@ -230,7 +232,16 @@ class HardQtime:
         )
         if not ok:
             self.gate_blocks += 1
+            self.blocked_fam = fam
         return ok
+
+    def wait_on(self, tool: int) -> None:
+        """``tool`` was just gated on ``blocked_fam``; wake it when that family frees up."""
+        self.waiters.setdefault(self.blocked_fam, set()).add(tool)
+
+    def woken(self, fam: int) -> list[int]:
+        """Tools gated on ``fam``, to wake now (a tool of ``fam`` finished or came up)."""
+        return sorted(self.waiters.pop(fam, ()))
 
     # -- hooks ------------------------------------------------------------
     def on_start(self, lot: int, index: int, moment: float) -> None:

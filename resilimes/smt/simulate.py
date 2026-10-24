@@ -72,6 +72,9 @@ _QDEADLINE = 5
 # reservation hold plan and release stale holds, count stalled idle tools,
 # snapshot the plan. It never starts a lot: dispatch stays event-triggered.
 _TICK = 6
+# Hard Q-time: re-check a gated origin tool at least this often (it is also
+# woken event-driven when its target family frees up).
+HQ_FALLBACK_SEC = 1800.0
 REPLAN_SEC = 300.0
 # ``run_policy(progress=...)`` is called every 4096 events.
 _PROGRESS_MASK = 4095
@@ -973,6 +976,7 @@ class _Sim:
             self.clock = moment
             if kind == _DONE:
                 self.complete(tool, moment, gen)
+                self._hq_wake(tool, moment)
             elif kind == _DOWN_START:
                 self.down_start(tool, moment)
             elif kind == _ARRIVE:
@@ -982,6 +986,8 @@ class _Sim:
             elif kind == _TICK:
                 self.tick(moment)
             elif kind in (_DOWN_END, _WAKE):
+                if kind == _DOWN_END:
+                    self._hq_wake(tool, moment)
                 if kind == _WAKE:
                     self.wakes[tool] -= 1
                 self.release_idle(tool)
@@ -1245,8 +1251,11 @@ class _Sim:
                 skipped = True
                 continue
             if self.hq is not None and not self.hq.admit(lot, moment, proc):
+                # Woken when the target family finishes a step or a tool comes
+                # up (``_hq_wake``); the late fallback covers time-only changes.
                 gated = True
-                when = moment + REPLAN_SEC
+                self.hq.wait_on(tool)
+                when = moment + HQ_FALLBACK_SEC
                 if gate_wake is None or when < gate_wake:
                     gate_wake = when
                 continue
@@ -2559,6 +2568,14 @@ class _Sim:
                     "e": round(min(finish, self.horizon) / 60.0, 1),
                 }
             )
+
+    def _hq_wake(self, tool: int, moment: float) -> None:
+        """Hard Q-time: wake origin tools gated on this tool's family."""
+        if self.hq is None:
+            return
+        for waiter in self.hq.woken(self.fab.tool_family[tool]):
+            if self.running[waiter] < 0:
+                self.push(moment, _WAKE, waiter)
 
     def complete(self, tool: int, moment: float, gen: int) -> None:
         if gen != self.tool_gen[tool]:
