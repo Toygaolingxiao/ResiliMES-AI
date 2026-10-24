@@ -189,3 +189,68 @@ def test_batch_fills_from_lots_beyond_the_shortlist() -> None:
     assert result.batch_cap_lots >= 6
     assert result.batch_short_full == 0
     assert check_trace(fab, result, downs=[[]], pm=[[]])["total"] == 0
+
+
+# Fix 1: Q-time shortlist admission -----------------------------------------
+
+
+def _crowded_b_fab(*, cqt_limit: float = 30_000.0, others: int = 20) -> Fab:
+    """Labeled unit fixture, not SMT2020 data.
+
+    ``Clean_B-1`` (1000 s per lot) has ``others`` normal lots on route ``B``
+    (no Q-time) due soon, and ``L_Q`` at B on route ``AB``: an inherited
+    window with ``cqt_limit`` s and a far due date. The queue is over the
+    ResiliMES WIP threshold (8), so the shortlist is capped at 8 by slack and
+    ``L_Q`` is cut from it unless the Q-time admission rule adds it back.
+    """
+    fab = _two_family_fab(cqt_limit=cqt_limit)
+    fab.routes.append(
+        Route(
+            route_id="B",
+            family=[1],
+            cycle=[1000.0],
+            recipe=[0],
+            batch_min=[0],
+            batch_max=[0],
+            cqt_limit=[0.0],
+            cqt_target=[-1],
+            remain=[1000.0],
+            step_index={2: 0},
+            dedicate_root=[-1],
+        )
+    )
+    fab.route_index["B"] = 1
+    n = others + 1
+    fab.lot_id[:] = ["L_Q", *[f"L_{i}" for i in range(others)]]
+    fab.lot_product[:] = ["p"] * n
+    fab.lot_route[:] = [0] + [1] * others
+    fab.lot_step[:] = [1] + [0] * others
+    fab.lot_due[:] = [1_000_000.0] + [30_000.0 + 100.0 * i for i in range(others)]
+    fab.lot_value[:] = [1.0] * n
+    fab.lot_class[:] = ["normal"] * n
+    fab.lot_priority[:] = [10] * n
+    return fab
+
+
+def _b_position(result, lot: int = 0) -> int:
+    order = [e[3][0] for e in result.events if e[0] == "start" and e[2] == 1]
+    return order.index(lot)
+
+
+def test_open_window_lot_is_admitted_to_a_capped_shortlist() -> None:
+    fab = _crowded_b_fab()
+    after = _run(fab, policy="resilimes", horizon=25_000.0)
+    before = _run(fab, policy="resilimes", horizon=25_000.0, r2_policy=False)
+    # Without the rule L_Q (largest slack) stays off the 8-lot shortlist until
+    # the queue falls to the threshold (12 starts); with it, its Q-time risk
+    # ranks it near the front.
+    assert _b_position(before) >= 12
+    assert _b_position(after) <= 1
+    assert after.qtime_shortlist_added > 0
+    assert before.qtime_shortlist_added == 0
+    assert check_trace(fab, after, downs=NO_DOWNS, pm=NO_DOWNS)["total"] == 0
+
+
+def test_shortlist_admission_is_resilimes_only() -> None:
+    result = _run(_crowded_b_fab(), policy="edd", horizon=25_000.0)
+    assert result.qtime_shortlist_added == 0

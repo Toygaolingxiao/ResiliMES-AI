@@ -75,6 +75,7 @@ _KEYS = (
     "qtime_holds",
     "batch_fill_pct",
     "batch_short_full",
+    "qtime_shortlist_added",
 )
 
 _X_ETAS = (180.0, 300.0, 600.0, LITHO_MTTR_MIN)

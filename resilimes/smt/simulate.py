@@ -161,6 +161,7 @@ class RunResult:
     batch_cap_lots: int = 0
     batch_fill_pct: float | None = None
     batch_short_full: int = 0
+    qtime_shortlist_added: int = 0
 
 
 def rework_ready(moment: float) -> float:
@@ -535,6 +536,8 @@ class _Sim:
         self.qout: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
         self.qinh: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
         self.hold_sec = 0.0
+        # Q-time lots added to a capped shortlist by the r2 admission rule.
+        self.shortlist_added = 0
         # Batch fill: lots started over batch capacity in lots (BATCHMX / 25).
         self.batch_cap_lots = 0
         # Batches started under capacity while the whole ready queue held a
@@ -768,6 +771,14 @@ class _Sim:
                         if lot not in kept and self._slack(lot, moment) <= SLACK_CANDIDATE_SEC:
                             ranked.append(lot)
                 pool = ranked
+            if self.r2:
+                # Q-time r2 shortlist (ResiliMES): every lot inside an open
+                # dataset CQT window is a candidate, least time left first.
+                kept = set(pool)
+                windowed = [lot for lot in whole if lot not in kept and self.in_window(lot)]
+                windowed.sort(key=lambda lot: self.deadline[lot])
+                self.shortlist_added += len(windowed)
+                pool = pool + windowed
         # Furnace batching sees the whole same-recipe family queue, not only
         # the shortlist: a lot cut by the candidate cap can still fill a batch.
         # Singles still come from the shortlist. Shared by every policy.
@@ -844,6 +855,10 @@ class _Sim:
                     self.pending_override = (chosen[0], plain, urgent[0], urgent[1])
         self._sample(t0, True)
         return chosen, wake_at, reason
+
+    def in_window(self, lot: int) -> bool:
+        """The lot is inside an open dataset CQT window (target not started)."""
+        return self.cqt_at[lot] >= self.step[lot] and self.deadline[lot] > 0
 
     def _slack(self, lot: int, moment: float) -> float:
         route = self.fab.routes[self.fab.lot_route[lot]]
@@ -1557,6 +1572,7 @@ class _Sim:
                 else None
             ),
             batch_short_full=self.batch_short_full,
+            qtime_shortlist_added=self.shortlist_added,
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)
