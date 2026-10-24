@@ -18,11 +18,11 @@ Team names. One line: "On the public SMT2020 benchmark, the supervisor gets a sc
 
 Lead with this slide. Horizon 48 hours from the 2018-01-01 snapshot. 56 lots are due inside the horizon. 10 of those lots are already late at the snapshot, so the maximum on-time count is 46/56.
 
-Five seeds, ResiliMES: 31/56, 31/56, 32/56, 32/56, 32/56 (mean 56.43%).
+Five seeds, ResiliMES: 32/56 on every seed (mean 57.14%).
 
-Five seeds, earliest-due: 31/56, 32/56, 32/56, 32/56, 32/56 (mean 56.78%).
+Five seeds, earliest-due: 32/56 on every seed (mean 57.14%).
 
-Earliest-due is slightly ahead on on-time delivery and on weighted tardiness (21,526 minutes against 21,988). Seed 1 of this book ties at 31/56.
+The two tie on on-time delivery. ResiliMES is slightly ahead on weighted tardiness (20,064 minutes against 20,266).
 
 These are the published routes and the published dues. Nothing on this slide was retuned to manufacture a win.
 
@@ -30,9 +30,10 @@ These are the published routes and the published dues. Nothing on this slide was
 
 Same fab. Three books. Read them in this order.
 
-- Published dues, above. Earliest-due is slightly ahead. ResiliMES does not win this book.
-- X-factor dues (remaining process time times 2.75, 87 lots, 48 hours). Five-seed mean: ResiliMES 97.47% on time, earliest-due 99.54%. ResiliMES gives up about 2 of 87 lots and beats FIFO (20.7%) and critical ratio (71.7%). Five-seed means for the side metrics: re-cleans 38 vs 55.6, Q-time violations 430 vs 451.6. The console click is seed 1, and the cards on that click are a tie at 87/87, re-cleans 24 to 31, Q-time 428 to 418. Speak the cards. The five-seed mean is the line under the cards.
-- Tight VIP dues. This book rewrites the dues. It is a stress test, not the published order book. 21 lots, 24 hours. ResiliMES is 4/21 on every seed (20/105). Earliest-due is 3/21, 3/21, 2/21, 2/21, 3/21 (13/105). Seed 1 weighted tardiness is 7,679.4 under earliest-due and 4,043.8 under ResiliMES. `Init_Lot_2_23` is the save on this book and an X-factor loss on seeds 5 and 6.
+- Published dues, above. A tie on on-time; ResiliMES slightly ahead on weighted tardiness. ResiliMES does not win this book on on-time.
+- X-factor dues (remaining process time times 2.75, 87 lots, 48 hours). Five-seed mean: ResiliMES 98.62% on time, earliest-due 99.54%. ResiliMES gives up 4 of 435 pooled lots and beats FIFO (31.0%) and critical ratio (71.7%). Five-seed means for the side metrics: re-cleans 52.4 vs 73.4, Q-time violations 416.2 vs 441.8. The console click is seed 1, and the cards on that click are earliest-due 87/87 against ResiliMES 86/87, re-cleans 51 to 41, Q-time 452 to 450. Speak the cards. The five-seed mean is the line under the cards.
+- Tight VIP dues. This book rewrites the dues. It is a stress test, not the published order book. 21 lots, 24 hours. ResiliMES is 4/21 on every seed (20/105). Earliest-due is 3/21, 3/21, 2/21, 2/21, 3/21 (13/105). Seed 1 weighted tardiness is 7,696.8 under earliest-due and 3,988.6 under ResiliMES. `Init_Lot_2_23` is the save on this book (5.45 h late under earliest-due, on time under ResiliMES).
+- Every number on these slides is after the simulator stale-queue fix and passes the trace invariant checker with 0 violations ([invariants.md](invariants.md)).
 
 Screenshot: the X-factor cards from seed 1, then the tight VIP cards. The study line under the X-factor cards has to be visible so a judge can see which number is the click and which number is the five-seed mean.
 
