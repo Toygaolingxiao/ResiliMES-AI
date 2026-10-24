@@ -4,16 +4,17 @@
 # One command, from C:\code\ResiliMES-AI in PowerShell (no arguments, no settings):
 #   wsl -d Ubuntu -- bash scripts/zetaris_setup.sh
 #
-# It loads data/sql/seed.sql, data/sql/smt2020_seed.sql and data/sql/kernel.sql.
+# It loads data/sql/seed.sql, data/sql/smt2020_seed.sql, data/sql/fab_ops_seed.sql and data/sql/kernel.sql.
 # (Seed paths given as arguments replace the first two; not needed normally.) Idempotent: every run rebuilds schema resilimes in
-# fab_mes, fab_cmms and fab_erp from exactly the seeds given, re-registers the
-# Zetaris datasources resilimes / fab_cmms / fab_erp, and runs one SELECT per
+# fab_mes, fab_cmms, fab_erp and fab_ops from exactly the seeds given, re-registers the
+# Zetaris datasources resilimes / fab_cmms / fab_erp / fab_ops, and runs one SELECT per
 # loaded table plus the federated join through the Zetaris REST API.
 #
 # Sources (one Postgres container "fab-mes", 127.0.0.1:5433, docker network fab-net):
 #   db fab_mes   schema resilimes -> datasource resilimes  (MES, incl. SMT2020 smt_*)
 #   db fab_cmms  schema resilimes -> datasource fab_cmms   (maintenance_logs, pm_calendar, smt_pmcal/attach/downcal)
 #   db fab_erp   schema resilimes -> datasource fab_erp    (bom, materials, orders, smt_order)
+#   db fab_ops   schema resilimes -> datasource fab_ops    (ops_events, ops_ai_decisions, ops_kpi_hourly)
 #
 # Secrets: the Zetaris admin login comes from $ZETARIS_HOME/.env (ZETARIS_ADMIN_EMAIL,
 # ZETARIS_ADMIN_PASSWORD), else ZETARIS_USER / ZETARIS_PASSWORD in ~/.config/fab-mes/env.
@@ -41,6 +42,9 @@ if [[ ${#SEEDS[@]} -eq 0 ]]; then
   SEEDS=("$ROOT/data/sql/seed.sql")
   if [[ -f "$ROOT/data/sql/smt2020_seed.sql" ]]; then
     SEEDS+=("$ROOT/data/sql/smt2020_seed.sql")
+  fi
+  if [[ -f "$ROOT/data/sql/fab_ops_seed.sql" ]]; then
+    SEEDS+=("$ROOT/data/sql/fab_ops_seed.sql")
   fi
 fi
 for index in "${!SEEDS[@]}"; do
@@ -158,7 +162,7 @@ psql_fab() {
   docker exec -i -e PGOPTIONS="-c client_min_messages=warning" "$FAB_CONTAINER" \
     psql -U "$FAB_PG_USER" -v ON_ERROR_STOP=1 -q "$@"
 }
-for database in fab_mes fab_cmms fab_erp; do
+for database in fab_mes fab_cmms fab_erp fab_ops; do
   exists="$(psql_fab -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${database}'" || true)"
   if [[ "${exists}" != "1" ]]; then
     psql_fab -d postgres -c "CREATE DATABASE ${database}" >/dev/null

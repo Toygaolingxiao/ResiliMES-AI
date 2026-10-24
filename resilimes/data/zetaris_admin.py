@@ -18,6 +18,7 @@ from resilimes.data.zetaris_layout import (
     DATABASE_FOR_TABLE,
     DATASOURCE_FOR_DATABASE,
     FEDERATED_SQL,
+    OPS_DATABASE_FOR_TABLE,
     SMT_DATABASE_FOR_TABLE,
     datasource_ddl,
     scrub,
@@ -46,7 +47,10 @@ def select_sql(tables: Collection[str] | None = None) -> list[str]:
         for table, database in sorted(DATABASE_FOR_TABLE.items())
         if table in wanted
     ]
-    if any(table not in SMT_DATABASE_FOR_TABLE for table in wanted):
+    if any(
+        table not in SMT_DATABASE_FOR_TABLE and table not in OPS_DATABASE_FOR_TABLE
+        for table in wanted
+    ):
         queries.append(FEDERATED_SQL)
     return queries
 
@@ -124,7 +128,7 @@ def register(
         existing = {str(row[0]) for row in _rows(shown) if row}
     else:
         note(f"show datasources status={status}; dropping blindly")
-    for database in ("fab_mes", "fab_cmms", "fab_erp"):
+    for database in DATASOURCE_FOR_DATABASE:
         name = DATASOURCE_FOR_DATABASE[database]
         for statement in datasource_ddl(database, user=jdbc_user, password=jdbc_password):
             if statement.startswith("DROP") and existing is not None and name not in existing:
