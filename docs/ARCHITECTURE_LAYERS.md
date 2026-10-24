@@ -128,13 +128,16 @@ setups, batching, dedication, rework, and capacity outside litho.
 ### `PlanningOutput` (what the scheduling layer consumes)
 
 ```python
-plan = plan_scenario(load_fab(), "published")          # or build_plan(fab, plan_input(fab, now=..., lot_step=..., ...))
-plan.lot("Init_Lot_1_8").band                          # 'on_plan'
-plan.priority_key("Init_Lot_1_8")                      # (rank,) – sort key, lower first
-plan.step_due("Init_Lot_1_8", route_step)              # step due (s) for a visited step
-plan.band_counts()                                     # WIP lots per band
-plan.overloads()                                       # LithoDay rows with overload=True
-plan.summary(); plan.to_dict(limit=20)                 # JSON-ready
+plan = plan_scenario(
+    load_fab(), "published"
+)  # or build_plan(fab, plan_input(fab, now=..., lot_step=..., ...))
+plan.lot("Init_Lot_1_8").band  # 'on_plan'
+plan.priority_key("Init_Lot_1_8")  # (rank,) – sort key, lower first
+plan.step_due("Init_Lot_1_8", route_step)  # step due (s) for a visited step
+plan.band_counts()  # WIP lots per band
+plan.overloads()  # LithoDay rows with overload=True
+plan.summary()
+plan.to_dict(limit=20)  # JSON-ready
 ```
 
 `LotPlan` carries the following per lot:
