@@ -42,6 +42,7 @@ from typing import Any
 
 from resilimes.smt import simulate as sim_mod
 from resilimes.smt.fab import LITHO_MTTR_MIN, Fab, load_fab
+from resilimes.smt.progress import Progress, follow, progress_path
 from resilimes.smt.scenarios import SEEDS, STUDY_HORIZON_SEC
 from resilimes.smt.simulate import pm_shift_to_open, pm_windows, run_policy, sample_downs
 from resilimes.smt.tight import TIGHT_HORIZON_SEC, apply_tight, apply_xfactor
@@ -687,11 +688,21 @@ def main() -> None:
             for seed in _seeds(book)
         ]
     workers = max(1, int(os.environ.get("RESILIMES_STUDY_WORKERS", "5")))
-    with get_context("fork").Pool(workers, maxtasksperchild=10) as pool:
-        rows = pool.map(_one, items, chunksize=1)
-    with open(out, "w", encoding="utf-8") as handle:
-        json.dump({"arm": arm, "rows": rows}, handle, indent=1)
-    print(f"{arm}: {len(rows)} runs -> {out}")
+    # Progress: a line on stderr per finished run (every 10 s in a log) and
+    # <out>.progress.json; RESILIMES_STUDY_PROGRESS=0 turns both off.
+    shown = os.environ.get("RESILIMES_STUDY_PROGRESS", "1") != "0"
+    progress = Progress(
+        study=f"qtime_study:{arm}",
+        plan=[str(item[2]) for item in items],
+        path=progress_path(out) if shown else None,
+        console=shown,
+        background=False,  # the pool may fork a fresh worker at any time
+    )
+    with get_context("fork").Pool(workers, maxtasksperchild=10) as pool, progress:
+        rows = list(follow(pool.imap(_one, items, chunksize=1), progress))
+        with open(out, "w", encoding="utf-8") as handle:
+            json.dump({"arm": arm, "rows": rows}, handle, indent=1)
+    print(f"{arm}: {len(rows)} runs -> {out}", flush=True)
 
 
 if __name__ == "__main__":

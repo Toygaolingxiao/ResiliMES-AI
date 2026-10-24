@@ -393,6 +393,26 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `intent.concernDown` | {id} is down or in maintenance. | {id} 宕机或保养中。 | {id} は停止または保全中です。 |
 | `intent.concernHeld` | {id} is held. | {id} 被暂扣。 | {id} は保留中です。 |
 | `intent.suggestHold` | Review the hold on {id} before the book is published. | 发布前复核 {id} 的暂扣。 | 公開前に {id} の保留を確認してください。 |
+| `shiftLead.title` | AI shift lead · study run | AI班长 · 实验运行 | AI当直 · 検証の実行 |
+| `shiftLead.runs` | Runs | 轮次 | ラン |
+| `shiftLead.sim` | Sim time | 仿真时间 | シミュレーション時刻 |
+| `shiftLead.exceptions` | Exceptions | 异常 | 異常 |
+| `shiftLead.calls` | AI calls | AI 调用 | AI 呼び出し |
+| `shiftLead.accepted` | Accepted | 已采纳 | 採用 |
+| `shiftLead.fallback` | Rule fallback | 规则兜底 | ルールで代替 |
+| `shiftLead.timeout` | timeout | 超时 | タイムアウト |
+| `shiftLead.invalid` | invalid reply | 回复无效 | 無効な応答 |
+| `shiftLead.guardrail` | guardrail | 护栏拦截 | ガードレール |
+| `shiftLead.budget` | over budget | 超出预算 | 予算超過 |
+| `shiftLead.error` | error | 错误 | エラー |
+| `shiftLead.latency` | LLM latency avg / last | 模型延迟 平均 / 最近 | モデル応答 平均 / 直近 |
+| `shiftLead.waiting` | waiting for the model | 等待模型回复 | モデルの応答待ち |
+| `shiftLead.elapsed` | Elapsed | 已用时 | 経過 |
+| `shiftLead.eta` | ETA | 预计剩余 | 残り目安 |
+| `shiftLead.running` | Running | 运行中 | 実行中 |
+| `shiftLead.done` | Done | 已完成 | 完了 |
+| `shiftLead.failed` | Failed | 失败 | 失敗 |
+| `shiftLead.stale` | No update for over a minute | 超过 1 分钟未更新 | 1分以上更新なし |
 | `tabAi` | AI evidence | AI 证据 | AI エビデンス |
 | `tabAiTip` | Investigator, late-lot explainer and shift handover; advice only | 根因调查、迟交批次解释与交班报告；仅供参考 | 原因調査・遅延ロット説明・シフト引き継ぎ（助言のみ） |
 | `ai.intro` | Answers are written by the model from simulator evidence. Every number is checked against the tool results; nothing here changes the plan. | 回答由模型根据仿真证据撰写。每个数字都与工具结果核对；这里不会改动计划。 | 回答はシミュレーションの証拠からモデルが書きます。数字はすべてツール結果と照合し、計画は変更しません。 |
@@ -450,6 +470,14 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `ai.hoEngine` | Engine | 引擎 | エンジン |
 | `ai.hoChunks` | Chunks | 分段 | チャンク |
 | `ai.hoRecall` | Must-mention recall | 必提项召回率 | 必須項目の再現率 |
+
+## AI shift lead study progress (new, needs zh/ja review)
+
+The `shiftLead.*` keys label the study progress card in the console rail
+(`GET /api/shift-lead/status`, fed by `<out>.progress.json`). zh follows
+"AI班长" from docs/AI_SHIFT_LEAD.md; ja uses "当直" for the shift. The fallback
+causes (`timeout`, `invalid`, `guardrail`, `budget`, `error`) are the reasons the
+shift lead fell back to the rules.
 
 ## zh / ja strings for owner review
 

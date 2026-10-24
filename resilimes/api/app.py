@@ -36,6 +36,7 @@ from resilimes.engines.contracts import ContractError
 from resilimes.llm.nightshift import probe_nightshift
 from resilimes.logging_config import configure_logging
 from resilimes.smt.freeze import list_tick_logs, read_tick_log, tick_log_dir
+from resilimes.smt.progress import read_progress
 from resilimes.smt.scenarios import SCENARIOS as SMT_SCENARIOS
 from resilimes.smt.scenarios import run_smt, scenario_payload
 from resilimes.txn.engine import InMemoryEngine, LockError
@@ -100,6 +101,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             body["litho_tools"] = fab.litho_tools
             body["lots"] = len(fab.lot_id)
         return body
+
+    @app.get("/api/shift-lead/status")
+    def shift_lead_status() -> dict[str, Any]:
+        """The latest study progress file (``<out>.progress.json``), read-only.
+
+        Picked from RESILIMES_PROGRESS_FILE, else the newest one in
+        RESILIMES_PROGRESS_DIR (default: the working directory).
+        ``{"available": false}`` when there is none.
+        """
+        return read_progress()
 
     @app.get("/api/scenarios")
     def scenarios() -> dict[str, object]:

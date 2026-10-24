@@ -283,9 +283,17 @@ class ShiftLead:
     """
 
     def __init__(
-        self, decider: Decider, *, max_per_tick: int = 8, budget: int | None = None
+        self,
+        decider: Decider,
+        *,
+        max_per_tick: int = 8,
+        budget: int | None = None,
+        progress: Any = None,
     ) -> None:
         self.decider = decider
+        # ``resilimes.smt.progress.Progress`` (or None): told when a decider
+        # call starts and ends and of every logged decision. Read only.
+        self.progress = progress
         self.max_per_tick = max_per_tick
         # At most ``budget`` decider calls per run; later exceptions keep the
         # rule default (logged as fallback "budget").
@@ -340,7 +348,13 @@ class ShiftLead:
             if self.budget is not None and self.calls >= self.budget:
                 raise DecisionError("budget", f"{self.budget} decider calls used")
             self.calls += 1
-            decision = self.decider.decide(exc)
+            if self.progress is not None:
+                self.progress.call_started()
+            try:
+                decision = self.decider.decide(exc)
+            finally:
+                if self.progress is not None:
+                    self.progress.call_finished()
         except DecisionError as error:
             cause = str(error)
         except Exception as error:  # any decider failure falls back
@@ -380,6 +394,8 @@ class ShiftLead:
             "fallback_cause": cause,
         }
         self.log.append(entry)
+        if self.progress is not None:
+            self.progress.decision(entry)
         if sim.record:
             sim.events.append(("ai_decision", moment, entry))
         return entry
