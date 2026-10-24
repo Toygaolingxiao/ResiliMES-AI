@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from resilimes.api.app import create_app
 from resilimes.config import Settings
 from resilimes.domain.scenarios import SAMPLE_BAY
-from resilimes.smt.fab import LITHO_MTTR_MIN, Fab, Family, Route, load_fab
+from resilimes.smt.fab import LITHO_MTTR_MIN, REWORK_SEC, Fab, Family, Route, load_fab
 from resilimes.smt.scenarios import (
     SCENARIOS,
     _xfactor_study_note,
@@ -20,9 +20,9 @@ from resilimes.smt.scenarios import (
 from resilimes.smt.simulate import (
     X_FACTOR,
     RunResult,
-    interrupt_remaining,
     macro_aps_ms,
     pm_windows,
+    rework_ready,
     run_policy,
     sample_downs,
     setup_seconds,
@@ -250,7 +250,7 @@ def _two_scanner_fab(dedicate_root: list[int]) -> Fab:
     )
 
 
-def test_interrupted_lot_resumes_on_the_same_scanner() -> None:
+def test_interrupted_lot_goes_to_rework_and_redoes_the_step() -> None:
     fab = _two_scanner_fab([-1, -1])
     result = run_policy(
         fab,
@@ -260,16 +260,22 @@ def test_interrupted_lot_resumes_on_the_same_scanner() -> None:
         downs=[[(100.0, 500.0)], []],
         pm=[[], []],
         trace=True,
+        record=True,
     )
-    bars = result.focus_bars
-    # The interrupted 1000 s piece resumes on scanner 1 after disposition.
-    # The next layer is not dedicated, so scanner 2 may run that layer.
-    assert any(bar["tool"] == "Litho_FE_92-1" and float(bar["s"]) >= 15 for bar in bars)
-    assert all(float(bar["s"]) >= 30 for bar in bars if bar["tool"] == "Litho_FE_92-2")
+    assert result.reworks == 1
+    assert any(event[0] == "rework" and event[4] == 0 for event in result.events)
+    starts = [event for event in result.events if event[0] == "start"]
+    # First start at 0, interrupted at 100. The redo of step 0 waits for the
+    # rework hold, then runs the full 1000 s on any qualified scanner.
+    assert starts[0][1] == 0.0
+    redo = starts[1]
+    assert redo[4] == (0,)
+    assert redo[1] >= 100.0 + REWORK_SEC
+    assert redo[5] - redo[1] == 1000.0
     assert result.completed_routes == 1
 
 
-def test_later_litho_layer_waits_for_the_scanner_that_ran_the_first() -> None:
+def test_later_litho_layer_moves_off_a_down_dedicated_scanner() -> None:
     fab = _two_scanner_fab([0, 0])
     result = run_policy(
         fab,
@@ -280,8 +286,11 @@ def test_later_litho_layer_waits_for_the_scanner_that_ran_the_first() -> None:
         pm=[[], []],
         trace=True,
     )
-    assert {bar["tool"] for bar in result.focus_bars} == {"Litho_FE_92-1"}
-    assert result.completed_routes == 0
+    # Layer 1 ran on scanner 1, which is down from 1000 s. Layer 2 is not left
+    # waiting on the broken scanner: it re-pins to scanner 2.
+    assert {bar["tool"] for bar in result.focus_bars} == {"Litho_FE_92-1", "Litho_FE_92-2"}
+    assert result.repins == 1
+    assert result.completed_routes == 1
 
 
 def test_xfactor_dues_are_remaining_process_times_the_factor() -> None:
@@ -303,11 +312,7 @@ def test_scanner_families_have_no_setup_and_a_breakdown_stops_the_clock() -> Non
         for key, seconds in fab.setup.items():
             assert key[0] != fab.family_index[family.name] or seconds == 0
     assert setup_seconds(fab, fab.focus_family, 0, 1) == 0
-    remain, ready = interrupt_remaining(0.0, 100.0, 400.0)
-    assert remain == 300.0
-    assert ready == 100.0 + 15.0 * 60.0
-    done, _ready = interrupt_remaining(0.0, 400.0, 400.0)
-    assert done == 0.0
+    assert rework_ready(100.0) == 100.0 + REWORK_SEC
 
 
 def _one_tool(name: str, cycles: list[float]) -> Fab:

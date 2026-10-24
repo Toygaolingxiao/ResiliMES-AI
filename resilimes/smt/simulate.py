@@ -10,9 +10,12 @@ the published fractional rework probability are not in this loop. A litho
 layer with ``SVESTN`` / ``FORSTEP`` stays on the scanner that ran the first
 layer of that chain, once this run has chosen it. WIP does not name a tool,
 so a lot that starts mid-chain is not pinned until then. A lot in process
-when a tool breaks keeps the remaining process, waits 15 minutes, and
-resumes on that same tool. A lot becomes ready for the next step when the
-current step ends.
+when a tool breaks goes to rework: it waits ``REWORK_SEC`` (30 minutes), then
+redoes the whole operation from the family queue on any qualified tool. No
+start is ever made on a tool inside a down window. A litho lot whose
+dedicated scanner is down may run on another scanner of the family and is
+re-pinned there. A lot becomes ready for the next step when the current step
+ends. Same-recipe lots batch together even when their step numbers differ.
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ from resilimes.smt.fab import (
     BATCH_MAX_WAIT_SEC,
     HOT_BATCH_WAIT_SEC,
     LOOKAHEAD,
+    REWORK_SEC,
     WIP_FLOOR,
     WIP_PER_TOOL,
     Fab,
@@ -39,9 +43,6 @@ _DOWN_END = 2
 _WAKE = 3
 _BIN_SEC = 900.0
 _WAFERS = 25
-# Not an SMT2020 column. Interrupted work waits this long, and only the
-# process completed before the breakdown counts.
-DISPOSITION_SEC = 15.0 * 60.0
 # Due dates in the X-factor book. Middle of the 2.5-3 range.
 X_FACTOR = 2.75
 # Lots at least this tight stay in the candidate list when the family cap is on.
@@ -101,17 +102,20 @@ class RunResult:
     # Lots chosen for a start that did not start. Must stay 0.
     batch_dropped: int = 0
     setup_min: float = 0.0
+    # Lots sent to rework by a breakdown, and the lot-minutes of rework hold.
+    reworks: int = 0
+    rework_lot_min: float = 0.0
+    # Litho lots moved off a down dedicated scanner.
+    repins: int = 0
 
 
-def interrupt_remaining(started: float, moment: float, proc: float) -> tuple[float, float]:
-    """Process left after a breakdown, and the earliest restart.
+def rework_ready(moment: float) -> float:
+    """Earliest restart of a lot that was in process when its tool broke.
 
-    Elapsed time stops at the breakdown. It is not extended to the horizon.
-    The second value is the breakdown time plus disposition.
+    The work in process is lost. The lot redoes the whole operation, with
+    setup, on any qualified tool once the rework hold is over.
     """
-    elapsed = max(0.0, moment - started)
-    remain = max(0.0, proc - elapsed)
-    return remain, moment + DISPOSITION_SEC
+    return moment + REWORK_SEC
 
 
 def price_paid(
@@ -369,8 +373,6 @@ class _Sim:
         self.trace = trace
         self.focus_down_until = focus_down_until
         self.watch = watch
-        self.partial = [0.0] * len(fab.lot_id)
-        self.bound_tool = [-1] * len(fab.lot_id)
         self.dedicate_tool = [-1] * len(fab.lot_id)
         self.rework = [0] * len(fab.lot_id)
         self.cqt_from = [-1] * len(fab.lot_id)
@@ -446,6 +448,8 @@ class _Sim:
         self.batch_reasons: dict[str, int] = {}
         self.batch_dropped = 0
         self.setup_sec = 0.0
+        self.reworks = 0
+        self.repins = 0
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -544,7 +548,7 @@ class _Sim:
     def choose(self, tool: int, moment: float) -> tuple[list[int], float | None, str]:
         t0 = time.perf_counter()
         fam = self.fab.tool_family[tool]
-        pool = [lot for lot in self.live(fam) if self.eligible(lot, tool)]
+        pool = [lot for lot in self.live(fam) if self.eligible(lot, tool, moment)]
         if not pool:
             self._sample(t0, False)
             return [], None, ""
@@ -605,9 +609,7 @@ class _Sim:
         batches: list[int] = []
         for lot in feasible:
             route = self.fab.routes[self.fab.lot_route[lot]]
-            if self.partial[lot] > 0 or self.bound_tool[lot] >= 0:
-                singles.append(lot)
-            elif route.batch_max[self.step[lot]] > 0:
+            if route.batch_max[self.step[lot]] > 0:
                 batches.append(lot)
             else:
                 singles.append(lot)
@@ -620,7 +622,7 @@ class _Sim:
             single = min(singles, key=lambda lot: self.rank(lot, tool, moment))
             if not chosen or self.rank(single, tool, moment) < self.rank(chosen[0], tool, moment):
                 chosen = [single]
-                reason = "resume" if self.partial[single] > 0 else ""
+                reason = ""
         wake_at = batch_wake if not chosen else None
         self._sample(t0, True)
         return chosen, wake_at, reason
@@ -629,20 +631,17 @@ class _Sim:
         route = self.fab.routes[self.fab.lot_route[lot]]
         return self.due[lot] - moment - route.remain[self.step[lot]]
 
-    def eligible(self, lot: int, tool: int) -> bool:
-        """Same tool after a breakdown, and the dedicated scanner after layer 1."""
-        bound = self.bound_tool[lot]
+    def eligible(self, lot: int, tool: int, moment: float) -> bool:
+        """The dedicated scanner after layer 1, unless that scanner is down."""
         route = self.fab.routes[self.fab.lot_route[lot]]
         root = route.dedicate_root[self.step[lot]]
         pinned = self.dedicate_tool[lot]
-        on_bound = bound < 0 or bound == tool
-        on_scanner = root < 0 or pinned < 0 or pinned == tool
-        return on_bound and on_scanner
+        if root < 0 or pinned < 0 or pinned == tool:
+            return True
+        return _covering(self.downs[pinned], moment) is not None
 
     def piece_seconds(self, lot: int, tool: int) -> float:
-        """Remaining process. A resumed lot does not pay setup a second time."""
-        if self.partial[lot] > 0:
-            return self.partial[lot]
+        """Full process plus setup from the recipe the tool holds now."""
         route = self.fab.routes[self.fab.lot_route[lot]]
         index = self.step[lot]
         fam = self.fab.tool_family[tool]
@@ -935,8 +934,9 @@ class _Sim:
         self.tool_recipe[tool] = recipe
         for lot, index in zip(started, steps, strict=True):
             route = self.fab.routes[self.fab.lot_route[lot]]
-            self.partial[lot] = 0.0
-            if route.dedicate_root[index] >= 0 and self.dedicate_tool[lot] < 0:
+            if route.dedicate_root[index] >= 0 and self.dedicate_tool[lot] != tool:
+                if self.dedicate_tool[lot] >= 0:
+                    self.repins += 1
                 self.dedicate_tool[lot] = tool
             self.lot_tool[lot] = tool
             self.inproc.setdefault(_step_key(self.fab.lot_route[lot], index), set()).add(lot)
@@ -988,7 +988,6 @@ class _Sim:
         if self.record:
             self.events.append(("reclean", moment, lot, index, origin))
         self.step[lot] = origin
-        self.partial[lot] = 0.0
         self.enqueue(lot, moment)
         return True
 
@@ -1047,7 +1046,6 @@ class _Sim:
         index = self.step[lot]
         self.step_cycle += max(0.0, moment - self.ready[lot])
         self.steps_done += 1
-        self.bound_tool[lot] = -1
         self._leave_tool(lot, index)
         if lot == self.hot_lot:
             self.hot_steps += 1
@@ -1087,20 +1085,23 @@ class _Sim:
                 if self.busy_scanner[tool]:
                     self.scanner_busy -= leftover
                 self.busy_until[tool] = moment
-            remain, ready = interrupt_remaining(
-                self.piece_started[tool], moment, self.piece_proc[tool]
-            )
+            done = self.piece_started[tool] + self.piece_proc[tool] <= moment + 1e-6
             if self.record:
                 self.events.append(("interrupt", moment, tool, tuple(lots)))
             for lot in lots:
-                if remain <= 1e-6:
+                if done:
                     self.finish_lot(lot, moment)
                     continue
+                # Rework: the lot leaves the broken tool now and redoes the
+                # same operation from the family queue after the hold.
                 self._leave_tool(lot, self.step[lot])
-                self.partial[lot] = remain
-                self.bound_tool[lot] = tool
-                self.enqueue(lot, ready)
+                self.reworks += 1
+                if self.record:
+                    self.events.append(("rework", moment, tool, lot, self.step[lot]))
+                self.enqueue(lot, rework_ready(moment))
         self._queue_down_ends(tool, moment)
+        # Lots pinned to this scanner may now run on an idle sibling.
+        self.wake_family(self.fab.tool_family[tool])
 
     def _queue_down_ends(self, tool: int, moment: float) -> bool:
         """Queue a release at every down window that still covers ``moment``.
@@ -1208,4 +1209,7 @@ class _Sim:
             batch_reasons=dict(sorted(self.batch_reasons.items())),
             batch_dropped=self.batch_dropped,
             setup_min=round(self.setup_sec / 60.0, 1),
+            reworks=self.reworks,
+            rework_lot_min=round(self.reworks * REWORK_SEC / 60.0, 1),
+            repins=self.repins,
         )

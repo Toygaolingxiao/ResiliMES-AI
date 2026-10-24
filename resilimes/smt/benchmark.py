@@ -12,10 +12,9 @@ from statistics import mean, pstdev
 from typing import Any
 
 from resilimes.config import ROOT
-from resilimes.smt.fab import LITHO_MTTR_MIN, Fab, load_fab
+from resilimes.smt.fab import LITHO_MTTR_MIN, REWORK_SEC, Fab, load_fab
 from resilimes.smt.scenarios import SCENARIOS, SEEDS, STUDY_HORIZON_SEC, simulate_pair
 from resilimes.smt.simulate import (
-    DISPOSITION_SEC,
     X_FACTOR,
     RunResult,
     macro_aps_ms,
@@ -222,7 +221,7 @@ def _xfactor(fab: Fab) -> dict[str, Any]:
         "factor": X_FACTOR,
         "horizon_h": horizon / 3600.0,
         "due_in_horizon": due,
-        "disposition_min": DISPOSITION_SEC / 60.0,
+        "rework_min": REWORK_SEC / 60.0,
         "etas": {},
     }
     for eta in _X_ETAS:
@@ -934,11 +933,13 @@ def _xfactor_prose(payload: dict[str, Any]) -> str:
         "A later litho layer stays on the scanner that ran the first layer of "
         "its `SVESTN` / `FORSTEP` chain, once this run has chosen that scanner. "
         "WIP does not name a tool, so a lot that starts mid-chain is not pinned "
-        "until then. There is no reticle id, stocker, or transfer time in the "
-        "extract, and none is invented. "
-        f"A lot in process at a breakdown keeps the remaining process, waits "
-        f"{block['disposition_min']:.0f} minutes, and resumes on that tool. "
-        "The 15 minutes are not an SMT2020 column. "
+        "until then. If that scanner is down, the lot may run on another "
+        "scanner of the family and is re-pinned there. There is no reticle id, "
+        "stocker, or transfer time in the extract, and none is invented. "
+        "A lot in process at a breakdown goes to rework: the work is lost, it "
+        f"waits {block['rework_min']:.0f} minutes, and then redoes the whole "
+        "operation from the family queue on any qualified tool. "
+        "The rework hold is a ResiliMES default, not an SMT2020 column. "
         "An adjacent Wet_Etch queue-time step is held back when the next tool "
         "cannot start inside the window. A miss sends the lot through that "
         "wet step once. That is not the published rework probability. "

@@ -7,9 +7,14 @@ Checks, one counter each:
 - ``route_order``: a lot starts only its next step, once, and never while it
   is already in process.
 - ``tool_overlap``: a tool starts a piece only when it holds nothing.
-- ``resume_tool``: an interrupted lot resumes on the tool that held it.
-- ``dedication``: a later litho layer runs on the scanner of the first layer.
-- ``down_start``: no start inside a breakdown window.
+- ``rework_redo``: a lot interrupted by a breakdown goes to rework and redoes
+  the same step, not before the rework hold is over.
+- ``stuck_on_down``: every lot on a tool that breaks leaves it at the
+  breakdown (rework or done), and no lot is left on a tool that is down at
+  the horizon.
+- ``dedication``: a later litho layer runs on the scanner of the first layer,
+  unless that scanner is down at the start (the lot is then re-pinned).
+- ``down_start``: no start on a tool inside a breakdown window.
 - ``pm_overlap``: no processing window crosses a PM window.
 - ``batch``: a multi-lot start is a batch step for every member (each on its
   own route step), one recipe, within capacity.
@@ -26,14 +31,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from resilimes.smt.fab import Fab
+from resilimes.smt.fab import REWORK_SEC, Fab
 
 _WAFERS = 25
 CHECKS = (
     "family",
     "route_order",
     "tool_overlap",
-    "resume_tool",
+    "rework_redo",
+    "stuck_on_down",
     "dedication",
     "down_start",
     "pm_overlap",
@@ -42,7 +48,7 @@ CHECKS = (
     "batch_min",
     "qtime_recount",
 )
-UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "resume")
+UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals")
 
 
 def check_trace(
@@ -65,7 +71,9 @@ def check_trace(
     n = len(fab.lot_id)
     step = list(fab.lot_step)
     running = [False] * n
-    bound = [-1] * n
+    rework_step = [-1] * n
+    rework_at = [0.0] * n
+    left_at: dict[int, float] = {}
     pinned = [-1] * n
     dropped_at = [-1.0] * n
     q_target = [-1] * n
@@ -124,13 +132,18 @@ def check_trace(
                     flag("family", f"{lot_id} step {index} on {name}, needs {want}")
                 if running[lot] or step[lot] != index:
                     flag("route_order", f"{lot_id} started step {index}, next is {step[lot]}")
-                if bound[lot] >= 0 and bound[lot] != tool:
-                    flag("resume_tool", f"{lot_id} resumed on {name}")
+                if rework_step[lot] >= 0:
+                    early = moment < rework_at[lot] + REWORK_SEC - 1e-6
+                    if index != rework_step[lot] or early:
+                        flag("rework_redo", f"{lot_id} step {index} at {moment:.1f} after rework")
+                    rework_step[lot] = -1
                 if 0 <= index < len(route.dedicate_root) and route.dedicate_root[index] >= 0:
-                    if pinned[lot] >= 0 and pinned[lot] != tool:
-                        flag("dedication", f"{lot_id} step {index} on {name}")
-                    elif pinned[lot] < 0:
-                        pinned[lot] = tool
+                    old = pinned[lot]
+                    if old >= 0 and old != tool:
+                        down = any(a <= moment < b for a, b in downs[old])
+                        if not down:
+                            flag("dedication", f"{lot_id} step {index} on {name}")
+                    pinned[lot] = tool
                 if q_target[lot] == index:
                     if moment > q_deadline[lot]:
                         violations += 1
@@ -141,17 +154,24 @@ def check_trace(
             _kind, moment, tool, lots = event
             for lot in lots:
                 running[lot] = False
-                bound[lot] = tool
                 dropped_at[lot] = moment
+                left_at[lot] = -1.0
             holding[tool].clear()
+        elif kind == "rework":
+            _kind, moment, tool, lot, index = event
+            if left_at.get(lot) == -1.0:
+                left_at[lot] = moment
+            rework_step[lot] = index
+            rework_at[lot] = moment
         elif kind == "end":
             _kind, moment, lot, index = event
             lot_id = fab.lot_id[lot]
             dropped_now = dropped_at[lot] == moment
             if (not running[lot] and not dropped_now) or step[lot] != index:
                 flag("route_order", f"{lot_id} ended step {index}, next is {step[lot]}")
+            if left_at.get(lot) == -1.0:
+                left_at[lot] = moment
             running[lot] = False
-            bound[lot] = -1
             for held in holding:
                 held.discard(lot)
             route = fab.routes[fab.lot_route[lot]]
@@ -169,6 +189,12 @@ def check_trace(
             q_deadline[lot] = 0.0
             step[lot] = origin
     horizon = float(result.horizon_sec)
+    for lot, when in left_at.items():
+        if when < 0:
+            flag("stuck_on_down", f"{fab.lot_id[lot]} never left its broken tool")
+    for tool, held in enumerate(holding):
+        if held and any(a <= horizon < b for a, b in downs[tool]):
+            flag("stuck_on_down", f"{fab.tool_name[tool]} down at horizon holding {len(held)}")
     for lot in range(n):
         if q_target[lot] >= 0 and 0 < q_deadline[lot] <= horizon:
             violations += 1
