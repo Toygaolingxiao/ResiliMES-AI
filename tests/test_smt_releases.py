@@ -9,7 +9,7 @@ from tests.test_smt_invariants import _two_family_fab
 
 from resilimes.smt.fab import load_fab, release_at
 from resilimes.smt.invariants import check_trace
-from resilimes.smt.planning import dataset_releases, standard_lead_times, with_releases
+from resilimes.smt.planning import dataset_releases, with_releases
 from resilimes.smt.qtime_study import balance_kpis
 from resilimes.smt.simulate import run_policy
 
@@ -42,7 +42,6 @@ def test_with_releases_appends_order_lots_at_step_zero() -> None:
     found = dataset_releases(fab, until=until)
     assert len(plant.lot_id) == n + len(found) > 0
     assert plant.lot_id[:n] == fab.lot_id and plant.lot_release[:n] == [0.0] * n
-    lead = standard_lead_times(fab)
     products: dict[int, set[str]] = {}
     for lot in range(n):
         products.setdefault(fab.lot_route[lot], set()).add(fab.lot_product[lot])
@@ -51,8 +50,8 @@ def test_with_releases_appends_order_lots_at_step_zero() -> None:
         assert plant.lot_step[lot] == 0
         assert 0.0 <= plant.lot_release[lot] < until
         assert plant.lot_product[lot] in products[route]
-        span = plant.lot_due[lot] - plant.lot_release[lot]
-        assert span == pytest.approx(lead[(route, plant.lot_class[lot])])
+        assert plant.lot_due[lot] > plant.lot_release[lot]
+    assert plant.lot_due[n:] == [item.due_sec for item in found if item.release_sec >= 0.0]
     assert plant.lot_release[n:] == sorted(plant.lot_release[n:])
 
 
@@ -83,9 +82,9 @@ def test_study_plan_holds_every_released_lot(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setenv("RESILIMES_STUDY_HORIZON_H", "48")
     fab = load_fab()
     plant, _ = study._setup(fab, "published", 1, "resilimes", releases=True)
-    plan = study.book_plan(fab, "published", "standard", releases=True)
+    plan = study.book_plan(fab, "published", releases=True)
     assert len(plant.lot_id) > len(fab.lot_id)
     assert all(plan.find(lot_id) is not None for lot_id in plant.lot_id)
     released = plant.lot_id[len(fab.lot_id) :]
     assert all(plan.lot(lot_id).released for lot_id in released)
-    assert study.book_plan(fab, "published", "standard", releases=False) is not plan
+    assert study.book_plan(fab, "published", releases=False) is not plan

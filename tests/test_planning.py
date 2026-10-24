@@ -27,14 +27,12 @@ from resilimes.smt.planning import (
     build_plan,
     dataset_releases,
     family_pm,
-    lead_time,
     litho_availability,
     plan_input,
     plan_scenario,
-    raw_path_seconds,
     scenario_input,
-    standard_band,
-    standard_lead_times,
+    standard_setup,
+    standard_time,
     visit_path,
 )
 
@@ -123,18 +121,6 @@ def test_backward_pass_step_dues_chain_raw_time_and_transport() -> None:
     assert start[1] == finish[1] - 900.0
     assert finish[0] == start[1] - 180.0
     assert start[0] == finish[0] - 100.0
-
-
-def test_backward_pass_scales_process_and_transport_by_the_flow_factor() -> None:
-    fab = _litho_fab()
-    route = fab.routes[0]
-    raw_finish, _ = backward(fab, route, [0, 1, 2], 10000.0)
-    finish, start = backward(fab, route, [0, 1, 2], 10000.0, 2.0)
-    assert finish[2] == 10000.0
-    assert start[2] == 10000.0 - 2 * 100.0
-    for pos in range(3):
-        assert 10000.0 - finish[pos] == pytest.approx(2 * (10000.0 - raw_finish[pos]))
-    assert finish[2] - start[0] == pytest.approx(2 * raw_path_seconds(fab, route, [0, 1, 2]))
 
 
 def test_transport_is_one_minute_same_group_three_across() -> None:
@@ -381,99 +367,58 @@ def test_unknown_scenario_raises() -> None:
         scenario_input(_fab(), "no_such_scenario")
 
 
-# ------------------------------------------------- standard lead time targets
+# ------------------------------------------------ master-data standard times
 
 
-def test_standard_lead_times_are_order_txt_due_minus_start() -> None:
+def _step(fab: Fab, route_id: str, step_no: int) -> tuple[Route, int]:
+    route = fab.routes[fab.route_index[route_id]]
+    return route, route.step_index[step_no]
+
+
+def test_standard_time_is_master_data_ptime_by_ptper() -> None:
     fab = _fab()
-    table = standard_lead_times(fab)
-    assert len(table) == 21
-    days = {key: value / DAY_SEC for key, value in table.items()}
-    normal = [value for (_r, kind), value in days.items() if kind == "normal"]
-    hot = [value for (_r, kind), value in days.items() if kind == "hot"]
-    assert min(normal) == pytest.approx(23.78, abs=0.01)
-    assert max(normal) == pytest.approx(56.35, abs=0.01)
-    assert min(hot) == pytest.approx(16.87, abs=0.01)
-    assert max(hot) == pytest.approx(38.3, abs=0.01)
-    r3 = fab.route_index["r_3"]
-    assert days[(r3, "VIP")] == pytest.approx(38.3, abs=0.01)
-    # A VIP on a part with no SuperHot order takes the part's tightest class.
-    r5 = fab.route_index["r_5"]
-    assert lead_time(fab, r5, "VIP") == table[(r5, "hot")]
+    # route_1 step 2 005_Wet_Etch: 1.14 min per_piece, no SETUP -> x 25 pieces.
+    route, index = _step(fab, "r_1", 2)
+    assert standard_time(fab, route, index) == pytest.approx(1.14 * 60 * 25)
+    # route_1 step 3 DefMEt_FE_118: 29.88 min per_lot, as published.
+    route, index = _step(fab, "r_1", 3)
+    assert standard_time(fab, route, index) == pytest.approx(29.88 * 60)
+    # route_1 step 1 Diffusion: 440.4 min per_batch, once per batch, not / lots.
+    route, index = _step(fab, "r_1", 1)
+    assert standard_time(fab, route, index) == pytest.approx(440.4 * 60)
 
 
-def test_released_lot_targets_are_release_plus_standard_cumulative_time() -> None:
+def test_standard_time_adds_the_setup_into_the_step_recipe() -> None:
     fab = _fab()
-    plan = build_plan(fab, plan_input(fab, release_until=DAY_SEC))
-    released = [lot for lot in plan.lots if lot.released]
-    assert released
-    for lot in released:
-        route = fab.routes[fab.route_index[lot.route_id]]
-        lead = lead_time(fab, fab.route_index[lot.route_id], lot.order_class)
-        assert lot.due_sec - lot.ready_sec == pytest.approx(lead)
-        # Standard start of step 1 is the release: on the standard curve.
-        assert lot.latest_start[0] == pytest.approx(lot.ready_sec, abs=1e-3)
-        assert lot.progress_sec == pytest.approx(0.0, abs=1e-3)
-        cum = 0.0
-        for pos, index in enumerate(lot.steps):
-            if pos > 0:
-                prev = route.family[lot.steps[pos - 1]]
-                cum += transport_seconds(fab, prev, route.family[index])
-            cum += route.cycle[index]
-            assert lot.step_due[pos] == pytest.approx(
-                lot.ready_sec + lot.flow_factor * cum, abs=1e-3
-            )
+    # Implant_128 SU128_3 (setup.txt, blank from-recipe): 72 min.
+    route, index = _step(fab, "r_1", 17)
+    assert standard_setup(fab, route, index) == pytest.approx(72 * 60)
+    assert standard_time(fab, route, index) == pytest.approx(1.14 * 60 * 25 + 72 * 60)
+    # LithoTrack_FE_95 SU450_1: route STIME 15 min (no setup.txt row).
+    route, index = _step(fab, "r_1", 384)
+    assert standard_setup(fab, route, index) == pytest.approx(15 * 60)
+    # DE_BE_13: setup.txt pair only. Into _1 is 12 min, into _2 is 7 min.
+    route, index = _step(fab, "r_1", 469)
+    assert standard_setup(fab, route, index) == pytest.approx(12 * 60)
+    route, index = _step(fab, "r_10", 347)
+    assert standard_setup(fab, route, index) == pytest.approx(7 * 60)
+    # No SETUP column -> no setup.
+    route, index = _step(fab, "r_1", 2)
+    assert standard_setup(fab, route, index) == 0.0
 
 
-def test_wip_targets_anchor_at_the_due_and_progress_is_standard_slack() -> None:
-    plan = _published()
+def test_step_targets_use_the_standard_time_hook() -> None:
     fab = _fab()
-    for lot in [item for item in plan.lots if not item.released][:300]:
-        assert lot.flow_factor > 1.0
-        assert lot.step_due[-1] == lot.due_sec
-        route = fab.routes[fab.route_index[lot.route_id]]
-        raw = raw_path_seconds(fab, route, lot.steps)
-        assert lot.standard_remaining_sec == pytest.approx(lot.flow_factor * raw)
-        assert lot.remaining_raw_sec == pytest.approx(raw)
-        assert lot.progress_sec == pytest.approx(
-            lot.due_sec - lot.ready_sec - lot.standard_remaining_sec
-        )
-        assert lot.band == standard_band(lot.raw_slack_sec, lot.progress_sec, lot.plan_slack_sec)
-    summary = plan.summary()
-    wip = [item for item in plan.lots if not item.released]
-    assert summary["targets"] == "standard"
-    assert summary["due_tighter_than_standard"] == sum(1 for i in wip if i.progress_sec < 0)
-    assert summary["due_tighter_than_standard"] >= summary["due_tighter_than_raw"]
-
-
-@pytest.mark.parametrize(
-    ("raw_slack", "progress", "plan_slack", "band"),
-    [
-        (-1.0, 5.0, 5.0, "critical"),
-        (1.0, -1.0, 5.0, "behind"),
-        (1.0, 0.0, -1.0, "on_plan"),
-        (1.0, 0.0, 0.0, "ahead"),
-    ],
-)
-def test_standard_bands(raw_slack: float, progress: float, plan_slack: float, band: str) -> None:
-    assert standard_band(raw_slack, progress, plan_slack) == band
-
-
-def test_raw_targets_keep_the_no_queueing_backward_pass() -> None:
-    fab = _fab()
-    plan = build_plan(fab, scenario_input(fab, "published", releases=False, targets="raw"))
-    assert plan.targets == "raw"
-    for lot in plan.lots[:200]:
-        assert lot.flow_factor == 1.0
-        route = fab.routes[fab.route_index[lot.route_id]]
-        finish, start = backward(fab, route, lot.steps, lot.due_sec)
-        assert list(lot.step_due) == finish
-        assert list(lot.latest_start) == start
-
-
-def test_standard_ranks_follow_tier_band_then_progress() -> None:
-    plan = _published()
-    ranked = sorted(plan.lots, key=lambda item: item.rank)
-    keys = [(i.tier, BANDS.index(i.band), i.progress_sec) for i in ranked]
-    for a, b in pairwise(keys):
-        assert a <= b
+    inp = plan_input(fab, releases=False)
+    base = build_plan(fab, inp)
+    lot = base.lots[0]
+    route = fab.routes[fab.route_index[lot.route_id]]
+    need = sum(standard_time(fab, route, index) for index in lot.steps)
+    assert lot.step_due[-1] == lot.due_sec
+    assert lot.remaining_raw_sec >= need
+    # A replacement hook (what a future MES-actuals weighting would plug in)
+    # moves every target; here plain process time without setups.
+    other = build_plan(fab, inp, step_time=lambda _fab, r, i: r.cycle[i])
+    moved = other.lot(lot.lot_id)
+    setups = sum(standard_setup(fab, route, index) for index in lot.steps)
+    assert moved.remaining_raw_sec == pytest.approx(lot.remaining_raw_sec - setups)

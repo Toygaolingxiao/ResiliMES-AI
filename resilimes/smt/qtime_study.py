@@ -10,13 +10,10 @@
   ``after``, so only ResiliMES runs.
 * ``after``: this branch as shipped (dynamic risk weight, 300 s scheduling
   tick for every policy).
-* ``plan``: ``after`` plus the planning layer (``book_plan``) with raw step
-  targets (``targets="raw"``, the backward pass with no queueing): step-due
+* ``plan``: ``after`` plus the planning layer (``book_plan``): step-due
   risk and plan band/rank tie-break for ResiliMES, the per-tool schedule and
   the deviation log for every policy.
-* ``std``: ``plan`` with standard lead time step targets (``targets=
-  "standard"``, ``order.txt`` DUE - START spread over the route).
-* ``ablate_plan``: ``ablate`` with the raw-target plan.
+* ``ablate_plan``: ``ablate`` with the plan.
 * ``ablate``: ResiliMES only, published and X-factor books, each subset of
   fixes 1-3 on its own (``r2_fixes``); the row's ``variant`` names it.
 
@@ -160,7 +157,7 @@ BOOK_SCENARIO = {
 _PLANS: dict[str, Any] = {}
 
 
-def book_plan(fab: Fab, book: str, targets: str = "standard", releases: bool | None = None) -> Any:
+def book_plan(fab: Fab, book: str, releases: bool | None = None) -> Any:
     """The planning layer's output for one book, computed once (t=0).
 
     The plan holds the lots the sim runs: the WIP, plus (``releases``, default
@@ -170,13 +167,11 @@ def book_plan(fab: Fab, book: str, targets: str = "standard", releases: bool | N
     """
     released = _releases() if releases is None else releases
     until = (TIGHT_HORIZON_SEC if book == "tight_vip" else _horizon()) if released else None
-    key = f"{book}:{targets}:{until}"
+    key = f"{book}:{until}"
     if key not in _PLANS:
         from resilimes.smt.planning import build_plan, scenario_input
 
-        inp = scenario_input(
-            fab, BOOK_SCENARIO[book], releases=released, targets=targets, release_until=until
-        )
+        inp = scenario_input(fab, BOOK_SCENARIO[book], releases=released, release_until=until)
         if book == "litho_family_2h":
             family = fab.families[fab.focus_family]
             for tool in range(family.tool0, family.tool0 + family.tools):
@@ -600,9 +595,7 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
     if _ARM[0] == "mech":
         kwargs["r2_policy"] = False
     if _ARM[0] in ("plan", "ablate_plan"):
-        kwargs["plan"] = book_plan(fab, book, "raw")
-    elif _ARM[0] == "std":
-        kwargs["plan"] = book_plan(fab, book, "standard")
+        kwargs["plan"] = book_plan(fab, book)
     row: dict[str, Any] = {"book": book, "seed": seed, "policy": policy}
     row["lots"] = len(plant.lot_id)
     row["released_lots"] = len(plant.lot_id) - len(fab.lot_id)
