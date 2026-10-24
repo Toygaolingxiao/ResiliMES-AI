@@ -24,7 +24,7 @@ In the mock eval all 12 reports ran on `markovian`.
   max(5, 50 %)), overrides, lots finished.
 - End facts: tools down at shift end (since, ETA, hours left), PM in the next 12 h (and, when
   there is none, the next calendar PM: the 48 h runs contain no PM window because the published
-  calendars start after day 25), at-risk lots (due within the next shift, slack under 2 h),
+  calendars first start at 153.6 h, day 6.4), at-risk lots (due within the next shift, slack under 2 h),
   bubbles, overrides with whether the passed-over lot ended late.
 - **Fact check:** every number and id in the report must appear in the facts the model was given;
   one repair round, then misses are reported, never hidden (`fact_ok: false`).
