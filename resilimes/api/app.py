@@ -88,9 +88,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "horizon": cfg.horizon.strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         if cfg.fab == "smt2020":
-            from resilimes.smt.fab import load_fab
+            from resilimes.smt.fab import fab_source, load_fab
 
-            fab = load_fab()
+            fab = load_fab(cfg)
+            body["smt_source"] = fab_source(fab)
             body["horizon"] = fab.snapshot
             body["groups"] = len(fab.families)
             body["tools"] = len(fab.tool_name)
@@ -102,7 +103,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def scenarios() -> dict[str, object]:
         cfg: Settings = app.state.settings
         if cfg.fab == "smt2020":
-            return scenario_payload()
+            from resilimes.smt.fab import load_fab
+
+            try:
+                fab = load_fab(cfg)
+            except Exception as exc:  # RESILIMES_SMT_SOURCE=zetaris and the read failed
+                raise HTTPException(status_code=503, detail=str(exc)[:300]) from exc
+            return scenario_payload(fab)
         try:
             plant, _records = build_source(cfg).load_plant(cfg.horizon)
         except (ConfigError, ZetarisDataError, PlantDataError) as exc:

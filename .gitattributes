@@ -1,0 +1,41 @@
+# Everything text is stored and checked out with LF, on Windows too.
+# scripts/*.sh and data/sql/*.sql run inside WSL bash/psql, and CRLF breaks them
+# ("set: pipefail: invalid option name"). The SMT2020 files are hashed into
+# data/sql/smt2020_seed.sql, so they must not change bytes on checkout either.
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.bash text eol=lf
+*.sql text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.cfg text eol=lf
+*.ini text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.csv text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.env.example text eol=lf
+.env.example text eol=lf
+Makefile text eol=lf
+Dockerfile text eol=lf
+data/smt2020/** text eol=lf
+
+# PowerShell / cmd stay native for Windows.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.zip binary
+*.gz binary
+*.parquet binary
+*.pkl binary
