@@ -46,6 +46,7 @@ from resilimes.smt.fab import (
     measured,
     transport_seconds,
 )
+from resilimes.smt.faults import FaultPlan
 
 _DONE = 0
 _DOWN_START = 1
@@ -120,6 +121,11 @@ class RunResult:
     down_starts: list[dict[str, Any]] = field(default_factory=list)
     # Filled only with ``record=True``. Read by ``resilimes.smt.invariants``.
     events: list[tuple[Any, ...]] = field(default_factory=list)
+    # Filled only with ``lot_log=True`` (evidence toolkit): "ready" rows
+    # (ready_t, lot, step, n_events) at every queue entry, "setup" rows
+    # (t, tool, setup_sec, n_events) at every start. ``n_events`` is
+    # len(events) at append time, which orders a row against ``events``.
+    lot_log: dict[str, list[tuple[Any, ...]]] = field(default_factory=dict)
     # Batch starts, lots in them, and why each under-BATCHMN batch started.
     batch_starts: int = 0
     batch_lots: int = 0
@@ -369,6 +375,8 @@ def run_policy(
     r2_policy: bool = True,
     r2_fixes: tuple[int, ...] | None = None,
     replan_sec: float = REPLAN_SEC,
+    lot_log: bool = False,
+    faults: FaultPlan | None = None,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
@@ -400,6 +408,8 @@ def run_policy(
         r2_policy=r2_policy,
         r2_fixes=r2_fixes,
         replan_sec=replan_sec,
+        lot_log=lot_log,
+        faults=faults,
     )
     return sim.run()
 
@@ -469,8 +479,15 @@ class _Sim:
         r2_policy: bool = True,
         r2_fixes: tuple[int, ...] | None = None,
         replan_sec: float = REPLAN_SEC,
+        lot_log: bool = False,
+        faults: FaultPlan | None = None,
     ) -> None:
         self.fab = fab
+        # Opt-in evidence hooks; None keeps the default path unchanged.
+        self.lot_log: dict[str, list[tuple[Any, ...]]] | None = (
+            {"ready": [], "setup": []} if lot_log else None
+        )
+        self.faults = faults
         self.r2 = r2_policy and policy == "resilimes"
         if r2_fixes is None:
             r2_fixes = default_r2_fixes()
@@ -647,8 +664,12 @@ class _Sim:
         started = time.perf_counter()
         for lot, origin, target, limit in inherited_windows(self.fab):
             self.open_window(lot, origin, target, limit, 0.0, inherited=True)
+        held = self.faults.hold_until if self.faults is not None else {}
         for lot in range(self.n):
-            self.enqueue(lot, 0.0)
+            if lot in held:
+                self.push(held[lot], _ARRIVE, lot)
+            else:
+                self.enqueue(lot, 0.0)
         for tool, spans in enumerate(self.downs):
             opened = False
             for start_at, end_at in spans:
@@ -763,6 +784,8 @@ class _Sim:
         self.q_pending[lot] = False
         route = self.fab.routes[self.fab.lot_route[lot]]
         fam = route.family[self.step[lot]]
+        if self.lot_log is not None:
+            self.lot_log["ready"].append((moment, lot, self.step[lot], len(self.events)))
         self.ready[lot] = moment
         self.waiting[lot] = True
         self.queues[fam].append(lot)
@@ -990,6 +1013,9 @@ class _Sim:
         index = self.step[lot]
         fam = self.fab.tool_family[tool]
         setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[index])
+        if self.faults is not None:
+            changeover = self.tool_recipe[tool] != route.recipe[index]
+            setup += self.faults.setup_extra(fam, changeover, self.clock)
         return route.cycle[index] + setup
 
     def _open_limit(self, lot: int) -> float:
@@ -1056,6 +1082,9 @@ class _Sim:
             index = self.step[head]
             cap = route.batch_max[index]
             floor = route.batch_min[index] or cap
+            if self.faults is not None:
+                cap = self.faults.batch_cap(fam, cap, moment)
+                floor = min(floor, cap)
             taken = ordered[: max(1, cap // _WAFERS)] if cap else ordered
             wafers = len(taken) * _WAFERS
             reason, until = self.batch_rule(taken, group, fam, recipe, wafers, floor, moment)
@@ -1571,7 +1600,12 @@ class _Sim:
         piece = max(self.piece_seconds(lot, tool) for lot in started)
         head_route = self.fab.routes[self.fab.lot_route[started[0]]]
         recipe = head_route.recipe[steps[0]]
-        self.setup_sec += setup_seconds(self.fab, fam, self.tool_recipe[tool], recipe)
+        paid = setup_seconds(self.fab, fam, self.tool_recipe[tool], recipe)
+        if self.faults is not None:
+            paid += self.faults.setup_extra(fam, self.tool_recipe[tool] != recipe, self.clock)
+        self.setup_sec += paid
+        if self.lot_log is not None:
+            self.lot_log["setup"].append((moment, tool, paid, len(self.events)))
         self.tool_gen[tool] += 1
         self.running[tool] = started[0]
         self.on_tool[tool] = started
@@ -2019,6 +2053,7 @@ class _Sim:
             recleans=self.recleans,
             down_starts=self.down_starts,
             events=self.events,
+            lot_log=self.lot_log or {},
             batch_starts=self.batch_starts,
             batch_lots=self.batch_lots,
             batch_reasons=dict(sorted(self.batch_reasons.items())),
