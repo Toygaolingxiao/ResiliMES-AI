@@ -76,6 +76,12 @@ _KEYS = (
     "batch_fill_pct",
     "batch_short_full",
     "qtime_shortlist_added",
+    "tool_reservations",
+    "reserved_min",
+    "reserve_used",
+    "reserve_elsewhere",
+    "reserve_expired",
+    "reserve_cancelled",
 )
 
 _X_ETAS = (180.0, 300.0, 600.0, LITHO_MTTR_MIN)

@@ -33,6 +33,13 @@ Checks, one counter each:
 - ``transport``: every start of a lot comes at least the fixed transport time
   (same STNGRP bay 1 min, other bay 3 min) after the lot's previous step
   ended, or after the re-clean that sent it back to its CQT origin.
+- ``qtime_hold``: no start of a lot inside its Q-time hold.
+- ``reservation`` (Q-time r2 fix 3): only ResiliMES reserves; at most one
+  reserved tool per family at a time; a hold lasts at most RESERVE_MAX_SEC;
+  never on a tool that is down or in PM at the reservation, nor one whose PM
+  starts during the hold; a reserved tool starts nothing but its lot; every
+  reservation is released; a tool starts a lot between two reservations (no
+  chains); reserved minutes recount to the reported total.
 
 This is a replay of the simulator's own events, not a second simulator.
 """
@@ -43,6 +50,7 @@ from typing import Any
 
 from resilimes.smt.fab import (
     QTIME_URGENT_MARGIN_SEC,
+    RESERVE_MAX_SEC,
     REWORK_SEC,
     Fab,
     inherited_windows,
@@ -69,6 +77,7 @@ CHECKS = (
     "qtime_override",
     "transport",
     "qtime_hold",
+    "reservation",
 )
 UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent")
 
@@ -116,6 +125,11 @@ def check_trace(
     # (moment, family) the lot last left: a step end or a re-clean.
     released: list[tuple[float, int] | None] = [None] * n
     holding: list[set[int]] = [set() for _ in fab.tool_name]
+    # Reservations: tool -> (lot, since); family -> reserved tool.
+    reserved: dict[int, tuple[int, float]] = {}
+    fam_reserved: dict[int, int] = {}
+    cool = [False] * len(fab.tool_name)
+    reserved_sec = 0.0
     violations = 0
     starts = 0
     for event in result.events:
@@ -147,9 +161,48 @@ def check_trace(
                 )
             open_override = (tool, moment, lot)
             continue
+        if kind == "reserve":
+            _kind, moment, tool, lot, until, _eta = event
+            name = fab.tool_name[tool]
+            fam = fab.tool_family[tool]
+            bad = []
+            if policy != "resilimes":
+                bad.append("policy")
+            if tool in reserved or fam in fam_reserved:
+                bad.append("second hold in family")
+            if until - moment > RESERVE_MAX_SEC + 1e-6 or until < moment:
+                bad.append("too long")
+            if any(a <= moment < b for a, b in downs[tool]):
+                bad.append("tool down")
+            if any(moment < b and until > a for a, b in pm[tool]):
+                bad.append("PM")
+            if holding[tool]:
+                bad.append("tool busy")
+            if cool[tool]:
+                bad.append("chain")
+            if bad:
+                flag("reservation", f"{name} t={moment:.1f} {fab.lot_id[lot]}: {', '.join(bad)}")
+            reserved[tool] = (lot, moment)
+            fam_reserved[fam] = tool
+            continue
+        if kind == "release":
+            _kind, moment, tool, lot, _outcome = event
+            hold = reserved.pop(tool, None)
+            if hold is None or hold[0] != lot:
+                flag("reservation", f"{fab.tool_name[tool]} t={moment:.1f} release without hold")
+            else:
+                if moment - hold[1] > RESERVE_MAX_SEC + 1e-6:
+                    flag("reservation", f"{fab.tool_name[tool]} held {moment - hold[1]:.0f}s")
+                reserved_sec += max(0.0, min(moment, float(result.horizon_sec)) - hold[1])
+            fam_reserved.pop(fab.tool_family[tool], None)
+            cool[tool] = True
+            continue
         if kind == "start":
             _kind, moment, tool, lots, steps, finish, reason, chosen = event
             starts += 1
+            if tool in reserved:
+                flag("reservation", f"{fab.tool_name[tool]} t={moment:.1f} started while reserved")
+            cool[tool] = False
             name = fab.tool_name[tool]
             fam = fab.tool_family[tool]
             if holding[tool]:
@@ -301,6 +354,11 @@ def check_trace(
     for tool, held in enumerate(holding):
         if held and any(a <= horizon < b for a, b in downs[tool]):
             flag("stuck_on_down", f"{fab.tool_name[tool]} down at horizon holding {len(held)}")
+    for tool in reserved:
+        flag("reservation", f"{fab.tool_name[tool]} hold never released")
+    reported_min = getattr(result, "reserved_min", None)
+    if reported_min is not None and abs(round(reserved_sec / 60.0, 1) - reported_min) > 0.11:
+        flag("reservation", f"held {reserved_sec / 60.0:.1f} min vs reported {reported_min}")
     for lot in range(n):
         if q_target[lot] >= 0 and 0 < q_deadline[lot] <= horizon and not q_inherited[lot]:
             violations += 1

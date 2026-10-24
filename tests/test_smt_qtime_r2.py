@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tests.test_smt_invariants import _two_family_fab
+from tests.test_smt_invariants import _qtime_fab, _two_family_fab
 
 from resilimes.smt.fab import Fab, Family, Route, inherited_windows, load_fab
 from resilimes.smt.invariants import check_trace
@@ -326,3 +326,87 @@ def test_graded_urgency_is_resilimes_only() -> None:
     sim.open_window(1, 0, 2, 1000.0, 0.0, inherited=True)
     # The PR #18 PED curve (exp) is kept for the ablation: not linear.
     assert sim.ped(1, 500.0) != 0.5
+
+
+# Fix 3: bounded tool reservation --------------------------------------------
+
+
+def _reserve_fab() -> Fab:
+    """``L_Q`` runs A 0-100 s and opens a 300 s window to B (latest start 400 s).
+
+    The move A -> B is 180 s (other bay), so ``L_Q`` reaches B at 280 s.
+    ``Clean_B-1`` (500 s per lot) has two ordinary lots waiting from 0 s; a
+    start at 0 s runs to 500 s, past ``L_Q``'s latest start.
+    """
+    fab = _qtime_fab(cqt_limit=300.0, second="normal")
+    fab.lot_class[1] = "normal"
+    fab.lot_priority[1] = 10
+    return fab
+
+
+def _run_reserve(fab, *, pm=NO_DOWNS, downs=NO_DOWNS, **kwargs):
+    return run_policy(
+        fab,
+        policy="resilimes",
+        seed=1,
+        horizon=5000.0,
+        downs=downs,
+        pm=pm,
+        record=True,
+        **kwargs,
+    )
+
+
+def test_reservation_holds_one_tool_for_the_inbound_qtime_lot() -> None:
+    fab = _reserve_fab()
+    result = _run_reserve(fab)
+    holds = [e for e in result.events if e[0] == "reserve"]
+    assert len(holds) == 1
+    _kind, at, tool, lot, until, eta = holds[0]
+    assert (at, tool, lot) == (0.0, 1, 0) and until == 400.0 and eta == 280.0
+    assert _b_starts(fab, result, 0) == [280.0]
+    assert result.tool_reservations == 1 and result.reserve_used == 1
+    assert result.reserved_min == round(280.0 / 60.0, 1)
+    assert result.qtime_windows["met"] == 1 and result.qtime_violations == 0
+    assert check_trace(fab, result, downs=NO_DOWNS, pm=NO_DOWNS)["total"] == 0
+
+
+def test_reservation_is_resilimes_policy_only() -> None:
+    fab = _reserve_fab()
+    for result in (
+        _run_reserve(fab, r2_policy=False),
+        run_policy(fab, policy="edd", seed=1, horizon=5000.0, downs=NO_DOWNS, pm=NO_DOWNS),
+    ):
+        assert result.tool_reservations == 0
+        assert result.qtime_windows["held"] == 1
+
+
+def test_no_reservation_on_a_tool_with_pm_during_the_hold() -> None:
+    fab = _reserve_fab()
+    pm = [[], [(600.0, 700.0)]]
+    result = _run_reserve(fab, pm=pm)
+    assert result.tool_reservations == 0
+    assert check_trace(fab, result, downs=NO_DOWNS, pm=pm)["total"] == 0
+
+
+def test_breakdown_cancels_the_reservation() -> None:
+    fab = _reserve_fab()
+    downs = [[], [(200.0, 250.0)]]
+    result = _run_reserve(fab, downs=downs)
+    releases = [e for e in result.events if e[0] == "release"]
+    assert [(e[1], e[4]) for e in releases] == [(200.0, "cancelled")]
+    assert result.reserve_cancelled == 1 and result.reserved_min == round(200.0 / 60.0, 1)
+    assert check_trace(fab, result, downs=downs, pm=NO_DOWNS)["total"] == 0
+
+
+def test_reservation_checks_flag_a_start_on_a_held_tool_and_a_long_hold() -> None:
+    fab = _reserve_fab()
+    result = _run_reserve(fab)
+    at = next(i for i, e in enumerate(result.events) if e[0] == "reserve")
+    row = list(result.events[at])
+    row[4] = row[1] + 901.0
+    result.events[at] = tuple(row)
+    # A start of another lot on the held tool before the release.
+    result.events.insert(at + 1, ("start", 1.0, 1, (1,), (0,), 501.0, "", (1,)))
+    counts = check_trace(fab, result, downs=NO_DOWNS, pm=NO_DOWNS)["counts"]
+    assert counts["reservation"] >= 2

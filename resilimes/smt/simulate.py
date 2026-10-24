@@ -34,6 +34,7 @@ from resilimes.smt.fab import (
     HOT_BATCH_WAIT_SEC,
     LOOKAHEAD,
     QTIME_URGENT_MARGIN_SEC,
+    RESERVE_MAX_SEC,
     REWORK_SEC,
     WIP_FLOOR,
     WIP_PER_TOOL,
@@ -162,6 +163,12 @@ class RunResult:
     batch_fill_pct: float | None = None
     batch_short_full: int = 0
     qtime_shortlist_added: int = 0
+    tool_reservations: int = 0
+    reserved_min: float = 0.0
+    reserve_used: int = 0
+    reserve_elsewhere: int = 0
+    reserve_expired: int = 0
+    reserve_cancelled: int = 0
 
 
 def rework_ready(moment: float) -> float:
@@ -544,6 +551,20 @@ class _Sim:
         # full batch of that recipe (eligible, PM and gate not checked).
         self.batch_short_full = 0
         self.last_recipe_ready: dict[int, int] = {}
+        # Q-time r2 fix 3: bounded tool reservation (ResiliMES). Lots heading
+        # to a family inside an open window: lot -> (eta, latest start, step).
+        self.inbound: list[dict[int, tuple[float, float, int]]] = [{} for _ in fab.families]
+        tools = len(fab.tool_family)
+        self.res_lot = [-1] * tools
+        self.res_since = [0.0] * tools
+        self.res_until = [0.0] * tools
+        # A tool must start a lot between two reservations (no chains).
+        self.res_cool = [False] * tools
+        self.res_fam = [-1] * len(fab.families)
+        self.res_by_lot: dict[int, int] = {}
+        self.res_count = 0
+        self.res_sec = 0.0
+        self.res_out = {"used": 0, "elsewhere": 0, "expired": 0, "cancelled": 0}
         self.batch_family = [False] * len(fab.families)
         for route in fab.routes:
             for index, cap in enumerate(route.batch_max):
@@ -622,6 +643,8 @@ class _Sim:
         """Count the window's outcome once and close it."""
         bucket = self.qinh if self.inherited[lot] else self.qout
         bucket[outcome] += 1
+        if lot in self.res_by_lot:
+            self.release(self.res_by_lot[lot], self.clock, "cancelled")
         if outcome in _MISSED and not self.inherited[lot]:
             self.violations += 1
         self.cqt_at[lot] = -1
@@ -1029,7 +1052,7 @@ class _Sim:
             return (float(self.urgency_band(lot, moment)), *self.plain_rank(lot, tool, moment))
         return self.plain_rank(lot, tool, moment)
 
-    def qtime_need(self, lot: int) -> float:
+    def qtime_need(self, lot: int, here: int = -1, target: int = -1) -> float:
         """Seconds the lot still needs before its CQT target can start.
 
         Dataset process time of the current step and of each later measured
@@ -1037,8 +1060,8 @@ class _Sim:
         into the target. No setup.
         """
         route = self.fab.routes[self.fab.lot_route[lot]]
-        here = self.step[lot]
-        target = self.cqt_at[lot]
+        here = self.step[lot] if here < 0 else here
+        target = self.cqt_at[lot] if target < 0 else target
         number = self.lot_no[lot]
         need = 0.0
         last = here
@@ -1183,10 +1206,23 @@ class _Sim:
             return
         in_pm = _covering(self.pm[tool], moment)
         if in_pm is not None:
+            if self.res_lot[tool] >= 0:
+                self.release(tool, moment, "cancelled")
             self.push(in_pm[1], _WAKE, tool)
             return
-        chosen, wake_at, reason = self.choose(tool, moment)
         fam = self.fab.tool_family[tool]
+        if self.res_lot[tool] >= 0:
+            held = self.res_lot[tool]
+            if moment >= self.res_until[tool] - 1e-9:
+                self.release(tool, moment, "expired")
+            elif self.waiting[held] and self.step_family(held) == fam:
+                self._start(tool, fam, moment, [held], "reserved")
+                return
+            else:
+                if tool not in self.idle[fam]:
+                    self.idle[fam].append(tool)
+                return
+        chosen, wake_at, reason = self.choose(tool, moment)
         # A chosen lot that missed its Q-time window goes back to re-clean
         # before the start, and the tool chooses again. Every lot of the final
         # choice starts.
@@ -1205,12 +1241,20 @@ class _Sim:
             if tool not in self.idle[fam]:
                 self.idle[fam].append(tool)
             return
+        if self.r2 and self.maybe_reserve(tool, fam, chosen, moment):
+            return
+        self._start(tool, fam, moment, chosen, reason)
+
+    def _start(self, tool: int, fam: int, moment: float, chosen: list[int], reason: str) -> None:
         started: list[int] = []
         steps: list[int] = []
         for lot in chosen:
             if not self.waiting[lot] or self.step_family(lot) != fam:
                 self.batch_dropped += 1
                 continue
+            if lot in self.res_by_lot:
+                holder = self.res_by_lot[lot]
+                self.release(holder, moment, "used" if holder == tool else "elsewhere")
             index = self.step[lot]
             if self.cqt_at[lot] == index:
                 late = self.deadline[lot] > 0 and moment > self.deadline[lot]
@@ -1223,6 +1267,7 @@ class _Sim:
             if tool not in self.idle[fam]:
                 self.idle[fam].append(tool)
             return
+        self.res_cool[tool] = False
         # A started lot leaves this queue now. Left in place, it is still
         # listed here when it waits again for its next step in another family.
         gone = set(started)
@@ -1291,9 +1336,135 @@ class _Sim:
             )
         self.push(finish, _DONE, tool, self.tool_gen[tool])
         self.busy_until[tool] = finish
+        if self.r2:
+            for lot, index in zip(started, steps, strict=True):
+                self.note_inbound(lot, fam, index, finish)
         self.busy_litho[tool] = self.fab.families[fam].litho
         self.busy_scanner[tool] = self.fab.families[fam].scanner
         self.account(tool, fam, moment, finish, started)
+
+    def note_inbound(self, lot: int, fam: int, index: int, finish: float) -> None:
+        """Remember a started lot that reaches its next step inside an open window."""
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        number = self.lot_no[lot]
+        nxt = index + 1
+        while nxt < len(route.family) and not measured(route, nxt, number):
+            nxt += 1
+        if nxt >= len(route.family):
+            return
+        if route.cqt_limit[index] > 0 and route.cqt_target[index] >= nxt:
+            deadline = finish + route.cqt_limit[index]
+            target = route.cqt_target[index]
+        elif self.cqt_at[lot] >= nxt and self.deadline[lot] > 0:
+            deadline = self.deadline[lot]
+            target = self.cqt_at[lot]
+        else:
+            return
+        fam2 = route.family[nxt]
+        eta = finish + self.move_seconds(fam, fam2)
+        latest = deadline - self.qtime_need(lot, nxt, target)
+        self.inbound[fam2][lot] = (eta, latest, nxt)
+
+    def _inbound_live(self, lot: int, eta: float, nxt: int, moment: float) -> bool:
+        if self.waiting[lot] or self.finished_at[lot] >= 0 or eta < moment - 1e-6:
+            return False
+        if self.lot_tool[lot] >= 0:
+            return self.step[lot] < nxt
+        return self.step[lot] == nxt and self.in_window(lot)
+
+    def maybe_reserve(self, tool: int, fam: int, chosen: list[int], moment: float) -> bool:
+        """Q-time r2 fix 3: hold this tool idle for an inbound Q-time lot.
+
+        Only when the chosen lead is an ordinary lot (normal class, band 2,
+        not in a window, not a batch step), the inbound lot arrives within
+        RESERVE_MAX_SEC and before its latest start, starting the lead here
+        would run past that latest start, no other tool of the family is
+        free by then, and the tool has no PM before the inbound piece ends.
+        At most one tool per family, at most RESERVE_MAX_SEC, and a tool must
+        start a lot between two reservations.
+        """
+        if self.res_fam[fam] >= 0 or self.res_cool[tool] or not self.inbound[fam]:
+            return False
+        lead = chosen[0]
+        route = self.fab.routes[self.fab.lot_route[lead]]
+        if route.batch_max[self.step[lead]] > 0 or len(chosen) > 1:
+            return False
+        if self.tier(lead) < 2 or self.in_window(lead) or self.urgency_band(lead, moment) < 2:
+            return False
+        if _covering(self.downs[tool], moment) is not None:
+            return False
+        done_at = moment + self.piece_seconds(lead, tool)
+        family = self.fab.families[fam]
+        best: tuple[float, int, float] | None = None
+        rows = self.inbound[fam]
+        for lot in list(rows):
+            eta, latest, nxt = rows[lot]
+            if not self._inbound_live(lot, eta, nxt, moment):
+                del rows[lot]
+                continue
+            if lot in self.res_by_lot or eta > moment + RESERVE_MAX_SEC or eta > latest:
+                continue
+            if done_at <= latest:
+                continue
+            lot_route = self.fab.routes[self.fab.lot_route[lot]]
+            pinned = self.dedicate_tool[lot]
+            pinned_up = pinned >= 0 and _covering(self.downs[pinned], moment) is None
+            if lot_route.dedicate_root[nxt] >= 0 and pinned != tool and pinned_up:
+                continue
+            setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], lot_route.recipe[nxt])
+            if self.overlaps_pm(
+                tool, moment, max(0.0, eta - moment) + lot_route.cycle[nxt] + setup
+            ):
+                continue
+            free = False
+            for other in range(family.tool0, family.tool0 + family.tools):
+                if other == tool or self.res_lot[other] >= 0:
+                    continue
+                if _covering(self.downs[other], moment) is not None:
+                    continue
+                if _covering(self.pm[other], moment) is not None:
+                    continue
+                free_at = self.busy_until[other] if self.running[other] >= 0 else moment
+                if free_at <= latest:
+                    free = True
+                    break
+            if free:
+                continue
+            if best is None or latest < best[0]:
+                best = (latest, lot, eta)
+        if best is None:
+            return False
+        latest, lot, eta = best
+        until = min(moment + RESERVE_MAX_SEC, latest)
+        self.res_lot[tool] = lot
+        self.res_since[tool] = moment
+        self.res_until[tool] = until
+        self.res_fam[fam] = tool
+        self.res_by_lot[lot] = tool
+        self.res_count += 1
+        if self.record:
+            self.events.append(("reserve", moment, tool, lot, until, eta))
+        self.push(until, _WAKE, tool)
+        if tool not in self.idle[fam]:
+            self.idle[fam].append(tool)
+        return True
+
+    def release(self, tool: int, moment: float, outcome: str) -> None:
+        """End a reservation: used, used elsewhere, expired or cancelled."""
+        lot = self.res_lot[tool]
+        if lot < 0:
+            return
+        fam = self.fab.tool_family[tool]
+        self.res_sec += max(0.0, min(moment, self.horizon) - self.res_since[tool])
+        self.res_out[outcome] += 1
+        self.res_lot[tool] = -1
+        self.res_fam[fam] = -1
+        self.res_by_lot.pop(lot, None)
+        self.res_cool[tool] = True
+        if self.record:
+            self.events.append(("release", moment, tool, lot, outcome))
+        if outcome in ("cancelled", "elsewhere") and self.running[tool] < 0:
+            self.push(moment, _WAKE, tool)
 
     def _can_reclean(self, lot: int, moment: float) -> bool:
         # Any step of the span, origin excluded: with the deadline event a lot
@@ -1422,6 +1593,8 @@ class _Sim:
 
     def down_start(self, tool: int, moment: float) -> None:
         self.release_idle(tool)
+        if self.res_lot[tool] >= 0:
+            self.release(tool, moment, "cancelled")
         lots = self.on_tool[tool]
         if lots:
             self.tool_gen[tool] += 1
@@ -1468,6 +1641,9 @@ class _Sim:
 
     def finish(self, elapsed: float) -> RunResult:
         fab = self.fab
+        for tool, lot in enumerate(self.res_lot):
+            if lot >= 0:
+                self.release(tool, min(self.horizon, self.res_until[tool]), "expired")
         due_lots = [lot for lot in range(self.n) if self.due[lot] <= self.horizon]
         already = sum(1 for lot in due_lots if self.due[lot] <= 0)
         on_time = 0
@@ -1590,6 +1766,12 @@ class _Sim:
             ),
             batch_short_full=self.batch_short_full,
             qtime_shortlist_added=self.shortlist_added,
+            tool_reservations=self.res_count,
+            reserved_min=round(self.res_sec / 60.0, 1),
+            reserve_used=self.res_out["used"],
+            reserve_elsewhere=self.res_out["elsewhere"],
+            reserve_expired=self.res_out["expired"],
+            reserve_cancelled=self.res_out["cancelled"],
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)

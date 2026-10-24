@@ -724,6 +724,9 @@ def _kpi(result: RunResult) -> dict[str, Any]:
         "pm_avoided": result.pm_avoided,
         "pm_overlaps": result.pm_overlaps,
         "wip_replans": result.wip_replans,
+        "batch_fill_pct": result.batch_fill_pct,
+        "tool_reservations": result.tool_reservations,
+        "reserved_min": result.reserved_min,
     }
 
 
