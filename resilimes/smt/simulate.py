@@ -158,6 +158,9 @@ class RunResult:
     # the breakdown rework hold in rework_lot_min.
     qtime_hold_lot_min: float = 0.0
     qtime_holds: int = 0
+    batch_cap_lots: int = 0
+    batch_fill_pct: float | None = None
+    batch_short_full: int = 0
 
 
 def rework_ready(moment: float) -> float:
@@ -532,6 +535,17 @@ class _Sim:
         self.qout: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
         self.qinh: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
         self.hold_sec = 0.0
+        # Batch fill: lots started over batch capacity in lots (BATCHMX / 25).
+        self.batch_cap_lots = 0
+        # Batches started under capacity while the whole ready queue held a
+        # full batch of that recipe (eligible, PM and gate not checked).
+        self.batch_short_full = 0
+        self.last_recipe_ready: dict[int, int] = {}
+        self.batch_family = [False] * len(fab.families)
+        for route in fab.routes:
+            for index, cap in enumerate(route.batch_max):
+                if cap > 0:
+                    self.batch_family[route.family[index]] = True
         self.held = 0
         self.q_pending = [False] * self.n
         self.deadline_event = deadline_event
@@ -733,6 +747,7 @@ class _Sim:
             self._sample(t0, False)
             return [], wake, ""
         pool = ready_pool
+        whole = pool
         over_cap = self.policy == "resilimes" and self.depth[fam] > self.threshold[fam]
         limit = 8 if over_cap else LOOKAHEAD
         if self.policy == "smt_rule":
@@ -753,12 +768,33 @@ class _Sim:
                         if lot not in kept and self._slack(lot, moment) <= SLACK_CANDIDATE_SEC:
                             ranked.append(lot)
                 pool = ranked
+        # Furnace batching sees the whole same-recipe family queue, not only
+        # the shortlist: a lot cut by the candidate cap can still fill a batch.
+        # Singles still come from the shortlist. Shared by every policy.
+        candidates = pool
+        self.last_recipe_ready = {}
+        if self.batch_family[fam]:
+            for lot in whole:
+                route = self.fab.routes[self.fab.lot_route[lot]]
+                index = self.step[lot]
+                if route.batch_max[index] > 0:
+                    recipe = route.recipe[index]
+                    self.last_recipe_ready[recipe] = self.last_recipe_ready.get(recipe, 0) + 1
+            if len(whole) > len(pool):
+                kept = set(pool)
+                extra = [
+                    lot
+                    for lot in whole
+                    if lot not in kept
+                    and self.fab.routes[self.fab.lot_route[lot]].batch_max[self.step[lot]] > 0
+                ]
+                candidates = pool + extra
         pm_start = self.next_pm_start(tool, moment)
         feasible: list[int] = []
         skipped = False
         gated = False
         gate_wake: float | None = None
-        for lot in pool:
+        for lot in candidates:
             proc = self.piece_seconds(lot, tool)
             if pm_start is not None and moment + proc > pm_start:
                 skipped = True
@@ -1195,6 +1231,10 @@ class _Sim:
         if head_route.batch_max[steps[0]] > 0:
             self.batch_starts += 1
             self.batch_lots += len(started)
+            cap_lots = max(1, head_route.batch_max[steps[0]] // _WAFERS)
+            self.batch_cap_lots += cap_lots
+            if len(started) < cap_lots and self.last_recipe_ready.get(recipe, 0) >= cap_lots:
+                self.batch_short_full += 1
             if reason != "min_met":
                 self.batch_reasons[reason] = self.batch_reasons.get(reason, 0) + 1
         finish = moment + piece
@@ -1510,6 +1550,13 @@ class _Sim:
             qtime_inherited_missed=sum(qinh[key] for key in _MISSED),
             qtime_hold_lot_min=round(self.hold_sec / 60.0, 1),
             qtime_holds=self.held,
+            batch_cap_lots=self.batch_cap_lots,
+            batch_fill_pct=(
+                round(100.0 * self.batch_lots / self.batch_cap_lots, 1)
+                if self.batch_cap_lots
+                else None
+            ),
+            batch_short_full=self.batch_short_full,
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)
