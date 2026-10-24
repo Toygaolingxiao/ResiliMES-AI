@@ -131,6 +131,10 @@ def test_events_window_and_filter(client: TestClient) -> None:
     downs = get(client, "/api/fab/events", kind="down", limit=20)
     assert {row["kind"] for row in downs["events"]} == {"down"}
     assert downs["breakdowns"]
+    # A lot's class rides in "class" so it never shadows the event kind.
+    promoted = get(client, "/api/fab/events", kind="priority,done", limit=50)
+    assert {row["kind"] for row in promoted["events"]} <= {"priority", "done"}
+    assert all(row["class"] in {"VIP", "hot", "normal"} for row in promoted["events"])
 
 
 def test_kpis_match_the_replay(client: TestClient) -> None:

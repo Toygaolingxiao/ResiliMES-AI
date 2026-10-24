@@ -999,7 +999,7 @@ def recent_events(rp: Replay) -> list[tuple[float, str, dict[str, Any]]]:
                         "priority",
                         {
                             "lot": fab.lot_id[lot],
-                            "kind": rp.kind[lot],
+                            "class": rp.kind[lot],
                             "tool": tool_label,
                             "family": family,
                             "step": step,
@@ -1050,7 +1050,7 @@ def recent_events(rp: Replay) -> list[tuple[float, str, dict[str, Any]]]:
                     "done",
                     {
                         "lot": fab.lot_id[lot],
-                        "kind": rp.kind[lot],
+                        "class": rp.kind[lot],
                         "on_time": done <= rp.due[lot],
                         "late_h": round(max(0.0, done - rp.due[lot]) / 3600.0, 1),
                     },
@@ -1092,7 +1092,7 @@ def events_view(
         total += 1
         by_kind[kind] = by_kind.get(kind, 0) + 1
         if len(picked) < limit:
-            picked.append({"t": moment, "kind": kind, **body})
+            picked.append({**body, "t": moment, "kind": kind})
     return {"t0": t0, "t1": t1, "total": total, "by_kind": by_kind, "events": picked}
 
 
