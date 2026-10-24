@@ -58,6 +58,7 @@ from resilimes.smt.fab import (
     measured,
     transport_seconds,
 )
+from resilimes.smt.layout import family_buildings, resolve
 
 _WAFERS = 25
 CHECKS = (
@@ -122,6 +123,10 @@ def check_trace(
     open_override: tuple[int, float, int] | None = None
     policy = str(getattr(result, "policy", ""))
     moves = bool(getattr(result, "transport", True))
+    # Multi-building layout of the run (None = one building, as main).
+    layout = resolve((getattr(result, "layout", None) or {}).get("name") or False)
+    buildings = family_buildings(fab, layout) if layout is not None else None
+    cross_sec = layout.cross_building_sec if layout is not None else 0.0
     # (moment, family) the lot last left: a step end or a re-clean.
     released: list[tuple[float, int] | None] = [None] * n
     holding: list[set[int]] = [set() for _ in fab.tool_name]
@@ -251,7 +256,9 @@ def check_trace(
                     flag("route_order", f"{lot_id} started step {index}, next is {step[lot]}")
                 last = released[lot]
                 if last is not None:
-                    move = transport_seconds(fab, last[1], fam) if moves else 0.0
+                    move = (
+                        transport_seconds(fab, last[1], fam, buildings, cross_sec) if moves else 0.0
+                    )
                     if moment < last[0] + move - 1e-6:
                         flag(
                             "transport",

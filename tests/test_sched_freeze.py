@@ -34,6 +34,8 @@ TIMING = {
     "replan_tick_p95_ms",
     "replan_tick_total_s",
     "sched_freeze",
+    # Transport / layout KPI dict added after c75ff85 (tests/test_fab_layout.py).
+    "layout",
 }
 ENV = (
     "RESILIMES_SCHED_FREEZE",
