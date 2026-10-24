@@ -1448,14 +1448,15 @@ class _Sim:
             return "min_met", None
         if self.lead is not None and self.lead.start_batch(fam, recipe, moment):
             return "shift_lead", None
-        if self.hq is not None and any(self.hq.expedited(lot, moment) for lot in taken):
-            return "qtime_expedite", None
         if self.policy == "resilimes" and any(
             self.qtime_urgent(lot, moment) is not None for lot in taken
         ):
             return "qtime_urgent", None
         cap_at = min(self.ready[lot] for lot in group) + BATCH_MAX_WAIT_SEC
         hot = [self.ready[lot] for lot in taken if self.tier(lot) < 2]
+        if self.hq is not None:
+            # Hard Q-time: an expedited lot waits like a hot lot, not forever.
+            hot += [self.ready[lot] for lot in taken if self.hq.expedited(lot, moment)]
         if hot and min(hot) + HOT_BATCH_WAIT_SEC < cap_at:
             cap_at = min(hot) + HOT_BATCH_WAIT_SEC
             if moment >= cap_at - 1e-6:
@@ -1487,16 +1488,19 @@ class _Sim:
     def expedite_key(self, lot: int, moment: float) -> tuple[float, float, float]:
         """Hard Q-time order, inside the class tier where the policy has one.
 
-        Missed lots first (expedite), then lots inside an open window by least
-        slack (the kanban reserved their target capacity), then everyone else.
+        Like a hot lot under the existing rules (a Q-time-urgent lot outranks a
+        hot one): lots inside an open window that is lost unless they start
+        now, then missed lots (expedite, oldest miss first), then the other
+        lots inside an open window by least slack, then everyone else.
         """
         assert self.hq is not None
         tier = float(self.tier(lot)) if self.policy in ("resilimes", "smt_rule") else 0.0
         if self.hq.x_target[lot] >= 0:
-            return (tier, 0.0, self.hq.x_since[lot])
+            return (tier, 1.0, self.hq.x_since[lot])
         if self.in_window(lot):
-            return (tier, 1.0, self.deadline[lot] - moment - self.qtime_need(lot))
-        return (tier, 2.0, 0.0)
+            slack = self.deadline[lot] - moment - self.qtime_need(lot)
+            return (tier, 0.0 if slack <= QTIME_URGENT_MARGIN_SEC else 2.0, slack)
+        return (tier, 3.0, 0.0)
 
     def cheap(self, lot: int, moment: float) -> tuple[float, ...]:
         if self.hq is not None:
