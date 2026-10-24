@@ -13,6 +13,9 @@
 * ``plan``: ``after`` plus the planning layer (``book_plan``): step-due
   risk and plan band/rank tie-break for ResiliMES, the per-tool schedule and
   the deviation log for every policy.
+* ``plan_famwait``: ``plan`` with ``plan_wait="family"`` (the risk's
+  expected wait is the family average, planning-r1 before the
+  position-in-queue fix); for the old-vs-new A/B.
 * ``ablate_plan``: ``ablate`` with the plan.
 * ``ablate``: ResiliMES only, published and X-factor books, each subset of
   fixes 1-3 on its own (``r2_fixes``); the row's ``variant`` names it.
@@ -39,6 +42,7 @@ from typing import Any
 
 from resilimes.smt import simulate as sim_mod
 from resilimes.smt.fab import LITHO_MTTR_MIN, Fab, load_fab
+from resilimes.smt.progress import Progress, follow, progress_path
 from resilimes.smt.scenarios import SEEDS, STUDY_HORIZON_SEC
 from resilimes.smt.simulate import pm_shift_to_open, pm_windows, run_policy, sample_downs
 from resilimes.smt.tight import TIGHT_HORIZON_SEC, apply_tight, apply_xfactor
@@ -594,8 +598,11 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
     plant, kwargs = _setup(fab, book, seed, policy)
     if _ARM[0] == "mech":
         kwargs["r2_policy"] = False
-    if _ARM[0] in ("plan", "ablate_plan"):
+    if _ARM[0] in ("plan", "ablate_plan", "plan_famwait"):
         kwargs["plan"] = book_plan(fab, book)
+    if _ARM[0] == "plan_famwait":
+        # planning-r1 before the position-in-queue wait (A/B study arm).
+        kwargs["plan_wait"] = "family"
     row: dict[str, Any] = {"book": book, "seed": seed, "policy": policy}
     row["lots"] = len(plant.lot_id)
     row["released_lots"] = len(plant.lot_id) - len(fab.lot_id)
@@ -603,6 +610,10 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
         variant = str(item[3])
         kwargs["r2_fixes"] = tuple(int(part) for part in variant.split("+"))
         row["variant"] = variant
+    else:
+        # Full r2 arm stays fixes 1-3 explicitly so study results reproduce
+        # regardless of the run_policy default / RESILIMES_QTIME_FIX1.
+        kwargs.setdefault("r2_fixes", (1, 2, 3))
     result = run_policy(plant, **kwargs)
     for key in (
         "on_time_pct",
@@ -657,6 +668,11 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
 
 
 def main() -> None:
+    if sys.argv[1:2] == ["shift_lead"]:
+        from resilimes.smt.shift_lead_study import main as shift_lead_main
+
+        shift_lead_main(sys.argv[2:])
+        return
     arm, out = sys.argv[1], sys.argv[2]
     _ARM.append(arm)
     _FAB.append(load_fab())
@@ -672,11 +688,21 @@ def main() -> None:
             for seed in _seeds(book)
         ]
     workers = max(1, int(os.environ.get("RESILIMES_STUDY_WORKERS", "5")))
-    with get_context("fork").Pool(workers, maxtasksperchild=10) as pool:
-        rows = pool.map(_one, items, chunksize=1)
-    with open(out, "w", encoding="utf-8") as handle:
-        json.dump({"arm": arm, "rows": rows}, handle, indent=1)
-    print(f"{arm}: {len(rows)} runs -> {out}")
+    # Progress: a line on stderr per finished run (every 10 s in a log) and
+    # <out>.progress.json; RESILIMES_STUDY_PROGRESS=0 turns both off.
+    shown = os.environ.get("RESILIMES_STUDY_PROGRESS", "1") != "0"
+    progress = Progress(
+        study=f"qtime_study:{arm}",
+        plan=[str(item[2]) for item in items],
+        path=progress_path(out) if shown else None,
+        console=shown,
+        background=False,  # the pool may fork a fresh worker at any time
+    )
+    with get_context("fork").Pool(workers, maxtasksperchild=10) as pool, progress:
+        rows = list(follow(pool.imap(_one, items, chunksize=1), progress))
+        with open(out, "w", encoding="utf-8") as handle:
+            json.dump({"arm": arm, "rows": rows}, handle, indent=1)
+    print(f"{arm}: {len(rows)} runs -> {out}", flush=True)
 
 
 if __name__ == "__main__":

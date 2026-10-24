@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 
+import pytest
 from tests.test_smt_qtime_r2 import _crowded_b_fab, _run, _three_step_fab
 
 from resilimes.smt.fab import Fab
@@ -186,3 +187,39 @@ def test_schedule_heap_is_not_the_event_heap(monkeypatch) -> None:
     pops.clear()
     _run(fab, policy="edd", horizon=20_000.0, plan=_plan(fab))
     assert len(pops) == plain
+
+
+def test_position_wait_is_each_lots_own_place_in_dispatch_order() -> None:
+    fab = _equal_due_fab()
+    # Plan ranks reverse the lot order: the last lot is rank 1.
+    ranks = {name: len(fab.lot_id) - lot for lot, name in enumerate(fab.lot_id)}
+    sim = _plan_sim(fab, _plan(fab, ranks=ranks))
+    assert sim.position_wait
+    fam = 1
+    for lot in range(len(fab.lot_id)):
+        if sim.step_family(lot) == fam:
+            sim.enqueue(lot, 0.0)
+    sim.refresh_estimates(0.0)
+    queued = sorted(sim.live(fam), key=lambda lot: sim.place_key(lot, 0.0))
+    assert len(queued) >= 3
+    index = {lot: fab.lot_step[lot] for lot in queued}
+    waits = [sim.place_wait(lot, fam, index[lot], sim.place_key(lot, 0.0)) for lot in queued]
+    # Head of the queue waits least, later places wait more; the family
+    # average (a lot joining the back) bounds every place from above.
+    assert waits == sorted(waits)
+    assert waits[0] < waits[-1]
+    assert all(w <= sim.fam_wait[fam] + 1e-9 for w in waits)
+    # Lots of one queue no longer share one wait, so they cannot all cross
+    # the risk-1 gate together; the place risk never exceeds the family one.
+    for lot in queued:
+        assert sim.place_risk(lot, 0.0) <= sim.risk(lot, 0.0)[0] + 1e-12
+
+
+def test_family_wait_switch_keeps_the_old_plan_risk() -> None:
+    fab = _equal_due_fab()
+    plan = _plan(fab)
+    old = _run(fab, policy="resilimes", horizon=3_000.0, plan=plan, plan_wait="family")
+    new = _run(fab, policy="resilimes", horizon=3_000.0, plan=plan)
+    assert old.plan_used and new.plan_used
+    with pytest.raises(ValueError):
+        _run(fab, policy="resilimes", horizon=3_000.0, plan=plan, plan_wait="lot")

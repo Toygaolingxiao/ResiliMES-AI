@@ -7,7 +7,9 @@ refuses a start that falls inside a PM or whose process would cross the next PM.
 
 Transport is a fixed move between steps (same STNGRP bay 1 min, other bay
 3 min, ``transport_seconds``), the same for every policy; the SMT2020
-``fromto`` row (one Fab-to-Fab distribution) is not used. Operators, reticle copies, and
+``fromto`` row (one Fab-to-Fab distribution) is not used. An optional
+multi-building layout (``layout=``, default off, ``resilimes.smt.layout``) adds
+a fixed cross-building tier; see docs/FAB_LAYOUT.md. Operators, reticle copies, and
 the published fractional rework probability are not in this loop. A litho
 layer with ``SVESTN`` / ``FORSTEP`` stays on the scanner that ran the first
 layer of that chain, once this run has chosen it. WIP does not name a tool,
@@ -24,8 +26,11 @@ from __future__ import annotations
 
 import heapq
 import math
+import os
 import random
 import time
+from bisect import bisect_left
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from heapq import heapify as _sched_heapify
 from heapq import heappop as _sched_pop
@@ -49,6 +54,9 @@ from resilimes.smt.fab import (
     release_at,
     transport_seconds,
 )
+from resilimes.smt.faults import FaultPlan
+from resilimes.smt.freeze import FreezeConfig, Freezer
+from resilimes.smt.layout import FabLayout, family_buildings, resolve
 
 _DONE = 0
 _DOWN_START = 1
@@ -64,6 +72,8 @@ _QDEADLINE = 5
 # snapshot the plan. It never starts a lot: dispatch stays event-triggered.
 _TICK = 6
 REPLAN_SEC = 300.0
+# ``run_policy(progress=...)`` is called every 4096 events.
+_PROGRESS_MASK = 4095
 _BIN_SEC = 900.0
 _BUCKETS = ("met", "late", "held", "recleaned", "expired", "live", "skipped")
 _MISSED = ("late", "held", "recleaned", "expired")
@@ -142,6 +152,11 @@ class RunResult:
     down_starts: list[dict[str, Any]] = field(default_factory=list)
     # Filled only with ``record=True``. Read by ``resilimes.smt.invariants``.
     events: list[tuple[Any, ...]] = field(default_factory=list)
+    # Filled only with ``lot_log=True`` (evidence toolkit): "ready" rows
+    # (ready_t, lot, step, n_events) at every queue entry, "setup" rows
+    # (t, tool, setup_sec, n_events) at every start. ``n_events`` is
+    # len(events) at append time, which orders a row against ``events``.
+    lot_log: dict[str, list[tuple[Any, ...]]] = field(default_factory=dict)
     # Batch starts, lots in them, and why each under-BATCHMN batch started.
     batch_starts: int = 0
     batch_lots: int = 0
@@ -218,6 +233,14 @@ class RunResult:
     replan_tick_p95_ms: float = 0.0
     replan_tick_total_s: float = 0.0
     flow_wait_ratio: float = 0.0
+    # Frozen dispatch zone and plan-stability KPIs (``resilimes.smt.freeze``);
+    # empty unless the freeze or tick tracking is on.
+    sched_freeze: dict[str, Any] = field(default_factory=dict)
+    # Transport KPIs and the multi-building layout (``resilimes.smt.layout``):
+    # layout name (None = one building, as main), moves, transport minutes,
+    # cross-building moves, and second transports (freeze tracking) weighted
+    # by their transport time.
+    layout: dict[str, Any] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -370,6 +393,17 @@ def macro_aps_ms(fab: Fab) -> tuple[float, int]:
     return elapsed_ms, len(jobs)
 
 
+DEFAULT_R2_FIXES: tuple[int, ...] = (2, 3)
+
+
+def default_r2_fixes() -> tuple[int, ...]:
+    """Q-time r2 fixes used when ``r2_fixes`` is not passed. Fix 1 (shortlist
+    admission) is off by default; RESILIMES_QTIME_FIX1=1 turns it back on."""
+    if os.environ.get("RESILIMES_QTIME_FIX1", "").strip() == "1":
+        return (1, 2, 3)
+    return DEFAULT_R2_FIXES
+
+
 def run_policy(
     fab: Fab,
     *,
@@ -390,22 +424,48 @@ def run_policy(
     transport: bool = True,
     deadline_event: bool = True,
     r2_policy: bool = True,
-    r2_fixes: tuple[int, ...] = (1, 2, 3),
+    r2_fixes: tuple[int, ...] | None = None,
     replan_sec: float = REPLAN_SEC,
     plan: PlanningOutput | None = None,
+    shift_lead: Any = None,
+    plan_wait: str = "position",
+    progress: Callable[[float], None] | None = None,
+    lot_log: bool = False,
+    faults: FaultPlan | None = None,
+    freeze: FreezeConfig | None = None,
+    layout: FabLayout | bool | str | None = None,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
     ResiliMES-only Q-time r2 dispatch rules (shortlist admission, graded
     urgency, bounded tool reservation); False is the ablation. ``r2_fixes``
-    picks which of fixes 1-3 are on (per-fix ablation). ``replan_sec`` is the
+    picks which of fixes 1-3 are on (per-fix ablation); unset means
+    ``default_r2_fixes()``: (2, 3), or (1, 2, 3) if RESILIMES_QTIME_FIX1=1. ``replan_sec`` is the
     re-evaluation tick period for every policy (0 turns the tick off).
+    ``freeze`` is the frozen dispatch zone and tick log
+    (``resilimes.smt.freeze``); unset reads RESILIMES_SCHED_FREEZE and friends
+    from the environment, default off. ``layout`` is the multi-building
+    transport layout (``resilimes.smt.layout``): False off (one building, as
+    main), True the example two-building layout, or a ``FabLayout``; unset
+    reads RESILIMES_FAB_LAYOUT, default off.
     ``plan`` (the planning layer's output, computed once before the run) turns
     on the step-due risk for ResiliMES fix 2, the plan band/rank tie-break, the
     per-tool schedule at each tick and the deviation log; None is the
-    unchanged qtime-r2 path."""
+    unchanged qtime-r2 path. ``shift_lead`` (ResiliMES only, default None:
+    off and bit-identical) is a ``resilimes.agents.shift_lead.ShiftLead``
+    asked at scheduling exceptions; see ``docs/AI_SHIFT_LEAD.md``.
+    ``plan_wait`` (plan runs only) picks the expected
+    wait in the risk: ``position`` (default) the lot's own place in the
+    dispatch-ordered queue, ``family`` the family-average wait of planning-r1
+    before the fix (kept for the A/B study). ``progress`` (default None) is
+    called with the simulated clock every few thousand events; it only reads
+    the clock, so a run is the same with or without it."""
+    if plan_wait not in {"position", "family"}:
+        raise ValueError(f"Unknown plan_wait {plan_wait}")
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
+    if shift_lead is not None and policy != "resilimes":
+        raise ValueError("shift_lead needs policy='resilimes'")
     sim = _Sim(
         fab,
         policy=policy,
@@ -428,7 +488,14 @@ def run_policy(
         r2_fixes=r2_fixes,
         replan_sec=replan_sec,
         plan=plan,
+        shift_lead=shift_lead,
+        plan_wait=plan_wait,
+        lot_log=lot_log,
+        faults=faults,
+        freeze=FreezeConfig.from_env() if freeze is None else freeze,
+        layout=resolve(layout),
     )
+    sim.progress = progress
     return sim.run()
 
 
@@ -495,12 +562,35 @@ class _Sim:
         transport: bool = True,
         deadline_event: bool = True,
         r2_policy: bool = True,
-        r2_fixes: tuple[int, ...] = (1, 2, 3),
+        r2_fixes: tuple[int, ...] | None = None,
         replan_sec: float = REPLAN_SEC,
         plan: PlanningOutput | None = None,
+        shift_lead: Any = None,
+        plan_wait: str = "position",
+        lot_log: bool = False,
+        faults: FaultPlan | None = None,
+        freeze: FreezeConfig | None = None,
+        layout: FabLayout | None = None,
     ) -> None:
         self.fab = fab
+        # AI shift lead hook (off when None): asked at exceptions in tick().
+        self.lead = shift_lead
+        # Progress callback (off when None): reads the clock, changes nothing.
+        self.progress: Callable[[float], None] | None = None
+        self.layout = layout
+        self.buildings = family_buildings(fab, layout) if layout is not None else None
+        self.cross_sec = layout.cross_building_sec if layout is not None else 0.0
+        self.moves = 0
+        self.move_sec = 0.0
+        self.cross_moves = 0
+        # Opt-in evidence hooks; None keeps the default path unchanged.
+        self.lot_log: dict[str, list[tuple[Any, ...]]] | None = (
+            {"ready": [], "setup": []} if lot_log else None
+        )
+        self.faults = faults
         self.r2 = r2_policy and policy == "resilimes"
+        if r2_fixes is None:
+            r2_fixes = default_r2_fixes()
         # Per-fix switches: 1 shortlist admission, 2 dynamic risk order,
         # 3 bounded tool reservation.
         self.fix1 = self.r2 and 1 in r2_fixes
@@ -646,6 +736,18 @@ class _Sim:
         self.proc_sum = 0.0
         self.risk_at = -1.0
         self.risk_memo: dict[int, tuple[int, int, float, float]] = {}
+        # Plan runs, ``plan_wait == "position"``: each family's queue in plan
+        # order (urgency band, plan rank, lot) at the last tick, the raw work
+        # ahead of each place, and how that work turns into a wait
+        # (offset + (busy residual + work ahead) / tools). See ``place_wait``.
+        self.position_wait = plan is not None and plan_wait == "position"
+        self.place_risk_at = -1.0
+        self.place_risk_memo: dict[int, tuple[int, int, float]] = {}
+        nfam = len(fab.families)
+        self.place_keys: list[list[tuple[float, ...]]] = [[] for _ in range(nfam)]
+        self.place_ahead: list[list[float]] = [[0.0] for _ in range(nfam)]
+        self.place_form: list[tuple[float, float, float]] = [(0.0, 0.0, 1.0)] * nfam
+        self.place_snap: dict[int, tuple[int, int, float]] = {}
         self.wakes = [0] * tools
         self.ticks = 0
         self.tick_stalls = 0
@@ -696,6 +798,10 @@ class _Sim:
                 else:
                     self.plan_rank.append(float(row.rank))
                     self.plan_band.append(float(BANDS.index(row.band)))
+        # Frozen dispatch zone / tick tracking; None (no hook runs) when off.
+        self.fz: Freezer | None = None
+        if freeze is not None and freeze.active:
+            self.fz = Freezer(self, freeze, wafers=_WAFERS, wake_kind=_WAKE)
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -709,9 +815,12 @@ class _Sim:
         started = time.perf_counter()
         for lot, origin, target, limit in inherited_windows(self.fab):
             self.open_window(lot, origin, target, limit, 0.0, inherited=True)
+        held = self.faults.hold_until if self.faults is not None else {}
         for lot in range(self.n):
             release = self.entry[lot]
-            if release > 0.0:
+            if lot in held:
+                self.push(max(held[lot], release), _ARRIVE, lot)
+            elif release > 0.0:
                 self.push(release, _ARRIVE, lot)
             else:
                 self.enqueue(lot, 0.0)
@@ -752,6 +861,8 @@ class _Sim:
                 self.release_idle(tool)
                 self.try_start(tool, moment)
             steps += 1
+            if self.progress is not None and not steps & _PROGRESS_MASK:
+                self.progress(moment)
             if steps > 2_000_000:
                 raise RuntimeError("SMT simulation exceeded 2e6 events")
         return self.finish(time.perf_counter() - started)
@@ -812,6 +923,8 @@ class _Sim:
             return
         index = self.step[lot]
         target = self.cqt_at[lot]
+        if self.fz is not None:
+            self.fz.on_hold(lot, moment)
         self.close_window(lot, "held")
         if queued:
             self.waiting[lot] = False
@@ -833,6 +946,8 @@ class _Sim:
         self.in_hold[lot] = False
         route = self.fab.routes[self.fab.lot_route[lot]]
         fam = route.family[self.step[lot]]
+        if self.lot_log is not None:
+            self.lot_log["ready"].append((moment, lot, self.step[lot], len(self.events)))
         self.ready[lot] = moment
         self.waiting[lot] = True
         self.queues[fam].append(lot)
@@ -850,16 +965,32 @@ class _Sim:
     def send(self, lot: int, moment: float, origin: int, target: int) -> None:
         """Queue the lot at ``target`` once it has been moved there from ``origin``."""
         move = self.move_seconds(origin, target)
+        if move > 0:
+            self.moves += 1
+            self.move_sec += move
+            if self.buildings is not None and self.buildings[origin] != self.buildings[target]:
+                self.cross_moves += 1
         if move <= 0:
             self.enqueue(lot, moment)
         else:
             self.push(moment + move, _ARRIVE, lot)
 
+    def _layout_kpis(self) -> dict[str, Any]:
+        second = self.fz.second_sec if self.fz is not None else 0.0
+        return {
+            "name": self.layout.name if self.layout is not None else None,
+            "cross_building_min": round(self.cross_sec / 60.0, 3),
+            "transport_moves": self.moves,
+            "transport_min": round(self.move_sec / 60.0, 1),
+            "cross_building_moves": self.cross_moves,
+            "second_transport_min": round(second / 60.0, 1),
+        }
+
     def move_seconds(self, origin: int, target: int) -> float:
         """Transport from one family to the next. 0 only for the no-transport ablation."""
         if not self.transport:
             return 0.0
-        return transport_seconds(self.fab, origin, target)
+        return transport_seconds(self.fab, origin, target, self.buildings, self.cross_sec)
 
     def wake_family(self, fam: int) -> None:
         """Every idle tool in the family gets one look.
@@ -904,6 +1035,8 @@ class _Sim:
         t0 = time.perf_counter()
         fam = self.fab.tool_family[tool]
         pool = [lot for lot in self.live(fam) if self.eligible(lot, tool, moment)]
+        if self.fz is not None and self.fz.enabled:
+            pool = [lot for lot in pool if self.fz.free_for(lot, tool)]
         if not pool:
             self._sample(t0, False)
             return [], None, ""
@@ -1052,7 +1185,9 @@ class _Sim:
         pinned = self.pin_for(lot, self.step[lot])
         if pinned < 0 or pinned == tool:
             return True
-        return _covering(self.downs[pinned], moment) is not None
+        if _covering(self.downs[pinned], moment) is None:
+            return False
+        return self.lead is None or bool(self.lead.may_reroute(lot, moment))
 
     def piece_seconds(self, lot: int, tool: int) -> float:
         """Full process plus setup from the recipe the tool holds now."""
@@ -1060,6 +1195,9 @@ class _Sim:
         index = self.step[lot]
         fam = self.fab.tool_family[tool]
         setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[index])
+        if self.faults is not None:
+            changeover = self.tool_recipe[tool] != route.recipe[index]
+            setup += self.faults.setup_extra(fam, changeover, self.clock)
         return route.cycle[index] + setup
 
     def _open_limit(self, lot: int) -> float:
@@ -1126,6 +1264,9 @@ class _Sim:
             index = self.step[head]
             cap = route.batch_max[index]
             floor = route.batch_min[index] or cap
+            if self.faults is not None:
+                cap = self.faults.batch_cap(fam, cap, moment)
+                floor = min(floor, cap)
             taken = ordered[: max(1, cap // _WAFERS)] if cap else ordered
             wafers = len(taken) * _WAFERS
             reason, until = self.batch_rule(taken, group, fam, recipe, wafers, floor, moment)
@@ -1159,6 +1300,8 @@ class _Sim:
         """
         if wafers >= floor:
             return "min_met", None
+        if self.lead is not None and self.lead.start_batch(fam, recipe, moment):
+            return "shift_lead", None
         if self.policy == "resilimes" and any(
             self.qtime_urgent(lot, moment) is not None for lot in taken
         ):
@@ -1199,7 +1342,7 @@ class _Sim:
         if self.policy == "cr":
             return (self.cr(lot, moment), self.due[lot], lot)
         if self.policy == "resilimes":
-            band = float(self.urgency_band(lot, moment))
+            band = float(self.urgency_band(lot, moment)) + self.lead_bias(lot)
             if self.fix2:
                 risk, least = self.risk(lot, moment)
                 if self.plan is not None:
@@ -1220,8 +1363,15 @@ class _Sim:
 
     def rank(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
         if self.policy == "resilimes":
-            return (float(self.urgency_band(lot, moment)), *self.plain_rank(lot, tool, moment))
+            band = float(self.urgency_band(lot, moment)) + self.lead_bias(lot)
+            return (band, *self.plain_rank(lot, tool, moment))
         return self.plain_rank(lot, tool, moment)
+
+    def lead_bias(self, lot: int) -> float:
+        """Shift-lead priority inside the urgency band; 0.0 without a shift lead."""
+        if self.lead is None:
+            return 0.0
+        return float(self.lead.bias(lot, self.step[lot]))
 
     def qtime_need(self, lot: int, here: int = -1, target: int = -1) -> float:
         """Seconds the lot still needs before its CQT target can start.
@@ -1294,7 +1444,10 @@ class _Sim:
                 # Planning layer: the plan's band and rank break ties in
                 # place of the least slack.
                 base = (self.plan_band[lot], self.plan_rank[lot], self.ready[lot], float(lot))
-                if risk >= 1.0:
+                # Gate: with ``plan_wait="position"`` a lot jumps the queue
+                # only if it misses at its own place in line (``place_risk``).
+                miss = self.place_risk(lot, moment) if self.position_wait else risk
+                if miss >= 1.0:
                     return (tier, 0.0, -risk, setup, *base)
                 return (tier, 1.0, setup, -risk, *base)
             if risk >= 1.0:
@@ -1372,6 +1525,12 @@ class _Sim:
           rest of the route, so no fab-wide ratio is needed. A step the plan
           does not visit (rework back past the snapshot step) uses the raw
           slack above.
+        * ``place_risk`` is the same max with every wait taken at the lot's
+          own place in line (plan runs, ``plan_wait="position"``); it is the
+          "expected to miss" gate of the plan dispatch key. ``risk`` keeps the
+          family-average wait, which is the same for every lot of a queue, so
+          the order it gives below the gate is least normalised slack and
+          does not depend on the order it produces.
 
         Slack <= 0 is infinite risk. Wait estimates come from the last tick
         (``refresh_estimates``), so they are at most ``replan_sec`` old.
@@ -1382,9 +1541,44 @@ class _Sim:
         memo = self.risk_memo.get(lot)
         if memo is not None and memo[0] == self.step[lot] and memo[1] == self.qgen[lot]:
             return memo[2], memo[3]
+        risk, least = self._risk_terms(lot, moment, place=False)
+        self.risk_memo[lot] = (self.step[lot], self.qgen[lot], risk, least)
+        return risk, least
+
+    def place_risk(self, lot: int, moment: float) -> float:
+        """``risk`` with each wait at the lot's own place in line (plan runs).
+
+        Wait here, and at every later measured step of an open Q-time window,
+        is ``place_wait``: the raw work ranked ahead of this lot in the
+        family's dispatch-ordered queue over the tools, not the family average
+        (the wait of a lot joining the back of the queue). Due term: that
+        wait over the step-due slack; Q-time term: the summed waits over the
+        window slack. Both are then (this lot's expected wait before the
+        constrained step can start) / (slack to that step's deadline), so
+        ``>= 1`` means "misses at its current place in line" for either
+        constraint. With the family average every windowed lot of a long
+        wet-bench queue crossed 1 at once and jumped near-finish lots
+        (``docs/PLANNING_R1_STUDY.md``). No weight or threshold is added.
+        """
+        if moment != self.place_risk_at:
+            self.place_risk_at = moment
+            self.place_risk_memo = {}
+        memo = self.place_risk_memo.get(lot)
+        if memo is not None and memo[0] == self.step[lot] and memo[1] == self.qgen[lot]:
+            return memo[2]
+        risk = self._risk_terms(lot, moment, place=True)[0]
+        self.place_risk_memo[lot] = (self.step[lot], self.qgen[lot], risk)
+        return risk
+
+    def _risk_terms(self, lot: int, moment: float, *, place: bool) -> tuple[float, float]:
         route = self.fab.routes[self.fab.lot_route[lot]]
         index = self.step[lot]
-        here = self.fam_wait[route.family[index]]
+        key: tuple[float, ...] = ()
+        if place:
+            key = self.place_key(lot, moment)
+            here = self.place_wait(lot, route.family[index], index, key)
+        else:
+            here = self.fam_wait[route.family[index]]
         if self.plan is not None:
             row = self.plan_lot[lot]
             step_due = None if row is None else row.due_of(index)
@@ -1406,11 +1600,13 @@ class _Sim:
             q_wait = here
             for nxt in range(index + 1, self.cqt_at[lot] + 1):
                 if measured(route, nxt, number):
-                    q_wait += self.fam_wait[route.family[nxt]]
+                    if place:
+                        q_wait += self.place_wait(lot, route.family[nxt], nxt, key)
+                    else:
+                        q_wait += self.fam_wait[route.family[nxt]]
             q_risk = math.inf if q_slack <= 0.0 else q_wait / q_slack
             risk = max(risk, q_risk)
             least = min(least, q_slack)
-        self.risk_memo[lot] = (self.step[lot], self.qgen[lot], risk, least)
         return risk, least
 
     def refresh_estimates(self, moment: float) -> None:
@@ -1422,7 +1618,10 @@ class _Sim:
         first one is back plus the queued work over all tools.
         """
         self.risk_at = -1.0
+        self.place_risk_at = -1.0
         self.flow_wait = self.wait_sum / self.proc_sum if self.proc_sum > 0 else 0.0
+        if self.position_wait:
+            self.place_snap = {}
         for fam, family in enumerate(self.fab.families):
             work = 0.0
             for lot in self.live(fam):
@@ -1430,6 +1629,7 @@ class _Sim:
                 index = self.step[lot]
                 size = route.batch_max[index] // _WAFERS
                 work += route.cycle[index] / max(1, size)
+            queued = work
             up = 0
             back = math.inf
             for tool in range(family.tool0, family.tool0 + family.tools):
@@ -1445,6 +1645,78 @@ class _Sim:
             elif family.tools:
                 back = min(back, self.horizon)
                 self.fam_wait[fam] = max(0.0, back - moment) + work / family.tools
+            if self.position_wait:
+                residual = work - queued
+                if up:
+                    self.place_form[fam] = (0.0, residual, float(up))
+                elif family.tools:
+                    self.place_form[fam] = (max(0.0, back - moment), 0.0, float(family.tools))
+                else:
+                    self.place_form[fam] = (0.0, 0.0, 1.0)
+        if self.position_wait:
+            # After every family's wait is fresh: the order key reads ``risk``.
+            for fam in range(len(self.fab.families)):
+                self.refresh_places(fam, moment)
+
+    def refresh_places(self, fam: int, moment: float) -> None:
+        """Plan runs: the family's queue in dispatch order and the work ahead of each place.
+
+        Order = ``place_key``: the ResiliMES plan dispatch key below the gate
+        without the tool-specific setup term. Work per lot = raw process time,
+        a batch step counted per lot as its time over the batch size in lots
+        (as in ``fam_wait``).
+        """
+        rows = self.live(fam)
+        keyed = sorted(self.place_key(lot, moment) for lot in rows)
+        ahead = [0.0]
+        offset, residual, tools = self.place_form[fam]
+        for key in keyed:
+            lot = int(key[-1])
+            route = self.fab.routes[self.fab.lot_route[lot]]
+            index = self.step[lot]
+            wait = offset + (residual + ahead[-1]) / tools
+            self.place_snap[lot] = (fam, index, wait)
+            size = route.batch_max[index] // _WAFERS
+            ahead.append(ahead[-1] + route.cycle[index] / max(1, size))
+        self.place_keys[fam] = keyed
+        self.place_ahead[fam] = ahead
+
+    def place_key(self, lot: int, moment: float) -> tuple[float, ...]:
+        """Where the dispatcher puts this lot in a queue, without setup.
+
+        (urgency band, class tier, -risk, plan band, plan rank, lot): the plan
+        dispatch key below the gate (``plain_rank``) minus setup, which
+        depends on the tool. ``risk`` uses the family-average wait, the same
+        for every lot of a queue, so the key does not depend on the place it
+        produces.
+        """
+        return (
+            float(self.urgency_band(lot, moment)),
+            float(self.tier(lot)),
+            -self.risk(lot, moment)[0],
+            self.plan_band[lot],
+            self.plan_rank[lot],
+            float(lot),
+        )
+
+    def place_wait(self, lot: int, fam: int, index: int, key: tuple[float, ...]) -> float:
+        """Expected wait of this lot at its own place in ``fam``'s dispatch-ordered queue.
+
+        A lot in the last tick's queue of ``fam`` at this step reads its own
+        place; any other (it arrived since, or ``fam`` is a later step) is
+        placed into that queue by its ``place_key`` now. Wait = time until a
+        tool is back (no tool up) + (busy residual of the up tools + raw work
+        of the lots ahead) / tools. Replaces the family-average wait, which
+        gave every lot in a queue the same wait, so whole queues crossed risk
+        1 together (``docs/PLANNING_R1_STUDY.md``).
+        """
+        snap = self.place_snap.get(lot)
+        if snap is not None and snap[0] == fam and snap[1] == index:
+            return snap[2]
+        keys = self.place_keys[fam]
+        at = bisect_left(keys, key) if keys else 0
+        offset, residual, tools = self.place_form[fam]
+        return offset + (residual + self.place_ahead[fam][at]) / tools
 
     def tick(self, moment: float) -> None:
         """Scheduling tick, every ``replan_sec`` of sim time, all policies.
@@ -1464,6 +1736,8 @@ class _Sim:
         self.refresh_estimates(moment)
         if self.fix3:
             self.plan_holds(moment)
+        if self.lead is not None:
+            self.lead.on_tick(self, moment)
         for tool in range(len(self.running)):
             if self.running[tool] >= 0 or self.wakes[tool] > 0 or self.res_lot[tool] >= 0:
                 continue
@@ -1490,6 +1764,8 @@ class _Sim:
                 self.events.append(("tick_stall", moment, tool, len(ready), batch))
         if self.plan is not None:
             self.build_schedule(moment)
+        if self.fz is not None:
+            self.fz.on_tick(moment)
         if self.record:
             self.snapshot(moment)
         self.tick_samples.append(time.perf_counter() - t0)
@@ -1528,7 +1804,12 @@ class _Sim:
             if not rows:
                 continue
             order = sorted(
-                rows, key=lambda lot: (self.urgency_band(lot, moment), self.plan_rank[lot], lot)
+                rows,
+                key=lambda lot: (
+                    self.urgency_band(lot, moment) + self.lead_bias(lot),
+                    self.plan_rank[lot],
+                    lot,
+                ),
             )
             # Tool free-time heap of the schedule, not the event heap: bound
             # directly so a wrapper of ``simulate.heapq`` (the stress audit
@@ -1752,7 +2033,7 @@ class _Sim:
                 if tool not in self.idle[fam]:
                     self.idle[fam].append(tool)
                 return
-        chosen, wake_at, reason = self.choose(tool, moment)
+        chosen, wake_at, reason = self.dispatch(tool, moment)
         # A chosen lot that missed its Q-time window goes back to re-clean
         # before the start, and the tool chooses again. Every lot of the final
         # choice starts.
@@ -1764,7 +2045,7 @@ class _Sim:
                 self._reclean(lot, fam, moment)
             if self.running[tool] >= 0:
                 return
-            chosen, wake_at, reason = self.choose(tool, moment)
+            chosen, wake_at, reason = self.dispatch(tool, moment)
         if not chosen:
             if wake_at is not None and wake_at > moment:
                 self.push(wake_at, _WAKE, tool)
@@ -1774,6 +2055,12 @@ class _Sim:
         if self.fix3 and self.maybe_reserve(tool, fam, chosen, moment):
             return
         self._start(tool, fam, moment, chosen, reason)
+
+    def dispatch(self, tool: int, moment: float) -> tuple[list[int], float | None, str]:
+        """``choose``, through the frozen zone when it is on."""
+        if self.fz is not None and self.fz.enabled:
+            return self.fz.choose(tool, moment)
+        return self.choose(tool, moment)
 
     def _start(self, tool: int, fam: int, moment: float, chosen: list[int], reason: str) -> None:
         started: list[int] = []
@@ -1802,6 +2089,8 @@ class _Sim:
             for lot in started:
                 self.start_gen[lot] += 1
         self.res_cool[tool] = False
+        if self.fz is not None:
+            self.fz.on_start(tool, started, moment)
         # A started lot leaves this queue now. Left in place, it is still
         # listed here when it waits again for its next step in another family.
         gone = set(started)
@@ -1823,7 +2112,12 @@ class _Sim:
         piece = max(self.piece_seconds(lot, tool) for lot in started)
         head_route = self.fab.routes[self.fab.lot_route[started[0]]]
         recipe = head_route.recipe[steps[0]]
-        self.setup_sec += setup_seconds(self.fab, fam, self.tool_recipe[tool], recipe)
+        paid = setup_seconds(self.fab, fam, self.tool_recipe[tool], recipe)
+        if self.faults is not None:
+            paid += self.faults.setup_extra(fam, self.tool_recipe[tool] != recipe, self.clock)
+        self.setup_sec += paid
+        if self.lot_log is not None:
+            self.lot_log["setup"].append((moment, tool, paid, len(self.events)))
         self.tool_gen[tool] += 1
         self.running[tool] = started[0]
         self.on_tool[tool] = started
@@ -2025,6 +2319,8 @@ class _Sim:
         index = self.step[lot]
         origin = self.cqt_from[lot]
         self.recleans += 1
+        if self.fz is not None:
+            self.fz.on_hold(lot, moment)
         self.rework[lot] += 1
         self.close_window(lot, "recleaned")
         self.deadline[lot] = 0.0
@@ -2160,6 +2456,8 @@ class _Sim:
                 if self.record:
                     self.events.append(("rework", moment, tool, lot, self.step[lot]))
                 self.enqueue(lot, rework_ready(moment))
+        if self.fz is not None:
+            self.fz.on_down(tool, moment)
         self._queue_down_ends(tool, moment)
         # Lots pinned to this scanner may now run on an idle sibling.
         self.wake_family(self.fab.tool_family[tool])
@@ -2271,6 +2569,7 @@ class _Sim:
             recleans=self.recleans,
             down_starts=self.down_starts,
             events=self.events,
+            lot_log=self.lot_log or {},
             batch_starts=self.batch_starts,
             batch_lots=self.batch_lots,
             batch_reasons=dict(sorted(self.batch_reasons.items())),
@@ -2318,6 +2617,8 @@ class _Sim:
             replan_tick_p95_ms=round(_percentile(self.tick_samples, 95) * 1000.0, 4),
             replan_tick_total_s=round(sum(self.tick_samples), 4),
             flow_wait_ratio=round(self.wait_sum / self.proc_sum, 4) if self.proc_sum else 0.0,
+            sched_freeze=self.fz.summary() if self.fz is not None else {},
+            layout=self._layout_kpis(),
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)

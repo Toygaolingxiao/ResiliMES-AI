@@ -20,7 +20,8 @@ Checks, one counter each:
   own route step), one recipe, within capacity.
 - ``batch_all_started``: every lot the dispatcher chose for a start started.
 - ``batch_min``: a batch under BATCHMN started only with a logged wait-rule
-  reason (``hot_cap``, ``max_wait``, ``no_arrivals``, ``qtime_urgent``).
+  reason (``hot_cap``, ``max_wait``, ``no_arrivals``, ``qtime_urgent``, or
+  ``shift_lead`` when an attached AI shift lead chose to start it now).
 - ``qtime_recount``: Q-time violations recounted from the trace, with the
   simulator's strict ``>``, differ from the reported count.
 - ``sampling``: a lot skips only steps the lot-ID rule leaves unmeasured,
@@ -59,6 +60,7 @@ from resilimes.smt.fab import (
     release_at,
     transport_seconds,
 )
+from resilimes.smt.layout import family_buildings, resolve
 
 _WAFERS = 25
 CHECKS = (
@@ -81,7 +83,7 @@ CHECKS = (
     "reservation",
     "release",
 )
-UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent")
+UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent", "shift_lead")
 
 
 def check_trace(
@@ -124,6 +126,10 @@ def check_trace(
     open_override: tuple[int, float, int] | None = None
     policy = str(getattr(result, "policy", ""))
     moves = bool(getattr(result, "transport", True))
+    # Multi-building layout of the run (None = one building, as main).
+    layout = resolve((getattr(result, "layout", None) or {}).get("name") or False)
+    buildings = family_buildings(fab, layout) if layout is not None else None
+    cross_sec = layout.cross_building_sec if layout is not None else 0.0
     # (moment, family) the lot last left: a step end or a re-clean.
     released: list[tuple[float, int] | None] = [None] * n
     holding: list[set[int]] = [set() for _ in fab.tool_name]
@@ -255,7 +261,9 @@ def check_trace(
                     flag("route_order", f"{lot_id} started step {index}, next is {step[lot]}")
                 last = released[lot]
                 if last is not None:
-                    move = transport_seconds(fab, last[1], fam) if moves else 0.0
+                    move = (
+                        transport_seconds(fab, last[1], fam, buildings, cross_sec) if moves else 0.0
+                    )
                     if moment < last[0] + move - 1e-6:
                         flag(
                             "transport",

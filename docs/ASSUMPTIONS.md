@@ -14,7 +14,7 @@ Confirmed from the scaffold, the Zetaris knowledge base article on pipeline sche
 - Organisation id `1` is returned by `POST /api/auth/login` as `orgId`. Every REST call sends it as `X-Org-ID`. A call without it returns 400. `X-API-Key` alone returns 401.
 - Login returns `idToken` (about 900 seconds), `refreshToken`, and `orgId`. Refresh is `GET /auth/refresh` with the refresh token as Bearer plus `X-Org-ID`. The app uses a long-lived key from `POST /auth/api-key`, sent as `Authorization: Bearer`.
 - Success is `{headers, data, total, timeUsed}` and every value is a string. Failure is `{msg}` with status 400.
-- Postgres is container `fab-mes`. Zetaris datasources are `resilimes` (`fab_mes`), `fab_cmms`, and `fab_erp`, each with schema `resilimes`. The JDBC `schema` option is required. Tables are `<datasource>.<table>`. Cross-datasource views are not created.
+- Postgres is container `fab-mes`. Zetaris datasources are `resilimes` (`fab_mes`), `fab_cmms`, `fab_erp`, and `fab_ops` (simulator operations log for the AI evidence toolkit), each with schema `resilimes`. The JDBC `schema` option is required. Tables are `<datasource>.<table>`. Cross-datasource views are not created.
 
 The factory tables are created in Postgres by `scripts/zetaris_setup.sh`, then registered. `data/sql/seed.sql` is still all-`VARCHAR` sample data. `data/sql/kernel.sql` is typed SMT2020 data. The recovery path only `SELECT`s. `ZETARIS_SCHEMA` and every datasource in `ZETARIS_TABLE_SOURCES` must match `^[A-Za-z_][A-Za-z0-9_]*$`.
 

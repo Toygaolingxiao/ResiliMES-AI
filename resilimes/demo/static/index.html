@@ -58,6 +58,15 @@
             <button id="run-custom" class="run" type="button"></button>
           </details>
           <p id="status" class="status" role="status"></p>
+          <section id="sl-progress" class="sl-progress" aria-live="polite" hidden>
+            <h2 id="sl-title"></h2>
+            <p id="sl-head" class="sl-head"></p>
+            <div class="sl-bar"><span id="sl-fill"></span></div>
+            <p id="sl-sim" class="sl-line"></p>
+            <p id="sl-counts" class="sl-line"></p>
+            <p id="sl-latency" class="sl-line"></p>
+            <p id="sl-time" class="sl-line"></p>
+          </section>
         </aside>
         <section class="workspace">
           <div id="panel-recover" class="panel" role="tabpanel">
@@ -102,6 +111,7 @@
           </div>
           <div id="panel-analyze" class="panel scroll" role="tabpanel" hidden></div>
           <div id="panel-verify" class="panel scroll" role="tabpanel" hidden></div>
+          <div id="panel-ai" class="panel scroll" role="tabpanel" hidden></div>
         </section>
       </main>
     </div>
@@ -109,5 +119,6 @@
     <div id="tip" class="tip" hidden></div>
     <div id="route" class="route" hidden></div>
     <script src="/assets/app.js"></script>
+    <script src="/assets/ai.js"></script>
   </body>
 </html>

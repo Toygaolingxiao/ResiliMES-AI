@@ -393,6 +393,91 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `intent.concernDown` | {id} is down or in maintenance. | {id} 宕机或保养中。 | {id} は停止または保全中です。 |
 | `intent.concernHeld` | {id} is held. | {id} 被暂扣。 | {id} は保留中です。 |
 | `intent.suggestHold` | Review the hold on {id} before the book is published. | 发布前复核 {id} 的暂扣。 | 公開前に {id} の保留を確認してください。 |
+| `shiftLead.title` | AI shift lead · study run | AI班长 · 实验运行 | AI当直 · 検証の実行 |
+| `shiftLead.runs` | Runs | 轮次 | ラン |
+| `shiftLead.sim` | Sim time | 仿真时间 | シミュレーション時刻 |
+| `shiftLead.exceptions` | Exceptions | 异常 | 異常 |
+| `shiftLead.calls` | AI calls | AI 调用 | AI 呼び出し |
+| `shiftLead.accepted` | Accepted | 已采纳 | 採用 |
+| `shiftLead.fallback` | Rule fallback | 规则兜底 | ルールで代替 |
+| `shiftLead.timeout` | timeout | 超时 | タイムアウト |
+| `shiftLead.invalid` | invalid reply | 回复无效 | 無効な応答 |
+| `shiftLead.guardrail` | guardrail | 护栏拦截 | ガードレール |
+| `shiftLead.budget` | over budget | 超出预算 | 予算超過 |
+| `shiftLead.error` | error | 错误 | エラー |
+| `shiftLead.latency` | LLM latency avg / last | 模型延迟 平均 / 最近 | モデル応答 平均 / 直近 |
+| `shiftLead.waiting` | waiting for the model | 等待模型回复 | モデルの応答待ち |
+| `shiftLead.elapsed` | Elapsed | 已用时 | 経過 |
+| `shiftLead.eta` | ETA | 预计剩余 | 残り目安 |
+| `shiftLead.running` | Running | 运行中 | 実行中 |
+| `shiftLead.done` | Done | 已完成 | 完了 |
+| `shiftLead.failed` | Failed | 失败 | 失敗 |
+| `shiftLead.stale` | No update for over a minute | 超过 1 分钟未更新 | 1分以上更新なし |
+| `tabAi` | AI evidence | AI 证据 | AI エビデンス |
+| `tabAiTip` | Investigator, late-lot explainer and shift handover; advice only | 根因调查、迟交批次解释与交班报告；仅供参考 | 原因調査・遅延ロット説明・シフト引き継ぎ（助言のみ） |
+| `ai.intro` | Answers are written by the model from simulator evidence. Every number is checked against the tool results; nothing here changes the plan. | 回答由模型根据仿真证据撰写。每个数字都与工具结果核对；这里不会改动计划。 | 回答はシミュレーションの証拠からモデルが書きます。数字はすべてツール結果と照合し、計画は変更しません。 |
+| `ai.mock` | offline stand-in | 离线替身 | オフライン代替 |
+| `ai.live` | Nemotron | Nemotron | Nemotron |
+| `ai.factOk` | Fact check passed: every number and ID comes from a tool result. | 事实核对通过：每个数字和编号都来自工具结果。 | 事実確認に合格：数字と ID はすべてツール結果に由来します。 |
+| `ai.factFlag` | Not found in any tool result: | 以下内容在工具结果中找不到： | ツール結果に見つからない値： |
+| `ai.working` | Working… | 处理中… | 処理中… |
+| `ai.invTitle` | Investigator | 根因调查 | 原因調査 |
+| `ai.invHelp` | Pick an injected-fault case. The investigator re-runs it, gathers evidence in at most 6 calls and names one cause. | 选择一个注入故障的案例。调查器会重跑仿真，最多调用 6 次工具收集证据，并给出一个原因。 | 故障を注入したケースを選びます。調査役はシミュレーションを再実行し、最大 6 回の呼び出しで証拠を集め、原因を 1 つ挙げます。 |
+| `ai.invRun` | Investigate | 开始调查 | 調査する |
+| `ai.cause` | Primary cause | 主要原因 | 主因 |
+| `ai.second` | second | 次要 | 次点 |
+| `ai.lever` | Suggested lever | 建议措施 | 推奨アクション |
+| `ai.adviceOnly` | advice only, not applied | 仅为建议，未执行 | 助言のみ・未適用 |
+| `ai.calls` | Evidence calls | 证据调用 | 証拠の呼び出し |
+| `ai.truth` | Injected fault | 注入的故障 | 注入した故障 |
+| `ai.baseline` | Biggest-anomaly baseline | 最大异常基线 | 最大異常ベースライン |
+| `ai.causes.tool_down` | tool down | 机台宕机 | 装置ダウン |
+| `ai.causes.pm_in_peak` | PM in the arrival peak | 到货高峰期间做 PM | 到着ピーク中の PM |
+| `ai.causes.release_burst` | release burst | 集中投料 | 投入の集中 |
+| `ai.causes.setup_thrash` | setup thrash | 频繁换线 | 段取り替えの多発 |
+| `ai.causes.batch_cap` | batch size cap | 批量上限 | バッチサイズ上限 |
+| `ai.causes.upstream_starvation` | upstream starvation | 上游断料 | 上流からの供給切れ |
+| `ai.expTitle` | Late-lot explainer | 迟交批次解释 | 遅延ロットの説明 |
+| `ai.expHelp` | Pick a late lot from the 48 h run. Its lateness is split into exact parts; the model explains it and proposes one change, which is checked by re-running the simulation. | 从 48 小时仿真中选择一个迟交批次。迟交时间被精确拆分；模型给出解释并提出一项改动，再通过重跑仿真来验证。 | 48 時間シミュレーションから遅延ロットを選びます。遅延時間を正確に内訳し、モデルが説明と変更案を 1 つ示し、シミュレーションの再実行で検証します。 |
+| `ai.expRun` | Explain | 解释 | 説明する |
+| `ai.lateBy` | late by | 迟交 | 遅延 |
+| `ai.sumOk` | The parts add up exactly to the lateness. | 各部分之和与迟交时间完全一致。 | 内訳の合計は遅延時間と完全に一致します。 |
+| `ai.sumBad` | The parts do not add up to the lateness. | 各部分之和与迟交时间不一致。 | 内訳の合計が遅延時間と一致しません。 |
+| `ai.cfTitle` | What-if | 假设分析 | もしも分析 |
+| `ai.cfExpected` | expected saving | 预计节省 | 想定短縮 |
+| `ai.cfActual` | re-run saving | 重跑后节省 | 再実行での短縮 |
+| `ai.cfHit` | confirmed | 已证实 | 確認済み |
+| `ai.cfMiss` | not confirmed | 未证实 | 未確認 |
+| `ai.buckets.processing` | processing | 加工 | 処理 |
+| `ai.buckets.setup` | setup | 换线 | 段取り |
+| `ai.buckets.transport` | transport | 搬送 | 搬送 |
+| `ai.buckets.down` | tool down | 机台宕机 | 装置ダウン |
+| `ai.buckets.pm` | PM | PM | PM |
+| `ai.buckets.batch_wait` | waiting for a batch | 等待凑批 | バッチ待ち |
+| `ai.buckets.lots_ahead` | lots ahead | 前方排队批次 | 先行ロット |
+| `ai.buckets.qtime` | Q-time | Q-time | Q-time |
+| `ai.buckets.ai_decision` | AI decision | AI 决策 | AI の判断 |
+| `ai.buckets.dispatch_other` | other dispatch | 其他派工原因 | その他の払い出し要因 |
+| `ai.buckets.release_hold` | release hold | 投料保留 | 投入保留 |
+| `ai.buckets.late_at_snapshot` | already late at the start | 开始时已迟交 | 開始時点で遅延 |
+| `ai.levers.prioritise` | make it the hot lot | 设为急件 | 特急ロットにする |
+| `ai.levers.clear_down` | no tool down while it waits | 等待期间机台不宕机 | 待ち中に装置ダウンなし |
+| `ai.levers.skip_pm` | defer PM while it waits | 等待期间推迟 PM | 待ち中の PM を延期 |
+| `ai.hoTitle` | Shift handover report | 交接班报告 | シフト引き継ぎレポート |
+| `ai.hoHelp` | A 12 h shift summarised in 2 h chunks: top issues, WIP bubbles, at-risk lots, tools down with repair ETA, next-shift PM and overrides with their outcome. Every number is checked against the run. | 将 12 小时班次按 2 小时分段汇总：主要问题、WIP 堆积、有延误风险的批次、停机设备及预计修复时间、下一班 PM，以及被让行的批次及其结果。所有数字均与仿真结果核对。 | 12 時間のシフトを 2 時間ごとに要約します：主な問題、WIP 滞留、遅延リスクのあるロット、ダウン中の装置と復旧見込み、次シフトの PM、後回しにされたロットとその結果。すべての数値はシミュレーション結果と照合します。 |
+| `ai.hoRun` | Write handover | 生成交接报告 | 引き継ぎを作成 |
+| `ai.hoShift` | Shift | 班次 | シフト |
+| `ai.hoEngine` | Engine | 引擎 | エンジン |
+| `ai.hoChunks` | Chunks | 分段 | チャンク |
+| `ai.hoRecall` | Must-mention recall | 必提项召回率 | 必須項目の再現率 |
+
+## AI shift lead study progress (new, needs zh/ja review)
+
+The `shiftLead.*` keys label the study progress card in the console rail
+(`GET /api/shift-lead/status`, fed by `<out>.progress.json`). zh follows
+"AI班长" from docs/AI_SHIFT_LEAD.md; ja uses "当直" for the shift. The fallback
+causes (`timeout`, `invalid`, `guardrail`, `budget`, `error`) are the reasons the
+shift lead fell back to the rules.
 
 ## zh / ja strings for owner review
 

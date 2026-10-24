@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from resilimes import __version__
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
+from resilimes.api.insight import router as insight_router
 from resilimes.api.intents import (
     ConfirmationState,
     ConfirmBody,
@@ -34,6 +35,8 @@ from resilimes.domain.scenarios import list_scenarios
 from resilimes.engines.contracts import ContractError
 from resilimes.llm.nightshift import probe_nightshift
 from resilimes.logging_config import configure_logging
+from resilimes.smt.freeze import list_tick_logs, read_tick_log, tick_log_dir
+from resilimes.smt.progress import read_progress
 from resilimes.smt.scenarios import SCENARIOS as SMT_SCENARIOS
 from resilimes.smt.scenarios import run_smt, scenario_payload
 from resilimes.txn.engine import InMemoryEngine, LockError
@@ -88,9 +91,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "horizon": cfg.horizon.strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         if cfg.fab == "smt2020":
-            from resilimes.smt.fab import load_fab
+            from resilimes.smt.fab import fab_source, load_fab
 
-            fab = load_fab()
+            fab = load_fab(cfg)
+            body["smt_source"] = fab_source(fab)
             body["horizon"] = fab.snapshot
             body["groups"] = len(fab.families)
             body["tools"] = len(fab.tool_name)
@@ -98,11 +102,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             body["lots"] = len(fab.lot_id)
         return body
 
+    @app.get("/api/shift-lead/status")
+    def shift_lead_status() -> dict[str, Any]:
+        """The latest study progress file (``<out>.progress.json``), read-only.
+
+        Picked from RESILIMES_PROGRESS_FILE, else the newest one in
+        RESILIMES_PROGRESS_DIR (default: the working directory).
+        ``{"available": false}`` when there is none.
+        """
+        return read_progress()
+
     @app.get("/api/scenarios")
     def scenarios() -> dict[str, object]:
         cfg: Settings = app.state.settings
         if cfg.fab == "smt2020":
-            return scenario_payload()
+            from resilimes.smt.fab import load_fab
+
+            try:
+                fab = load_fab(cfg)
+            except Exception as exc:  # RESILIMES_SMT_SOURCE=zetaris and the read failed
+                raise HTTPException(status_code=503, detail=str(exc)[:300]) from exc
+            return scenario_payload(fab)
         try:
             plant, _records = build_source(cfg).load_plant(cfg.horizon)
         except (ConfigError, ZetarisDataError, PlantDataError) as exc:
@@ -241,12 +261,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
+    @app.get("/api/sched/ticks")
+    def sched_ticks(run: str | None = None, offset: int = 0, limit: int = 50) -> dict[str, Any]:
+        """Scheduling-tick log of a sim run (sched-freeze), paged; no run lists runs."""
+        folder = tick_log_dir()
+        if run is None:
+            return {"folder": folder, "runs": list_tick_logs(folder)}
+        try:
+            return read_tick_log(folder, run, max(0, offset), max(1, min(limit, 500)))
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown tick log.") from exc
+
     @app.post("/api/providers/probe")
     def probe() -> dict[str, object]:
         cfg: Settings = app.state.settings
         if not cfg.use_nightshift:
             return {"llm": "mock", "skipped": True, "detail": "Nightshift is not selected."}
         return {"llm": "nightshift", "skipped": False, **probe_nightshift(cfg)}
+
+    app.include_router(insight_router)
 
     if _STATIC.exists():
         app.mount("/assets", StaticFiles(directory=_STATIC), name="assets")

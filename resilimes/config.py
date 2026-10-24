@@ -57,6 +57,8 @@ class Settings(BaseModel):
     zetaris_api_key: str = ""
     zetaris_sql_path: str = "/sql-editor/sqls/run-query"
     zetaris_schema: str = "resilimes"
+    # SMT2020 master data source: file, zetaris, or auto (zetaris when use_zetaris).
+    smt_source: str = "auto"
     zetaris_query_limit: int = 1000
     zetaris_timeout_s: float = 30.0
     # Override only. Empty means sql_catalog defaults (fab_cmms / fab_erp).
@@ -127,9 +129,13 @@ def load_settings() -> Settings:
     except ValueError as exc:
         raise ConfigError(str(exc)) from exc
     timeout_raw = _env("ZETARIS_TIMEOUT_S", "30") or "30"
+    smt_source = _env("RESILIMES_SMT_SOURCE", "auto").lower() or "auto"
+    if smt_source not in {"auto", "file", "zetaris"}:
+        raise ConfigError("RESILIMES_SMT_SOURCE must be auto, file, or zetaris")
     return Settings(
         mode=mode,
         fab=fab,
+        smt_source=smt_source,
         host=_env("RESILIMES_HOST", "0.0.0.0"),
         port=int(_env("RESILIMES_PORT", "8000") or "8000"),
         log_level=_env("RESILIMES_LOG_LEVEL", "INFO"),

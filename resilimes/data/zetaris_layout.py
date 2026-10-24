@@ -34,6 +34,40 @@ KERNEL_TABLE_SOURCES: dict[str, str] = {
     "orders": "fab_erp",
 }
 
+# SMT2020 master data (data/sql/smt2020_seed.sql). MES files stay in the
+# ``resilimes`` datasource; calendars live with CMMS, the order book with ERP.
+SMT_TABLE_SOURCES: dict[str, str] = {
+    "smt_pmcal": "fab_cmms",
+    "smt_attach": "fab_cmms",
+    "smt_downcal": "fab_cmms",
+    "smt_order": "fab_erp",
+}
+
+SMT_DATABASE_FOR_TABLE: dict[str, str] = {
+    "smt_tool": "fab_mes",
+    "smt_wip": "fab_mes",
+    "smt_part": "fab_mes",
+    "smt_route": "fab_mes",
+    "smt_setup": "fab_mes",
+    "smt_setupgrp": "fab_mes",
+    "smt_fromto": "fab_mes",
+    "smt_files": "fab_mes",
+    "smt_columns": "fab_mes",
+    "smt_pmcal": "fab_cmms",
+    "smt_attach": "fab_cmms",
+    "smt_downcal": "fab_cmms",
+    "smt_order": "fab_erp",
+}
+
+# Operations log of recorded simulator runs (data/sql/fab_ops_seed.sql): what
+# happened, which decisions were taken, hourly KPIs. Read by the AI evidence
+# toolkit through the ``fab_ops`` datasource; never written by the agent.
+OPS_DATABASE_FOR_TABLE: dict[str, str] = {
+    "ops_events": "fab_ops",
+    "ops_ai_decisions": "fab_ops",
+    "ops_kpi_hourly": "fab_ops",
+}
+
 # Postgres database that owns the table. The schema inside each database is
 # ``resilimes``. Kernel tables follow the same ownership as the spec.
 DATABASE_FOR_TABLE: dict[str, str] = {
@@ -54,12 +88,23 @@ DATABASE_FOR_TABLE: dict[str, str] = {
     "bom": "fab_erp",
     "materials": "fab_erp",
     "orders": "fab_erp",
+    **SMT_DATABASE_FOR_TABLE,
+    **OPS_DATABASE_FOR_TABLE,
 }
 
 DATASOURCE_FOR_DATABASE: dict[str, str] = {
     "fab_mes": "resilimes",
     "fab_cmms": "fab_cmms",
     "fab_erp": "fab_erp",
+    "fab_ops": "fab_ops",
+}
+
+# DESCRIBE BY text per database, as in the owner's verified setup script.
+DESCRIBE_FOR_DATABASE: dict[str, str] = {
+    "fab_mes": "ResiliMES_MES.fab_mes",
+    "fab_cmms": "Maintenance_CMMS.fab_cmms",
+    "fab_erp": "ERP_materials_bom.fab_erp",
+    "fab_ops": "Fab_operations_log.fab_ops",
 }
 
 # The owner's federated check. Spark SQL: no casts, datasource-qualified names.
@@ -129,44 +174,73 @@ def qualify(
 
 
 def _sql_statements(sql: str) -> list[str]:
-    """Split on semicolons that are outside single-quoted literals."""
+    """Split SQL into statements, comments removed.
+
+    Semicolons count only outside ``'...'`` literals (``''`` escapes),
+    ``"..."`` identifiers (``""`` escapes), ``-- ...`` line comments and
+    ``/* ... */`` block comments (nested, as in Postgres). Comments are
+    dropped from the output, so a statement never starts with comment text
+    and pure-comment fragments disappear. Dollar quoting is not supported;
+    the seeds do not use it, and ``split_sql`` rejects anything that does
+    not name a ``resilimes`` table.
+    """
     parts: list[str] = []
     buf: list[str] = []
-    quoted = False
     index = 0
-    while index < len(sql):
+    size = len(sql)
+    while index < size:
         char = sql[index]
-        if char == "'" and quoted and index + 1 < len(sql) and sql[index + 1] == "'":
-            buf.append("''")
-            index += 2
+        pair = sql[index : index + 2]
+        if pair == "--":
+            newline = sql.find("\n", index)
+            index = size if newline < 0 else newline
             continue
-        if char == "'":
-            quoted = not quoted
-            buf.append(char)
-            index += 1
+        if pair == "/*":
+            depth = 0
+            while index < size:
+                if sql.startswith("/*", index):
+                    depth += 1
+                    index += 2
+                elif sql.startswith("*/", index):
+                    depth -= 1
+                    index += 2
+                    if depth == 0:
+                        break
+                else:
+                    index += 1
+            if depth:
+                raise ValueError("Unterminated /* comment in SQL")
+            buf.append(" ")
             continue
-        if char == ";" and not quoted:
+        if char in "'\"":
+            close = index + 1
+            while True:
+                close = sql.find(char, close)
+                if close < 0:
+                    raise ValueError(f"Unterminated {char} quote in SQL")
+                if sql.startswith(char * 2, close):
+                    close += 2
+                    continue
+                break
+            buf.append(sql[index : close + 1])
+            index = close + 1
+            continue
+        if char == ";":
             parts.append("".join(buf))
             buf = []
             index += 1
             continue
         buf.append(char)
         index += 1
-    if buf:
-        parts.append("".join(buf))
-    return parts
+    parts.append("".join(buf))
+    return [part.strip() for part in parts if part.strip()]
 
 
 def split_sql(sql: str) -> dict[str, str]:
     """Route each ``resilimes.<table>`` statement to the database that owns it."""
     buckets: dict[str, list[str]] = {name: [] for name in DATASOURCE_FOR_DATABASE}
     for raw in _sql_statements(sql):
-        lines = [
-            line for line in raw.splitlines() if line.strip() and not line.strip().startswith("--")
-        ]
-        statement = "\n".join(lines).strip()
-        if not statement:
-            continue
+        statement = "\n".join(line.rstrip() for line in raw.splitlines() if line.strip())
         tables = {name.lower() for name in _TABLE_REF.findall(statement)}
         if not tables:
             raise ValueError(f"SQL does not name a resilimes table: {statement[:80]}")
@@ -193,7 +267,7 @@ def datasource_ddl(database: str, *, user: str, password: str) -> list[str]:
     if not _SECRET.match(password or ""):
         raise ValueError("JDBC password must be alphanumeric so it cannot break the DDL")
     name = DATASOURCE_FOR_DATABASE[database]
-    describe = f"{database}.resilimes"
+    describe = DESCRIBE_FOR_DATABASE[database]
     jdbc = f"jdbc:postgresql://fab-mes:5432/{database}"
     options = (
         f'jdbcdriver "org.postgresql.Driver", '
@@ -215,7 +289,12 @@ def datasource_ddl(database: str, *, user: str, password: str) -> list[str]:
 
 def write_split(sql_paths: list[Path], directory: Path) -> dict[str, Path]:
     """Write one SQL file per database. Each file replaces schema ``resilimes``."""
-    chunks = [path.read_text(encoding="utf-8") for path in sql_paths if path.is_file()]
+    # A Windows checkout without .gitattributes may hand us CRLF; Postgres gets LF.
+    chunks = [
+        path.read_text(encoding="utf-8").replace("\r\n", "\n")
+        for path in sql_paths
+        if path.is_file()
+    ]
     if not chunks:
         raise ValueError("No SQL files to split")
     directory.mkdir(parents=True, exist_ok=True)
@@ -226,6 +305,16 @@ def write_split(sql_paths: list[Path], directory: Path) -> dict[str, Path]:
         destination.write_text(header + body, encoding="utf-8")
         written[database] = destination
     return written
+
+
+def tables_in(sql_paths: list[Path]) -> list[str]:
+    """Every known ``resilimes.<table>`` the given SQL files name, sorted."""
+    found: set[str] = set()
+    for path in sql_paths:
+        if path.is_file():
+            for statement in _sql_statements(path.read_text("utf-8")):
+                found.update(name.lower() for name in _TABLE_REF.findall(statement))
+    return sorted(found & set(DATABASE_FOR_TABLE))
 
 
 def scrub(text: str, secrets: list[str]) -> str:
