@@ -68,6 +68,7 @@ CHECKS = (
     "sampling",
     "qtime_override",
     "transport",
+    "qtime_hold",
 )
 UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent")
 
@@ -102,6 +103,7 @@ def check_trace(
     q_origin = [-1] * n
     # Windows inherited from the snapshot open at t=0 and are counted apart.
     q_inherited = [False] * n
+    hold_until: dict[int, float] = {}
     for lot, origin, target, limit in inherited_windows(fab):
         q_target[lot] = target
         q_origin[lot] = origin
@@ -206,6 +208,8 @@ def check_trace(
                 number = lot_number(lot_id, lot)
                 if index != start_step and not measured(route, index, number):
                     flag("sampling", f"{lot_id} ran unsampled step {index}")
+                if moment < hold_until.get(lot, 0.0) - 1e-6:
+                    flag("qtime_hold", f"{lot_id} started at {moment:.1f} inside its Q-time hold")
                 if rework_step[lot] >= 0:
                     early = moment < rework_at[lot] + REWORK_SEC - 1e-6
                     if index != rework_step[lot] or early:
@@ -268,12 +272,22 @@ def check_trace(
                 q_origin[lot] = -1
                 q_inherited[lot] = False
             step[lot] = index + 1
-        elif kind == "reclean":
+        elif kind in ("reclean", "qhold"):
+            # The deadline passed with the target not started: the lot is at a
+            # step of the open span (origin excluded), waiting, not on a tool.
             _kind, moment, lot, index, origin = event
-            if q_target[lot] == index and moment > q_deadline[lot]:
+            in_span = q_origin[lot] < index <= q_target[lot] and step[lot] == index
+            if in_span and moment > q_deadline[lot] and not running[lot]:
                 violations += 0 if q_inherited[lot] else 1
             else:
-                flag("qtime_recount", f"{fab.lot_id[lot]} re-clean without a missed window")
+                flag("qtime_recount", f"{fab.lot_id[lot]} {kind} without a missed window")
+            rework_step[lot] = -1
+            if kind == "qhold":
+                hold_until[lot] = moment + REWORK_SEC
+                q_target[lot] = -1
+                q_origin[lot] = -1
+                q_inherited[lot] = False
+                continue
             q_target[lot] = -1
             q_origin[lot] = -1
             q_inherited[lot] = False

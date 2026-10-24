@@ -50,10 +50,16 @@ _DOWN_END = 2
 _WAKE = 3
 # A lot reaches the next family's queue after its transport. The slot holds the lot.
 _ARRIVE = 4
+# The latest start of a lot's open Q-time window. The slot holds the lot and
+# gen holds the window generation (qgen), so a closed window's event is stale.
+_QDEADLINE = 5
 _BIN_SEC = 900.0
 _BUCKETS = ("met", "late", "held", "recleaned", "expired", "live", "skipped")
 _MISSED = ("late", "held", "recleaned", "expired")
 _WAFERS = 25
+# The deadline event fires just after the latest start, so a start exactly at
+# the deadline still counts as met.
+_DEADLINE_EPS = 1e-3
 # Due dates in the X-factor book. Middle of the 2.5-3 range.
 X_FACTOR = 2.75
 # Lots at least this tight stay in the candidate list when the family cap is on.
@@ -151,6 +157,7 @@ class RunResult:
     # Lot-minutes of Q-time hold (deadline passed, not reworkable), apart from
     # the breakdown rework hold in rework_lot_min.
     qtime_hold_lot_min: float = 0.0
+    qtime_holds: int = 0
 
 
 def rework_ready(moment: float) -> float:
@@ -321,7 +328,13 @@ def run_policy(
     bar_until: float | None = None,
     record: bool = False,
     transport: bool = True,
+    deadline_event: bool = True,
+    r2_policy: bool = True,
 ) -> RunResult:
+    """One run. ``deadline_event`` (all policies) sends an un-started lot to
+    re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
+    ResiliMES-only Q-time r2 dispatch rules (shortlist admission, graded
+    urgency, bounded tool reservation); False is the ablation."""
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     sim = _Sim(
@@ -341,6 +354,8 @@ def run_policy(
         bar_until=bar_until,
         record=record,
         transport=transport,
+        deadline_event=deadline_event,
+        r2_policy=r2_policy,
     )
     return sim.run()
 
@@ -406,8 +421,11 @@ class _Sim:
         bar_until: float | None = None,
         record: bool = False,
         transport: bool = True,
+        deadline_event: bool = True,
+        r2_policy: bool = True,
     ) -> None:
         self.fab = fab
+        self.r2 = r2_policy and policy == "resilimes"
         self.record = record
         self.transport = transport
         self.events: list[tuple[Any, ...]] = []
@@ -514,6 +532,9 @@ class _Sim:
         self.qout: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
         self.qinh: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
         self.hold_sec = 0.0
+        self.held = 0
+        self.q_pending = [False] * self.n
+        self.deadline_event = deadline_event
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -549,6 +570,8 @@ class _Sim:
                 self.down_start(tool, moment)
             elif kind == _ARRIVE:
                 self.enqueue(tool, moment)
+            elif kind == _QDEADLINE:
+                self.q_deadline(tool, moment, gen)
             elif kind in (_DOWN_END, _WAKE):
                 self.release_idle(tool)
                 self.try_start(tool, moment)
@@ -574,6 +597,9 @@ class _Sim:
         self.cqt_from[lot] = origin
         self.inherited[lot] = inherited
         self.qgen[lot] += 1
+        self.q_pending[lot] = False
+        if self.deadline_event:
+            self.push(moment + limit + _DEADLINE_EPS, _QDEADLINE, lot, self.qgen[lot])
 
     def close_window(self, lot: int, outcome: str) -> None:
         """Count the window's outcome once and close it."""
@@ -584,8 +610,47 @@ class _Sim:
         self.cqt_at[lot] = -1
         self.inherited[lot] = False
         self.qgen[lot] += 1
+        self.q_pending[lot] = False
+
+    def q_deadline(self, lot: int, moment: float, gen: int) -> None:
+        """The latest start passed with the target step not started.
+
+        A lot waiting in a queue (at the target or an earlier step of the span)
+        is handled now. A lot in process, in transit or in breakdown rework is
+        handled when it next reaches a queue.
+        """
+        if gen != self.qgen[lot] or self.cqt_at[lot] < 0:
+            return
+        if self.waiting[lot]:
+            self.expire(lot, moment, queued=True)
+        else:
+            self.q_pending[lot] = True
+
+    def expire(self, lot: int, moment: float, *, queued: bool) -> None:
+        """Re-clean (Wet_Etch origin, first miss) or Q-time hold, then requeue."""
+        fam = self.step_family(lot)
+        if self._can_reclean(lot, moment):
+            self._reclean(lot, fam, moment, queued=queued)
+            return
+        index = self.step[lot]
+        target = self.cqt_at[lot]
+        self.close_window(lot, "held")
+        if queued:
+            self.waiting[lot] = False
+            self.depth[fam] = max(0, self.depth[fam] - 1)
+            if lot in self.queues[fam]:
+                self.queues[fam].remove(lot)
+        self.held += 1
+        self.hold_sec += max(0.0, min(REWORK_SEC, self.horizon - moment))
+        if self.record:
+            self.events.append(("qhold", moment, lot, index, target))
+        self.push(moment + REWORK_SEC, _ARRIVE, lot)
 
     def enqueue(self, lot: int, moment: float) -> None:
+        if self.q_pending[lot] and self.cqt_at[lot] >= 0:
+            self.expire(lot, moment, queued=False)
+            return
+        self.q_pending[lot] = False
         route = self.fab.routes[self.fab.lot_route[lot]]
         fam = route.family[self.step[lot]]
         self.ready[lot] = moment
@@ -1159,17 +1224,21 @@ class _Sim:
         self.account(tool, fam, moment, finish, started)
 
     def _can_reclean(self, lot: int, moment: float) -> bool:
+        # Any step of the span, origin excluded: with the deadline event a lot
+        # can miss its window while still upstream of the target.
         index = self.step[lot]
-        if self.cqt_at[lot] != index or self.deadline[lot] <= 0 or moment <= self.deadline[lot]:
-            return False
         origin = self.cqt_from[lot]
+        if not origin < index <= self.cqt_at[lot]:
+            return False
+        if self.deadline[lot] <= 0 or moment <= self.deadline[lot]:
+            return False
         if origin < 0 or self.rework[lot] >= 1:
             return False
         route = self.fab.routes[self.fab.lot_route[lot]]
         return self.fab.families[route.family[origin]].group == "Wet_Etch"
 
-    def _reclean(self, lot: int, fam: int, moment: float) -> bool:
-        """One re-clean. The lot is not held. A second miss just counts."""
+    def _reclean(self, lot: int, fam: int, moment: float, *, queued: bool = True) -> bool:
+        """One re-clean. The lot is not held. A second miss goes to Q-time hold."""
         if not self._can_reclean(lot, moment):
             return False
         index = self.step[lot]
@@ -1178,10 +1247,11 @@ class _Sim:
         self.rework[lot] += 1
         self.close_window(lot, "recleaned")
         self.deadline[lot] = 0.0
-        self.waiting[lot] = False
-        self.depth[fam] = max(0, self.depth[fam] - 1)
-        if lot in self.queues[fam]:
-            self.queues[fam].remove(lot)
+        if queued:
+            self.waiting[lot] = False
+            self.depth[fam] = max(0, self.depth[fam] - 1)
+            if lot in self.queues[fam]:
+                self.queues[fam].remove(lot)
         if self.record:
             self.events.append(("reclean", moment, lot, index, origin))
         self.step[lot] = origin
@@ -1439,6 +1509,7 @@ class _Sim:
             qtime_inherited_windows=sum(qinh.values()),
             qtime_inherited_missed=sum(qinh[key] for key in _MISSED),
             qtime_hold_lot_min=round(self.hold_sec / 60.0, 1),
+            qtime_holds=self.held,
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)

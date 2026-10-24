@@ -72,6 +72,7 @@ _KEYS = (
     "qtime_inherited_windows",
     "qtime_inherited_missed",
     "qtime_hold_lot_min",
+    "qtime_holds",
 )
 
 _X_ETAS = (180.0, 300.0, 600.0, LITHO_MTTR_MIN)
