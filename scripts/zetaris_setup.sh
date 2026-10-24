@@ -1,19 +1,35 @@
 #!/usr/bin/env bash
 # Idempotent reload of fab-mes and the three Zetaris datasources.
-# From Windows: wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh [seed.sql]
+# From Windows: wsl -d Ubuntu -- bash /mnt/c/code/ResiliMES-AI/scripts/zetaris_setup.sh [seed.sql ...]
+# With no arguments it loads data/sql/seed.sql and data/sql/smt2020_seed.sql.
+# Every run rebuilds schema resilimes in fab_mes, fab_cmms and fab_erp from
+# exactly the seeds given (plus data/sql/kernel.sql), so list every seed you want.
 # Secrets are never printed. See docs/ZETARIS.md.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SEED="${1:-$ROOT/data/sql/seed.sql}"
+SEEDS=("$@")
+if [[ ${#SEEDS[@]} -eq 0 ]]; then
+  SEEDS=("$ROOT/data/sql/seed.sql")
+  if [[ -f "$ROOT/data/sql/smt2020_seed.sql" ]]; then
+    SEEDS+=("$ROOT/data/sql/smt2020_seed.sql")
+  fi
+fi
 KERNEL="$ROOT/data/sql/kernel.sql"
 CONF_DIR="${HOME}/.config/fab-mes"
 ENV_FILE="$CONF_DIR/env"
 
-if [[ ! -f "$SEED" ]]; then
-  echo "Seed SQL not found: $SEED" >&2
-  exit 1
-fi
+for index in "${!SEEDS[@]}"; do
+  seed="${SEEDS[$index]}"
+  if [[ ! -f "$seed" && -f "$ROOT/$seed" ]]; then
+    seed="$ROOT/$seed"
+  fi
+  if [[ ! -f "$seed" ]]; then
+    echo "Seed SQL not found: $seed" >&2
+    exit 1
+  fi
+  SEEDS[$index]="$(cd "$(dirname "$seed")" && pwd)/$(basename "$seed")"
+done
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required to start fab-mes." >&2
@@ -81,18 +97,21 @@ fi
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/fab-mes.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
-PYTHONPATH="$ROOT" python3 - "$SEED" "$KERNEL" "$WORK" <<'PY'
+PYTHONPATH="$ROOT" python3 - "$WORK" "$KERNEL" "${SEEDS[@]}" <<'PY'
 import sys
 from pathlib import Path
 
-from resilimes.data.zetaris_layout import write_split
+from resilimes.data.zetaris_layout import tables_in, write_split
 
-seed, kernel, directory = (Path(arg) for arg in sys.argv[1:])
-paths = [seed]
+directory, kernel, *seeds = (Path(arg) for arg in sys.argv[1:])
+paths = list(seeds)
 if kernel.is_file():
     paths.append(kernel)
 written = write_split(paths, directory)
-print("split " + " ".join(sorted(written)))
+tables = tables_in(paths)
+(directory / "tables.txt").write_text(",".join(tables), encoding="utf-8")
+print("seeds " + " ".join(path.name for path in paths))
+print("split " + " ".join(sorted(written)) + f" tables={len(tables)}")
 PY
 
 for database in fab_mes fab_cmms fab_erp; do
@@ -110,5 +129,6 @@ for database in fab_mes fab_cmms fab_erp; do
 done
 
 echo "Registering Zetaris datasources."
-PYTHONPATH="$ROOT" python3 -m resilimes.data.zetaris_admin
+RESILIMES_LOADED_TABLES="$(cat "${WORK}/tables.txt")" \
+  PYTHONPATH="$ROOT" python3 -m resilimes.data.zetaris_admin
 echo "Reload finished."

@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import sys
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +18,7 @@ from resilimes.data.zetaris_layout import (
     DATABASE_FOR_TABLE,
     DATASOURCE_FOR_DATABASE,
     FEDERATED_SQL,
+    SMT_DATABASE_FOR_TABLE,
     datasource_ddl,
     scrub,
 )
@@ -33,14 +34,28 @@ def api_key_body() -> dict[str, str]:
     return {"name": "resilimes-ai", "expiryDate": "2099-01-01T00:00:00.000Z"}
 
 
-def select_sql() -> list[str]:
-    """One probe per table, plus the federated join."""
+def select_sql(tables: Collection[str] | None = None) -> list[str]:
+    """One probe per loaded table, plus the federated join when the sample tables are loaded.
+
+    ``tables`` is what the setup script just loaded (``None`` means every known
+    table), so a reload with only some seeds does not probe tables it never made.
+    """
+    wanted = set(DATABASE_FOR_TABLE) if tables is None else set(tables) & set(DATABASE_FOR_TABLE)
     queries = [
         f"SELECT * FROM {DATASOURCE_FOR_DATABASE[database]}.{table} LIMIT 1"
         for table, database in sorted(DATABASE_FOR_TABLE.items())
+        if table in wanted
     ]
-    queries.append(FEDERATED_SQL)
+    if any(table not in SMT_DATABASE_FOR_TABLE for table in wanted):
+        queries.append(FEDERATED_SQL)
     return queries
+
+
+def loaded_tables(value: str | None) -> list[str] | None:
+    """Parse ``RESILIMES_LOADED_TABLES`` (comma separated) from the setup script."""
+    if not value or not value.strip():
+        return None
+    return [name.strip().lower() for name in value.split(",") if name.strip()]
 
 
 def register(
@@ -53,6 +68,7 @@ def register(
     jdbc_user: str,
     jdbc_password: str,
     api_key: str = "",
+    tables: Collection[str] | None = None,
 ) -> tuple[list[str], str]:
     """Login, reuse or mint an API key, then DROP/CREATE/REGISTER and probe.
 
@@ -112,7 +128,7 @@ def register(
                 return lines, key
             note(f"sql ok database={database} status={status} bytes={len(statement)}")
             del payload
-    for statement in select_sql():
+    for statement in select_sql(tables):
         status, payload = post(sql_url, {"sql": statement}, headers)
         rows = 0
         if isinstance(payload, dict):
@@ -156,6 +172,7 @@ def main() -> int:
     existing = key_path.read_text(encoding="utf-8").strip() if key_path.is_file() else ""
     base = os.getenv("ZETARIS_BASE_URL", "http://localhost:3000")
     rest = os.getenv("ZETARIS_REST_URL", "http://127.0.0.1:8888/api/v1.0")
+    tables = loaded_tables(os.getenv("RESILIMES_LOADED_TABLES"))
 
     def post(
         url: str, body: dict[str, Any], headers: dict[str, str]
@@ -176,6 +193,7 @@ def main() -> int:
         jdbc_user=fab.get("POSTGRES_USER", "fab"),
         jdbc_password=jdbc_password,
         api_key=existing,
+        tables=tables,
     )
     for line in lines:
         print(line)
@@ -185,7 +203,11 @@ def main() -> int:
         print(f"api key stored in {key_path} (not printed)")
     if any(line.startswith("sql failed") or line.startswith("login failed") for line in lines):
         return 1
-    if not any(line.startswith("probe federated") for line in lines):
+    if any(line.startswith("probe ") and "status=200" not in line for line in lines):
+        return 1
+    if FEDERATED_SQL in select_sql(tables) and not any(
+        line.startswith("probe federated") for line in lines
+    ):
         return 1
     return 0
 

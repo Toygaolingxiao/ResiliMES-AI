@@ -28,6 +28,7 @@ from resilimes.data.smt2020_sql import (
 from resilimes.data.zetaris_layout import (
     DATABASE_FOR_TABLE,
     DATASOURCE_FOR_DATABASE,
+    SMT_DATABASE_FOR_TABLE,
     SMT_TABLE_SOURCES,
     split_sql,
 )
@@ -232,3 +233,19 @@ def test_api_labels_the_master_data_source(seed: str, monkeypatch: pytest.Monkey
     health = client.get("/api/health").json()
     assert health["smt_source"]["source"] == "zetaris"
     assert "secret-key-xyz" not in str(health["smt_source"])
+
+
+def test_setup_probes_only_loaded_tables() -> None:
+    from resilimes.data.zetaris_admin import loaded_tables, select_sql
+    from resilimes.data.zetaris_layout import FEDERATED_SQL, tables_in
+
+    smt_only = tables_in([ROOT / "data" / "sql" / "smt2020_seed.sql"])
+    assert smt_only == sorted(SMT_DATABASE_FOR_TABLE)
+    probes = select_sql(smt_only)
+    assert len(probes) == len(SMT_DATABASE_FOR_TABLE)
+    assert "fab_cmms.smt_pmcal" in " ".join(probes) and FEDERATED_SQL not in probes
+    both = tables_in(
+        [ROOT / "data" / "sql" / "seed.sql", ROOT / "data" / "sql" / "smt2020_seed.sql"]
+    )
+    assert select_sql(loaded_tables(",".join(both)))[-1] == FEDERATED_SQL
+    assert loaded_tables("") is None and select_sql(None) == select_sql()

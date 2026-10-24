@@ -254,6 +254,15 @@ def write_split(sql_paths: list[Path], directory: Path) -> dict[str, Path]:
     return written
 
 
+def tables_in(sql_paths: list[Path]) -> list[str]:
+    """Every known ``resilimes.<table>`` the given SQL files name, sorted."""
+    found: set[str] = set()
+    for path in sql_paths:
+        if path.is_file():
+            found.update(name.lower() for name in _TABLE_REF.findall(path.read_text("utf-8")))
+    return sorted(found & set(DATABASE_FOR_TABLE))
+
+
 def scrub(text: str, secrets: list[str]) -> str:
     """Replace any secret of length >= 4. Shorter tokens are left alone."""
     cleaned = text
