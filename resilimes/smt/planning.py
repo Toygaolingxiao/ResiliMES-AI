@@ -83,12 +83,12 @@ import math
 import time
 from bisect import bisect_right
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from resilimes.config import ROOT
 from resilimes.data.smt2020_kernel import SNAPSHOT, _rows, _stamp, _to_sec
-from resilimes.kernel.score import class_tier, order_class_from_priority
+from resilimes.kernel.score import class_tier, lot_value, order_class_from_priority
 from resilimes.smt.fab import Fab, Route, lot_number, measured, transport_seconds
 
 DAY_SEC = 86400.0
@@ -109,6 +109,8 @@ class Release:
     due_sec: float
     order_class: str
     number: int
+    part: str = ""
+    priority: int = 0
 
 
 @dataclass
@@ -367,7 +369,8 @@ def dataset_releases(fab: Fab, *, until: float, after: float = 0.0) -> list[Rele
         count = int(float(row["RPT#"]))
         per = max(1, int(float(row["LOTSPERRPT"] or 1)))
         route = fab.route_index[part_route[row["PART"].strip()]]
-        kind = order_class_from_priority(int(float(row["PRIOR"])))
+        prior = int(float(row["PRIOR"]))
+        kind = order_class_from_priority(prior)
         name = row["LOT"].strip()
         for k in range(count):
             moment = start + k * every
@@ -385,10 +388,35 @@ def dataset_releases(fab: Fab, *, until: float, after: float = 0.0) -> list[Rele
                         due_sec=moment + due_after,
                         order_class=kind,
                         number=number,
+                        part=row["PART"].strip(),
+                        priority=prior,
                     )
                 )
     found.sort(key=lambda item: (item.release_sec, item.lot_id))
     return found
+
+
+def with_releases(fab: Fab, *, until: float) -> Fab:
+    """``fab`` plus every ``order.txt`` lot released in ``[0, until)``.
+
+    Released lots are appended after the WIP (WIP indices do not move) at
+    step index 0, with the dataset's product, class, priority and due; raw
+    material is always available, so a lot enters the fab at its release.
+    """
+    found = [item for item in dataset_releases(fab, until=until) if item.release_sec >= 0.0]
+    base = list(fab.lot_release) or [0.0] * len(fab.lot_id)
+    return replace(
+        fab,
+        lot_id=[*fab.lot_id, *(item.lot_id for item in found)],
+        lot_product=[*fab.lot_product, *(item.part for item in found)],
+        lot_route=[*fab.lot_route, *(item.route for item in found)],
+        lot_step=[*fab.lot_step, *(0 for _ in found)],
+        lot_due=[*fab.lot_due, *(item.due_sec for item in found)],
+        lot_value=[*fab.lot_value, *(lot_value(item.order_class) for item in found)],
+        lot_class=[*fab.lot_class, *(item.order_class for item in found)],
+        lot_priority=[*fab.lot_priority, *(item.priority for item in found)],
+        lot_release=[*base, *(item.release_sec for item in found)],
+    )
 
 
 def plan_input(
