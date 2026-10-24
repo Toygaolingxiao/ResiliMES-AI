@@ -20,7 +20,7 @@ hand-tuned weight.
 ```mermaid
 flowchart TB
     subgraph data["SMT2020 dataset (read-only)"]
-        R[routes: raw process times,<br/>sampling, CQT steps]
+        R[routes: master-data standard times,<br/>sampling, CQT steps]
         T[tools / families,<br/>down + PM calendars]
         O[WIP snapshot +<br/>order.txt releases]
     end
@@ -61,7 +61,7 @@ flowchart TB
 | | |
 |---|---|
 | **Cadence** | Once per sim day (and on demand per scenario). Full fab: about 2.5 s including about 3,200 dataset releases, or 0.6 s for WIP only. |
-| **Inputs** | Each lot's route, current step, ready time, due and class (sim state or the published snapshot). SMT2020 raw process times and the sampled-metrology rule (`measured`). Fixed transport (1 min within an STNGRP, 3 min across). Litho tool counts. PM calendars (`pm`, `attach`). Down calendar (MTTF/MTTR). Forced downs. `order.txt` releases. |
+| **Inputs** | Each lot's route, current step, ready time, due and class (sim state or the published snapshot). SMT2020 master-data standard times (`standard_time`: PTIME by PTPER plus setup into the step's recipe) and the sampled-metrology rule (`measured`). Fixed transport (1 min within an STNGRP, 3 min across). Litho tool counts. PM calendars (`pm`, `attach`). Down calendar (MTTF/MTTR). Forced downs. `order.txt` releases. |
 | **Outputs** | `PlanningOutput`, described below. |
 | **Code today** | `resilimes/smt/planning.py` (`plan_input`, `build_plan`, `plan_scenario`). It replaces the naive `kernel/aps.py` `backward_dues` and `simulate.macro_aps_ms`. |
 
@@ -70,31 +70,36 @@ flowchart TB
 1. **Visit path.** The visit path is the current step plus every later step
    that this lot number is measured at. Skipped sampled metrology is skipped
    here as well, exactly as in the sim.
-2. **Step targets from the standard lead time** (`targets="standard"`, the
-   default). The standard lead time (LT) of a product and priority class is the
-   dataset's own: `order.txt` DUE − START (normal 23.8–56.4 d, hot 16.9–38.3 d,
-   SuperHot part_3 38.3 d). It is spread over the visited steps in proportion
-   to raw process plus transport time, with one flow factor per product,
-   `F = LT / raw` over the full visited route. Each step gets a standard time
-   `F × (process + transport in)`, and its step due (target) is
-   `due − F × raw after the step`. For a released lot that equals release +
-   the standard cumulative time to the step. The standard start is the target
-   minus the step's standard time. A (product, class) with no order row takes
-   the product's tightest listed LT; a product with no order row keeps F = 1.
-   - `targets="raw"` keeps the earlier backward pass (F = 1): latest finish at
-     raw time, no queueing slack.
-   - In the published snapshot 510 of 2156 WIP lots have a due tighter than
-     their standard remaining time (`summary()["due_tighter_than_standard"]`),
-     against 20 that are tighter than raw time.
-   - Later refinement (not done): one flow factor per tool family instead of
-     per product, so the bottleneck gets more of the standard time.
+2. **Backward pass over master-data standard times.** This pass starts from
+   the lot due and works backwards over the remaining path. It gives each step
+   a *step due* (target, latest finish) and a *latest start* = step due − the
+   step's standard time; the step before is due at that latest start − the
+   fixed transport. There is no queueing slack and no weight.
+   - **Step targets come from master-data standard times; there is no
+     actuals weighting yet** (there are no MES actuals). The standard time of
+     a step is `planning.standard_time(fab, route, step)`:
+     - SMT2020 route PTIME by PTPER: `per_piece` × PIECES (25), `per_lot` as
+       published, `per_batch` once per batch (a lot in a batch takes the whole
+       batch cycle; it is not divided by the lots in it);
+     - plus, on a step with a SETUP, the setup into its recipe: `setup.txt`
+       where it has a row (it wins), else the route STIME. This is a full
+       change on every SETUP step, an upper bound: a tool that already holds
+       the recipe skips it. Which lots share a setup is left to scheduling.
+     - Transport (1 min within an STNGRP, 3 min across) is added between
+       steps by the passes. Sampled steps are not on the path.
+   - **Hook.** `standard_time` is the one place step times come from (also
+     `build_plan(step_time=…)`). A future MES-actuals weighting, for example
+     an EWMA of observed step times blended with the standard, replaces it.
+     That weighting is not implemented.
+   - Lead times are not taken from `order.txt` DUE − START and there is no
+     flow factor: an earlier version did that (f00f273) and was reverted.
 3. **Forward capacity check.** The check is an event-driven forward pass over
    every lot from its ready time:
-   - Non-litho steps take raw time, so capacity there is unlimited.
+   - Non-litho steps take their standard time, so capacity there is unlimited.
    - Each `Litho_*` family (the 7 scanner families plus the 2 `Litho_Met`
      registration families) has a finite number of tools.
    - Queue order at each litho family is class tier, then latest start.
-   - Processing time is raw ÷ availability. Availability is
+   - Processing time is standard time ÷ availability. Availability is
      MTTF/(MTTF+MTTR) from the down calendar (0.9346 for scanners, 0.9965
      for registration).
    - A start that would overlap a PM window waits for the PM to end. This is
@@ -104,24 +109,25 @@ flowchart TB
 
    Dataset releases up to the latest WIP due are planned as competing litho
    load.
-4. **Baseline priority** (standard targets). `progress` = standard start of
-   the lot's current step − the time the lot is ready there (positive: ahead
-   of its standard curve). `score` = progress / standard time still to run.
+4. **Baseline priority.** Three quantities feed the priority (raw time here
+   means the standard time of step 2):
+   - `raw_slack` = due − (ready + remaining raw time)
+   - `plan_slack` = due − capacity-feasible finish
+   - `score` = `plan_slack` / remaining raw time
+
+   The score is dimensionless: it is the slack as a fraction of the work
+   still to do.
 
    | band | rule |
    |---|---|
-   | `critical` | due < ready + remaining raw time: late even with zero waiting |
-   | `behind` | progress < 0: behind its standard curve |
-   | `on_plan` | on or ahead of the curve, but the capacity plan finishes after the due |
-   | `ahead` | on or ahead of the curve, and the capacity plan finishes by the due |
+   | `critical` | `raw_slack < 0`: late even with zero queueing |
+   | `behind` | `score < 0`: late once the litho capacity is accounted for |
+   | `on_plan` | `0 ≤ score < 1` |
+   | `ahead` | `score ≥ 1`: more slack than the remaining work itself |
 
-   The rank sorts on (class tier, band, progress). VIP comes before hot,
-   which comes before normal, as the published HotLotFIRST rule does.
-
-   With `targets="raw"` the earlier rule applies: `plan_slack` = due −
-   capacity-feasible finish, `score` = plan_slack / remaining raw time,
-   `behind` if score < 0, `ahead` if score ≥ 1, otherwise `on_plan`; rank by
-   (tier, band, score, due).
+   The rank sorts on (class tier, band, score, due). VIP comes before hot,
+   which comes before normal, as the published HotLotFIRST rule does. Within
+   a tier, the most urgent band and the lowest score come first.
 5. **Q-time.** Q-time applies only to steps that have a dataset CQT. The plan
    counts each lot's CQT windows on the path, including windows the lot is
    already inside, which are inherited. It also flags the windows the plan
@@ -129,7 +135,7 @@ flowchart TB
 6. **Litho overload.** Each litho family gets one row per day with three
    figures:
    - *capacity*: tool up-hours, outside PM and forced downs, × availability
-   - *demand*: raw litho hours whose latest start falls that day (backlog
+   - *demand*: standard litho hours whose latest start falls that day (backlog
      counts on day 0)
    - *planned*: hours the forward pass starts that day
 
@@ -138,14 +144,14 @@ flowchart TB
 
 **Releases in the simulator** (flag, default off). `with_releases(fab, until=…)`
 appends the `order.txt` lots released before `until` after the WIP, at step 0,
-with the dataset product, class, priority and due (release + LT); raw material
+with the dataset product, class, priority and due (release + the order row's DUE − START, the dataset due; not a step target); raw material
 is always available. The simulator enqueues each one at its release time
 (`Fab.lot_release`), cycle time and X-factor run from release, and the
 invariant checker flags any start before release. The study switches it on
 with `RESILIMES_STUDY_RELEASES=1` (horizon `RESILIMES_STUDY_HORIZON_H`).
 
 **Out of scope for this layer.** The scheduling layer handles these:
-setups, batching, dedication, rework, and capacity outside litho.
+setup sequencing, batching, dedication, rework, and capacity outside litho.
 
 ### `PlanningOutput` (what the scheduling layer consumes)
 
@@ -235,8 +241,9 @@ the plan below, and why:
 
 - The plan is built once at t=0 from the lots the sim runs: the WIP, plus the
   `order.txt` releases inside the horizon when the releases flag is on.
-- No daily replan. Step dues depend only on the route, the product's standard
-  lead time and the due date (no queueing), so a replan gives the same step dues and could move only
+- No daily replan. Step dues depend only on the route, its master-data standard
+  times and the due date (backward pass, no queueing), so a replan gives the
+  same step dues and could move only
   band and rank. It is not worth the cost while dues do not depend on state.
 - Step 4's reasons come from a fixed check order on the live state at the start
   (see `_Sim.deviation`), not from the branch that chose; anything else is
