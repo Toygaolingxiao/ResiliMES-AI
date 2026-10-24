@@ -17,6 +17,8 @@ from pydantic import BaseModel, Field
 
 from resilimes import __version__
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
+from resilimes.api.fab_views import router as fab_router
+from resilimes.api.fab_views import warm_on_start
 from resilimes.api.intents import (
     ConfirmationState,
     ConfirmBody,
@@ -60,6 +62,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = active
     app.state.engine = InMemoryEngine(build_store(active.redis_url))
+    app.include_router(fab_router)
+    warm_on_start(active)
 
     @app.get("/api/health")
     def health() -> dict[str, object]:
