@@ -418,8 +418,8 @@ class ShiftLead:
             tool, index, shift = lever.pm
             start_at, end_at = sim.pm[tool][index]
             sim.pm[tool][index] = (start_at + shift, end_at + shift)
-            assert self.detector is not None
-            self.detector.pm_deferred.add((tool, start_at + shift))
+            if self.detector is not None:
+                self.detector.pm_deferred.add((tool, start_at + shift))
             if sim.running[tool] < 0:
                 sim.push(moment, _WAKE, tool)
 
