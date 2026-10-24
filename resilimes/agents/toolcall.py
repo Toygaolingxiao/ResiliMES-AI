@@ -223,16 +223,26 @@ def tool_call_from_text(text: str) -> ToolCall:
     return tool_call_from_payload(extract_json_object(text))
 
 
-def regex_tool_call(text: str) -> ToolCall | None:
-    """Map a dispatcher sentence onto the same object the model is asked for."""
+def regex_tool_call(
+    text: str,
+    *,
+    lot_id: str | None = None,
+    equipment_id: str | None = None,
+    area_id: str | None = None,
+) -> ToolCall | None:
+    """Map a dispatcher sentence onto the same object the model is asked for.
+
+    The keyword overrides let a fab-specific resolver (the SMT2020 full fab)
+    supply ids that the sample-plant patterns do not recognise.
+    """
     cleaned = " ".join(text.split())
     if not cleaned:
         return None
     rules = _rules(cleaned)
     reason = cleaned[:240]
-    lot = _lot(cleaned)
-    equipment = _equipment(cleaned)
-    area = _area(cleaned)
+    lot = lot_id if lot_id is not None else _lot(cleaned)
+    equipment = equipment_id if equipment_id is not None else _equipment(cleaned)
+    area = area_id if area_id is not None else _area(cleaned)
     minutes = _minutes(cleaned)
     if _WHAT_IF.search(cleaned):
         return WhatIfCall(

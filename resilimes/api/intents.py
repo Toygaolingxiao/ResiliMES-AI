@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 from resilimes.agents.feedback import write_feedback
 from resilimes.agents.review_panel import run_review_panel
 from resilimes.agents.toolcall import (
+    DispatchParse,
+    ToolCall,
     call_from_dump,
     id_errors,
     parse_dispatch,
@@ -22,6 +24,8 @@ from resilimes.engines.contracts import verify_contract
 from resilimes.engines.scout.engine import Scout, default_scout
 from resilimes.llm.factory import build_provider
 from resilimes.logging_config import get_logger
+from resilimes.smt.fab import load_fab
+from resilimes.smt.intents import run_whatif, smt_id_errors, smt_tool_call
 from resilimes.txn.engine import InMemoryEngine, lock_targets
 
 logger = get_logger("resilimes.intents")
@@ -77,13 +81,21 @@ def propose_intent(settings: Settings, engine: InMemoryEngine, body: IntentBody)
             }
         },
     )
-    if parsed.call is None:
-        return _rejected(parsed.errors, parsed.source, parsed.request_id)
-    call = call_from_dump(parsed.call)
-    plant = engine.load_plant(_load_source_plant(settings))
-    errors = id_errors(call, plant)
+    full_fab = settings.fab == "smt2020"
+    source = parsed.source
+    if full_fab:
+        call_or_none, errors, source = _smt_call(parsed, text)
+        if call_or_none is None:
+            return _rejected(errors, source, parsed.request_id)
+        call = call_or_none
+    else:
+        if parsed.call is None:
+            return _rejected(parsed.errors, parsed.source, parsed.request_id)
+        call = call_from_dump(parsed.call)
+        plant = engine.load_plant(_load_source_plant(settings))
+        errors = id_errors(call, plant)
     if errors:
-        rejected = _rejected(errors, parsed.source, parsed.request_id)
+        rejected = _rejected(errors, source, parsed.request_id)
         rejected["call"] = call.model_dump()
         return rejected
     decision = scout.decide(
@@ -105,9 +117,10 @@ def propose_intent(settings: Settings, engine: InMemoryEngine, body: IntentBody)
         "actor_role": body.actor_role,
         "call": call.model_dump(),
         "contract": decision.execution_contract,
-        "source": parsed.source,
+        "source": source,
         "meterless_request_id": parsed.request_id,
         "fallback_reason": parsed.fallback_reason,
+        "fab": "smt2020" if full_fab else "sample",
     }
     engine.store.set(f"{_CONFIRM_PREFIX}{confirmation_id}", json.dumps(record, default=str))
     return {
@@ -115,7 +128,7 @@ def propose_intent(settings: Settings, engine: InMemoryEngine, body: IntentBody)
         "confirmation_id": confirmation_id,
         "call": call.model_dump(),
         "contract": _public_contract(decision.execution_contract),
-        "source": parsed.source,
+        "source": source,
         "meterless_request_id": parsed.request_id,
         "errors": [],
     }
@@ -142,6 +155,8 @@ def confirm_intent(settings: Settings, engine: InMemoryEngine, body: ConfirmBody
         required_capability=None,
     )
     call = call_from_dump(record["call"])
+    if record.get("fab") == "smt2020":
+        return _confirm_smt(engine, key, record, body.confirmation_id, call)
     plant = engine.load_plant(_load_source_plant(settings))
     provider = build_provider(settings)
     lock = engine.acquire_lock(lock_targets(call, plant))
@@ -191,6 +206,60 @@ def confirm_intent(settings: Settings, engine: InMemoryEngine, body: ConfirmBody
         "source": record.get("source"),
         "meterless_request_id": feedback.get("meterless_request_id")
         or record.get("meterless_request_id", ""),
+    }
+
+
+def _smt_call(parsed: DispatchParse, text: str) -> tuple[ToolCall | None, list[str], str]:
+    """Model call first; the full-fab id resolver when the model ids do not exist."""
+    fab = load_fab()
+    errors = list(parsed.errors)
+    call: ToolCall | None = None
+    if parsed.call is not None:
+        call = call_from_dump(parsed.call)
+        errors = smt_id_errors(fab, call)
+        if not errors:
+            return call, [], parsed.source
+    fallback = smt_tool_call(fab, text)
+    if fallback is not None:
+        fallback_errors = smt_id_errors(fab, fallback)
+        if not fallback_errors or call is None:
+            return fallback, fallback_errors, "deterministic-fallback"
+    if call is None:
+        return None, errors or ["Could not read a dispatch intent from the text."], parsed.source
+    return call, errors, parsed.source
+
+
+def _confirm_smt(
+    engine: InMemoryEngine,
+    key: str,
+    record: dict[str, Any],
+    confirmation_id: str,
+    call: ToolCall,
+) -> dict[str, Any]:
+    """Run the confirmed change as a what-if book on the full-fab replay."""
+    outcome = run_whatif(load_fab(), call)
+    record["status"] = outcome["status"]
+    engine.store.set(key, json.dumps(record, default=str))
+    logger.info(
+        "intent confirmed",
+        extra={
+            "fields": {
+                "confirmation_id": confirmation_id,
+                "committed": False,
+                "book": outcome.get("book"),
+            }
+        },
+    )
+    return {
+        **outcome,
+        "confirmation_id": confirmation_id,
+        "call": call.model_dump(),
+        "lock_token": None,
+        "critique": None,
+        "feedback": {"source": record.get("source")},
+        "review_panel": None,
+        "source": record.get("source"),
+        "meterless_request_id": record.get("meterless_request_id", ""),
     }
 
 
