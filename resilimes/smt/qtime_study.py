@@ -10,6 +10,10 @@
   ``after``, so only ResiliMES runs.
 * ``after``: this branch as shipped (dynamic risk weight, 300 s scheduling
   tick for every policy).
+* ``plan``: ``after`` plus the planning layer (``book_plan``): step-due
+  risk and plan band/rank tie-break for ResiliMES, the per-tool schedule and
+  the deviation log for every policy.
+* ``ablate_plan``: ``ablate`` with the plan.
 * ``ablate``: ResiliMES only, published and X-factor books, each subset of
   fixes 1-3 on its own (``r2_fixes``); the row's ``variant`` names it.
 
@@ -116,6 +120,42 @@ def _setup(fab: Fab, book: str, seed: int, policy: str) -> tuple[Fab, dict[str, 
     return plant, kwargs
 
 
+# Planning scenario of each study book (``resilimes.smt.scenarios``).
+# ``litho_family_2h`` has no headline scenario; its plan takes the same
+# 2-hour outage of every focus-family tool.
+BOOK_SCENARIO = {
+    "published": "published",
+    "heldout_published": "published",
+    "xfactor_eta600": "xfactor",
+    "heldout_xfactor": "xfactor",
+    "tight_vip": "tight_p1",
+    "pm_enforced": "pm_avoid",
+    "litho": "litho_down",
+    "hot": "hot_lot",
+    "litho_family_2h": "published",
+}
+_PLANS: dict[str, Any] = {}
+
+
+def book_plan(fab: Fab, book: str) -> Any:
+    """The planning layer's output for one book, computed once (t=0, WIP only).
+
+    WIP only: the sim does not release ``order.txt`` lots yet, so the plan's
+    litho load is the load the sim runs. Seeds share the plan: it uses the
+    expected availability (MTTF/(MTTF+MTTR)), not the sampled downs.
+    """
+    if book not in _PLANS:
+        from resilimes.smt.planning import build_plan, scenario_input
+
+        inp = scenario_input(fab, BOOK_SCENARIO[book], releases=False)
+        if book == "litho_family_2h":
+            family = fab.families[fab.focus_family]
+            for tool in range(family.tool0, family.tool0 + family.tools):
+                inp.down_until[tool] = _STRESS_HOURS * 3600.0
+        _PLANS[book] = build_plan(fab, inp)
+    return _PLANS[book]
+
+
 def _inherited(fab: Fab) -> Iterator[tuple[int, int, int, float]]:
     """Snapshot lots already inside a CQT span at t=0 (window taken to open at 0)."""
     for lot, (route_i, step) in enumerate(zip(fab.lot_route, fab.lot_step, strict=True)):
@@ -202,6 +242,8 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
     plant, kwargs = _setup(fab, book, seed, policy)
     if _ARM[0] == "mech":
         kwargs["r2_policy"] = False
+    if _ARM[0] in ("plan", "ablate_plan"):
+        kwargs["plan"] = book_plan(fab, book)
     row: dict[str, Any] = {"book": book, "seed": seed, "policy": policy}
     if len(item) == 4:
         variant = str(item[3])
@@ -242,6 +284,13 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
         "replan_tick_p95_ms",
         "replan_tick_total_s",
         "flow_wait_ratio",
+        "plan_due_fallbacks",
+        "sched_starts",
+        "sched_follow",
+        "deviations",
+        "sched_stale_detail",
+        "sched_build_p95_ms",
+        "sched_build_total_s",
     ):
         row[key] = getattr(result, key, None)
     row["on_time"] = round(result.on_time_pct * result.due_in_horizon / 100.0)
@@ -257,7 +306,7 @@ def main() -> None:
     items: list[Any] = [
         (book, seed, policy) for book in BOOKS for seed in _seeds(book) for policy in policies
     ]
-    if arm == "ablate":
+    if arm in ("ablate", "ablate_plan"):
         items = [
             (book, seed, "resilimes", variant)
             for variant in ABLATE_VARIANTS
