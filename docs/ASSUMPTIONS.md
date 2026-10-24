@@ -10,16 +10,15 @@ Confirmed from the scaffold, the Zetaris knowledge base article on pipeline sche
 - SQL runs as `POST` with JSON `{"sql": "..."}`.
 - Headers are `Authorization: Bearer <api key>`, `X-Org-ID` (numeric organisation id), `X-Request-ID` (fresh UUID), and `Content-Type: application/json`.
 - A documented success shape is `{"headers": [...], "data": [[...]]}`. `rows_as_dicts` also accepts `columns`/`rows`, a list of objects, and a body wrapped in `result`.
-- The knowledge-base example path is `/sql-editor/sqls/run-query`. The scaffold default, which this repo keeps, is `/sql-editor/sqls/run`. Set `ZETARIS_SQL_PATH` to the path your tenant returns 200 for.
-- Organisation id comes from Management → Organisation → ID.
+- The SQL path on the owner's bundle is `/sql-editor/sqls/run-query`. `/sql-editor/sqls/run` accepts the same body. `ZETARIS_SQL_PATH` defaults to `run-query`.
+- Organisation id `1` is returned by `POST /api/auth/login` as `orgId`. Every REST call sends it as `X-Org-ID`. A call without it returns 400. `X-API-Key` alone returns 401.
+- Login returns `idToken` (about 900 seconds), `refreshToken`, and `orgId`. Refresh is `GET /auth/refresh` with the refresh token as Bearer plus `X-Org-ID`. The app uses a long-lived key from `POST /auth/api-key`, sent as `Authorization: Bearer`.
+- Success is `{headers, data, total, timeUsed}` and every value is a string. Failure is `{msg}` with status 400.
+- Postgres is container `fab-mes`. Zetaris datasources are `resilimes` (`fab_mes`), `fab_cmms`, and `fab_erp`, each with schema `resilimes`. The JDBC `schema` option is required. Tables are `<datasource>.<table>`. Cross-datasource views are not created.
 
-Not confirmed, so we did not depend on it:
+The factory tables are created in Postgres by `scripts/zetaris_setup.sh`, then registered. `data/sql/seed.sql` is still all-`VARCHAR` sample data. `data/sql/kernel.sql` is typed SMT2020 data. The recovery path only `SELECT`s. `ZETARIS_SCHEMA` and every datasource in `ZETARIS_TABLE_SOURCES` must match `^[A-Za-z_][A-Za-z0-9_]*$`.
 
-- Whether `CREATE TABLE` is allowed in every Lightning tenant. `data/sql/seed.sql` uses ordinary `CREATE TABLE` plus `INSERT`, with every column as `VARCHAR(256)`. If the editor rejects that DDL, register `data/zetaris/*.csv` as tables with the same names and set `ZETARIS_SCHEMA`.
-- The database name. We use `resilimes` unless `ZETARIS_SCHEMA` overrides it. The value must match `^[A-Za-z_][A-Za-z0-9_]*$`.
-- Extra response envelopes beyond `result`. If a tenant wraps rows differently, extend `rows_as_dicts` only.
-
-Reads on the recovery path are `SELECT` only. The load script is explicit and off by default.
+`rows_as_dicts` still accepts `columns`/`rows` and a body wrapped in `result`, in addition to the verified `headers` + `data` shape.
 
 ## Meterless Nightshift
 
@@ -101,13 +100,13 @@ Each PROD-A28 layer is deposition, one lithography step (coat, expose, and devel
 
 The Scale preset is a seeded synthetic fab (`seed` 20261022), not a second copy of the six-lot bay. It has 1,000 lots and 36 tools, one operator per tool, so staffing does not search. A lot is released only through the end of its current layer. The same catalog columns are written to `data/sql/scale_seed.sql`. Furnace batching, implant, metal PVD, and AMHS stay out of scope on this fab too.
 
-The scale baseline is EDD dispatch. It orders ready steps by due date, then by the minute they become ready, and places each step on the qualified tool that can start soonest. It does not use priority weights or the bottleneck. On the seeded book that rule already finishes every lot on time (on-time delivery 100%, weighted tardiness 0, lots at risk 0). Priority recovery matches those three figures. It cuts mean inter-step wait from 389 minutes to 125 and lengthens makespan from 4,522 minutes to 5,116. The five-minute reticle mount is inside those figures. The hero scenarios still compare a frozen book with the recovery.
+The scale baseline is EDD dispatch. It orders ready steps by due date, then by the minute they become ready, and places each step on the qualified tool that can start soonest. It does not use priority weights or the bottleneck. On the seeded book that rule already finishes every lot on time (on-time delivery 100%, weighted tardiness 0, lots at risk 0). Priority recovery matches those three figures. It cuts mean inter-step wait from 389 minutes to 125 and lengthens makespan from 4,522 minutes to 5,116. The five-minute reticle mount is inside those figures. The hero scenarios still compare a frozen book with the recovery. Ordinary lots on that preset carry 14 days of slack, and up to 24 priority-1 lots are pinned blocked on the down scanner. Because the two books tie, this preset is performance data in [SCALE_APPENDIX.md](SCALE_APPENDIX.md). It was not retuned. The pressured SMT2020 comparison is the X-factor book in [SMT2020_SCALE.md](SMT2020_SCALE.md), where earliest-due is slightly ahead on on-time delivery.
 
 CP-SAT is a reference. The committed book stays the list scheduler. CP-SAT models the same rules the critic checks, including sequence-dependent setup (the first lot on a tool pays none), one scanner per physical reticle copy, and the same hold rule as the KPI: a lot is left unfinished only when completing it is infeasible, and that hold adds no weighted tardiness. Hero scenarios get up to five seconds and report OPTIMAL or FEASIBLE with the bound. The scale fab gets a two-second neighborhood around late lots and the makespan-setting lot, hinted from the list schedule. On the seeded book that neighborhood does not shorten the list schedule, so the badge keeps it. A candidate that fails the critic is discarded. The list schedule is always computed first, and the KPI cards use it.
 
 ## Production would add
 
-These are real fab constraints and they are out of this demo:
+A production line would also carry these constraints. They are out of this demo:
 
 - Furnace batching
 - Implant

@@ -689,6 +689,16 @@ def run_recovery(
             ),
         ]
     )
+    first_query = ""
+    for item in bundle.get("facts") or []:
+        if str(item.get("name", "")).startswith("query."):
+            first_query = str(item.get("evidence") or "")
+            break
+    logger.info(
+        "data source: %s",
+        source.name,
+        extra={"fields": {"query": first_query, "data_source": source.name}},
+    )
     logger.info(
         "recovery complete",
         extra={
@@ -696,6 +706,7 @@ def run_recovery(
                 "scenario": scenario.id if scenario else "free-text",
                 "verdict": committed.verdict,
                 "provider": provider.name,
+                "data_source": source.name,
             }
         },
     )

@@ -61,7 +61,11 @@ The client is the scaffold in `agent/tools_zetaris.py`:
 
 `resilimes/data/zetaris_source.py` issues one `SELECT` per table from `resilimes/data/sql_catalog.py` and builds the same `Plant` the scheduler uses. The schema identifier is validated so it cannot carry a second statement.
 
-`data/sql/seed.sql` and `data/zetaris/*.csv` are generated from `data/sample` by `python scripts/export_zetaris_sql.py`. `tests/test_sql_export.py` fails if those files drift. `python scripts/load_zetaris.py --execute` sends the seed, one statement per request.
+`data/sql/seed.sql` and `data/zetaris/*.csv` are generated from `data/sample` by `python scripts/export_zetaris_sql.py`. `tests/test_sql_export.py` fails if those files drift. `scripts/zetaris_setup.sh` loads that seed, plus `data/sql/kernel.sql` when it exists, into Postgres and registers datasources `resilimes` (MES, including lots, operations, and the setup matrix), `fab_cmms` (maintenance logs and the PM calendar), and `fab_erp` (BOM, materials, orders). `scripts/load_zetaris.py` only points at that script.
+
+The default console does not send those reads through Zetaris. It loads `data/smt2020` in process: `tool.txt.1l`, `WIP.txt`, `route_1.txt`–`route_10.txt`, `setup.txt`, `pmcal.txt`, `attach.txt`, and `downcal.txt`. The banner and the log line say `data source: smt2020`, and the query line names those files. A live Zetaris round-trip per dispatch would dominate the latency the scale study measures, and this repository does not assume the platform container is up. The federated sample query in `resilimes.data.zetaris_layout.FEDERATED_SQL` joins `resilimes.equipment`, `fab_cmms.maintenance_logs`, `resilimes.wip_jobs`, `fab_erp.bom`, and `fab_erp.materials`. That query is for the sample catalog. It is not what the full-fab simulator executes.
+
+Assumption to check on the owner's platform: `scripts/zetaris_setup.sh` still registers those three datasources, `POST /sql-editor/sqls/run-query` still returns string cells, and `X-Org-ID` is still required. The full-fab numbers in [SMT2020_SCALE.md](SMT2020_SCALE.md) do not depend on that call.
 
 In mock mode the specialist still records those SQL strings and answers them from the sample files. The trace labels the mode `sample-equivalent`, so a recording does not imply a live warehouse call. `tests/test_recovery.py::test_zetaris_headers_and_row_shape` checks the bearer token, org header, request id, URL, and the `headers` + `data` row shape, including a body wrapped in `result`.
 
@@ -88,6 +92,31 @@ Mock mode uses `MockProvider` with the same `complete()` signature. The report f
 
 The scaffold (`agent/`, `prompts/`, the original sample files, `smoke_test.py`) and this completion were written in Cursor. Cursor's agent mode produced the scheduler, the three engines, the console, the test suite, CI, and the submission docs in this branch. The team should say that on the slide and in the HackOS sponsor field: Cursor was the build environment, not a runtime dependency of the fab.
 
+## Full SMT2020 fab
+
+The working feature on `make demo` is dispatch of the public industry benchmark (SMT2020) LV/HM fab. Scout still classifies the scenario sentence and signs the contract before the run. The test that proves Scout is `tests/test_scout_engine.py`. The test that proves the fab counts, the tight-due book, and a short full-tool dispatch is `tests/test_smt_fab.py`.
+
+Nightshift remains the only model provider. Base URL `METERLESS_BASE_URL`, default `http://127.0.0.1:8088/v1`. The model id is `nvidia/nemotron-3.5-lightning-30b-a3b`. On the sample-bay path it rewrites the supervisor note and the tool-call text. On the full-fab path, `make demo-live` with a runtime token sends one completion after the schedule is fixed. The request id is `explain.meterless_request_id` and the Nightshift step. The schedule is still the dispatcher. `make demo` does not make that call.
+
+When Zetaris credentials are set, the same live path runs `SELECT COUNT(*)` against datasources `resilimes`, `fab_cmms`, and `fab_erp`. The console shows the SQL, those source names, and the row counts. Without credentials the line says the local extract was used and Zetaris was not called.
+
+Measured means are in [SMT2020_SCALE.md](SMT2020_SCALE.md). The lead table is the constructed 24-hour book: ResiliMES on-time 19.05% against EDD 12.38%, weighted tardiness 4,261 minutes against 8,015. Dispatch on that book is 0.0002 ms p50 and 0.007 ms p95. Seed 1, the 13 normal lots in that queue give up 30.71 hours. The X-factor book (dues at 2.75 times remaining process) is where EDD is slightly ahead, 99.54% on time against 98.62%, and litho utilization stays near 78%. The published-due 48-hour book is an appendix: EDD and ResiliMES tie at 57.14% on-time, dispatch p50/p95 is 0.0002 ms / 0.007 ms, macro APS is about 285 ms, and one 48-hour ResiliMES run is about 2.9 s. All numbers are after the stale-queue fix in [invariants.md](invariants.md). The column-by-column map of the extract is [SMT2020_PROVENANCE.md](SMT2020_PROVENANCE.md).
+
+## Pre-existing code declaration
+
+The build window opens 2026-10-22 00:00 UTC (2026-10-22 09:00 JST) and closes 2026-10-27 23:45 UTC (2026-10-28 08:45 JST). That window is in [hackathon/HACKATHON_RULES.md](hackathon/HACKATHON_RULES.md).
+
+`git log --reverse` shows the first commit at 2026-10-22 22:22 UTC (`83f37fc`, "Initial commit"). There is no commit before the window opened. There is no separate pre-window product in this repository. The scaffold (`agent/`, `prompts/`, the original sample files, `smoke_test.py`), the six-lot sample bay, Scout, World Model, Markovian, the Nightshift client, and the sample console were written in this repository after that first commit and inside the window. They are not an imported third-party application template. This branch adds the SMT2020 kernel tables, the Zetaris datasource layout, the optional Redis state store, and the full-fab simulator.
+
+Third-party skill texts under `.cursor/skills/`, copied in, not rewritten. Licenses are in the folders and in `.cursor/skills/CREDITS.md`.
+
+| Path | Origin | License |
+| --- | --- | --- |
+| `.cursor/skills/design-taste-frontend/` | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill), `SKILL.md` and `references/app-screens.md`, fetched 2026-10-23 | MIT, Copyright (c) 2026 Leonxlnx |
+| `.cursor/skills/frontend-design/` | [anthropics/skills](https://github.com/anthropics/skills), `skills/frontend-design`, fetched 2026-10-23 | Apache License 2.0, Copyright Anthropic |
+
+Runtime dependencies in `pyproject.toml`: `fastapi`, `uvicorn`, `pydantic`, `openai`, `requests`, `python-dotenv`. OR-Tools (`ortools>=9.11`) is an optional extra (`pip install -e ".[solver]"`). It is the CP-SAT reference on the sample bay. The SMT2020 dispatcher does not import it. CI installs it with the dev extra.
+
 ## What is unusual about the combination
 
-Most hackathon agents let the model both decide and explain. Here the model is behind Nightshift, the decision is a tested scheduler, and Scout will not let the loop run without a fresh contract. Zetaris, or its sample twin with the same SQL, is the only source of lots and tools. The world model is the only place a committed assignment exists. A viewer, an injection, an expired contract, or a missing approval stops the write. That is the sponsor stack used as the control plane of a manufacturing decision, not as three logos on a chat window.
+Most hackathon agents let the model both decide and explain. Here the model is behind Nightshift, the decision is a tested scheduler, and Scout will not let the loop run without a fresh contract. The sample bay reads lots and tools from Zetaris, or from the sample twin with the same SQL. The full-fab dispatcher reads the public industry benchmark (SMT2020) in process, and the live console asks Zetaris for the count queries before that run. The world model is the only place a committed assignment exists. A viewer, an injection, an expired contract, or a missing approval stops the write. That is the sponsor stack used as the control plane of a manufacturing decision, not as three logos on a chat window.

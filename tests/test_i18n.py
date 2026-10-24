@@ -36,7 +36,8 @@ def test_catalog_keys_match_and_the_review_lists_them() -> None:
         for key, value in en.items()
     )
     review = (ROOT / "docs" / "i18n_review.md").read_text(encoding="utf-8")
-    assert review == review_markdown()
+    # The generated table comes first; the SMT2020 owner-review list from main follows it.
+    assert review.startswith(review_markdown())
     for key in en:
         assert f"`{key}`" in review
     for lang in ("zh", "ja"):
@@ -46,7 +47,9 @@ def test_catalog_keys_match_and_the_review_lists_them() -> None:
 
 
 def test_overview_numbers_match_the_litho_recovery() -> None:
-    settings = Settings(mode="mock", horizon=HORIZON, scout_signing_secret="i18n-secret")
+    settings = Settings(
+        mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="i18n-secret"
+    )
     client = TestClient(create_app(settings))
     body = client.get("/api/scenarios").json()
     impact = body["overview"]["impacts"]["litho_down"]

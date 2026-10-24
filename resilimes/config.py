@@ -2,7 +2,9 @@
 
 `RESILIMES_MODE=auto` (the default) uses Nightshift and Zetaris when their
 credentials are present and the offline twins otherwise. `make demo` forces
-`mock` so a fresh machine never needs credentials.
+`mock` so a fresh machine never needs a model token. The console fab defaults
+to the full SMT2020 extract (`RESILIMES_FAB=smt2020`). `RESILIMES_FAB=sample`
+is the six-lot bay used by unit tests.
 """
 
 from __future__ import annotations
@@ -14,6 +16,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+
+from resilimes.data.sql_catalog import validate_schema
+from resilimes.data.zetaris_layout import parse_table_sources
 
 ROOT = Path(__file__).resolve().parents[1]
 HORIZON = datetime(2026, 10, 22, 6, 30, tzinfo=UTC)
@@ -38,6 +43,7 @@ def _env(name: str, default: str = "") -> str:
 
 class Settings(BaseModel):
     mode: str = "auto"
+    fab: str = "smt2020"
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "INFO"
@@ -49,10 +55,13 @@ class Settings(BaseModel):
     zetaris_rest_url: str = ""
     zetaris_org_id: str = ""
     zetaris_api_key: str = ""
-    zetaris_sql_path: str = "/sql-editor/sqls/run"
+    zetaris_sql_path: str = "/sql-editor/sqls/run-query"
     zetaris_schema: str = "resilimes"
     zetaris_query_limit: int = 1000
     zetaris_timeout_s: float = 30.0
+    # Override only. Empty means sql_catalog defaults (fab_cmms / fab_erp).
+    zetaris_table_sources: dict[str, str] = Field(default_factory=dict)
+    redis_url: str = ""
     meterless_base_url: str = "http://127.0.0.1:8088/v1"
     meterless_runtime_token: str = ""
     meterless_app_id: str = "resilimes"
@@ -103,13 +112,24 @@ def load_settings() -> Settings:
     mode = _env("RESILIMES_MODE", "auto").lower() or "auto"
     if mode not in {"auto", "mock", "live"}:
         raise ConfigError("RESILIMES_MODE must be auto, mock, or live")
+    fab = _env("RESILIMES_FAB", "smt2020").lower() or "smt2020"
+    if fab not in {"smt2020", "sample"}:
+        raise ConfigError("RESILIMES_FAB must be smt2020 or sample")
     horizon_raw = _env("RESILIMES_HORIZON")
     horizon = HORIZON
     if horizon_raw:
         horizon = datetime.fromisoformat(horizon_raw.replace("Z", "+00:00"))
     data_dir = Path(_env("RESILIMES_DATA_DIR", str(ROOT / "data" / "sample")))
+    try:
+        table_sources = parse_table_sources(_env("ZETARIS_TABLE_SOURCES"))
+        for source in table_sources.values():
+            validate_schema(source)
+    except ValueError as exc:
+        raise ConfigError(str(exc)) from exc
+    timeout_raw = _env("ZETARIS_TIMEOUT_S", "30") or "30"
     return Settings(
         mode=mode,
+        fab=fab,
         host=_env("RESILIMES_HOST", "0.0.0.0"),
         port=int(_env("RESILIMES_PORT", "8000") or "8000"),
         log_level=_env("RESILIMES_LOG_LEVEL", "INFO"),
@@ -121,9 +141,13 @@ def load_settings() -> Settings:
         zetaris_rest_url=_env("ZETARIS_REST_URL"),
         zetaris_org_id=_env("ZETARIS_ORG_ID"),
         zetaris_api_key=_env("ZETARIS_API_KEY"),
-        zetaris_sql_path=_env("ZETARIS_SQL_PATH", "/sql-editor/sqls/run") or "/sql-editor/sqls/run",
+        zetaris_sql_path=_env("ZETARIS_SQL_PATH", "/sql-editor/sqls/run-query")
+        or "/sql-editor/sqls/run-query",
         zetaris_schema=_env("ZETARIS_SCHEMA", "resilimes") or "resilimes",
         zetaris_query_limit=int(_env("ZETARIS_QUERY_LIMIT", "1000") or "1000"),
+        zetaris_timeout_s=float(timeout_raw),
+        zetaris_table_sources=table_sources,
+        redis_url=_env("REDIS_URL"),
         meterless_base_url=_env("METERLESS_BASE_URL", "http://127.0.0.1:8088/v1"),
         meterless_runtime_token=_env("METERLESS_RUNTIME_TOKEN"),
         meterless_app_id=_env("METERLESS_APP_ID", "resilimes") or "resilimes",

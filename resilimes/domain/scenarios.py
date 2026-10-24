@@ -1,4 +1,9 @@
-"""Named disruptions the console can run without typing an incident."""
+"""Sample-bay disruptions for unit tests.
+
+The console default is the full SMT2020 fab in ``resilimes.smt``. These six
+scenarios, including the 1,000-lot scale preset, are the labeled small bay.
+They are not what ``make demo`` shows.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +16,7 @@ from .plant import enrich_availability
 from .scale_fab import build_scale_plant
 from .schedule import POLICY_FROZEN, schedule_plant
 
+SAMPLE_BAY = True
 LITHO_REPAIR_MIN = 600
 RUSH_DUE_MIN = 180
 QTIME_TIGHT_MIN = 15

@@ -7,6 +7,7 @@ The response is normalized by rows_as_dicts, which accepts the documented
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -23,14 +24,20 @@ class ZetarisDataError(RuntimeError):
 class ZetarisSource:
     name = "zetaris"
 
-    def __init__(self, schema: str = "resilimes", timeout_s: float = 30.0) -> None:
+    def __init__(
+        self,
+        schema: str = "resilimes",
+        timeout_s: float = 30.0,
+        sources: Mapping[str, str] | None = None,
+    ) -> None:
         self._schema = schema
         self._timeout_s = timeout_s
+        self._sources = dict(sources or {})
 
     def load_plant(self, horizon: datetime) -> tuple[Plant, list[QueryRecord]]:
         from agent.tools_zetaris import ZetarisError, rows_as_dicts, run_sql
 
-        queries = statements(self._schema)
+        queries = statements(self._schema, self._sources)
         tables: dict[str, list[dict[str, Any]]] = {}
         records: list[QueryRecord] = []
         try:

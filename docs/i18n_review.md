@@ -180,29 +180,29 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `areas.Clean` | Clean | 清洗 | 洗浄 |
 | `areas.Furnace` | Furnace | 炉管 | 炉 |
 | `areas.Diffusion` | Diffusion | 扩散 | 拡散 |
-| `scenarios.litho_down.0` | Litho down | 光刻机宕机 | 露光装置停止 |
-| `scenarios.litho_down.1` | LITHO-02 is down for 10 h. LOT-1001 is on that tool. | LITHO-02 宕机 10 小时，LOT-1001 排在这台。 | LITHO-02 が10時間停止。LOT-1001 が載っています。 |
+| `scenarios.litho_down.0` | Lithography breakdown | 光刻故障 | リソグラフィ故障 |
+| `scenarios.litho_down.1` | Litho_FE_92-1 is down for the published 705.59 min lithography repair. Snapshot 2018-01-01. | Litho_FE_92-1 按已发表的光刻维修时间 705.59 分钟停机。快照时刻 2018-01-01。 | Litho_FE_92-1 が公開されたリソグラフィ修理 705.59 分のあいだ停止。スナップショット 2018-01-01。 |
 | `scenarios.rush_order.0` | Rush lot | 急单 | 特急ロット |
 | `scenarios.rush_order.1` | A hot lot is due in 3 h. Running lots stay on their tools. | 急单 3 小时内交货。正在加工的批次不撤下。 | 特急の納期は3時間。加工中ロットは装置に残します。 |
 | `scenarios.material_shortage.0` | Resist short | 光刻胶短缺 | レジスト不足 |
 | `scenarios.material_shortage.1` | RESIST-UV is at zero. Lots that still need it wait. | RESIST-UV 库存为零，还要用的批次等待。 | RESIST-UV の在庫はゼロ。未使用ロットは待ちます。 |
 | `scenarios.rework.0` | Overlay rework | 套刻返工 | 重ね合わせ再加工 |
 | `scenarios.rework.1` | LOT-1004 failed overlay. Strip, expose, and measure once. | LOT-1004 套刻失败。去胶、再曝光、复测一次。 | LOT-1004 は重ね合わせ不良。剥離、再露光、再測定を1回。 |
-| `scenarios.qtime.0` | Queue time | 等待时限 | キュータイム |
-| `scenarios.qtime.1` | Clean is done. The next film must start within 15 min. | 清洗已结束。下一道成膜须在 15 分钟内开工。 | 洗浄は終了。次の成膜は15分以内に着工します。 |
+| `scenarios.qtime.0` | Queue time | 队列时间 | 待ち時間 |
+| `scenarios.qtime.1` | Published CQT limits. ResiliMES adds PED risk and a Wet_Etch gate. That gate fired 0 times on the stored seeds. FIFO does not use the gate. | 已发表的 CQT。ResiliMES 增加 PED 风险和湿法刻蚀闸门。该闸门在已存储的种子上触发 0 次。FIFO 不使用该闸门。 | 公開された CQT。ResiliMES は PED リスクとウェットエッチのゲートを加える。そのゲートは保存済みシードで 0 回だった。FIFO はそのゲートを使わない。 |
 | `scenarios.scale.0` | 1,000 lots | 1000 批次 | 1000ロット |
 | `scenarios.scale.1` | 36 tools. One scanner is down for 10 h. Compare with EDD. | 36 台装置，一台光刻机宕机 10 小时。与 EDD 派工对比。 | 36台。スキャナー1台が10時間停止。EDD 差し立てと比較。 |
-| `chartBefore.litho_down` | Wait for repair | 等待修复方案 | 復旧待ち案 |
+| `chartBefore.litho_down` | EDD on this seed | 本种子的 EDD | このシードの EDD |
 | `chartBefore.rush_order` | Without the rush | 无急单 | 特急なし |
 | `chartBefore.material_shortage` | Resist in stock | 光刻胶有库存 | レジスト在庫あり |
 | `chartBefore.rework` | No rework | 无返工 | 再加工なし |
-| `chartBefore.qtime` | 8 h limit | 8 小时时限 | 制限8時間 |
+| `chartBefore.qtime` | FIFO | FIFO | FIFO |
 | `chartBefore.scale` | EDD dispatch | EDD 派工 | EDD 差し立て |
-| `chartAfter.litho_down` | Reschedule | 重排方案 | 再スケジュール案 |
+| `chartAfter.litho_down` | ResiliMES on this seed | 本种子的 ResiliMES | このシードの ResiliMES |
 | `chartAfter.rush_order` | With the rush | 含急单 | 特急あり |
 | `chartAfter.material_shortage` | Resist stockout | 光刻胶断料 | レジスト欠品 |
 | `chartAfter.rework` | Strip and re-expose | 去胶再曝光 | 剥離して再露光 |
-| `chartAfter.qtime` | 15 min limit | 15 分钟时限 | 制限15分 |
+| `chartAfter.qtime` | ResiliMES, published CQT | ResiliMES，已发表 CQT | ResiliMES、公開 CQT |
 | `chartAfter.scale` | Priority plan | 优先级排程 | 優先度計画 |
 | `scaleWindow` | First 12 hours | 前 12 小时 | 最初の12時間 |
 | `scaleNote` | Busy share of each tool, by hour. A hatch means the tool is down. | 每台装置每小时的忙碌占比。斜线表示宕机。 | 装置ごとの 1 時間の稼働割合です。斜線は停止です。 |
@@ -393,3 +393,83 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `intent.concernDown` | {id} is down or in maintenance. | {id} 宕机或保养中。 | {id} は停止または保全中です。 |
 | `intent.concernHeld` | {id} is held. | {id} 被暂扣。 | {id} は保留中です。 |
 | `intent.suggestHold` | Review the hold on {id} before the book is published. | 发布前复核 {id} 的暂扣。 | 公開前に {id} の保留を確認してください。 |
+
+## zh / ja strings for owner review
+
+After the merge of main into this branch, these SMT2020 strings live in `resilimes/demo/static/i18n.json`. They replace the six-lot bay rows above for `scenarios.litho_down`, `scenarios.qtime`, `chartBefore.litho_down`, `chartBefore.qtime`, `chartAfter.litho_down` and `chartAfter.qtime`.
+
+
+PR #14 (`cursor/first-impression-8a58`) also edits `resilimes/demo/static/app.js`. The strings below are the only zh/ja copy changed on this branch for the SMT2020 scenario list. English is included so the meaning is fixed. Please correct the wording. Do not treat these lines as approved.
+
+Scenario buttons prefer `copy.scenarios` over the API text. These two ids were still the six-lot bay (LITHO-02, LOT-1001, 15-minute film). They now name the SMT2020 incidents. Other scenario ids in that object were not edited.
+
+### zh
+
+| Key | New string |
+| --- | --- |
+| `scenarios.litho_down[0]` | 光刻故障 |
+| `scenarios.litho_down[1]` | Litho_FE_92-1 按已发表的光刻维修时间 705.59 分钟停机。快照时刻 2018-01-01。 |
+| `scenarios.qtime[0]` | 队列时间 |
+| `scenarios.qtime[1]` | SMT2020 已发表的 CQT。前瞻是相邻的 1 小时干法刻蚀到湿法刻蚀，不是 15 分钟成膜。 |
+| `chartBefore.litho_down` | 本种子的 EDD |
+| `chartAfter.litho_down` | 本种子的 ResiliMES |
+| `chartBefore.qtime` | FIFO |
+| `chartAfter.qtime` | ResiliMES，已发表 CQT |
+
+Previous zh: 设备故障 / 光刻机 02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。 / 清洗已经结束。下一道成膜必须在 15 分钟内开工。 / 修理等待 / 已重排 / 8 小时队列 / 15 分钟队列.
+
+### ja
+
+| Key | New string |
+| --- | --- |
+| `scenarios.litho_down[0]` | リソグラフィ故障 |
+| `scenarios.litho_down[1]` | Litho_FE_92-1 が公開されたリソグラフィ修理 705.59 分のあいだ停止。スナップショット 2018-01-01。 |
+| `scenarios.qtime[0]` | 待ち時間 |
+| `scenarios.qtime[1]` | SMT2020 の公開 CQT。見通しは隣接する 1 時間のドライエッチからウェットエッチで、15 分の成膜ではない。 |
+| `chartBefore.litho_down` | このシードの EDD |
+| `chartAfter.litho_down` | このシードの ResiliMES |
+| `chartBefore.qtime` | FIFO |
+| `chartAfter.qtime` | ResiliMES、公開 CQT |
+
+Previous ja: 装置故障 / リソ 02 が 10 時間停止。LOT-1001 が詰まり、納期 18:00 UTC。 / 洗浄は終了済み。次の成膜は 15 分以内に始める。 / 修理を待つ / 再計画 / 待ち 8 時間 / 待ち 15 分.
+
+### en (not for translation review)
+
+| Key | New string |
+| --- | --- |
+| `scenarios.litho_down` | Lithography breakdown / Litho_FE_92-1 is down for the published 705.59 min lithography repair. Snapshot 2018-01-01. |
+| `scenarios.qtime` | Queue time / Published SMT2020 CQT. The look-ahead is the adjacent 1-hour dry etch to wet etch pairs, not a 15-minute film step. |
+| `chartBefore.litho_down` | EDD on this seed |
+| `chartAfter.litho_down` | ResiliMES on this seed |
+| `chartBefore.qtime` | FIFO |
+| `chartAfter.qtime` | ResiliMES, published CQT |
+
+The scenario clock shows `2018-01-01 00:00` when `health.fab` is `smt2020`. That is a clock value, not a translated sentence. The API now returns that snapshot as `horizon`. The page no longer overwrites it in JavaScript.
+
+### Round 2 — queue-time button
+
+The previous qtime sentence described a dry-etch look-ahead that the code no longer runs. On the SMT console the button uses the API summary. The copy below is the fallback and must match that summary. Please correct the wording. Do not treat these lines as approved.
+
+#### zh
+
+| Key | New string |
+| --- | --- |
+| `scenarios.qtime[0]` | 队列时间 |
+| `scenarios.qtime[1]` | 已发表的 CQT。ResiliMES 增加 PED 风险和湿法刻蚀闸门。该闸门在已存储的种子上触发 0 次。FIFO 不使用该闸门。 |
+
+Previous round-2 zh body: SMT2020 已发表的 CQT。前瞻是相邻的 1 小时干法刻蚀到湿法刻蚀，不是 15 分钟成膜。
+
+#### ja
+
+| Key | New string |
+| --- | --- |
+| `scenarios.qtime[0]` | 待ち時間 |
+| `scenarios.qtime[1]` | 公開された CQT。ResiliMES は PED リスクとウェットエッチのゲートを加える。そのゲートは保存済みシードで 0 回だった。FIFO はそのゲートを使わない。 |
+
+Previous round-2 ja body: SMT2020 の公開 CQT。見通しは隣接する 1 時間のドライエッチからウェットエッチで、15 分の成膜ではない。
+
+#### en (not for translation review)
+
+| Key | New string |
+| --- | --- |
+| `scenarios.qtime` | Queue time / Published CQT limits. ResiliMES adds PED risk and a Wet_Etch gate. That gate fired 0 times on the stored seeds. FIFO does not use the gate. |

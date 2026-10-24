@@ -46,3 +46,48 @@ class InMemoryStateStore:
                 return False
             self._data[key] = value
             return True
+
+
+class RedisStateStore:
+    """Same protocol as the in-memory store. ``compare_and_set(None, token)`` is SET NX."""
+
+    def __init__(self, url: str) -> None:
+        try:
+            import redis
+        except ImportError as exc:  # pragma: no cover - optional dependency
+            raise RuntimeError(
+                "redis is optional; leave REDIS_URL unset to keep the in-memory store"
+            ) from exc
+        self._redis = redis.Redis.from_url(url, socket_connect_timeout=0.3, decode_responses=True)
+
+    def get(self, key: str) -> str | None:
+        value = self._redis.get(key)
+        if value is None:
+            return None
+        return str(value)
+
+    def set(self, key: str, value: str) -> None:
+        self._redis.set(key, value)
+
+    def delete(self, key: str) -> None:
+        self._redis.delete(key)
+
+    def compare_and_set(self, key: str, expected: str | None, value: str) -> bool:
+        if expected is None:
+            # SET NX. A missing key is the only accepted previous state.
+            return bool(self._redis.set(key, value, nx=True))
+        script = (
+            "local cur = redis.call('GET', KEYS[1]) "
+            "if cur ~= ARGV[1] then return 0 end "
+            "redis.call('SET', KEYS[1], ARGV[2]) "
+            "return 1"
+        )
+        return bool(self._redis.eval(script, 1, key, expected, value))
+
+
+def build_store(url: str = "") -> StateStore:
+    """``REDIS_URL`` selects Redis. Empty keeps the process-local store."""
+    target = url.strip()
+    if not target:
+        return InMemoryStateStore()
+    return RedisStateStore(target)

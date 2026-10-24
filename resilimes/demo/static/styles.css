@@ -49,8 +49,9 @@ body {
 }
 .shell {
   height: 100%;
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  /* Column flex: the banner, query line and tabs are each optional, so a fixed row template would misplace the layout. */
+  display: flex;
+  flex-direction: column;
   background: var(--card);
   border-radius: 12px;
   overflow: hidden;
@@ -137,6 +138,8 @@ h3 { font-size: var(--text-title); }
 }
 .tabs button[aria-selected="true"] { background: var(--accent-wash); color: var(--accent); }
 
+.shell > * { flex: 0 0 auto; }
+.shell > .layout { flex: 1 1 0; }
 .layout {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -247,6 +250,27 @@ h3 { font-size: var(--text-title); }
 .intent .reviewer { border-top: 1px solid var(--line); padding-top: 8px; }
 .intent .reviewer h3 { font-size: 15px; }
 .intent .muted { color: var(--muted); margin: 0; }
+.query-line {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+.smt-timing { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+.smt-controls { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.smt-controls input { width: 72px; }
+.vscroll { position: relative; max-height: 440px; overflow: auto; border-top: 1px solid var(--line); }
+.vrows { position: absolute; left: 0; right: 0; top: 0; }
+.smt-row { display: grid; grid-template-columns: 168px 1fr; height: 28px; align-items: center; gap: 6px; }
+.smt-row.scanner .smt-label { color: var(--accent); }
+.smt-label {
+  border: 0; background: transparent; text-align: left; font-family: var(--mono);
+  font-size: 11px; padding: 0; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.smt-track { position: relative; height: 16px; background: var(--wash, rgba(0,0,0,0.04)); border-radius: 3px; }
+.smt-track i { position: absolute; top: 2px; height: 12px; background: var(--accent); border-radius: 2px; opacity: 0.8; }
 .custom-wrap { color: var(--muted); font-size: 14px; }
 .custom-wrap summary { cursor: pointer; }
 textarea {

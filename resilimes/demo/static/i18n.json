@@ -189,8 +189,8 @@
     },
     "scenarios": {
       "litho_down": [
-        "Litho down",
-        "LITHO-02 is down for 10 h. LOT-1001 is on that tool."
+        "Lithography breakdown",
+        "Litho_FE_92-1 is down for the published 705.59 min lithography repair. Snapshot 2018-01-01."
       ],
       "rush_order": [
         "Rush lot",
@@ -206,7 +206,7 @@
       ],
       "qtime": [
         "Queue time",
-        "Clean is done. The next film must start within 15 min."
+        "Published CQT limits. ResiliMES adds PED risk and a Wet_Etch gate. That gate fired 0 times on the stored seeds. FIFO does not use the gate."
       ],
       "scale": [
         "1,000 lots",
@@ -214,19 +214,19 @@
       ]
     },
     "chartBefore": {
-      "litho_down": "Wait for repair",
+      "litho_down": "EDD on this seed",
       "rush_order": "Without the rush",
       "material_shortage": "Resist in stock",
       "rework": "No rework",
-      "qtime": "8 h limit",
+      "qtime": "FIFO",
       "scale": "EDD dispatch"
     },
     "chartAfter": {
-      "litho_down": "Reschedule",
+      "litho_down": "ResiliMES on this seed",
       "rush_order": "With the rush",
       "material_shortage": "Resist stockout",
       "rework": "Strip and re-expose",
-      "qtime": "15 min limit",
+      "qtime": "ResiliMES, published CQT",
       "scale": "Priority plan"
     },
     "scaleWindow": "First 12 hours",
@@ -631,8 +631,8 @@
     },
     "scenarios": {
       "litho_down": [
-        "光刻机宕机",
-        "LITHO-02 宕机 10 小时，LOT-1001 排在这台。"
+        "光刻故障",
+        "Litho_FE_92-1 按已发表的光刻维修时间 705.59 分钟停机。快照时刻 2018-01-01。"
       ],
       "rush_order": [
         "急单",
@@ -647,8 +647,8 @@
         "LOT-1004 套刻失败。去胶、再曝光、复测一次。"
       ],
       "qtime": [
-        "等待时限",
-        "清洗已结束。下一道成膜须在 15 分钟内开工。"
+        "队列时间",
+        "已发表的 CQT。ResiliMES 增加 PED 风险和湿法刻蚀闸门。该闸门在已存储的种子上触发 0 次。FIFO 不使用该闸门。"
       ],
       "scale": [
         "1000 批次",
@@ -656,19 +656,19 @@
       ]
     },
     "chartBefore": {
-      "litho_down": "等待修复方案",
+      "litho_down": "本种子的 EDD",
       "rush_order": "无急单",
       "material_shortage": "光刻胶有库存",
       "rework": "无返工",
-      "qtime": "8 小时时限",
+      "qtime": "FIFO",
       "scale": "EDD 派工"
     },
     "chartAfter": {
-      "litho_down": "重排方案",
+      "litho_down": "本种子的 ResiliMES",
       "rush_order": "含急单",
       "material_shortage": "光刻胶断料",
       "rework": "去胶再曝光",
-      "qtime": "15 分钟时限",
+      "qtime": "ResiliMES，已发表 CQT",
       "scale": "优先级排程"
     },
     "scaleWindow": "前 12 小时",
@@ -1073,8 +1073,8 @@
     },
     "scenarios": {
       "litho_down": [
-        "露光装置停止",
-        "LITHO-02 が10時間停止。LOT-1001 が載っています。"
+        "リソグラフィ故障",
+        "Litho_FE_92-1 が公開されたリソグラフィ修理 705.59 分のあいだ停止。スナップショット 2018-01-01。"
       ],
       "rush_order": [
         "特急ロット",
@@ -1089,8 +1089,8 @@
         "LOT-1004 は重ね合わせ不良。剥離、再露光、再測定を1回。"
       ],
       "qtime": [
-        "キュータイム",
-        "洗浄は終了。次の成膜は15分以内に着工します。"
+        "待ち時間",
+        "公開された CQT。ResiliMES は PED リスクとウェットエッチのゲートを加える。そのゲートは保存済みシードで 0 回だった。FIFO はそのゲートを使わない。"
       ],
       "scale": [
         "1000ロット",
@@ -1098,19 +1098,19 @@
       ]
     },
     "chartBefore": {
-      "litho_down": "復旧待ち案",
+      "litho_down": "このシードの EDD",
       "rush_order": "特急なし",
       "material_shortage": "レジスト在庫あり",
       "rework": "再加工なし",
-      "qtime": "制限8時間",
+      "qtime": "FIFO",
       "scale": "EDD 差し立て"
     },
     "chartAfter": {
-      "litho_down": "再スケジュール案",
+      "litho_down": "このシードの ResiliMES",
       "rush_order": "特急あり",
       "material_shortage": "レジスト欠品",
       "rework": "剥離して再露光",
-      "qtime": "制限15分",
+      "qtime": "ResiliMES、公開 CQT",
       "scale": "優先度計画"
     },
     "scaleWindow": "最初の12時間",
