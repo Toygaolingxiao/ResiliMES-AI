@@ -393,6 +393,234 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `intent.concernDown` | {id} is down or in maintenance. | {id} 宕机或保养中。 | {id} は停止または保全中です。 |
 | `intent.concernHeld` | {id} is held. | {id} 被暂扣。 | {id} は保留中です。 |
 | `intent.suggestHold` | Review the hold on {id} before the book is published. | 发布前复核 {id} 的暂扣。 | 公開前に {id} の保留を確認してください。 |
+| `fab.tabs.overview` | Overview | 总览 | 概況 |
+| `fab.tabs.tools` | Tools | 设备 | 装置 |
+| `fab.tabs.flow` | Product flow | 产品流 | 製品フロー |
+| `fab.tabs.lots` | Lots | 批次 | ロット |
+| `fab.tabs.batches` | Furnace batches | 炉管批次 | 炉バッチ |
+| `fab.tabs.events` | Event log | 事件记录 | イベント記録 |
+| `fab.tabs.kpis` | Daily KPIs | 每日指标 | 日次指標 |
+| `fab.source` | Public industry benchmark (SMT2020) | 公开行业基准（SMT2020） | 公開業界ベンチマーク（SMT2020） |
+| `fab.sourceLine` | {lots} lots · {tools} tools · {families} tool families · {routes} routes · 48 h simulated, seed {seed} | {lots} 个批次 · {tools} 台设备 · {families} 个设备族 · {routes} 条工艺路线 · 模拟 48 小时，种子 {seed} | {lots} ロット · {tools} 台 · {families} 装置ファミリー · {routes} ルート · 48 時間シミュレーション、シード {seed} |
+| `fab.book` | Scenario | 场景 | シナリオ |
+| `fab.books.base` | Baseline | 基线 | ベースライン |
+| `fab.books.litho_down` | Litho tool down | 光刻设备宕机 | 露光装置停止 |
+| `fab.books.hot_lot` | Hot lot inserted | 插入急件 | 特急ロット投入 |
+| `fab.books.pm_avoid` | PM calendar on | 启用保养日历 | PM カレンダーあり |
+| `fab.books.whatif` | What-if from dispatch | 派工假设 | 指示からの試算 |
+| `fab.bookBuilding` | Recording this scenario, a few seconds… | 正在记录该场景，需几秒… | このシナリオを記録中です。数秒かかります… |
+| `fab.time` | Sim time | 模拟时间 | シミュレーション時刻 |
+| `fab.clock` | Day {d} · {hm} | 第 {d} 天 · {hm} | {d}日目 · {hm} |
+| `fab.play` | Play | 播放 | 再生 |
+| `fab.pause` | Pause | 暂停 | 一時停止 |
+| `fab.back` | −1 h | −1 小时 | −1 時間 |
+| `fab.fwd` | +1 h | +1 小时 | +1 時間 |
+| `fab.speed.slow` | 15 min/step | 每步 15 分钟 | 1 ステップ 15 分 |
+| `fab.speed.fast` | 1 h/step | 每步 1 小时 | 1 ステップ 1 時間 |
+| `fab.loading` | Loading… | 加载中… | 読み込み中… |
+| `fab.error` | Could not load: {msg} | 加载失败：{msg} | 読み込めませんでした：{msg} |
+| `fab.none` | None | 无 | なし |
+| `fab.more` | +{n} more | 另有 {n} 项 | ほか {n} 件 |
+| `fab.states.run` | Running | 加工中 | 稼働中 |
+| `fab.states.idle` | Idle | 空闲 | 待機 |
+| `fab.states.setup` | Setup | 换型 | 段取り |
+| `fab.states.down` | Down | 宕机 | 停止 |
+| `fab.states.pm` | PM | 保养 | PM |
+| `fab.states.batch_wait` | Waiting for batch | 等待组批 | バッチ待ち |
+| `fab.status.wait` | Waiting | 等待 | 待ち |
+| `fab.status.run` | In process | 加工中 | 処理中 |
+| `fab.status.hold` | On hold | 暂扣 | 保留 |
+| `fab.status.done` | Done | 完成 | 完了 |
+| `fab.classes.VIP` | VIP | VIP | VIP |
+| `fab.classes.hot` | Hot | 急件 | 特急 |
+| `fab.classes.normal` | Normal | 普通 | 通常 |
+| `fab.risk.late` | Late | 已延误 | 遅れ |
+| `fab.risk.risk` | At risk | 有风险 | 要注意 |
+| `fab.risk.ok` | On track | 按期 | 順調 |
+| `fab.reason.vip` | VIP | VIP | VIP |
+| `fab.reason.hot` | Hot lot | 急件 | 特急ロット |
+| `fab.reason.late` | {h} h late | 已延误 {h} 小时 | {h} 時間遅れ |
+| `fab.reason.qtime` | Q-time {min} min left | Q-time 剩 {min} 分钟 | Q-time 残り {min} 分 |
+| `fab.reason.qtimeOver` | Q-time exceeded by {min} min | Q-time 已超 {min} 分钟 | Q-time {min} 分超過 |
+| `fab.reason.rework` | Rework | 返工 | リワーク |
+| `fab.reason.batch` | Batch of {lots} lots, {wafers}/{max} wafers | 组批 {lots} 批，{wafers}/{max} 片 | {lots} ロットのバッチ、{wafers}/{max} 枚 |
+| `fab.reason.same_recipe` | Same recipe, no setup | 同配方，无需换型 | 同一レシピ、段取りなし |
+| `fab.reason.setup` | Setup {min} min | 换型 {min} 分钟 | 段取り {min} 分 |
+| `fab.reason.slack` | {h} h slack | 余量 {h} 小时 | 余裕 {h} 時間 |
+| `fab.reason.pm_skip` | Skipped: would cross PM at {at} | 跳过：会跨入 {at} 的保养 | 見送り：{at} の PM にかかる |
+| `fab.reason.pm_blocked` | Not on {tools}: would cross PM | 不上 {tools}：会跨入保养 | {tools} には載せない：PM にかかる |
+| `fab.reason.pm` | PM {from}–{to} | 保养 {from}–{to} | PM {from}–{to} |
+| `fab.why.min_met` | minimum load reached | 达到最小装载量 | 最小積載に到達 |
+| `fab.why.max_wait` | longest wait reached | 达到最长等待 | 最大待ち時間に到達 |
+| `fab.why.no_arrivals` | no more lots coming | 不会再有批次到达 | これ以上ロットが来ない |
+| `fab.why.hot_cap` | hot lot could not wait | 急件不能再等 | 特急ロットを待たせられない |
+| `fab.why.full` | full | 已满 | 満載 |
+| `fab.ov.kWip` | Lots in fab | 在制批次 | 仕掛ロット |
+| `fab.ov.kWipSub` | {wait} waiting · {run} in process · {hold} on hold | {wait} 等待 · {run} 加工中 · {hold} 暂扣 | 待ち {wait} · 処理中 {run} · 保留 {hold} |
+| `fab.ov.kDone` | Finished so far | 已完成 | 完了済み |
+| `fab.ov.kDoneSub` | {ontime} of {due} due so far were on time | 目前到期 {due} 批，其中 {ontime} 批按期 | これまでの納期 {due} 件中 {ontime} 件が納期内 |
+| `fab.ov.kTools` | Tools running | 运行中设备 | 稼働中の装置 |
+| `fab.ov.kToolsSub` | {idle} idle · {down} down · {setup} in setup | {idle} 空闲 · {down} 宕机 · {setup} 换型 | 待機 {idle} · 停止 {down} · 段取り {setup} |
+| `fab.ov.kOtd` | On-time at 48 h | 48 小时准交率 | 48 時間時点の納期遵守率 |
+| `fab.ov.kOtdSub` | {n} lots due within the run | 本次运行内到期 {n} 批 | 期間内に納期のロット {n} 件 |
+| `fab.ov.kQtime` | Q-time kept | Q-time 达成 | Q-time 遵守 |
+| `fab.ov.kQtimeSub` | {v} of {n} windows missed | {n} 个窗口中超时 {v} 个 | {n} 件中 {v} 件超過 |
+| `fab.ov.kPrio` | Priority lots late | 延误的优先批次 | 遅れている優先ロット |
+| `fab.ov.kPrioSub` | of {n} VIP and hot lots | VIP 与急件共 {n} 批 | VIP・特急 計 {n} ロット中 |
+| `fab.ov.bottlenecks` | Bottlenecks | 瓶颈 | ボトルネック |
+| `fab.ov.bottlenecksNote` | Busy 85% or more and queue over its limit | 稼动率 85% 以上且队列超限 | 稼働率 85% 以上かつ待ち行列が上限超え |
+| `fab.ov.busiest` | Busiest families | 最忙的设备族 | 負荷の高いファミリー |
+| `fab.ov.util` | Busy | 稼动 | 稼働 |
+| `fab.ov.queue` | Queue | 队列 | 待ち |
+| `fab.ov.limit` | limit {n} | 上限 {n} | 上限 {n} |
+| `fab.ov.alerts` | WIP pile-ups | 在制品堆积 | 仕掛の滞留 |
+| `fab.ov.alertsNote` | {n} families over their queue limit | {n} 个设备族队列超限 | 待ち行列が上限を超えたファミリー {n} 件 |
+| `fab.ov.trendUp` | +{n} in 2 h | 2 小时 +{n} | 2 時間で +{n} |
+| `fab.ov.trendFlat` | steady | 持平 | 横ばい |
+| `fab.ov.trendDown` | −{n} in 2 h | 2 小时 −{n} | 2 時間で −{n} |
+| `fab.ov.priority` | VIP and hot lots | VIP 与急件 | VIP・特急ロット |
+| `fab.ov.atRisk` | Lots at risk | 有风险的批次 | 要注意ロット |
+| `fab.ov.atRiskNote` | {n} lots with 8 h slack or less | 余量 8 小时以内的批次 {n} 个 | 余裕 8 時間以内のロット {n} 件 |
+| `fab.ov.recent` | Last 3 hours | 最近 3 小时 | 直近 3 時間 |
+| `fab.ov.toolStates` | Tool states | 设备状态 | 装置の状態 |
+| `fab.ov.lotStates` | Lot states | 批次状态 | ロットの状態 |
+| `fab.ov.wholeRun` | whole 48 h run | 整段 48 小时 | 48 時間全体 |
+| `fab.ov.allClear` | No pile-ups right now. | 当前没有堆积。 | 現在、滞留はありません。 |
+| `fab.tl.group` | Area | 工艺区 | 工程エリア |
+| `fab.tl.family` | Family | 设备族 | ファミリー |
+| `fab.tl.allFamilies` | Busiest in this area | 本区最忙 | このエリアで負荷の高い順 |
+| `fab.tl.onTool` | On tool | 机台上 | 装置上 |
+| `fab.tl.next` | Next up | 接下来 | 次に流す |
+| `fab.tl.queueTitle` | Queue in dispatch order | 按派工顺序的队列 | ディスパッチ順の待ち行列 |
+| `fab.tl.queueNote` | {n} lots waiting · limit {limit} | {n} 批等待 · 上限 {limit} | 待ち {n} ロット · 上限 {limit} |
+| `fab.tl.waited` | waited {min} | 已等 {min} | {min} 待ち |
+| `fab.tl.pileup` | Pile-up | 堆积 | 滞留 |
+| `fab.tl.bottleneck` | Bottleneck | 瓶颈 | ボトルネック |
+| `fab.tl.batchTool` | Batch furnace | 炉管组批 | バッチ炉 |
+| `fab.tl.tools` | {n} tools | {n} 台 | {n} 台 |
+| `fab.tl.until` | until {t} | 至 {t} | {t} まで |
+| `fab.tl.progress` | {p}% done | 完成 {p}% | {p}% 完了 |
+| `fab.tl.nothingNext` | Nothing scheduled | 暂无安排 | 予定なし |
+| `fab.tl.pmNext` | PM at {t} | {t} 保养 | {t} に PM |
+| `fab.tl.step` | step {n} | 第 {n} 步 | ステップ {n} |
+| `fab.tl.timeline` | 3 h back, 3 h ahead | 前后各 3 小时 | 前後 3 時間 |
+| `fab.tl.pickFamily` | Family | 设备族 | ファミリー |
+| `fab.tl.lotsWaiting` | {n} waiting | {n} 批等待 | 待ち {n} |
+| `fab.fl.note` | Each dot is a lot at its route position, 0–100%. Colour is lot class; the ring is due-date risk. | 每个点是一个批次在其工艺路线上的位置（0–100%）。颜色表示批次等级，外圈表示交期风险。 | 点は各ロットのルート上の位置（0–100%）です。色はロット区分、外枠は納期リスクです。 |
+| `fab.fl.wip` | WIP by process area | 各工艺区在制品 | 工程エリア別の仕掛 |
+| `fab.fl.waiting` | Waiting | 等待 | 待ち |
+| `fab.fl.running` | In process | 加工中 | 処理中 |
+| `fab.fl.hold` | On hold | 暂扣 | 保留 |
+| `fab.fl.ahead` | Most ahead of schedule | 最超前 | 最も先行 |
+| `fab.fl.behind` | Most behind schedule | 最落后 | 最も遅れ |
+| `fab.fl.slackH` | {h} h | {h} 小时 | {h} 時間 |
+| `fab.fl.steps` | {n} steps | {n} 步 | {n} ステップ |
+| `fab.fl.counts` | {late} late · {risk} at risk · {ok} on track · {done} done | {late} 延误 · {risk} 有风险 · {ok} 按期 · {done} 完成 | 遅れ {late} · 要注意 {risk} · 順調 {ok} · 完了 {done} |
+| `fab.fl.legendClass` | Class | 等级 | 区分 |
+| `fab.fl.legendRisk` | Risk | 风险 | リスク |
+| `fab.fl.progress` | Route progress | 路线进度 | ルート進捗 |
+| `fab.lot.search` | Lot id, e.g. Init_Lot_3_17 | 批次号，例如 Init_Lot_3_17 | ロット ID（例：Init_Lot_3_17） |
+| `fab.lot.open` | Open | 打开 | 開く |
+| `fab.lot.notFound` | No lot {id} | 没有批次 {id} | ロット {id} はありません |
+| `fab.lot.pick` | Pick a lot on any screen, or type its id. | 在任意页面点选批次，或输入批次号。 | どの画面からでもロットを選ぶか、ID を入力してください。 |
+| `fab.lot.header` | {product} · step {step} of {steps} | {product} · 第 {step} / {steps} 步 | {product} · ステップ {step} / {steps} |
+| `fab.lot.due` | Due {t} | 交期 {t} | 納期 {t} |
+| `fab.lot.finished` | Finished {t} | 完成于 {t} | {t} に完了 |
+| `fab.lot.notFinished` | Not finished within 48 h | 48 小时内未完成 | 48 時間以内に未完了 |
+| `fab.lot.slack` | Slack | 余量 | 余裕 |
+| `fab.lot.timeline` | Steps in the 48 h run | 48 小时内的工步 | 48 時間内のステップ |
+| `fab.lot.colStep` | Step | 工步 | ステップ |
+| `fab.lot.colTool` | Tool | 设备 | 装置 |
+| `fab.lot.colReady` | Ready | 就绪 | 準備完了 |
+| `fab.lot.colStart` | Start | 开始 | 開始 |
+| `fab.lot.colWait` | Waited | 等待 | 待ち |
+| `fab.lot.colWhy` | Why it was picked | 为何被选中 | 選ばれた理由 |
+| `fab.lot.qtime` | Q-time windows | Q-time 窗口 | Q-time 区間 |
+| `fab.lot.qtimeRow` | Steps {a} → {b}: {outcome} | 第 {a} → {b} 步：{outcome} | ステップ {a} → {b}：{outcome} |
+| `fab.lot.outcome.met` | kept | 达成 | 遵守 |
+| `fab.lot.outcome.violated` | missed | 超时 | 超過 |
+| `fab.lot.outcome.open` | open | 进行中 | 進行中 |
+| `fab.lot.outcome.skipped` | skipped | 已跳过 | スキップ |
+| `fab.lot.outcome.superseded` | superseded | 已替代 | 置き換え |
+| `fab.lot.outcome.recleaned` | recleaned | 已重洗 | 再洗浄 |
+| `fab.lot.skips` | Skipped steps | 跳过的工步 | スキップしたステップ |
+| `fab.lot.reworks` | Rework | 返工 | リワーク |
+| `fab.lot.recleans` | Recleans | 重洗 | 再洗浄 |
+| `fab.lot.upcoming` | Next steps | 后续工步 | この先のステップ |
+| `fab.lot.interrupted` | interrupted by a breakdown | 因宕机中断 | 装置停止で中断 |
+| `fab.lot.released` | Entered the run at step {n} | 从第 {n} 步进入本次运行 | ステップ {n} から投入 |
+| `fab.lot.recent` | Recently opened | 最近查看 | 最近開いたロット |
+| `fab.lot.willFinish` | Finishes {t} in this run | 本次运行中将于 {t} 完成 | この運転では {t} に完了 |
+| `fab.bt.forming` | Forming | 组批中 | 編成中 |
+| `fab.bt.running` | Running | 运行中 | 処理中 |
+| `fab.bt.formingNote` | Lots waiting at furnaces, grouped by recipe | 按配方分组、在炉管前等待的批次 | 炉の前で待つロットをレシピごとに表示 |
+| `fab.bt.wafers` | {w} wafers (min {min}, max {max}) | {w} 片（最少 {min}，最多 {max}） | {w} 枚（最小 {min}、最大 {max}） |
+| `fab.bt.capAt` | Starts anyway in {min} min | {min} 分钟后无论如何开炉 | {min} 分後に積載に関わらず開始 |
+| `fab.bt.capPassed` | Longest wait passed {min} min ago | 已超过最长等待 {min} 分钟 | 最大待ち時間を {min} 分超過 |
+| `fab.bt.waitingFor.wafers` | Waiting for wafers | 等待晶圆凑满 | ウェーハ待ち |
+| `fab.bt.waitingFor.tool` | Waiting for a free furnace | 等待空闲炉管 | 空き炉待ち |
+| `fab.bt.hot` | Hot lot inside | 含急件 | 特急ロットあり |
+| `fab.bt.started` | Last start {t} on {tool} | 上次 {t} 在 {tool} 开炉 | 前回 {t} に {tool} で開始 |
+| `fab.bt.ends` | Ends {t} | {t} 结束 | {t} 終了 |
+| `fab.bt.lotsN` | {n} lots | {n} 批 | {n} ロット |
+| `fab.bt.none` | No furnace batch at this time. | 此时没有炉管批次。 | この時刻に炉バッチはありません。 |
+| `fab.bt.queued` | {n} lots queued | {n} 批排队 | {n} ロット待ち |
+| `fab.ev.search` | Filter by lot or tool | 按批次或设备筛选 | ロットまたは装置で絞り込み |
+| `fab.ev.kinds.down` | Breakdowns | 宕机 | 装置停止 |
+| `fab.ev.kinds.pm` | PM | 保养 | PM |
+| `fab.ev.kinds.batch` | Batches | 组批 | バッチ |
+| `fab.ev.kinds.priority` | Priority lots | 优先批次 | 優先ロット |
+| `fab.ev.kinds.rework` | Rework | 返工 | リワーク |
+| `fab.ev.kinds.reclean` | Recleans | 重洗 | 再洗浄 |
+| `fab.ev.kinds.qtime_miss` | Q-time misses | Q-time 超时 | Q-time 超過 |
+| `fab.ev.kinds.done` | Finished | 完成 | 完了 |
+| `fab.ev.kinds.skip` | Skips | 跳步 | スキップ |
+| `fab.ev.down` | {tool} broke down until {until}. | {tool} 宕机，至 {until}。 | {tool} が停止、{until} まで。 |
+| `fab.ev.downLots` | {tool} broke down until {until}; {n} lots interrupted. | {tool} 宕机，至 {until}；{n} 个批次被中断。 | {tool} が停止、{until} まで。{n} ロットが中断。 |
+| `fab.ev.downForced` | Scenario: {tool} taken down until {until}. | 场景设定：{tool} 停机至 {until}。 | シナリオ：{tool} を {until} まで停止。 |
+| `fab.ev.pm` | {tool} went into PM until {until}. | {tool} 开始保养，至 {until}。 | {tool} が PM に入りました（{until} まで）。 |
+| `fab.ev.batch` | {tool} started a batch: {n} lots, {wafers} wafers, {why}. | {tool} 开炉：{n} 批，{wafers} 片，{why}。 | {tool} でバッチ開始：{n} ロット、{wafers} 枚、{why}。 |
+| `fab.ev.priority` | {cls} lot {lot} started step {step} on {tool}. | {cls}批次 {lot} 在 {tool} 开始第 {step} 步。 | {cls}ロット {lot} が {tool} でステップ {step} を開始。 |
+| `fab.ev.rework` | {lot} failed step {step} on {tool} and needs rework. | {lot} 在 {tool} 的第 {step} 步未通过，需要返工。 | {lot} は {tool} のステップ {step} で不合格、リワークが必要です。 |
+| `fab.ev.reworkRedo` | {lot} failed step {step} on {tool}; redo on {redo} at {at}. | {lot} 在 {tool} 的第 {step} 步未通过；{at} 在 {redo} 重做。 | {lot} は {tool} のステップ {step} で不合格。{at} に {redo} でやり直し。 |
+| `fab.ev.reclean` | {lot} went back to step {origin} for a reclean. | {lot} 退回第 {origin} 步重洗。 | {lot} は再洗浄のためステップ {origin} に戻りました。 |
+| `fab.ev.qtime_miss` | {lot} missed its Q-time before step {step} by {over} min. | {lot} 在第 {step} 步前 Q-time 超时 {over} 分钟。 | {lot} はステップ {step} の前で Q-time を {over} 分超過。 |
+| `fab.ev.doneOk` | {lot} finished on time. | {lot} 按期完成。 | {lot} が納期内に完了。 |
+| `fab.ev.doneLate` | {lot} finished {h} h late. | {lot} 完成，延误 {h} 小时。 | {lot} が {h} 時間遅れで完了。 |
+| `fab.ev.skip` | {lot} skipped step {step}. | {lot} 跳过第 {step} 步。 | {lot} がステップ {step} をスキップ。 |
+| `fab.ev.count` | {n} events up to {t} | 截至 {t} 共 {n} 条事件 | {t} までに {n} 件 |
+| `fab.ev.breakdowns` | Breakdowns | 宕机 | 装置停止 |
+| `fab.ev.bdLots` | Lots hit: {lots} | 受影响批次：{lots} | 影響ロット：{lots} |
+| `fab.ev.bdOpen` | still down at 48 h | 48 小时结束时仍宕机 | 48 時間終了時も停止中 |
+| `fab.ev.bdDur` | {min} min | {min} 分钟 | {min} 分 |
+| `fab.kp.note` | Calculations adapted from Schedule_Viewer, fed by the SMT2020 run. The time slider does not change this page. | 计算逻辑改编自 Schedule_Viewer，数据来自 SMT2020 运行。时间滑块不影响本页。 | 計算は Schedule_Viewer から移植し、SMT2020 の実行結果を入力にしています。時刻スライダーはこのページに影響しません。 |
+| `fab.kp.metric` | Metric | 指标 | 指標 |
+| `fab.kp.periods.day1` | Day 1 | 第 1 天 | 1日目 |
+| `fab.kp.periods.day2` | Day 2 | 第 2 天 | 2日目 |
+| `fab.kp.periods.all` | 48 h | 48 小时 | 48 時間 |
+| `fab.kp.rows.onTime` | On-time rate, finished lots | 准交率（已完成批次） | 納期遵守率（完了ロット） |
+| `fab.kp.rows.completed` | Lots finished | 完成批次 | 完了ロット数 |
+| `fab.kp.rows.avgDelay` | Average delay of late lots | 延误批次的平均延误 | 遅れロットの平均遅れ |
+| `fab.kp.rows.qtime` | Q-time kept | Q-time 达成率 | Q-time 遵守率 |
+| `fab.kp.rows.setupRate` | Setup share of tool time | 换型占设备时间 | 段取りが占める割合 |
+| `fab.kp.rows.waitRate` | Tool idle share | 设备空闲占比 | 装置の待機割合 |
+| `fab.kp.rows.moves` | Lot moves | 批次移动数 | ロット移動数 |
+| `fab.kp.rows.wafers` | Wafer moves | 晶圆移动数 | ウェーハ移動数 |
+| `fab.kp.rows.batches` | Furnace batches | 炉管批次 | 炉バッチ数 |
+| `fab.kp.rows.batchFill` | Batch fill | 装载率 | バッチ積載率 |
+| `fab.kp.rows.grouping` | Same-recipe grouping | 同配方连续率 | 同一レシピ連続率 |
+| `fab.kp.rows.queue` | Mean queue per step | 每步平均排队 | ステップあたり平均待ち |
+| `fab.kp.rows.xfactor` | Mean x-factor | 平均 X 因子 | 平均 X ファクター |
+| `fab.kp.activity` | Where tool time went | 设备时间去向 | 装置時間の内訳 |
+| `fab.kp.act.production` | Processing | 加工 | 処理 |
+| `fab.kp.act.setup` | Setup | 换型 | 段取り |
+| `fab.kp.act.down` | Down | 宕机 | 停止 |
+| `fab.kp.act.pm` | PM | 保养 | PM |
+| `fab.kp.act.idle` | Idle | 空闲 | 待機 |
+| `fab.kp.load` | Load by area | 各工艺区负荷 | 工程エリア別の負荷 |
+| `fab.kp.classWait` | Mean queue per step by class | 各等级每步平均排队 | 区分別のステップあたり平均待ち |
+| `fab.whatifOpen` | Open this what-if in the fab views | 在工厂视图中打开这个假设 | この試算を工場ビューで開く |
+| `fab.dayShort` | D{d} | 第{d}天 | {d}日目 |
 | `shiftLead.title` | AI shift lead · study run | AI班长 · 实验运行 | AI当直 · 検証の実行 |
 | `shiftLead.runs` | Runs | 轮次 | ラン |
 | `shiftLead.sim` | Sim time | 仿真时间 | シミュレーション時刻 |
@@ -582,3 +810,238 @@ This branch adds a Q-time-urgent override to ResiliMES dispatch and a fixed 1/3-
 | `scenarios.litho_down[1]` | Still correct. The 705.59 min repair is unchanged, and the 12 h click is still a 2/19 tie. |
 
 The numbers that changed (tight VIP, X-factor, published dues) are English-only strings in `resilimes/smt/scenarios.py`, served by the API, and are updated there. If the console later shows the override count, the override reason, or transport time, those will need new keys and a translation round.
+
+## ui-r1: new fab screen strings (review before merge)
+
+228 new keys under `fab.*` (Overview, Tools, Product flow, Lots, Furnace batches, Event log, Daily KPIs). No existing zh/ja string was changed on this branch. `{n}`-style placeholders are filled at runtime.
+
+| Key | English | 中文 | 日本語 |
+| --- | --- | --- | --- |
+| `fab.tabs.overview` | Overview | 总览 | 概況 |
+| `fab.tabs.tools` | Tools | 设备 | 装置 |
+| `fab.tabs.flow` | Product flow | 产品流 | 製品フロー |
+| `fab.tabs.lots` | Lots | 批次 | ロット |
+| `fab.tabs.batches` | Furnace batches | 炉管批次 | 炉バッチ |
+| `fab.tabs.events` | Event log | 事件记录 | イベント記録 |
+| `fab.tabs.kpis` | Daily KPIs | 每日指标 | 日次指標 |
+| `fab.source` | Public industry benchmark (SMT2020) | 公开行业基准（SMT2020） | 公開業界ベンチマーク（SMT2020） |
+| `fab.sourceLine` | {lots} lots · {tools} tools · {families} tool families · {routes} routes · 48 h simulated, seed {seed} | {lots} 个批次 · {tools} 台设备 · {families} 个设备族 · {routes} 条工艺路线 · 模拟 48 小时，种子 {seed} | {lots} ロット · {tools} 台 · {families} 装置ファミリー · {routes} ルート · 48 時間シミュレーション、シード {seed} |
+| `fab.book` | Scenario | 场景 | シナリオ |
+| `fab.books.base` | Baseline | 基线 | ベースライン |
+| `fab.books.litho_down` | Litho tool down | 光刻设备宕机 | 露光装置停止 |
+| `fab.books.hot_lot` | Hot lot inserted | 插入急件 | 特急ロット投入 |
+| `fab.books.pm_avoid` | PM calendar on | 启用保养日历 | PM カレンダーあり |
+| `fab.books.whatif` | What-if from dispatch | 派工假设 | 指示からの試算 |
+| `fab.bookBuilding` | Recording this scenario, a few seconds… | 正在记录该场景，需几秒… | このシナリオを記録中です。数秒かかります… |
+| `fab.time` | Sim time | 模拟时间 | シミュレーション時刻 |
+| `fab.clock` | Day {d} · {hm} | 第 {d} 天 · {hm} | {d}日目 · {hm} |
+| `fab.play` | Play | 播放 | 再生 |
+| `fab.pause` | Pause | 暂停 | 一時停止 |
+| `fab.back` | −1 h | −1 小时 | −1 時間 |
+| `fab.fwd` | +1 h | +1 小时 | +1 時間 |
+| `fab.speed.slow` | 15 min/step | 每步 15 分钟 | 1 ステップ 15 分 |
+| `fab.speed.fast` | 1 h/step | 每步 1 小时 | 1 ステップ 1 時間 |
+| `fab.loading` | Loading… | 加载中… | 読み込み中… |
+| `fab.error` | Could not load: {msg} | 加载失败：{msg} | 読み込めませんでした：{msg} |
+| `fab.none` | None | 无 | なし |
+| `fab.more` | +{n} more | 另有 {n} 项 | ほか {n} 件 |
+| `fab.states.run` | Running | 加工中 | 稼働中 |
+| `fab.states.idle` | Idle | 空闲 | 待機 |
+| `fab.states.setup` | Setup | 换型 | 段取り |
+| `fab.states.down` | Down | 宕机 | 停止 |
+| `fab.states.pm` | PM | 保养 | PM |
+| `fab.states.batch_wait` | Waiting for batch | 等待组批 | バッチ待ち |
+| `fab.status.wait` | Waiting | 等待 | 待ち |
+| `fab.status.run` | In process | 加工中 | 処理中 |
+| `fab.status.hold` | On hold | 暂扣 | 保留 |
+| `fab.status.done` | Done | 完成 | 完了 |
+| `fab.classes.VIP` | VIP | VIP | VIP |
+| `fab.classes.hot` | Hot | 急件 | 特急 |
+| `fab.classes.normal` | Normal | 普通 | 通常 |
+| `fab.risk.late` | Late | 已延误 | 遅れ |
+| `fab.risk.risk` | At risk | 有风险 | 要注意 |
+| `fab.risk.ok` | On track | 按期 | 順調 |
+| `fab.reason.vip` | VIP | VIP | VIP |
+| `fab.reason.hot` | Hot lot | 急件 | 特急ロット |
+| `fab.reason.late` | {h} h late | 已延误 {h} 小时 | {h} 時間遅れ |
+| `fab.reason.qtime` | Q-time {min} min left | Q-time 剩 {min} 分钟 | Q-time 残り {min} 分 |
+| `fab.reason.qtimeOver` | Q-time exceeded by {min} min | Q-time 已超 {min} 分钟 | Q-time {min} 分超過 |
+| `fab.reason.rework` | Rework | 返工 | リワーク |
+| `fab.reason.batch` | Batch of {lots} lots, {wafers}/{max} wafers | 组批 {lots} 批，{wafers}/{max} 片 | {lots} ロットのバッチ、{wafers}/{max} 枚 |
+| `fab.reason.same_recipe` | Same recipe, no setup | 同配方，无需换型 | 同一レシピ、段取りなし |
+| `fab.reason.setup` | Setup {min} min | 换型 {min} 分钟 | 段取り {min} 分 |
+| `fab.reason.slack` | {h} h slack | 余量 {h} 小时 | 余裕 {h} 時間 |
+| `fab.reason.pm_skip` | Skipped: would cross PM at {at} | 跳过：会跨入 {at} 的保养 | 見送り：{at} の PM にかかる |
+| `fab.reason.pm_blocked` | Not on {tools}: would cross PM | 不上 {tools}：会跨入保养 | {tools} には載せない：PM にかかる |
+| `fab.reason.pm` | PM {from}–{to} | 保养 {from}–{to} | PM {from}–{to} |
+| `fab.why.min_met` | minimum load reached | 达到最小装载量 | 最小積載に到達 |
+| `fab.why.max_wait` | longest wait reached | 达到最长等待 | 最大待ち時間に到達 |
+| `fab.why.no_arrivals` | no more lots coming | 不会再有批次到达 | これ以上ロットが来ない |
+| `fab.why.hot_cap` | hot lot could not wait | 急件不能再等 | 特急ロットを待たせられない |
+| `fab.why.full` | full | 已满 | 満載 |
+| `fab.ov.kWip` | Lots in fab | 在制批次 | 仕掛ロット |
+| `fab.ov.kWipSub` | {wait} waiting · {run} in process · {hold} on hold | {wait} 等待 · {run} 加工中 · {hold} 暂扣 | 待ち {wait} · 処理中 {run} · 保留 {hold} |
+| `fab.ov.kDone` | Finished so far | 已完成 | 完了済み |
+| `fab.ov.kDoneSub` | {ontime} of {due} due so far were on time | 目前到期 {due} 批，其中 {ontime} 批按期 | これまでの納期 {due} 件中 {ontime} 件が納期内 |
+| `fab.ov.kTools` | Tools running | 运行中设备 | 稼働中の装置 |
+| `fab.ov.kToolsSub` | {idle} idle · {down} down · {setup} in setup | {idle} 空闲 · {down} 宕机 · {setup} 换型 | 待機 {idle} · 停止 {down} · 段取り {setup} |
+| `fab.ov.kOtd` | On-time at 48 h | 48 小时准交率 | 48 時間時点の納期遵守率 |
+| `fab.ov.kOtdSub` | {n} lots due within the run | 本次运行内到期 {n} 批 | 期間内に納期のロット {n} 件 |
+| `fab.ov.kQtime` | Q-time kept | Q-time 达成 | Q-time 遵守 |
+| `fab.ov.kQtimeSub` | {v} of {n} windows missed | {n} 个窗口中超时 {v} 个 | {n} 件中 {v} 件超過 |
+| `fab.ov.kPrio` | Priority lots late | 延误的优先批次 | 遅れている優先ロット |
+| `fab.ov.kPrioSub` | of {n} VIP and hot lots | VIP 与急件共 {n} 批 | VIP・特急 計 {n} ロット中 |
+| `fab.ov.bottlenecks` | Bottlenecks | 瓶颈 | ボトルネック |
+| `fab.ov.bottlenecksNote` | Busy 85% or more and queue over its limit | 稼动率 85% 以上且队列超限 | 稼働率 85% 以上かつ待ち行列が上限超え |
+| `fab.ov.busiest` | Busiest families | 最忙的设备族 | 負荷の高いファミリー |
+| `fab.ov.util` | Busy | 稼动 | 稼働 |
+| `fab.ov.queue` | Queue | 队列 | 待ち |
+| `fab.ov.limit` | limit {n} | 上限 {n} | 上限 {n} |
+| `fab.ov.alerts` | WIP pile-ups | 在制品堆积 | 仕掛の滞留 |
+| `fab.ov.alertsNote` | {n} families over their queue limit | {n} 个设备族队列超限 | 待ち行列が上限を超えたファミリー {n} 件 |
+| `fab.ov.trendUp` | +{n} in 2 h | 2 小时 +{n} | 2 時間で +{n} |
+| `fab.ov.trendFlat` | steady | 持平 | 横ばい |
+| `fab.ov.trendDown` | −{n} in 2 h | 2 小时 −{n} | 2 時間で −{n} |
+| `fab.ov.priority` | VIP and hot lots | VIP 与急件 | VIP・特急ロット |
+| `fab.ov.atRisk` | Lots at risk | 有风险的批次 | 要注意ロット |
+| `fab.ov.atRiskNote` | {n} lots with 8 h slack or less | 余量 8 小时以内的批次 {n} 个 | 余裕 8 時間以内のロット {n} 件 |
+| `fab.ov.recent` | Last 3 hours | 最近 3 小时 | 直近 3 時間 |
+| `fab.ov.toolStates` | Tool states | 设备状态 | 装置の状態 |
+| `fab.ov.lotStates` | Lot states | 批次状态 | ロットの状態 |
+| `fab.ov.wholeRun` | whole 48 h run | 整段 48 小时 | 48 時間全体 |
+| `fab.ov.allClear` | No pile-ups right now. | 当前没有堆积。 | 現在、滞留はありません。 |
+| `fab.tl.group` | Area | 工艺区 | 工程エリア |
+| `fab.tl.family` | Family | 设备族 | ファミリー |
+| `fab.tl.allFamilies` | Busiest in this area | 本区最忙 | このエリアで負荷の高い順 |
+| `fab.tl.onTool` | On tool | 机台上 | 装置上 |
+| `fab.tl.next` | Next up | 接下来 | 次に流す |
+| `fab.tl.queueTitle` | Queue in dispatch order | 按派工顺序的队列 | ディスパッチ順の待ち行列 |
+| `fab.tl.queueNote` | {n} lots waiting · limit {limit} | {n} 批等待 · 上限 {limit} | 待ち {n} ロット · 上限 {limit} |
+| `fab.tl.waited` | waited {min} | 已等 {min} | {min} 待ち |
+| `fab.tl.pileup` | Pile-up | 堆积 | 滞留 |
+| `fab.tl.bottleneck` | Bottleneck | 瓶颈 | ボトルネック |
+| `fab.tl.batchTool` | Batch furnace | 炉管组批 | バッチ炉 |
+| `fab.tl.tools` | {n} tools | {n} 台 | {n} 台 |
+| `fab.tl.until` | until {t} | 至 {t} | {t} まで |
+| `fab.tl.progress` | {p}% done | 完成 {p}% | {p}% 完了 |
+| `fab.tl.nothingNext` | Nothing scheduled | 暂无安排 | 予定なし |
+| `fab.tl.pmNext` | PM at {t} | {t} 保养 | {t} に PM |
+| `fab.tl.step` | step {n} | 第 {n} 步 | ステップ {n} |
+| `fab.tl.timeline` | 3 h back, 3 h ahead | 前后各 3 小时 | 前後 3 時間 |
+| `fab.tl.pickFamily` | Family | 设备族 | ファミリー |
+| `fab.tl.lotsWaiting` | {n} waiting | {n} 批等待 | 待ち {n} |
+| `fab.fl.note` | Each dot is a lot at its route position, 0–100%. Colour is lot class; the ring is due-date risk. | 每个点是一个批次在其工艺路线上的位置（0–100%）。颜色表示批次等级，外圈表示交期风险。 | 点は各ロットのルート上の位置（0–100%）です。色はロット区分、外枠は納期リスクです。 |
+| `fab.fl.wip` | WIP by process area | 各工艺区在制品 | 工程エリア別の仕掛 |
+| `fab.fl.waiting` | Waiting | 等待 | 待ち |
+| `fab.fl.running` | In process | 加工中 | 処理中 |
+| `fab.fl.hold` | On hold | 暂扣 | 保留 |
+| `fab.fl.ahead` | Most ahead of schedule | 最超前 | 最も先行 |
+| `fab.fl.behind` | Most behind schedule | 最落后 | 最も遅れ |
+| `fab.fl.slackH` | {h} h | {h} 小时 | {h} 時間 |
+| `fab.fl.steps` | {n} steps | {n} 步 | {n} ステップ |
+| `fab.fl.counts` | {late} late · {risk} at risk · {ok} on track · {done} done | {late} 延误 · {risk} 有风险 · {ok} 按期 · {done} 完成 | 遅れ {late} · 要注意 {risk} · 順調 {ok} · 完了 {done} |
+| `fab.fl.legendClass` | Class | 等级 | 区分 |
+| `fab.fl.legendRisk` | Risk | 风险 | リスク |
+| `fab.fl.progress` | Route progress | 路线进度 | ルート進捗 |
+| `fab.lot.search` | Lot id, e.g. Init_Lot_3_17 | 批次号，例如 Init_Lot_3_17 | ロット ID（例：Init_Lot_3_17） |
+| `fab.lot.open` | Open | 打开 | 開く |
+| `fab.lot.notFound` | No lot {id} | 没有批次 {id} | ロット {id} はありません |
+| `fab.lot.pick` | Pick a lot on any screen, or type its id. | 在任意页面点选批次，或输入批次号。 | どの画面からでもロットを選ぶか、ID を入力してください。 |
+| `fab.lot.header` | {product} · step {step} of {steps} | {product} · 第 {step} / {steps} 步 | {product} · ステップ {step} / {steps} |
+| `fab.lot.due` | Due {t} | 交期 {t} | 納期 {t} |
+| `fab.lot.finished` | Finished {t} | 完成于 {t} | {t} に完了 |
+| `fab.lot.notFinished` | Not finished within 48 h | 48 小时内未完成 | 48 時間以内に未完了 |
+| `fab.lot.slack` | Slack | 余量 | 余裕 |
+| `fab.lot.timeline` | Steps in the 48 h run | 48 小时内的工步 | 48 時間内のステップ |
+| `fab.lot.colStep` | Step | 工步 | ステップ |
+| `fab.lot.colTool` | Tool | 设备 | 装置 |
+| `fab.lot.colReady` | Ready | 就绪 | 準備完了 |
+| `fab.lot.colStart` | Start | 开始 | 開始 |
+| `fab.lot.colWait` | Waited | 等待 | 待ち |
+| `fab.lot.colWhy` | Why it was picked | 为何被选中 | 選ばれた理由 |
+| `fab.lot.qtime` | Q-time windows | Q-time 窗口 | Q-time 区間 |
+| `fab.lot.qtimeRow` | Steps {a} → {b}: {outcome} | 第 {a} → {b} 步：{outcome} | ステップ {a} → {b}：{outcome} |
+| `fab.lot.outcome.met` | kept | 达成 | 遵守 |
+| `fab.lot.outcome.violated` | missed | 超时 | 超過 |
+| `fab.lot.outcome.open` | open | 进行中 | 進行中 |
+| `fab.lot.outcome.skipped` | skipped | 已跳过 | スキップ |
+| `fab.lot.outcome.superseded` | superseded | 已替代 | 置き換え |
+| `fab.lot.outcome.recleaned` | recleaned | 已重洗 | 再洗浄 |
+| `fab.lot.skips` | Skipped steps | 跳过的工步 | スキップしたステップ |
+| `fab.lot.reworks` | Rework | 返工 | リワーク |
+| `fab.lot.recleans` | Recleans | 重洗 | 再洗浄 |
+| `fab.lot.upcoming` | Next steps | 后续工步 | この先のステップ |
+| `fab.lot.interrupted` | interrupted by a breakdown | 因宕机中断 | 装置停止で中断 |
+| `fab.lot.released` | Entered the run at step {n} | 从第 {n} 步进入本次运行 | ステップ {n} から投入 |
+| `fab.lot.recent` | Recently opened | 最近查看 | 最近開いたロット |
+| `fab.lot.willFinish` | Finishes {t} in this run | 本次运行中将于 {t} 完成 | この運転では {t} に完了 |
+| `fab.bt.forming` | Forming | 组批中 | 編成中 |
+| `fab.bt.running` | Running | 运行中 | 処理中 |
+| `fab.bt.formingNote` | Lots waiting at furnaces, grouped by recipe | 按配方分组、在炉管前等待的批次 | 炉の前で待つロットをレシピごとに表示 |
+| `fab.bt.wafers` | {w} wafers (min {min}, max {max}) | {w} 片（最少 {min}，最多 {max}） | {w} 枚（最小 {min}、最大 {max}） |
+| `fab.bt.capAt` | Starts anyway in {min} min | {min} 分钟后无论如何开炉 | {min} 分後に積載に関わらず開始 |
+| `fab.bt.capPassed` | Longest wait passed {min} min ago | 已超过最长等待 {min} 分钟 | 最大待ち時間を {min} 分超過 |
+| `fab.bt.waitingFor.wafers` | Waiting for wafers | 等待晶圆凑满 | ウェーハ待ち |
+| `fab.bt.waitingFor.tool` | Waiting for a free furnace | 等待空闲炉管 | 空き炉待ち |
+| `fab.bt.hot` | Hot lot inside | 含急件 | 特急ロットあり |
+| `fab.bt.started` | Last start {t} on {tool} | 上次 {t} 在 {tool} 开炉 | 前回 {t} に {tool} で開始 |
+| `fab.bt.ends` | Ends {t} | {t} 结束 | {t} 終了 |
+| `fab.bt.lotsN` | {n} lots | {n} 批 | {n} ロット |
+| `fab.bt.none` | No furnace batch at this time. | 此时没有炉管批次。 | この時刻に炉バッチはありません。 |
+| `fab.bt.queued` | {n} lots queued | {n} 批排队 | {n} ロット待ち |
+| `fab.ev.search` | Filter by lot or tool | 按批次或设备筛选 | ロットまたは装置で絞り込み |
+| `fab.ev.kinds.down` | Breakdowns | 宕机 | 装置停止 |
+| `fab.ev.kinds.pm` | PM | 保养 | PM |
+| `fab.ev.kinds.batch` | Batches | 组批 | バッチ |
+| `fab.ev.kinds.priority` | Priority lots | 优先批次 | 優先ロット |
+| `fab.ev.kinds.rework` | Rework | 返工 | リワーク |
+| `fab.ev.kinds.reclean` | Recleans | 重洗 | 再洗浄 |
+| `fab.ev.kinds.qtime_miss` | Q-time misses | Q-time 超时 | Q-time 超過 |
+| `fab.ev.kinds.done` | Finished | 完成 | 完了 |
+| `fab.ev.kinds.skip` | Skips | 跳步 | スキップ |
+| `fab.ev.down` | {tool} broke down until {until}. | {tool} 宕机，至 {until}。 | {tool} が停止、{until} まで。 |
+| `fab.ev.downLots` | {tool} broke down until {until}; {n} lots interrupted. | {tool} 宕机，至 {until}；{n} 个批次被中断。 | {tool} が停止、{until} まで。{n} ロットが中断。 |
+| `fab.ev.downForced` | Scenario: {tool} taken down until {until}. | 场景设定：{tool} 停机至 {until}。 | シナリオ：{tool} を {until} まで停止。 |
+| `fab.ev.pm` | {tool} went into PM until {until}. | {tool} 开始保养，至 {until}。 | {tool} が PM に入りました（{until} まで）。 |
+| `fab.ev.batch` | {tool} started a batch: {n} lots, {wafers} wafers, {why}. | {tool} 开炉：{n} 批，{wafers} 片，{why}。 | {tool} でバッチ開始：{n} ロット、{wafers} 枚、{why}。 |
+| `fab.ev.priority` | {cls} lot {lot} started step {step} on {tool}. | {cls}批次 {lot} 在 {tool} 开始第 {step} 步。 | {cls}ロット {lot} が {tool} でステップ {step} を開始。 |
+| `fab.ev.rework` | {lot} failed step {step} on {tool} and needs rework. | {lot} 在 {tool} 的第 {step} 步未通过，需要返工。 | {lot} は {tool} のステップ {step} で不合格、リワークが必要です。 |
+| `fab.ev.reworkRedo` | {lot} failed step {step} on {tool}; redo on {redo} at {at}. | {lot} 在 {tool} 的第 {step} 步未通过；{at} 在 {redo} 重做。 | {lot} は {tool} のステップ {step} で不合格。{at} に {redo} でやり直し。 |
+| `fab.ev.reclean` | {lot} went back to step {origin} for a reclean. | {lot} 退回第 {origin} 步重洗。 | {lot} は再洗浄のためステップ {origin} に戻りました。 |
+| `fab.ev.qtime_miss` | {lot} missed its Q-time before step {step} by {over} min. | {lot} 在第 {step} 步前 Q-time 超时 {over} 分钟。 | {lot} はステップ {step} の前で Q-time を {over} 分超過。 |
+| `fab.ev.doneOk` | {lot} finished on time. | {lot} 按期完成。 | {lot} が納期内に完了。 |
+| `fab.ev.doneLate` | {lot} finished {h} h late. | {lot} 完成，延误 {h} 小时。 | {lot} が {h} 時間遅れで完了。 |
+| `fab.ev.skip` | {lot} skipped step {step}. | {lot} 跳过第 {step} 步。 | {lot} がステップ {step} をスキップ。 |
+| `fab.ev.count` | {n} events up to {t} | 截至 {t} 共 {n} 条事件 | {t} までに {n} 件 |
+| `fab.ev.breakdowns` | Breakdowns | 宕机 | 装置停止 |
+| `fab.ev.bdLots` | Lots hit: {lots} | 受影响批次：{lots} | 影響ロット：{lots} |
+| `fab.ev.bdOpen` | still down at 48 h | 48 小时结束时仍宕机 | 48 時間終了時も停止中 |
+| `fab.ev.bdDur` | {min} min | {min} 分钟 | {min} 分 |
+| `fab.kp.note` | Calculations adapted from Schedule_Viewer, fed by the SMT2020 run. The time slider does not change this page. | 计算逻辑改编自 Schedule_Viewer，数据来自 SMT2020 运行。时间滑块不影响本页。 | 計算は Schedule_Viewer から移植し、SMT2020 の実行結果を入力にしています。時刻スライダーはこのページに影響しません。 |
+| `fab.kp.metric` | Metric | 指标 | 指標 |
+| `fab.kp.periods.day1` | Day 1 | 第 1 天 | 1日目 |
+| `fab.kp.periods.day2` | Day 2 | 第 2 天 | 2日目 |
+| `fab.kp.periods.all` | 48 h | 48 小时 | 48 時間 |
+| `fab.kp.rows.onTime` | On-time rate, finished lots | 准交率（已完成批次） | 納期遵守率（完了ロット） |
+| `fab.kp.rows.completed` | Lots finished | 完成批次 | 完了ロット数 |
+| `fab.kp.rows.avgDelay` | Average delay of late lots | 延误批次的平均延误 | 遅れロットの平均遅れ |
+| `fab.kp.rows.qtime` | Q-time kept | Q-time 达成率 | Q-time 遵守率 |
+| `fab.kp.rows.setupRate` | Setup share of tool time | 换型占设备时间 | 段取りが占める割合 |
+| `fab.kp.rows.waitRate` | Tool idle share | 设备空闲占比 | 装置の待機割合 |
+| `fab.kp.rows.moves` | Lot moves | 批次移动数 | ロット移動数 |
+| `fab.kp.rows.wafers` | Wafer moves | 晶圆移动数 | ウェーハ移動数 |
+| `fab.kp.rows.batches` | Furnace batches | 炉管批次 | 炉バッチ数 |
+| `fab.kp.rows.batchFill` | Batch fill | 装载率 | バッチ積載率 |
+| `fab.kp.rows.grouping` | Same-recipe grouping | 同配方连续率 | 同一レシピ連続率 |
+| `fab.kp.rows.queue` | Mean queue per step | 每步平均排队 | ステップあたり平均待ち |
+| `fab.kp.rows.xfactor` | Mean x-factor | 平均 X 因子 | 平均 X ファクター |
+| `fab.kp.activity` | Where tool time went | 设备时间去向 | 装置時間の内訳 |
+| `fab.kp.act.production` | Processing | 加工 | 処理 |
+| `fab.kp.act.setup` | Setup | 换型 | 段取り |
+| `fab.kp.act.down` | Down | 宕机 | 停止 |
+| `fab.kp.act.pm` | PM | 保养 | PM |
+| `fab.kp.act.idle` | Idle | 空闲 | 待機 |
+| `fab.kp.load` | Load by area | 各工艺区负荷 | 工程エリア別の負荷 |
+| `fab.kp.classWait` | Mean queue per step by class | 各等级每步平均排队 | 区分別のステップあたり平均待ち |
+| `fab.whatifOpen` | Open this what-if in the fab views | 在工厂视图中打开这个假设 | この試算を工場ビューで開く |
+| `fab.dayShort` | D{d} | 第{d}天 | {d}日目 |
