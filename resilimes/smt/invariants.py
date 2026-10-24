@@ -7,13 +7,24 @@ Checks, one counter each:
 - ``route_order``: a lot starts only its next step, once, and never while it
   is already in process.
 - ``tool_overlap``: a tool starts a piece only when it holds nothing.
-- ``resume_tool``: an interrupted lot resumes on the tool that held it.
-- ``dedication``: a later litho layer runs on the scanner of the first layer.
-- ``down_start``: no start inside a breakdown window.
+- ``rework_redo``: a lot interrupted by a breakdown goes to rework and redoes
+  the same step, not before the rework hold is over.
+- ``stuck_on_down``: every lot on a tool that breaks leaves it at the
+  breakdown (rework or done), and no lot is left on a tool that is down at
+  the horizon.
+- ``dedication``: a later litho layer runs on the scanner of the first layer,
+  unless that scanner is down at the start (the lot is then re-pinned).
+- ``down_start``: no start on a tool inside a breakdown window.
 - ``pm_overlap``: no processing window crosses a PM window.
-- ``batch``: a multi-lot start is a batch step, one recipe, within capacity.
+- ``batch``: a multi-lot start is a batch step for every member (each on its
+  own route step), one recipe, within capacity.
+- ``batch_all_started``: every lot the dispatcher chose for a start started.
+- ``batch_min``: a batch under BATCHMN started only with a logged wait-rule
+  reason (``hot_cap``, ``max_wait``, ``no_arrivals``).
 - ``qtime_recount``: Q-time violations recounted from the trace, with the
   simulator's strict ``>``, differ from the reported count.
+- ``sampling``: a lot skips only steps the lot-ID rule leaves unmeasured,
+  and never runs such a step (its snapshot step excepted).
 
 This is a replay of the simulator's own events, not a second simulator.
 """
@@ -22,20 +33,25 @@ from __future__ import annotations
 
 from typing import Any
 
-from resilimes.smt.fab import Fab
+from resilimes.smt.fab import REWORK_SEC, Fab, lot_number, measured
 
 _WAFERS = 25
 CHECKS = (
     "family",
     "route_order",
     "tool_overlap",
-    "resume_tool",
+    "rework_redo",
+    "stuck_on_down",
     "dedication",
     "down_start",
     "pm_overlap",
     "batch",
+    "batch_all_started",
+    "batch_min",
     "qtime_recount",
+    "sampling",
 )
+UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals")
 
 
 def check_trace(
@@ -58,7 +74,9 @@ def check_trace(
     n = len(fab.lot_id)
     step = list(fab.lot_step)
     running = [False] * n
-    bound = [-1] * n
+    rework_step = [-1] * n
+    rework_at = [0.0] * n
+    left_at: dict[int, float] = {}
     pinned = [-1] * n
     dropped_at = [-1.0] * n
     q_target = [-1] * n
@@ -69,7 +87,7 @@ def check_trace(
     for event in result.events:
         kind = event[0]
         if kind == "start":
-            _kind, moment, tool, lots, index, finish = event
+            _kind, moment, tool, lots, steps, finish, reason, chosen = event
             starts += 1
             name = fab.tool_name[tool]
             fam = fab.tool_family[tool]
@@ -83,13 +101,29 @@ def check_trace(
                 if moment < end_at and finish > start_at:
                     flag("pm_overlap", f"{name} {moment:.1f}-{finish:.1f} pm {start_at:.1f}")
                     break
-            if len(lots) > 1:
-                route0 = fab.routes[fab.lot_route[lots[0]]]
-                cap = route0.batch_max[index]
-                recipes = {fab.routes[fab.lot_route[lot]].recipe[index] for lot in lots}
-                if cap <= 0 or len(recipes) > 1 or len(lots) * _WAFERS > cap:
+            if set(chosen) != set(lots):
+                missing = len(set(chosen) - set(lots))
+                flag("batch_all_started", f"{name} t={moment:.1f} {missing} chosen lots left")
+            route0 = fab.routes[fab.lot_route[lots[0]]]
+            in_range = all(
+                index < len(fab.routes[fab.lot_route[lot]].family)
+                for lot, index in zip(lots, steps, strict=True)
+            )
+            if in_range and route0.batch_max[steps[0]] > 0:
+                cap = route0.batch_max[steps[0]]
+                floor = route0.batch_min[steps[0]] or cap
+                members = [fab.routes[fab.lot_route[lot]] for lot in lots]
+                recipes = {route.recipe[index] for route, index in zip(members, steps, strict=True)}
+                not_batch = any(
+                    route.batch_max[index] <= 0 for route, index in zip(members, steps, strict=True)
+                )
+                if not_batch or len(recipes) > 1 or len(lots) * _WAFERS > cap:
                     flag("batch", f"{name} t={moment:.1f} lots={len(lots)} cap={cap}")
-            for lot in lots:
+                if len(lots) * _WAFERS < floor and reason not in UNDER_MIN_REASONS:
+                    flag("batch_min", f"{name} t={moment:.1f} lots={len(lots)} reason={reason!r}")
+            elif len(lots) > 1:
+                flag("batch", f"{name} t={moment:.1f} lots={len(lots)} not a batch step")
+            for lot, index in zip(lots, steps, strict=True):
                 lot_id = fab.lot_id[lot]
                 route = fab.routes[fab.lot_route[lot]]
                 if index >= len(route.family) or route.family[index] != fam:
@@ -101,13 +135,22 @@ def check_trace(
                     flag("family", f"{lot_id} step {index} on {name}, needs {want}")
                 if running[lot] or step[lot] != index:
                     flag("route_order", f"{lot_id} started step {index}, next is {step[lot]}")
-                if bound[lot] >= 0 and bound[lot] != tool:
-                    flag("resume_tool", f"{lot_id} resumed on {name}")
+                start_step = fab.lot_step[lot]
+                number = lot_number(lot_id, lot)
+                if index != start_step and not measured(route, index, number):
+                    flag("sampling", f"{lot_id} ran unsampled step {index}")
+                if rework_step[lot] >= 0:
+                    early = moment < rework_at[lot] + REWORK_SEC - 1e-6
+                    if index != rework_step[lot] or early:
+                        flag("rework_redo", f"{lot_id} step {index} at {moment:.1f} after rework")
+                    rework_step[lot] = -1
                 if 0 <= index < len(route.dedicate_root) and route.dedicate_root[index] >= 0:
-                    if pinned[lot] >= 0 and pinned[lot] != tool:
-                        flag("dedication", f"{lot_id} step {index} on {name}")
-                    elif pinned[lot] < 0:
-                        pinned[lot] = tool
+                    old = pinned[lot]
+                    if old >= 0 and old != tool:
+                        down = any(a <= moment < b for a, b in downs[old])
+                        if not down:
+                            flag("dedication", f"{lot_id} step {index} on {name}")
+                    pinned[lot] = tool
                 if q_target[lot] == index:
                     if moment > q_deadline[lot]:
                         violations += 1
@@ -118,23 +161,38 @@ def check_trace(
             _kind, moment, tool, lots = event
             for lot in lots:
                 running[lot] = False
-                bound[lot] = tool
                 dropped_at[lot] = moment
+                left_at[lot] = -1.0
             holding[tool].clear()
+        elif kind == "rework":
+            _kind, moment, tool, lot, index = event
+            if left_at.get(lot) == -1.0:
+                left_at[lot] = moment
+            rework_step[lot] = index
+            rework_at[lot] = moment
         elif kind == "end":
             _kind, moment, lot, index = event
             lot_id = fab.lot_id[lot]
             dropped_now = dropped_at[lot] == moment
             if (not running[lot] and not dropped_now) or step[lot] != index:
                 flag("route_order", f"{lot_id} ended step {index}, next is {step[lot]}")
+            if left_at.get(lot) == -1.0:
+                left_at[lot] = moment
             running[lot] = False
-            bound[lot] = -1
             for held in holding:
                 held.discard(lot)
             route = fab.routes[fab.lot_route[lot]]
             if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
                 q_deadline[lot] = moment + route.cqt_limit[index]
                 q_target[lot] = route.cqt_target[index]
+            step[lot] = index + 1
+        elif kind == "skip":
+            _kind, moment, lot, index = event
+            route = fab.routes[fab.lot_route[lot]]
+            if step[lot] != index or measured(route, index, lot_number(fab.lot_id[lot], lot)):
+                flag("sampling", f"{fab.lot_id[lot]} skipped step {index}")
+            if q_target[lot] == index:
+                q_target[lot] = -1
             step[lot] = index + 1
         elif kind == "reclean":
             _kind, moment, lot, index, origin = event
@@ -146,6 +204,12 @@ def check_trace(
             q_deadline[lot] = 0.0
             step[lot] = origin
     horizon = float(result.horizon_sec)
+    for lot, when in left_at.items():
+        if when < 0:
+            flag("stuck_on_down", f"{fab.lot_id[lot]} never left its broken tool")
+    for tool, held in enumerate(holding):
+        if held and any(a <= horizon < b for a, b in downs[tool]):
+            flag("stuck_on_down", f"{fab.tool_name[tool]} down at horizon holding {len(held)}")
     for lot in range(n):
         if q_target[lot] >= 0 and 0 < q_deadline[lot] <= horizon:
             violations += 1

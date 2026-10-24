@@ -146,6 +146,36 @@ def dispatch_score(
     return weights.w_dpi * dpi - weights.w_setup * setup_sec + weights.w_ped * ped
 
 
+CLASS_TIER = {"VIP": 0, "hot": 1}
+
+
+def class_tier(order_class: str) -> int:
+    """0 VIP, 1 hot, 2 everything else. From SMT2020 PRIOR via the class."""
+    return CLASS_TIER.get(order_class, 2)
+
+
+def tiered_key(
+    *,
+    order_class: str,
+    slack_sec: float,
+    setup_sec: float,
+    ped: float,
+) -> tuple[float, ...]:
+    """Lexicographic dispatch order. Smaller is dispatched first.
+
+    1. class tier (VIP, hot, normal). Nothing in a lower tier can outrank it.
+    2. late band: a lot whose remaining theoretical process already misses its
+       due date goes before an on-time lot of the same tier.
+    3. queue-time risk (PED), then setup avoidance (seconds of setup).
+    4. remaining slack, ascending. That is the DPI urgency order inside a
+       tier, without the 60 s slack floor that made every late lot tie at the
+       cap (a late normal lot scored 61 and outranked an on-time VIP).
+    No weights: the terms never trade against each other.
+    """
+    late = 0.0 if slack_sec <= 0.0 else 1.0
+    return (float(class_tier(order_class)), late, -ped, setup_sec, slack_sec)
+
+
 def score_terms(
     *,
     dpi: float,

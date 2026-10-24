@@ -23,12 +23,16 @@ Weights, due dates, tool sets, and seeds are unchanged. This is a correctness fi
 | `family` | the tool belongs to the station family of the lot's current step |
 | `route_order` | a lot starts only its next step, once, and never while already in process |
 | `tool_overlap` | a tool starts a piece only when it holds nothing |
-| `resume_tool` | an interrupted lot resumes on the tool that held it |
-| `dedication` | a later litho layer runs on the scanner of its first layer |
+| `rework_redo` | a lot interrupted by a breakdown goes to rework and redoes the same step, not before the rework hold is over (fab-logic-r1; replaces `resume_tool`) |
+| `stuck_on_down` | every lot on a tool that breaks leaves it at the breakdown, and no lot is left on a tool that is down at the horizon (fab-logic-r1) |
+| `dedication` | a later litho layer runs on the scanner of its first layer, unless that scanner is down at the start (then the lot is re-pinned) |
 | `down_start` | no start inside a breakdown window |
 | `pm_overlap` | no processing window crosses a PM window |
-| `batch` | a multi-lot start is a batch step, one recipe, within capacity |
+| `batch` | a multi-lot start is a batch step for every member (each on its own route step), one recipe, within capacity |
+| `batch_all_started` | every lot the dispatcher chose for a start started (fab-logic-r1) |
+| `batch_min` | a batch under BATCHMN started only with a logged reason: `hot_cap`, `max_wait`, or `no_arrivals` (fab-logic-r1) |
 | `qtime_recount` | Q-time violations recounted from the trace (strict `>`) match the reported count |
+| `sampling` | a lot skips only the metrology steps the lot-ID rule leaves unmeasured, and never runs one (its snapshot step excepted) (fab-logic-r1) |
 
 Run it on the full fab:
 
@@ -40,7 +44,7 @@ It runs the published, X-factor (600-minute repair), PM-enforced, and tight VIP 
 
 ## Violation counts, seeds 1-5 summed
 
-Only `family` was ever nonzero. The other eight checks were 0 before and after on every run. Before the fix, `qtime_recount` also matched in every run.
+These counts are from the stale-queue fix, before fab-logic-r1. Only `family` was ever nonzero. The other eight checks then in the checker were 0 before and after on every run. Before the fix, `qtime_recount` also matched in every run.
 
 | Book | Policy | `family` before | `family` after | Starts after |
 | --- | --- | ---: | ---: | ---: |
@@ -69,7 +73,7 @@ Per seed, published book, `family` before the fix: ResiliMES 350, 381, 319, 404,
 
 ## Old vs new metrics, seeds 1-5
 
-Old is the simulator before the fix: the `benchmark.json` checked in at commit 6ec1148, the parent of this fix series. New is after the fix, same seeds and books. Means are five-seed means. Q-time and re-cleans are per-run means.
+This table is the stale-queue fix only, before fab-logic-r1; the current numbers and the fab-logic-r1 old-vs-new table are in [FAB_LOGIC_R1.md](FAB_LOGIC_R1.md). Old is the simulator before the fix: the `benchmark.json` checked in at commit 6ec1148, the parent of this fix series. New is after the fix, same seeds and books. Means are five-seed means. Q-time and re-cleans are per-run means.
 
 | Book | Policy | On time, pooled (per seed) old | new | OTD % old → new | Weighted tardiness min old → new | Q-time old → new | Re-cleans old → new |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -111,6 +115,35 @@ Seeds 9-13 control, sums over five seeds:
 
 - Published dues: EDD was slightly ahead (159 vs 158 of 280). After the fix the two tie at 160/280, and ResiliMES is slightly ahead on weighted tardiness.
 - X-factor dues: the EDD lead shrinks from 9 to 4 of 435 pooled lots. ResiliMES re-cleans rose (38 to 52.4) but stay below EDD (73.4). On the console click (seed 1), EDD is now 87/87 and ResiliMES 86/87.
-- Tight VIP: on-time is unchanged on every policy. `Init_Lot_2_23` is still the save (5.45 h late under EDD).
+- Tight VIP: on-time is unchanged on every policy. `Init_Lot_2_23` is still the save (5.45 h late under EDD). After fab-logic-r1 the seed-1 save is `Init_Lot_2_13` (5.03 h late under EDD).
 - FIFO, CR, and `smt_rule` gain the most, because the stale queue had let tools start lots of other families in arrival order. `smt_rule` on published dues goes from 28.2% to 56.8% on-time.
 - The seeds 9-13 arm decisions (expose due in `dpi()`, dry-etch gate, slack exception) in [SMT2020_SCALE.md](SMT2020_SCALE.md) were measured before the fix and are labeled a pre-fix lab note. They were not rerun.
+
+## fab-logic-r1 sweep, seeds 1-5 summed
+
+`make smt-invariants` (`python -m resilimes.smt.invariant_sweep`) after the batching, rework, sampling, and tiered-priority changes. Thirteen checks, four books, five policies, five seeds: 100 runs, 4 worker processes, 86 s wall clock on the 8-core box. Every check is 0 on every run.
+
+| Book | Policy | Starts | Failures, all 13 checks |
+| --- | --- | ---: | ---: |
+| published | resilimes | 196,926 | 0 |
+| published | edd | 180,648 | 0 |
+| published | fifo | 186,364 | 0 |
+| published | cr | 185,441 | 0 |
+| published | smt_rule | 199,556 | 0 |
+| xfactor_eta600 | resilimes | 195,034 | 0 |
+| xfactor_eta600 | edd | 179,289 | 0 |
+| xfactor_eta600 | fifo | 185,824 | 0 |
+| xfactor_eta600 | cr | 185,758 | 0 |
+| xfactor_eta600 | smt_rule | 197,954 | 0 |
+| pm_enforced | resilimes | 193,086 | 0 |
+| pm_enforced | edd | 177,938 | 0 |
+| pm_enforced | fifo | 182,638 | 0 |
+| pm_enforced | cr | 183,180 | 0 |
+| pm_enforced | smt_rule | 196,770 | 0 |
+| tight_vip | resilimes | 99,280 | 0 |
+| tight_vip | edd | 98,281 | 0 |
+| tight_vip | fifo | 98,394 | 0 |
+| tight_vip | cr | 95,559 | 0 |
+| tight_vip | smt_rule | 100,288 | 0 |
+
+Start counts rose against the table above mainly because every lot chosen for a batch now starts (before, about half were dropped) and because one breakdown can cause a second start of the same step (rework). Skipped metrology steps are not starts.

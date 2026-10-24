@@ -8,8 +8,10 @@ policy. Exits non-zero when any check fails. ``make smt-invariants``.
 
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Iterator
+from multiprocessing import get_context
 from typing import Any
 
 from resilimes.smt.fab import Fab, load_fab
@@ -56,37 +58,65 @@ def _books(fab: Fab, seed: int) -> Iterator[tuple[str, Fab, float, Any, Any, flo
     )
 
 
-def sweep(seeds: tuple[int, ...] = tuple(SEEDS)) -> dict[str, dict[str, dict[str, int]]]:
-    fab = load_fab()
+_FAB: list[Fab] = []
+
+
+def _one(item: tuple[int, str, str]) -> tuple[int, str, str, dict[str, Any]]:
+    seed, want, policy = item
+    fab = _FAB[0]
+    for name, plant, horizon, downs, pm, focus in _books(fab, seed):
+        if name != want:
+            continue
+        result = run_policy(
+            plant,
+            policy=policy,
+            seed=seed,
+            horizon=horizon,
+            downs=downs,
+            pm=pm,
+            trace=False,
+            focus_down_until=focus,
+            record=True,
+        )
+        report = check_trace(plant, result, downs=downs, pm=pm)
+        report.pop("examples", None)
+        return seed, name, policy, report
+    raise KeyError(want)
+
+
+def sweep(
+    seeds: tuple[int, ...] = tuple(SEEDS), workers: int | None = None
+) -> dict[str, dict[str, dict[str, int]]]:
+    """Every (seed, book, policy) run is independent; ``workers`` processes run them.
+
+    A recorded full-scale run keeps its event list, so the default pool is
+    smaller than the benchmark's. ``RESILIMES_SWEEP_WORKERS=1`` runs serially.
+    """
+    if not _FAB:
+        _FAB.append(load_fab())
+    count = workers or max(1, int(os.environ.get("RESILIMES_SWEEP_WORKERS", "4")))
+    books = ("published", "xfactor_eta600", "pm_enforced", "tight_vip")
+    items = [(seed, name, policy) for seed in seeds for name in books for policy in POLICIES]
+    if count <= 1:
+        done = [_one(item) for item in items]
+    else:
+        with get_context("fork").Pool(count) as pool:
+            done = pool.map(_one, items, chunksize=1)
     totals: dict[str, dict[str, dict[str, int]]] = {}
-    for seed in seeds:
-        for name, plant, horizon, downs, pm, focus in _books(fab, seed):
-            for policy in POLICIES:
-                result = run_policy(
-                    plant,
-                    policy=policy,
-                    seed=seed,
-                    horizon=horizon,
-                    downs=downs,
-                    pm=pm,
-                    trace=False,
-                    focus_down_until=focus,
-                    record=True,
-                )
-                report = check_trace(plant, result, downs=downs, pm=pm)
-                row = totals.setdefault(name, {}).setdefault(
-                    policy, {"starts": 0, **{key: 0 for key in CHECKS}}
-                )
-                row["starts"] += int(report["starts"])
-                for key, value in report["counts"].items():
-                    row[key] += int(value)
-                failed = {key: value for key, value in report["counts"].items() if value}
-                print(
-                    f"{name} {policy} seed {seed}: {report['starts']} starts, "
-                    f"Q-time {report['qtime_recount']}/{report['qtime_reported']}, "
-                    f"failures {failed or 0}",
-                    flush=True,
-                )
+    for seed, name, policy, report in done:
+        row = totals.setdefault(name, {}).setdefault(
+            policy, {"starts": 0, **{key: 0 for key in CHECKS}}
+        )
+        row["starts"] += int(report["starts"])
+        for key, value in report["counts"].items():
+            row[key] += int(value)
+        failed = {key: value for key, value in report["counts"].items() if value}
+        print(
+            f"{name} {policy} seed {seed}: {report['starts']} starts, "
+            f"Q-time {report['qtime_recount']}/{report['qtime_reported']}, "
+            f"failures {failed or 0}",
+            flush=True,
+        )
     return totals
 
 

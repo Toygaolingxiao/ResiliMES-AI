@@ -473,3 +473,16 @@ Previous round-2 ja body: SMT2020 の公開 CQT。見通しは隣接する 1 時
 | Key | New string |
 | --- | --- |
 | `scenarios.qtime` | Queue time / Published CQT limits. ResiliMES adds PED risk and a Wet_Etch gate. That gate fired 0 times on the stored seeds. FIFO does not use the gate. |
+
+### fab-logic-r1 — operation logic (note only, no string edited)
+
+This branch changes SMT2020 batching, breakdown rework, metrology sampling, and ResiliMES dispatch order. No zh or ja string was edited. The strings below were checked against the new numbers and logic:
+
+| Key | Status |
+| --- | --- |
+| `scenarios.qtime[1]` | Still correct. The Wet_Etch gate fired 0 times on every stored seed in the regenerated `benchmark.json`. |
+| `scenarios.litho_down[1]` | Still correct. The 705.59 min repair is the published MTTR, unchanged. |
+| `scenarios.rush_order[1]` | Still correct for the six-lot sample bay it describes ("Running lots stay on their tools"). On the SMT2020 console a lot in process on a tool that breaks now goes to rework and redoes the step on another tool; the rush-order button does not break a tool, so the sentence is not contradicted. Review if this copy is ever reused for a breakdown. |
+| `impactScale`, `scenarios.scale[*]`, `taglineScale` | Scale preset only (1,000 lots, 36 tools). Not touched by this branch. |
+
+The SMT2020 scenario summaries and incident text whose numbers changed (tight VIP, X-factor, published dues) are English-only strings in `resilimes/smt/scenarios.py`, served by the API. They are not in `i18n.json` and need no zh/ja change. If the console later shows batch-wait reasons, rework holds, or skipped metrology steps, those will need new keys and a translation round.

@@ -104,6 +104,17 @@ The scale baseline is EDD dispatch. It orders ready steps by due date, then by t
 
 CP-SAT is a reference. The committed book stays the list scheduler. CP-SAT models the same rules the critic checks, including sequence-dependent setup (the first lot on a tool pays none), one scanner per physical reticle copy, and the same hold rule as the KPI: a lot is left unfinished only when completing it is infeasible, and that hold adds no weighted tardiness. Hero scenarios get up to five seconds and report OPTIMAL or FEASIBLE with the bound. The scale fab gets a two-second neighborhood around late lots and the makespan-setting lot, hinted from the list schedule. On the seeded book that neighborhood does not shorten the list schedule, so the badge keeps it. A candidate that fails the critic is discarded. The list schedule is always computed first, and the KPI cards use it.
 
+## SMT2020 operation logic (fab-logic-r1)
+
+These are ResiliMES defaults on the SMT2020 simulator (`resilimes/smt`). None is an SMT2020 column. Old against new numbers are in [FAB_LOGIC_R1.md](FAB_LOGIC_R1.md).
+
+- **Batching.** Lots batch when their step on that tool family has the same recipe, whatever their route or operation number. Each member keeps and advances its own route step. The batch runs for the longest member's process time. Members are ordered by the policy's own rank, so the highest-priority lot leads and fills first. Every lot chosen for a start starts.
+- **Batch wait rule.** At or above BATCHMN the batch starts. Under BATCHMN it waits only while enough same-recipe lots are in process at the feeding step and will finish inside the window (`no_arrivals` otherwise), and never longer than `BATCH_MAX_WAIT_SEC` = 1,800 s after the oldest ready member (`max_wait`). Once a hot or VIP lot is ready in the batch, the cap is `HOT_BATCH_WAIT_SEC` = 600 s after it (`hot_cap`). The reason is logged on every under-BATCHMN start. The extract has no max-wait field.
+- **Setup.** Setup seconds from `setup.txt` are charged in the process time, from the recipe the tool holds before the switch. Before this change the setup was looked up after the switch and was always 0.
+- **Breakdown and rework.** No lot starts on a tool inside a breakdown window. A lot in process when its tool breaks loses that work, waits `REWORK_SEC` = 1,800 s (disposition plus strip/clean), then redoes the same operation from the family queue on any qualified tool. No lot stays on a broken tool. A later litho layer whose dedicated scanner is down at the start may run on another scanner of the family and is re-pinned there.
+- **Metrology sampling.** A step with `StepPercent` p < 100 is sampled. With n = lot number (the trailing number of the lot ID) + STEP, the lot is measured when floor((n + 1) p / 100) > floor(n p / 100). That selects exactly p of every 100 consecutive lot numbers, evenly spaced, and the STEP offset spreads the selection across layers. An unmeasured lot skips the step with no time; if that step was the lot's Q-time target, the Q-time clock is dropped. The lot's step at the snapshot is never skipped.
+- **Dispatch priority (ResiliMES).** Tiered key: class tier (VIP, then hot, then normal, from PRIOR), then late or not, then Q-time risk (PED), then setup seconds, then slack. DPI-style terms only order lots inside a tier. Weights, dues, tool sets, and seeds are unchanged.
+
 ## Production would add
 
 A production line would also carry these constraints. They are out of this demo:
