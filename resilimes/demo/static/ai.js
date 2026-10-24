@@ -1,7 +1,6 @@
-// AI evidence panel: investigator (and, in later PRs, late-lot explainer and
-// shift handover). Answers are advice only; every number in them is checked
+// AI evidence panel: investigator, late-lot explainer and shift handover. Answers are advice only; every number in them is checked
 // against the tool results that produced it.
-const AI = { busy: {}, out: {}, cases: null, lots: null };
+const AI = { busy: {}, out: {}, cases: null, lots: null, shifts: null };
 const AI_SECTIONS = [];
 
 function aiCause(copy, id) {
@@ -154,6 +153,56 @@ AI_SECTIONS.push({
   },
 });
 
+AI_SECTIONS.push({
+  id: "handover",
+  render(host, copy) {
+    host.appendChild(aiEl("h3", "", copy.hoTitle));
+    host.appendChild(aiEl("p", "muted", copy.hoHelp));
+    const row = aiEl("div", "ai-row");
+    const select = aiEl("select", "");
+    select.id = "ai-shift";
+    for (const item of AI.shifts || []) {
+      const key = `${item.seed}:${item.start_h}`;
+      const option = aiEl("option", "", `${copy.hoShift} ${item.start_h}–${item.end_h} h · seed ${item.seed}`);
+      option.value = key;
+      if (AI.out.handoverShift === key) option.selected = true;
+      select.appendChild(option);
+    }
+    const button = aiEl("button", "run", AI.busy.handover ? copy.working : copy.hoRun);
+    button.type = "button";
+    button.disabled = !!AI.busy.handover || !(AI.shifts || []).length;
+    button.addEventListener("click", async () => {
+      AI.busy.handover = true;
+      AI.out.handoverShift = select.value;
+      const [seed, start] = select.value.split(":");
+      paintAi();
+      try {
+        AI.out.handover = await aiPost("/api/ai/handover", { seed: Number(seed), start_h: Number(start), lang: state.lang || "en" });
+      } catch (error) {
+        AI.out.handover = { error: String(error.message || error) };
+      }
+      AI.busy.handover = false;
+      paintAi();
+    });
+    row.append(select, button);
+    host.appendChild(row);
+    const result = AI.out.handover;
+    if (!result) return;
+    if (result.error && !result.report) {
+      host.appendChild(aiEl("p", "ai-warn", result.error));
+      return;
+    }
+    const head = aiEl("p", "");
+    head.append(
+      aiBadge(copy, result),
+      aiEl("span", "muted", ` ${copy.hoEngine}: ${result.engine} · ${copy.hoChunks} ${result.chunks_ok}/${(result.chunks || []).length} · ${copy.hoRecall} ${Math.round((result.must_recall || 0) * 100)}%`),
+    );
+    host.appendChild(head);
+    host.appendChild(aiEl("pre", "ai-md", result.markdown || "—"));
+    host.appendChild(aiFact(copy, result.fact_ok, result.fact_misses));
+  },
+});
+
 async function aiLoad() {
   if (AI.cases !== null) return;
   AI.cases = [];
@@ -168,6 +217,12 @@ async function aiLoad() {
     AI.lots = (await getJson("/api/ai/explainer/lots?seed=1")).lots || [];
   } catch (error) {
     AI.lots = [];
+  }
+  paintAi();
+  try {
+    AI.shifts = (await getJson("/api/ai/handover/shifts")).shifts || [];
+  } catch (error) {
+    AI.shifts = [];
   }
   paintAi();
 }

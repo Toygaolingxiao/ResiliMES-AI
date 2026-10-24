@@ -443,6 +443,13 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `ai.levers.prioritise` | make it the hot lot | 设为急件 | 特急ロットにする |
 | `ai.levers.clear_down` | no tool down while it waits | 等待期间机台不宕机 | 待ち中に装置ダウンなし |
 | `ai.levers.skip_pm` | defer PM while it waits | 等待期间推迟 PM | 待ち中の PM を延期 |
+| `ai.hoTitle` | Shift handover report | 交接班报告 | シフト引き継ぎレポート |
+| `ai.hoHelp` | A 12 h shift summarised in 2 h chunks: top issues, WIP bubbles, at-risk lots, tools down with repair ETA, next-shift PM and overrides with their outcome. Every number is checked against the run. | 将 12 小时班次按 2 小时分段汇总：主要问题、WIP 堆积、有延误风险的批次、停机设备及预计修复时间、下一班 PM，以及被让行的批次及其结果。所有数字均与仿真结果核对。 | 12 時間のシフトを 2 時間ごとに要約します：主な問題、WIP 滞留、遅延リスクのあるロット、ダウン中の装置と復旧見込み、次シフトの PM、後回しにされたロットとその結果。すべての数値はシミュレーション結果と照合します。 |
+| `ai.hoRun` | Write handover | 生成交接报告 | 引き継ぎを作成 |
+| `ai.hoShift` | Shift | 班次 | シフト |
+| `ai.hoEngine` | Engine | 引擎 | エンジン |
+| `ai.hoChunks` | Chunks | 分段 | チャンク |
+| `ai.hoRecall` | Must-mention recall | 必提项召回率 | 必須項目の再現率 |
 
 ## zh / ja strings for owner review
 
