@@ -27,17 +27,23 @@ hooks in `resilimes/smt/simulate.py`.
    while the lot waited), `breakdown_rework` (a breakdown aborted the lot's
    step), `transport`. Windows already open in the t=0 WIP are counted as
    `inherited`. `RunResult.qtime_causes` holds the counts.
-2. **Origin gate (per-target Q-time kanban).** A lot may start a CQT origin
-   only if the work already committed to the target family plus its own fits
-   the family's up tools before each lot's latest start (fluid earliest
-   deadline first: free time from `busy_until`, PM overlap subtracted, batch
-   steps as cycle / batch-min lots). Committed work is every lot inside an
-   open window or running at a CQT origin heading there. Only the current
-   down state is used, never future breakdowns. Being committed is the
-   capacity reservation: it is released when the lot starts its target step,
-   and the check is re-run on every origin start attempt, so a target that
-   goes down blocks new origins at once. Gated tools are woken when the target
-   family finishes a step or a tool comes back up (30 min fallback).
+2. **Origin gate (whole-segment Q-time kanban).** A lot may start a CQT
+   origin only if every family of the CQT segment can still be cleared in
+   time: each measured intermediate step and the target. For each such step
+   the lot's latest start is the target's latest start (origin start +
+   process time + limit) minus what the lot still needs from that step to
+   the target (dataset cycle times and transport). Per family, the work
+   already committed there plus the candidate's must fit the family's up
+   tools before each item's latest start (fluid earliest deadline first:
+   free time from `busy_until`, PM overlap subtracted, batch steps as
+   cycle / batch-min lots, missed lots counted first). Committed work is the
+   remaining segment steps of every lot inside an open window or running at
+   a CQT origin; a step's entry is released when the lot starts it. Only the
+   current down state is used, never future breakdowns. The check is re-run
+   on every origin start attempt, so a family going down blocks new origins
+   at once. Gated tools are woken when the blocking family finishes a step or
+   a tool comes back up (30 min fallback). A segment whose minimum
+   remaining time already exceeds the limit is blocked outright.
 3. **Never gate a lot that is inside or past a window**, being expedited, or
    in re-clean/rework (`exempt_origin_starts`).
 4. **Expedite.** A lot that missed its window (including inherited windows)
@@ -47,7 +53,11 @@ hooks in `resilimes/smt/simulate.py`.
    unless they start now and ahead of everyone else, the same place main
    gives a hot lot (a Q-time-urgent lot outranks a non-late hot lot). At a
    batch tool an expedited lot waits at most the hot-lot batch wait. ResiliMES'
-   downstream-ready gate is skipped for it. Nothing in main excluded violated
+   downstream-ready gate is skipped for it. A lot at an intermediate step of an
+   open window gets the same rank as at the target: "inside a window" means
+   any step up to and including the target, with slack measured to the
+   target's latest start (`tests/test_hard_qtime.py` checks both the segment
+   entries and this rank). Nothing in main excluded violated
    lots before (fix-3 holds and the planning layer only reorder); this keeps
    that and moves them up.
 
@@ -79,27 +89,30 @@ In the default mode most misses are not at the target at all: the lot is still
 working through the intermediate steps of a multi-step span. EDD's misses are
 mostly queueing at the target.
 
-### Hard mode
+### Hard mode (whole-segment gate)
 
 | KPI | Planning | Planning + hard | EDD | EDD + hard |
 |---|---:|---:|---:|---:|
-| on-time % | 91.96 | 89.74 | 91.96 | 85.40 |
-| completed / run | 503.7 | 454.3 | 520.0 | 444.0 |
-| true Q-time % | 94.62 | 92.86 | 89.23 | 93.59 |
-| true Q-time % after first 24 h | 95.00 | 94.11 | 91.53 | 95.41 |
-| weighted tardiness (min/run) | 20,950 | 31,139 | 21,046 | 56,351 |
-| missed, avoidable (upstream + batch + queue) | 1651 | 1644 | 2862 | 1353 |
-| missed, disruption (down/PM, rework, transport) | 77 | 116 | 283 | 117 |
+| on-time % | 91.96 | 89.74 | 91.96 | 88.89 |
+| completed / run | 503.7 | 459.3 | 520.0 | 513.0 |
+| true Q-time % | 94.62 | 97.15 | 89.23 | 97.39 |
+| true Q-time % after first 24 h | 95.00 | 99.03 | 91.53 | 99.14 |
+| weighted tardiness (min/run) | 20,950 | 32,432 | 21,046 | 36,218 |
+| missed, avoidable (upstream + batch + queue) | 1651 | 551 | 2862 | 585 |
+|   of which upstream | 1467 | 225 | 977 | 267 |
+| missed, disruption (down/PM, rework, transport) | 77 | 96 | 283 | 97 |
 | missed, inherited | 446 | 426 | 565 | 415 |
-| expedited exception lots | - | 1623 | - | 1426 |
-| recovered (target started) by 7 d | - | 1533 | - | 1426 |
-| time to recover, mean / p90 (min) | - | 714 / 2470 | - | 689 / 2510 |
+| expedited exception lots | - | 905 | - | 914 |
+| recovered (target started) by 7 d | - | 862 | - | 914 |
+| time to recover, mean / p90 (min) | - | 652 / 2670 | - | 620 / 2558 |
 
-Per seed, hard mode is uneven. Seed 2 (long target downs) is the worst case:
-EDD + hard completes 310 lots vs 519, planning + hard 393 vs 513, because the
-gate stops origin starts while target families are down. On seed 3 planning +
-hard is better on every Q-time and throughput number (95.07% vs 94.33%, 495
-vs 490 completed).
+The off columns are identical to the first study (off == main). For
+reference, the first, target-only kanban gave planning + hard 92.86% true
+Q-time with 454.3 completed/run, and EDD + hard 93.59% with 444.0.
+
+Per seed, completions for planning + hard are 510 / 419 / 449 vs 508 / 513 /
+490 off. Seed 2 (long downs) is still the worst case. EDD + hard stays within
+2% of EDD's output on every seed (521 / 517 / 501 vs 529 / 519 / 512).
 
 Time to recover runs from the miss to the start of the target step. It
 includes the Q-time hold and, for multi-step spans, the remaining intermediate
@@ -107,19 +120,21 @@ steps, so it is long even for a top-priority lot.
 
 ## Honest reading
 
-* With EDD, hard mode removes about half of the avoidable misses (2862 to
-  1353) and gains 4.4 pp true Q-time. It costs 76 completed lots per run and
-  2.7x weighted tardiness.
-* With the planning default, hard mode does not help. Q-time drops 1.8 pp,
-  completions drop 49 per run and tardiness goes up 49%. The default already
-  avoids queueing at the target. Its remaining avoidable misses are
-  `upstream`: delays at the intermediate steps of a span. The kanban only
-  models target capacity, so it cannot see them.
-* Expedited lots take target capacity first, which is right for the fab but
-  costs other lots. Early in the run this is mostly the 400+ windows already
-  missed in the snapshot WIP.
+* Checking the whole segment fixes what the target-only kanban could not
+  see. Upstream misses fall from 1467 to 225 (planning) and avoidable misses
+  fall about 3x to 5x. After the first 24 h (mostly t=0 WIP that had already
+  missed) true Q-time is about 99% in both modes.
+* It does not beat the default overall. Planning + hard costs 44 completed
+  lots per run (-9%), 2.2 pp on-time and +55% weighted tardiness. EDD + hard
+  keeps throughput (-1%) but still loses 3.1 pp on-time and adds +72%
+  tardiness. Of the four, EDD + hard has the best Q-time and the
+  best Q-time/throughput trade-off.
+* The remaining misses are mostly inherited windows and disruptions after
+  the start, which a start gate cannot prevent. Those lots are expedited, and
+  all but 43 (planning) recover within the 7 days.
 
 Recommendation: keep hard mode off and the planning default as the demo
-default. Show hard mode as the "zero-tolerance" switch, together with the
-per-cause breakdown. A real hard mode would also need to model the
-intermediate steps of the span, which is the next step.
+default, because hard mode trades delivery and output for Q-time. Hard mode
+is now a credible "zero-tolerance" switch (about 97% overall and 99% after
+the first day). Use it where Q-time compliance outranks output. With hard mode
+on, EDD dispatch is the better pairing than the planning layer.

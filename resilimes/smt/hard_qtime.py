@@ -1,4 +1,4 @@
-"""Hard Q-time: origin-step gating by a per-target Q-time kanban, plus expedite.
+"""Hard Q-time: origin-step gating by a whole-segment Q-time kanban, plus expedite.
 
 Two parts, both read by ``simulate._Sim`` (see ``docs/HARD_QTIME.md``):
 
@@ -11,14 +11,15 @@ Two parts, both read by ``simulate._Sim`` (see ``docs/HARD_QTIME.md``):
   ``batch_fill`` (at a batch target with an up, idle tool: waiting to fill),
   ``queueing`` (at the target, every up tool busy). It changes no decision.
 * ``HardQtime`` (``hard_qtime=True``, default off): a lot may start a CQT
-  origin step only if the work already committed to the target family (lots
-  inside an open window or at a CQT origin heading there) plus its own fits
-  the up tools of that family within the limit. Dataset process time, batch
+  origin step only if, for every family of the CQT segment (each measured
+  intermediate step and the target), the work already committed there (the
+  remaining segment steps of lots inside an open window or at a CQT origin)
+  plus its own fits the up tools before each step's latest start. Dataset process time, batch
   size, transport and the PM calendar only; future breakdowns are not used.
   A lot that missed (or is about to miss) its window is never gated and is
   expedited: inside its class tier it ranks right behind lots whose open
   window is lost unless they start now (the hot-lot rule of main) and ahead
-  of everyone else, at its target and through re-clean and the re-opened
+  of everyone else, at intermediate steps and its target, through re-clean and the re-opened
   window, until its target step starts.
 """
 
