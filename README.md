@@ -6,6 +6,22 @@ A production supervisor gets a line-down, a rush order, a material shortage, a l
 
 **Primary track: Track 03 — Reasoning Architecture.** The product turns fragmented factory data, a signed intent contract, a world-model event log, and bounded agent steps into a schedule a supervisor can commit. Explainability is part of that decision, not a separate product. See [why this track](#track).
 
+## Default scheduling mode: planning layer
+
+ResiliMES now dispatches on the **planning layer** by default (demo, UI, API and studies that do not pin a mode). Before the run, `auto_plan` builds the plan from the run's own lots and dues. Dispatch then uses the plan's band and rank with the position-wait gate from planning-r1 (`plan_wait="position"`). Q-time r2 fix 2 (dynamic risk) and fix 3 (bounded tool holds) stay on. Fix 1 (shortlist admission) stays off, and the sched-freeze stays off. No weight, due or seed was tuned for this change.
+
+`RESILIMES_SCHED_MODE=strict_qtime` (or `make_sim(..., sched_mode="strict_qtime")`) is the **strict Q-time** mode. It is the qtime-r2 fix-2 risk order without the plan, and it was main's ResiliMES path before this change. EDD, FIFO, CR and `smt_rule` never use the plan. The test suite pins `strict_qtime` (`tests/conftest.py`), so its recorded numbers and golden digests still apply. `tests/test_sched_mode.py` covers the default.
+
+Why plan is the default: strict Q-time meets more Q-time windows, but it finishes far fewer lots. On the published book (7 days, seeds 1-3, closed fab, this code), per run:
+
+| Mode | Completed/run | On-time % | True Q-time % | W. tardiness min/run |
+|---|---|---|---|---|
+| ResiliMES default (plan) | 503.7 | 91.96 | 94.63 | 20,950 |
+| ResiliMES strict Q-time | 362.7 | 91.85 | 97.19 | 20,566 |
+| EDD | 520.0 | 91.96 | 89.24 | 21,046 |
+
+On this book the default ties EDD on on-time. It meets 5.4 pp more Q-time windows than EDD and completes 16 fewer lots per run. Across the 9-book × 5-seed study in [docs/PLANNING_R1_STUDY.md](docs/PLANNING_R1_STUDY.md) (7 d closed), the plan arm averages 455.7 completed/run, 94.5% true Q-time and 90.2% on-time. **EDD is about 3 pp better on on-time there (93.6%)** and completes 464.7/run at 88.8% true Q-time. Most of that gap comes from the X-factor books. The study arm ran with fix 1 on; the default keeps it off. The numbers further down this README were recorded before this change, on the strict path, and were not rerun.
+
 ## Default console: public industry benchmark (SMT2020)
 
 `make demo` opens the public industry benchmark (SMT2020), not the six-lot bay. The extract is 106 station families, 1,313 tools, 102 `Litho_*` tools (82 expose scanners and 20 `Litho_REG`), 10 products, and 2,156 initial WIP lots. The banner reads `public industry benchmark (SMT2020)`. The lithography scenario holds `Litho_FE_92-1` for the published 705.59-minute lithography repair. Tool state is aggregated by station group; the Gantt is virtualized to the selected group and time window.

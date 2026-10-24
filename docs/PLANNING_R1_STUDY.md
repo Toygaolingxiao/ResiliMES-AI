@@ -1,5 +1,7 @@
 # Planning-r1 study: main / dyn / plan, 2 d and 7 d, closed fab and with releases
 
+> **Default on main (default-plan PR).** ResiliMES runs with the plan (position gate) unless `RESILIMES_SCHED_MODE=strict_qtime` or `sched_mode="strict_qtime"` is set. It uses fixes 2+3, so fix 1 is off; the study arms below ran with fixes 1-3. Quick check, published book, 7 d closed, seeds 1-3: default 503.7 completed/run, 91.96% on-time, 94.63% true Q-time. Strict Q-time gives 362.7 / 91.85% / 97.19%, and EDD 520.0 / 91.96% / 89.24%. In the 9-book table below, EDD stays about 3 pp ahead on on-time (93.6 vs 90.2). See the README section "Default scheduling mode".
+
 Branch `planning-r1` (PR #22). Write-up of the KPI study and of why the plan arm regresses against main.
 Nothing here was tuned: no weight, seed, due date or horizon was changed to make an arm win.
 Step targets are the backward pass over SMT2020 master-data standard times (PTIME by PTPER + setup) with

@@ -404,6 +404,69 @@ def default_r2_fixes() -> tuple[int, ...]:
     return DEFAULT_R2_FIXES
 
 
+# Scheduling mode used when ``make_sim(plan=None, sched_mode=None)`` runs ResiliMES.
+# ``plan`` (default): the planning layer (``resilimes.smt.planning``) is built
+# from the run's own fab at t=0 and ResiliMES dispatches on it with the
+# position-wait gate (``plan_wait="position"``). ``strict_qtime``: no plan, the
+# Q-time r2 fix-2 dynamic risk order alone (higher Q-time compliance, fewer
+# completed lots). RESILIMES_SCHED_MODE overrides the default.
+SCHED_MODES: tuple[str, ...] = ("plan", "strict_qtime")
+DEFAULT_SCHED_MODE = "plan"
+_AUTO_PLANS: list[tuple[Fab, tuple[Any, ...], PlanningOutput]] = []
+
+
+def default_sched_mode() -> str:
+    """``RESILIMES_SCHED_MODE`` if set (``plan`` or ``strict_qtime``), else ``plan``."""
+    mode = os.environ.get("RESILIMES_SCHED_MODE", "").strip() or DEFAULT_SCHED_MODE
+    if mode not in SCHED_MODES:
+        raise ValueError(f"Unknown RESILIMES_SCHED_MODE {mode}")
+    return mode
+
+
+def auto_plan(
+    fab: Fab,
+    *,
+    hot_lot: int | None = None,
+    hot_due: float | None = None,
+    focus_down_until: float = 0.0,
+) -> PlanningOutput:
+    """The default-mode plan for one run: the run's own lots and dues at t=0,
+    no extra releases, the forced focus-tool down if any. Cached per fab object
+    (seeds share it: the plan uses expected availability, not sampled downs)."""
+    key: tuple[Any, ...] = (hot_lot, hot_due, focus_down_until)
+    for cached_fab, cached_key, cached in _AUTO_PLANS:
+        if cached_fab is fab and cached_key == key:
+            return cached
+    from resilimes.smt.planning import build_plan, plan_input
+
+    dues = list(fab.lot_due)
+    kinds = list(fab.lot_class)
+    if hot_lot is not None:
+        if hot_due is not None:
+            dues[hot_lot] = hot_due
+        kinds[hot_lot] = "VIP"
+    ready = [
+        max(0.0, fab.lot_release[lot]) if lot < len(fab.lot_release) else 0.0
+        for lot in range(len(fab.lot_id))
+    ]
+    down = {fab.focus_tool: focus_down_until} if focus_down_until > 0.0 else {}
+    plan = build_plan(
+        fab,
+        plan_input(
+            fab,
+            lot_ready=ready,
+            lot_due=dues,
+            lot_class=kinds,
+            releases=False,
+            release_until=max(dues, default=0.0),
+            down_until=down,
+        ),
+    )
+    _AUTO_PLANS.append((fab, key, plan))
+    del _AUTO_PLANS[:-4]
+    return plan
+
+
 def run_policy(fab: Fab, **kwargs: Any) -> RunResult:
     """One run: ``make_sim(fab, **kwargs).run()``. Arguments are documented
     on ``make_sim``."""
@@ -440,6 +503,7 @@ def make_sim(
     faults: FaultPlan | None = None,
     freeze: FreezeConfig | None = None,
     layout: FabLayout | bool | str | None = None,
+    sched_mode: str | None = None,
 ) -> _Sim:
     """A ready simulator; ``.run()`` is one run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
@@ -465,13 +529,26 @@ def make_sim(
     dispatch-ordered queue, ``family`` the family-average wait of planning-r1
     before the fix (kept for the A/B study). ``progress`` (default None) is
     called with the simulated clock every few thousand events; it only reads
-    the clock, so a run is the same with or without it."""
+    the clock, so a run is the same with or without it. ``sched_mode`` (ResiliMES
+    runs without an explicit ``plan``; unset means ``default_sched_mode()``):
+    ``plan`` builds ``auto_plan`` for the run, ``strict_qtime`` runs without a
+    plan (the qtime-r2 fix-2 order alone)."""
     if plan_wait not in {"position", "family"}:
         raise ValueError(f"Unknown plan_wait {plan_wait}")
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     if shift_lead is not None and policy != "resilimes":
         raise ValueError("shift_lead needs policy='resilimes'")
+    mode = default_sched_mode() if sched_mode is None else sched_mode
+    if mode not in SCHED_MODES:
+        raise ValueError(f"Unknown sched_mode {mode}")
+    if plan is None and policy == "resilimes" and mode == "plan":
+        plan = auto_plan(
+            fab,
+            hot_lot=hot_lot if promote_hot else None,
+            hot_due=hot_due,
+            focus_down_until=focus_down_until,
+        )
     sim = _Sim(
         fab,
         policy=policy,

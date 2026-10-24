@@ -600,6 +600,9 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
         kwargs["r2_policy"] = False
     if _ARM[0] in ("plan", "ablate_plan", "plan_famwait"):
         kwargs["plan"] = book_plan(fab, book)
+    else:
+        # Non-plan arms are the qtime-r2 path (strict Q-time), not the default plan.
+        kwargs["sched_mode"] = "strict_qtime"
     if _ARM[0] == "plan_famwait":
         # planning-r1 before the position-in-queue wait (A/B study arm).
         kwargs["plan_wait"] = "family"
