@@ -27,9 +27,7 @@ def _scrub(value: Any) -> Any:
     """Drop wall-clock fields; everything else must match exactly."""
     if isinstance(value, dict):
         return {
-            key: _scrub(item)
-            for key, item in value.items()
-            if not str(key).endswith(("_ms", "_s"))
+            key: _scrub(item) for key, item in value.items() if not str(key).endswith(("_ms", "_s"))
         }
     if isinstance(value, list | tuple):
         return [_scrub(item) for item in value]
