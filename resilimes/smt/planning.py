@@ -103,6 +103,9 @@ class PlanInput:
     down_until: dict[int, float] = field(default_factory=dict)
     # Seconds subtracted from every PM calendar, as ``simulate.pm_windows`` does.
     pm_shift_sec: float = 0.0
+    # Optional per-tool PM windows (``pm_plan.PmPlan.tool_spans``). None keeps
+    # the published family calendar on every tool, as ``simulate.pm_windows``.
+    tool_pm: dict[int, list[tuple[float, float]]] | None = None
 
 
 @dataclass(frozen=True)
@@ -319,6 +322,7 @@ def plan_input(
     release_until: float | None = None,
     down_until: dict[int, float] | None = None,
     pm_shift_sec: float = 0.0,
+    tool_pm: dict[int, list[tuple[float, float]]] | None = None,
 ) -> PlanInput:
     """Build the input from the fab and, inside a sim, the current lot state.
 
@@ -345,6 +349,7 @@ def plan_input(
         release_until=until,
         down_until=dict(down_until or {}),
         pm_shift_sec=pm_shift_sec,
+        tool_pm=tool_pm,
     )
     for lot, name in enumerate(fab.lot_id):
         if done[lot]:
@@ -370,7 +375,38 @@ def plan_input(
     return inp
 
 
-def scenario_input(fab: Fab, scenario_id: str, *, releases: bool = True) -> PlanInput:
+def plan_horizon(inp: PlanInput) -> float:
+    """Calendar horizon of one planning run (PM windows are built up to it)."""
+    return max([inp.release_until, *inp.lot_due, inp.now]) + 365 * DAY_SEC
+
+
+def with_pm_plan(fab: Fab, inp: PlanInput) -> PlanInput:
+    """Hook: the same input with the staggered per-tool PM plan (``pm_plan``).
+
+    The plan covers the planning window ``[0, release_until)``, so the PM
+    count inside the window equals the dataset's (the stagger only moves PMs
+    earlier, never across the window end). Occurrences the dataset starts
+    after the window keep the published family calendar.
+    """
+    from resilimes.smt.pm_plan import build_pm_plan, published_windows
+
+    window = inp.release_until
+    plan = build_pm_plan(fab, window, shift_sec=inp.pm_shift_sec)
+    later = published_windows(fab, plan_horizon(inp), shift_sec=inp.pm_shift_sec)
+    tool_pm: dict[int, list[tuple[float, float]]] = {}
+    for item in fab.families:
+        if not item.litho:
+            continue
+        for tool in range(item.tool0, item.tool0 + item.tools):
+            tail = [span for span in later[tool] if span[0] >= window]
+            tool_pm[tool] = _merge([*plan.tool_windows(tool), *tail])
+    inp.tool_pm = tool_pm
+    return inp
+
+
+def scenario_input(
+    fab: Fab, scenario_id: str, *, releases: bool = True, staggered_pm: bool = False
+) -> PlanInput:
     """Planning input for one headline scenario (``resilimes.smt.scenarios``).
 
     ``published`` is the published book with no incident. Each scenario changes
@@ -379,7 +415,8 @@ def scenario_input(fab: Fab, scenario_id: str, *, releases: bool = True) -> Plan
     Dielectric down is outside litho, so it does not change litho capacity.
     """
     if scenario_id == SCENARIO_PUBLISHED:
-        return plan_input(fab, releases=releases)
+        inp = plan_input(fab, releases=releases)
+        return with_pm_plan(fab, inp) if staggered_pm else inp
     from resilimes.smt.fab import LITHO_MTTR_MIN
     from resilimes.smt.scenarios import HOT_DUE_SEC, PM_OPEN_SEC, SCENARIOS
     from resilimes.smt.simulate import pm_shift_to_open
@@ -406,7 +443,7 @@ def scenario_input(fab: Fab, scenario_id: str, *, releases: bool = True) -> Plan
         kinds[fab.hot_lot] = "VIP"
     elif scenario.kind == "pm":
         shift = pm_shift_to_open(fab, fab.pm_calendar, PM_OPEN_SEC)
-    return plan_input(
+    inp = plan_input(
         fab,
         scenario_id=scenario_id,
         lot_due=dues,
@@ -416,6 +453,7 @@ def scenario_input(fab: Fab, scenario_id: str, *, releases: bool = True) -> Plan
         down_until=down,
         pm_shift_sec=shift,
     )
+    return with_pm_plan(fab, inp) if staggered_pm else inp
 
 
 # ----------------------------------------------------------------- the plan
@@ -499,9 +537,9 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
     n = len(inp.lot_id)
     avail = litho_availability(fab)
     litho = [item.litho for item in fab.families]
-    horizon_guess = max([inp.release_until, *inp.lot_due, now]) + 365 * DAY_SEC
-    pm = family_pm(fab, horizon_guess, shift_sec=inp.pm_shift_sec)
-    pm_ends = {fam: [end for _start, end in spans] for fam, spans in pm.items()}
+    pm = family_pm(fab, plan_horizon(inp), shift_sec=inp.pm_shift_sec)
+    tool_pm = _tool_pm(fab, inp, pm)
+    tool_ends = {tool: [end for _start, end in spans] for tool, spans in tool_pm.items()}
 
     paths: list[list[int]] = []
     sdue: list[list[float]] = []
@@ -572,25 +610,29 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
         nonlocal seq
         queue = queues[fam]
         tools = idle[fam]
-        spans = pm[fam]
-        ends = pm_ends[fam]
         rate = avail[fam]
         while queue and tools:
             _tier, _ls, lot, pos = queue[0]
             route = fab.routes[inp.lot_route[lot]]
             index = paths[lot][pos]
             proc = route.cycle[index] / rate
-            hit = bisect_right(ends, moment)
-            if hit < len(spans) and spans[hit][0] < moment + proc:
-                # Starting now would run into the next PM; every tool of the
-                # family shares the calendar, so the family waits for its end.
-                wake = spans[hit][1]
-                while tools:
-                    heapq.heappush(events, (wake, _FREE, fam, tools.pop(), seq))
+            tool = -1
+            while tools:
+                cand = tools.pop()
+                spans = tool_pm[cand]
+                hit = bisect_right(tool_ends[cand], moment)
+                if hit < len(spans) and spans[hit][0] < moment + proc:
+                    # Starting now would run into this tool's next PM: the tool
+                    # waits for the PM to end (with the published calendar
+                    # every tool of the family does).
+                    heapq.heappush(events, (spans[hit][1], _FREE, fam, cand, seq))
                     seq += 1
+                    continue
+                tool = cand
+                break
+            if tool < 0:
                 return
             heapq.heappop(queue)
-            tool = tools.pop()
             end = moment + proc
             p_start[lot][pos] = moment
             p_end[lot][pos] = end
@@ -626,7 +668,7 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
             dispatch(fam, moment)
 
     lots = _lot_plans(fab, inp, paths, sdue, lstart, p_start, p_end, done_at, litho_wait, tiers)
-    days = _litho_days(fab, inp, paths, lstart, p_start, pm, avail)
+    days = _litho_days(fab, inp, paths, lstart, p_start, pm, tool_pm, avail)
     return PlanningOutput(
         scenario_id=inp.scenario_id,
         now=now,
@@ -636,6 +678,21 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
         release_until=inp.release_until,
         runtime_ms=(time.perf_counter() - began) * 1000.0,
     )
+
+
+def _tool_pm(
+    fab: Fab, inp: PlanInput, pm: dict[int, list[tuple[float, float]]]
+) -> dict[int, list[tuple[float, float]]]:
+    """PM windows per litho tool: the PM plan if given, else the family calendar."""
+    found: dict[int, list[tuple[float, float]]] = {}
+    for fam, spans in pm.items():
+        item = fab.families[fam]
+        for tool in range(item.tool0, item.tool0 + item.tools):
+            if inp.tool_pm is None:
+                found[tool] = spans
+            else:
+                found[tool] = _merge(list(inp.tool_pm.get(tool, [])))
+    return found
 
 
 def band_of(raw_slack: float, score: float) -> str:
@@ -772,6 +829,7 @@ def _litho_days(
     lstart: list[list[float]],
     p_start: list[list[float]],
     pm: dict[int, list[tuple[float, float]]],
+    tool_pm: dict[int, list[tuple[float, float]]],
     avail: dict[int, float],
 ) -> list[LithoDay]:
     now = inp.now
@@ -802,7 +860,8 @@ def _litho_days(
             up = 0.0
             for tool in range(item.tool0, item.tool0 + item.tools):
                 down = inp.down_until.get(tool, 0.0)
-                spans = _merge([*pm[fam], (now, down)]) if down > now else pm[fam]
+                own = tool_pm[tool]
+                spans = _merge([*own, (now, down)]) if down > now else own
                 up += _up_seconds(spans, lo, hi)
             cap = up * avail[fam] / 3600.0
             cum_need += demand[fam][day]
@@ -821,6 +880,12 @@ def _litho_days(
     return out
 
 
-def plan_scenario(fab: Fab, scenario_id: str = SCENARIO_PUBLISHED) -> PlanningOutput:
-    """One planning run for a headline scenario (or ``published``)."""
-    return build_plan(fab, scenario_input(fab, scenario_id))
+def plan_scenario(
+    fab: Fab, scenario_id: str = SCENARIO_PUBLISHED, *, staggered_pm: bool = False
+) -> PlanningOutput:
+    """One planning run for a headline scenario (or ``published``).
+
+    ``staggered_pm`` swaps the published family PM calendar for the per-tool
+    plan of ``pm_plan.build_pm_plan`` (capacity check and litho dispatch).
+    """
+    return build_plan(fab, scenario_input(fab, scenario_id, staggered_pm=staggered_pm))
