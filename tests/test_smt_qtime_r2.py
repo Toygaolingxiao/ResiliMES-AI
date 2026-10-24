@@ -241,7 +241,7 @@ def _b_position(result, lot: int = 0) -> int:
 
 def test_open_window_lot_is_admitted_to_a_capped_shortlist() -> None:
     fab = _crowded_b_fab()
-    after = _run(fab, policy="resilimes", horizon=25_000.0)
+    after = _run(fab, policy="resilimes", horizon=25_000.0, r2_fixes=(1, 2, 3))
     before = _run(fab, policy="resilimes", horizon=25_000.0, r2_policy=False)
     # Without the rule L_Q (largest slack) stays off the 8-lot shortlist until
     # the queue falls to the threshold (12 starts). With it, L_Q is a
@@ -522,3 +522,42 @@ def test_reservation_checks_flag_a_start_on_a_held_tool_and_a_long_hold() -> Non
     result.events.insert(at + 1, ("start", 151.0, 1, (1,), (0,), 651.0, "", (1,)))
     counts = check_trace(fab, result, downs=RES_DOWNS, pm=NO_DOWNS)["counts"]
     assert counts["reservation"] >= 2
+
+
+# Fix 1 default -------------------------------------------------------------
+def _fix1_sim(monkeypatch, env, **kwargs):
+    from resilimes.smt.simulate import _Sim
+
+    if env is None:
+        monkeypatch.delenv("RESILIMES_QTIME_FIX1", raising=False)
+    else:
+        monkeypatch.setenv("RESILIMES_QTIME_FIX1", env)
+    return _Sim(
+        _two_family_fab(),
+        policy="resilimes",
+        seed=1,
+        horizon=100.0,
+        downs=NO_DOWNS,
+        pm=NO_DOWNS,
+        hot_lot=None,
+        hot_due=None,
+        promote_hot=False,
+        trace=False,
+        focus_down_until=0.0,
+        **kwargs,
+    )
+
+
+def test_default_excludes_fix1(monkeypatch) -> None:
+    sim = _fix1_sim(monkeypatch, None)
+    assert not sim.fix1 and sim.fix2 and sim.fix3
+
+
+def test_env_switch_enables_fix1(monkeypatch) -> None:
+    sim = _fix1_sim(monkeypatch, "1")
+    assert sim.fix1 and sim.fix2 and sim.fix3
+
+
+def test_explicit_r2_fixes_win_over_env(monkeypatch) -> None:
+    assert not _fix1_sim(monkeypatch, "1", r2_fixes=(2, 3)).fix1
+    assert _fix1_sim(monkeypatch, None, r2_fixes=(1, 2, 3)).fix1
