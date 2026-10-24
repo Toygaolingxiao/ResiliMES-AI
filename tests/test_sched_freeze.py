@@ -37,6 +37,18 @@ TIMING = {
     # Transport / layout KPI dict added after c75ff85 (tests/test_fab_layout.py).
     "layout",
 }
+# Planning-layer fields (planning-r1): constant zeros/empty when no plan is passed,
+# so they are left out of the off-path digest like the empty lot_log.
+PLAN_FIELDS = {
+    "plan_used",
+    "plan_due_fallbacks",
+    "sched_starts",
+    "sched_follow",
+    "deviations",
+    "sched_stale_detail",
+    "sched_build_p95_ms",
+    "sched_build_total_s",
+}
 ENV = (
     "RESILIMES_SCHED_FREEZE",
     "RESILIMES_FREEZE_LOTS",
@@ -77,7 +89,9 @@ def _digest(result: RunResult, *, freeze_events: bool = True) -> str:
     data = {
         key: value
         for key, value in asdict(result).items()
-        if key not in TIMING and not (key == "lot_log" and not value)
+        if key not in TIMING
+        and not (key == "lot_log" and not value)
+        and not (key in PLAN_FIELDS and not result.plan_used)
     }
     if not freeze_events:
         data["events"] = [e for e in data["events"] if e[0] not in ("sched_tick", "unfreeze")]

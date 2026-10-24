@@ -10,6 +10,13 @@
   ``after``, so only ResiliMES runs.
 * ``after``: this branch as shipped (dynamic risk weight, 300 s scheduling
   tick for every policy).
+* ``plan``: ``after`` plus the planning layer (``book_plan``): step-due
+  risk and plan band/rank tie-break for ResiliMES, the per-tool schedule and
+  the deviation log for every policy.
+* ``plan_famwait``: ``plan`` with ``plan_wait="family"`` (the risk's
+  expected wait is the family average, planning-r1 before the
+  position-in-queue fix); for the old-vs-new A/B.
+* ``ablate_plan``: ``ablate`` with the plan.
 * ``ablate``: ResiliMES only, published and X-factor books, each subset of
   fixes 1-3 on its own (``r2_fixes``); the row's ``variant`` names it.
 
@@ -25,6 +32,7 @@ sets the pool.
 
 from __future__ import annotations
 
+import heapq
 import json
 import os
 import sys
@@ -63,9 +71,24 @@ def _seeds(book: str) -> tuple[int, ...]:
     return HELDOUT_SEEDS if book.startswith("heldout") else tuple(SEEDS)
 
 
-def _setup(fab: Fab, book: str, seed: int, policy: str) -> tuple[Fab, dict[str, Any]]:
-    """The plant and run_policy kwargs of one run (mirrors ``benchmark.py``)."""
-    horizon = STUDY_HORIZON_SEC
+def _releases() -> bool:
+    return os.environ.get("RESILIMES_STUDY_RELEASES", "0") == "1"
+
+
+def _horizon() -> float:
+    hours = os.environ.get("RESILIMES_STUDY_HORIZON_H")
+    return float(hours) * 3600.0 if hours else STUDY_HORIZON_SEC
+
+
+def _setup(
+    fab: Fab, book: str, seed: int, policy: str, releases: bool | None = None
+) -> tuple[Fab, dict[str, Any]]:
+    """The plant and run_policy kwargs of one run (mirrors ``benchmark.py``).
+
+    ``releases`` (default: env ``RESILIMES_STUDY_RELEASES=1``, else off) adds
+    the ``order.txt`` lots released inside the horizon, at step 0.
+    """
+    horizon = _horizon()
     kwargs: dict[str, Any] = {"policy": policy, "seed": seed, "trace": False, "record": True}
     plant = fab
     if book in ("published", "heldout_published"):
@@ -112,8 +135,52 @@ def _setup(fab: Fab, book: str, seed: int, policy: str) -> tuple[Fab, dict[str, 
         pm = pm_windows(fab, horizon)
     else:
         raise KeyError(book)
+    if _releases() if releases is None else releases:
+        from resilimes.smt.planning import with_releases
+
+        plant = with_releases(plant, until=horizon)
     kwargs.update(horizon=horizon, downs=downs, pm=pm)
     return plant, kwargs
+
+
+# Planning scenario of each study book (``resilimes.smt.scenarios``).
+# ``litho_family_2h`` has no headline scenario; its plan takes the same
+# 2-hour outage of every focus-family tool.
+BOOK_SCENARIO = {
+    "published": "published",
+    "heldout_published": "published",
+    "xfactor_eta600": "xfactor",
+    "heldout_xfactor": "xfactor",
+    "tight_vip": "tight_p1",
+    "pm_enforced": "pm_avoid",
+    "litho": "litho_down",
+    "hot": "hot_lot",
+    "litho_family_2h": "published",
+}
+_PLANS: dict[str, Any] = {}
+
+
+def book_plan(fab: Fab, book: str, releases: bool | None = None) -> Any:
+    """The planning layer's output for one book, computed once (t=0).
+
+    The plan holds the lots the sim runs: the WIP, plus (``releases``, default
+    env ``RESILIMES_STUDY_RELEASES=1``) the ``order.txt`` lots released inside
+    the run's horizon, the same set ``_setup`` adds. Seeds share the plan: it
+    uses the expected availability (MTTF/(MTTF+MTTR)), not the sampled downs.
+    """
+    released = _releases() if releases is None else releases
+    until = (TIGHT_HORIZON_SEC if book == "tight_vip" else _horizon()) if released else None
+    key = f"{book}:{until}"
+    if key not in _PLANS:
+        from resilimes.smt.planning import build_plan, scenario_input
+
+        inp = scenario_input(fab, BOOK_SCENARIO[book], releases=released, release_until=until)
+        if book == "litho_family_2h":
+            family = fab.families[fab.focus_family]
+            for tool in range(family.tool0, family.tool0 + family.tools):
+                inp.down_until[tool] = _STRESS_HOURS * 3600.0
+        _PLANS[key] = build_plan(fab, inp)
+    return _PLANS[key]
 
 
 def _inherited(fab: Fab) -> Iterator[tuple[int, int, int, float]]:
@@ -192,6 +259,334 @@ def replay(fab: Fab, events: list[tuple[Any, ...]], horizon: float) -> dict[str,
     }
 
 
+# ------------------------------------------------------------- balance KPIs
+#
+# Measured only; nothing here feeds the dispatcher. Every KPI is recomputed
+# from the recorded events (plus the run's downs, PM windows and horizon), so
+# main, the fixed branch and every plan arm are scored the same way.
+
+BOTTLENECKS = ("Litho_BE_110", "Litho_FE_92")
+_SAMPLE_SEC = 3600.0
+
+
+def _merge_spans(spans: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    out: list[tuple[float, float]] = []
+    for lo, hi in sorted(spans):
+        if hi <= lo:
+            continue
+        if out and lo <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], hi))
+        else:
+            out.append((lo, hi))
+    return out
+
+
+def _clip(spans: list[tuple[float, float]], end: float) -> list[tuple[float, float]]:
+    return [(max(0.0, lo), min(hi, end)) for lo, hi in spans if hi > 0.0 and lo < end]
+
+
+def _complement(spans: list[tuple[float, float]], end: float) -> list[tuple[float, float]]:
+    out: list[tuple[float, float]] = []
+    cursor = 0.0
+    for lo, hi in spans:
+        if lo > cursor:
+            out.append((cursor, lo))
+        cursor = max(cursor, hi)
+    if cursor < end:
+        out.append((cursor, end))
+    return out
+
+
+def _overlap(a: list[tuple[float, float]], b: list[tuple[float, float]]) -> float:
+    total = 0.0
+    i = j = 0
+    while i < len(a) and j < len(b):
+        lo = max(a[i][0], b[j][0])
+        hi = min(a[i][1], b[j][1])
+        if hi > lo:
+            total += hi - lo
+        if a[i][1] < b[j][1]:
+            i += 1
+        else:
+            j += 1
+    return total
+
+
+def _spread(values: list[float]) -> dict[str, float | None]:
+    if not values:
+        return {"max_min": None, "cv": None}
+    mean = sum(values) / len(values)
+    var = sum((v - mean) ** 2 for v in values) / len(values)
+    cv = (var**0.5) / mean if mean > 1e-12 else None
+    return {
+        "max_min": round(max(values) - min(values), 4),
+        "cv": None if cv is None else round(cv, 4),
+    }
+
+
+def balance_kpis(
+    fab: Fab,
+    events: list[tuple[Any, ...]],
+    horizon: float,
+    downs: list[list[tuple[float, float]]],
+    pm: list[list[tuple[float, float]]],
+) -> dict[str, Any]:
+    """Product fairness, load levelling, WIP balance and throughput of one run.
+
+    Queue membership is rebuilt from the events: a lot joins the queue of its
+    next step's family one fixed transport after its ``end`` (or at its entry:
+    t=0 for WIP, the release for a released lot), after a ``reclean`` at its
+    origin step, after a ``rework`` at once, and leaves it at its ``start``.
+    Starvation of a bottleneck family is tool time that is up (no down, no
+    PM), not processing, while that family's queue is empty: no WIP there at
+    all. Idle-up time with WIP queued (pins, reticles, setups, holds) is
+    reported apart as ``blocked``; eligibility is not re-derived here.
+    """
+    from resilimes.smt.fab import lot_number, measured, transport_seconds
+
+    n = len(fab.lot_id)
+    release = list(getattr(fab, "lot_release", None) or [0.0] * n)
+    routes = fab.routes
+    nfam = len(fab.families)
+    ntool = len(fab.tool_family)
+    number = [lot_number(name, lot) for lot, name in enumerate(fab.lot_id)]
+    step = list(fab.lot_step)
+    entered = [release[lot] <= 0.0 for lot in range(n)]
+    finished = [-1.0] * n
+    in_queue = [-1] * n
+    qlen = [0] * nfam
+    route_len = [len(routes[fab.lot_route[lot]].family) for lot in range(n)]
+    remain0 = [routes[fab.lot_route[lot]].remain[fab.lot_step[lot]] for lot in range(n)]
+    busy: list[list[tuple[float, float]]] = [[] for _ in range(ntool)]
+    open_busy: dict[int, int] = {}
+    steps_done = [0] * n
+    watch = [fab.family_index[name] for name in BOTTLENECKS if name in fab.family_index]
+    # (time, queue length) change log of the bottleneck families.
+    qlog: dict[int, list[tuple[float, int]]] = {fam: [(0.0, 0)] for fam in watch}
+    arrivals: list[tuple[float, int, int, int]] = []  # (time, seq, lot, family)
+    seq = 0
+
+    def join(lot: int, fam: int, moment: float) -> None:
+        nonlocal seq
+        heapq.heappush(arrivals, (moment, seq, lot, fam))
+        seq += 1
+
+    def set_q(fam: int, delta: int, moment: float) -> None:
+        qlen[fam] += delta
+        if fam in qlog:
+            qlog[fam].append((moment, qlen[fam]))
+
+    for lot in range(n):
+        route = routes[fab.lot_route[lot]]
+        join(lot, route.family[step[lot]], max(0.0, release[lot]))
+
+    samples_q: list[list[int]] = []
+    samples_pos: list[list[int]] = []
+    next_sample = 0.0
+
+    def take_sample() -> None:
+        samples_q.append(list(qlen))
+        pos = [0] * 5
+        for lot in range(n):
+            if entered[lot] and finished[lot] < 0:
+                pos[min(4, 5 * step[lot] // route_len[lot])] += 1
+        samples_pos.append(pos)
+
+    def drain(until: float) -> None:
+        nonlocal next_sample
+        while True:
+            when = arrivals[0][0] if arrivals else float("inf")
+            if next_sample <= until and next_sample <= horizon and next_sample <= when:
+                take_sample()
+                next_sample += _SAMPLE_SEC
+                continue
+            if when <= until:
+                moment, _s, lot, fam = heapq.heappop(arrivals)
+                entered[lot] = True
+                if finished[lot] < 0 and in_queue[lot] < 0:
+                    in_queue[lot] = fam
+                    set_q(fam, 1, moment)
+                continue
+            break
+
+    def leave(lot: int, moment: float) -> None:
+        fam = in_queue[lot]
+        if fam >= 0:
+            in_queue[lot] = -1
+            set_q(fam, -1, moment)
+
+    def advance(lot: int, index: int, moment: float) -> None:
+        route = routes[fab.lot_route[lot]]
+        nxt = index + 1
+        while nxt < len(route.family) and not measured(route, nxt, number[lot]):
+            nxt += 1
+        if nxt >= len(route.family):
+            finished[lot] = moment
+            return
+        step[lot] = nxt
+        move = transport_seconds(fab, route.family[index], route.family[nxt])
+        join(lot, route.family[nxt], moment + move)
+
+    for event in events:
+        kind = event[0]
+        if kind not in ("start", "end", "reclean", "rework", "interrupt"):
+            continue
+        moment = float(event[1])
+        drain(moment)
+        if kind == "start":
+            tool, lots, finish = event[2], event[3], float(event[5])
+            for lot in lots:
+                leave(lot, moment)
+            busy[tool].append((moment, finish))
+            open_busy[tool] = len(busy[tool]) - 1
+        elif kind == "end":
+            lot, index = event[2], event[3]
+            steps_done[lot] += 1
+            advance(lot, index, moment)
+        elif kind == "interrupt":
+            tool = event[2]
+            slot = open_busy.get(tool)
+            if slot is not None:
+                lo, hi = busy[tool][slot]
+                if moment < hi:
+                    busy[tool][slot] = (lo, moment)
+        elif kind == "reclean":
+            lot, origin = event[2], event[4]
+            leave(lot, moment)
+            route = routes[fab.lot_route[lot]]
+            here = route.family[step[lot]]
+            step[lot] = origin
+            join(
+                lot,
+                route.family[origin],
+                moment + transport_seconds(fab, here, route.family[origin]),
+            )
+        elif kind == "rework":
+            lot, index = event[3], event[4]
+            route = routes[fab.lot_route[lot]]
+            step[lot] = index
+            join(lot, route.family[index], moment)
+    drain(horizon)
+
+    # Utilisation and starvation.
+    days = horizon / 86400.0
+    fam_util: list[float] = []
+    fam_names: list[str] = []
+    tool_util: dict[int, list[float]] = {fam: [] for fam in watch}
+    starve = {fam: 0.0 for fam in watch}
+    blocked = {fam: 0.0 for fam in watch}
+    up_total = {fam: 0.0 for fam in watch}
+    zero_spans: dict[int, list[tuple[float, float]]] = {}
+    for fam in watch:
+        log = qlog[fam]
+        spans: list[tuple[float, float]] = []
+        for (t0, q0), (t1, _q1) in zip(log, [*log[1:], (horizon, 0)], strict=True):
+            if q0 == 0 and t1 > t0:
+                spans.append((t0, min(t1, horizon)))
+        zero_spans[fam] = _merge_spans(_clip(spans, horizon))
+    for fam, item in enumerate(fab.families):
+        up_sum = busy_sum = 0.0
+        for tool in range(item.tool0, item.tool0 + item.tools):
+            off = _merge_spans(_clip([*downs[tool], *pm[tool]], horizon))
+            up_spans = _complement(off, horizon)
+            up = sum(hi - lo for lo, hi in up_spans)
+            mine = _merge_spans(_clip(busy[tool], horizon))
+            work = _overlap(mine, up_spans)
+            up_sum += up
+            busy_sum += work
+            if fam in tool_util:
+                tool_util[fam].append(work / up if up > 0 else 0.0)
+                idle_up = _complement(_merge_spans([*mine, *off]), horizon)
+                gone = _overlap(idle_up, zero_spans[fam])
+                starve[fam] += gone
+                blocked[fam] += sum(hi - lo for lo, hi in idle_up) - gone
+                up_total[fam] += up
+        if up_sum > 0:
+            fam_util.append(busy_sum / up_sum)
+            fam_names.append(item.name)
+    util = dict(zip(fam_names, fam_util, strict=True))
+    out: dict[str, Any] = {
+        "steps_per_day": round(sum(steps_done) / days, 1) if days > 0 else None,
+        "completed_kpi": sum(1 for lot in range(n) if 0 <= finished[lot] <= horizon),
+        "util_mean": round(sum(fam_util) / len(fam_util), 4) if fam_util else None,
+        "util_spread": _spread(fam_util),
+    }
+    for fam in watch:
+        name = fab.families[fam].name
+        out[f"util_{name}"] = round(util.get(name, 0.0), 4)
+        out[f"util_tools_{name}"] = _spread(tool_util[fam])
+        out[f"starve_h_{name}"] = round(starve[fam] / 3600.0, 2)
+        out[f"starve_pct_{name}"] = (
+            round(100.0 * starve[fam] / up_total[fam], 2) if up_total[fam] > 0 else None
+        )
+        out[f"blocked_h_{name}"] = round(blocked[fam] / 3600.0, 2)
+
+    # WIP balance: route-position quintiles and family queues over time.
+    if samples_pos:
+        mean_pos = [sum(row[q] for row in samples_pos) / len(samples_pos) for q in range(5)]
+        total = sum(mean_pos) or 1.0
+        out["wip_quintile_mean"] = [round(100.0 * v / total, 2) for v in mean_pos]
+        last = samples_pos[-1]
+        out["wip_quintile_end"] = [round(100.0 * v / (sum(last) or 1), 2) for v in last]
+        out["wip_quintile_end_lots"] = last
+    tools = [max(1, item.tools) for item in fab.families]
+    cvs: list[float] = []
+    for snap in samples_q:
+        load = [snap[fam] / tools[fam] for fam in range(nfam)]
+        cv = _spread(load)["cv"]
+        if cv is not None:
+            cvs.append(cv)
+    out["queue_cv_families"] = round(sum(cvs) / len(cvs), 4) if cvs else None
+    if samples_q:
+        variances = []
+        for fam in range(nfam):
+            col = [snap[fam] for snap in samples_q]
+            mean = sum(col) / len(col)
+            variances.append(sum((v - mean) ** 2 for v in col) / len(col))
+        out["queue_var_mean"] = round(sum(variances) / len(variances), 2)
+
+    # Product fairness per route.
+    per: dict[str, dict[str, Any]] = {}
+    for lot in range(n):
+        if not entered[lot] and release[lot] > horizon:
+            continue
+        rid = routes[fab.lot_route[lot]].route_id
+        acc = per.setdefault(
+            rid, {"lots": 0, "due": 0, "on_time": 0, "done": 0, "steps": 0, "ct": [], "xf": []}
+        )
+        acc["lots"] += 1
+        acc["steps"] += steps_done[lot]
+        end = finished[lot]
+        if end >= 0:
+            acc["done"] += 1
+            cycle = end - max(0.0, release[lot])
+            acc["ct"].append(cycle)
+            if remain0[lot] > 1e-6:
+                acc["xf"].append(cycle / remain0[lot])
+        if fab.lot_due[lot] <= horizon:
+            acc["due"] += 1
+            if 0 <= end <= fab.lot_due[lot]:
+                acc["on_time"] += 1
+    routes_out: dict[str, Any] = {}
+    for rid in sorted(per, key=lambda key: (len(key), key)):
+        acc = per[rid]
+        routes_out[rid] = {
+            "lots": acc["lots"],
+            "on_time_pct": round(100.0 * acc["on_time"] / acc["due"], 2) if acc["due"] else None,
+            "due": acc["due"],
+            "completed": acc["done"],
+            "completed_pct": round(100.0 * acc["done"] / acc["lots"], 2),
+            "steps_per_lot": round(acc["steps"] / acc["lots"], 2),
+            "mean_ct_h": round(sum(acc["ct"]) / len(acc["ct"]) / 3600.0, 2) if acc["ct"] else None,
+            "mean_xf": round(sum(acc["xf"]) / len(acc["xf"]), 3) if acc["xf"] else None,
+        }
+    out["route"] = routes_out
+    for key in ("on_time_pct", "completed_pct", "steps_per_lot", "mean_xf", "mean_ct_h"):
+        values = [r[key] for r in routes_out.values() if r[key] is not None]
+        out[f"fair_{key}"] = _spread(values)
+    return out
+
+
 _FAB: list[Fab] = []
 _ARM: list[str] = []
 
@@ -202,7 +597,14 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
     plant, kwargs = _setup(fab, book, seed, policy)
     if _ARM[0] == "mech":
         kwargs["r2_policy"] = False
+    if _ARM[0] in ("plan", "ablate_plan", "plan_famwait"):
+        kwargs["plan"] = book_plan(fab, book)
+    if _ARM[0] == "plan_famwait":
+        # planning-r1 before the position-in-queue wait (A/B study arm).
+        kwargs["plan_wait"] = "family"
     row: dict[str, Any] = {"book": book, "seed": seed, "policy": policy}
+    row["lots"] = len(plant.lot_id)
+    row["released_lots"] = len(plant.lot_id) - len(fab.lot_id)
     if len(item) == 4:
         variant = str(item[3])
         kwargs["r2_fixes"] = tuple(int(part) for part in variant.split("+"))
@@ -246,10 +648,21 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
         "replan_tick_p95_ms",
         "replan_tick_total_s",
         "flow_wait_ratio",
+        "plan_due_fallbacks",
+        "sched_starts",
+        "sched_follow",
+        "deviations",
+        "sched_stale_detail",
+        "sched_build_p95_ms",
+        "sched_build_total_s",
     ):
         row[key] = getattr(result, key, None)
     row["on_time"] = round(result.on_time_pct * result.due_in_horizon / 100.0)
     row.update(replay(plant, result.events, kwargs["horizon"]))
+    if os.environ.get("RESILIMES_STUDY_KPI", "1") == "1":
+        row["kpi"] = balance_kpis(
+            plant, result.events, kwargs["horizon"], kwargs["downs"], kwargs["pm"]
+        )
     return row
 
 
@@ -261,7 +674,7 @@ def main() -> None:
     items: list[Any] = [
         (book, seed, policy) for book in BOOKS for seed in _seeds(book) for policy in policies
     ]
-    if arm == "ablate":
+    if arm in ("ablate", "ablate_plan"):
         items = [
             (book, seed, "resilimes", variant)
             for variant in ABLATE_VARIANTS

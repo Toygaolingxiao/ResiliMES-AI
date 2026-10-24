@@ -39,6 +39,17 @@ SKIP = {
     "sched_freeze",
     "layout",
 }
+# Planning-layer fields (planning-r1): constant zeros/empty when no plan is passed.
+PLAN_FIELDS = {
+    "plan_used",
+    "plan_due_fallbacks",
+    "sched_starts",
+    "sched_follow",
+    "deviations",
+    "sched_stale_detail",
+    "sched_build_p95_ms",
+    "sched_build_total_s",
+}
 ENV = (
     "RESILIMES_FAB_LAYOUT",
     "RESILIMES_SCHED_FREEZE",
@@ -80,7 +91,9 @@ def _digest(result: RunResult) -> str:
     data = {
         key: value
         for key, value in asdict(result).items()
-        if key not in SKIP and not (key == "lot_log" and not value)
+        if key not in SKIP
+        and not (key == "lot_log" and not value)
+        and not (key in PLAN_FIELDS and not result.plan_used)
     }
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
 

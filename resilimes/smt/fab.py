@@ -151,6 +151,11 @@ def lot_number(lot_id: str, fallback: int) -> int:
     return int(tail) if tail.isdigit() else fallback
 
 
+def release_at(fab: Fab, lot: int) -> float:
+    """When ``lot`` enters the fab: 0 for snapshot WIP."""
+    return fab.lot_release[lot] if lot < len(fab.lot_release) else 0.0
+
+
 def measured(route: Route, index: int, number: int) -> bool:
     """Deterministic sampling: does this lot visit this metrology step?
 
@@ -219,6 +224,9 @@ class Fab:
     snapshot: str = "2018-01-01T00:00:00Z"
     products: int = 10
     group_names: list[str] = field(default_factory=list)
+    # Release moment (sim seconds) per lot. Empty: every lot is WIP at t=0.
+    # ``resilimes.smt.planning.with_releases`` appends the order.txt lots.
+    lot_release: list[float] = field(default_factory=list)
     # Provenance of the master data (file, zetaris, or file after a failed
     # Zetaris read). Not part of equality: both sources build the same fab.
     origin: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
