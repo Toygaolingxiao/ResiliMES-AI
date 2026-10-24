@@ -132,7 +132,7 @@ Per seed, on-time lots / due (completed):
 ## Verdict
 
 * **Two buildings vs one (L1F0 vs L0F0).** Transport minutes rise 37 %
-  (ResiliMES) and 44 % (EDD); about 7 % (ResiliMES) and 9 % (EDD) of moves
+  (ResiliMES) and 44 % (EDD); about 7.1 % (ResiliMES) and 8.5 % (EDD) of moves
   cross buildings. Delivery barely moves: on-time is 1 lot lower out of 945
   for both policies, which is inside seed noise (per seed it goes +1, -1, -1
   for ResiliMES and -1, +1, -1 for EDD). True Q-time falls 0.66 pp (ResiliMES)

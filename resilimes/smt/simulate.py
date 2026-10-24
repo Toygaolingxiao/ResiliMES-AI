@@ -7,7 +7,9 @@ refuses a start that falls inside a PM or whose process would cross the next PM.
 
 Transport is a fixed move between steps (same STNGRP bay 1 min, other bay
 3 min, ``transport_seconds``), the same for every policy; the SMT2020
-``fromto`` row (one Fab-to-Fab distribution) is not used. Operators, reticle copies, and
+``fromto`` row (one Fab-to-Fab distribution) is not used. An optional
+multi-building layout (``layout=``, default off, ``resilimes.smt.layout``) adds
+a fixed cross-building tier; see docs/FAB_LAYOUT.md. Operators, reticle copies, and
 the published fractional rework probability are not in this loop. A litho
 layer with ``SVESTN`` / ``FORSTEP`` stays on the scanner that ran the first
 layer of that chain, once this run has chosen it. WIP does not name a tool,
