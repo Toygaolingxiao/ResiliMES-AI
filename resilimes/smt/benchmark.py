@@ -42,6 +42,8 @@ _KEYS = (
     "wip_replans",
     "dispatch_p50_ms",
     "dispatch_p95_ms",
+    "dispatch_busy_p50_ms",
+    "dispatch_busy_p95_ms",
     "sim_s",
     "sibling_starts",
     "focus_queue_max",
@@ -349,11 +351,14 @@ def _public(result: RunResult) -> dict[str, Any]:
     return {key: getattr(result, key) for key in ("seed", *_KEYS)}
 
 
+_LATENCY = {"dispatch_p50_ms", "dispatch_p95_ms", "dispatch_busy_p50_ms", "dispatch_busy_p95_ms"}
+
+
 def _mean(runs: list[RunResult], key: str) -> float | None:
     values = [getattr(item, key) for item in runs if getattr(item, key) is not None]
     if not values:
         return None
-    digits = 4 if key in {"dispatch_p50_ms", "dispatch_p95_ms"} else 3
+    digits = 4 if key in _LATENCY else 3
     return round(float(mean(values)), digits)
 
 
@@ -361,7 +366,7 @@ def _std(runs: list[RunResult], key: str) -> float | None:
     values = [getattr(item, key) for item in runs if getattr(item, key) is not None]
     if len(values) < 2:
         return None
-    digits = 4 if key in {"dispatch_p50_ms", "dispatch_p95_ms"} else 3
+    digits = 4 if key in _LATENCY else 3
     return round(float(pstdev(values)), digits)
 
 
@@ -410,30 +415,30 @@ def _trade(payload: dict[str, Any]) -> str:
     tight_res = payload["tight"]["resilimes"]["seeds"][0]
     tight_edd = payload["tight"]["edd"]["seeds"][0]
     published = payload["steady"]
+    gap = _pooled_count(xf, "edd") - _pooled_count(xf, "resilimes")
+    seeds = len(xf["resilimes"]["seeds"])
+    if gap > 0:
+        versus = f"Versus EDD it gives up {gap} of {due * seeds} pooled lots"
+    elif gap < 0:
+        versus = f"Versus EDD it gains {-gap} of {due * seeds} pooled lots"
+    else:
+        versus = "Versus EDD it ties on pooled on-time lots"
     return (
         "## The trade\n\n"
-        f"X-factor dues, 48 hours, {due} lots. On-time is the same at a "
-        "180, 300, 600, or 705.59 minute repair. "
+        f"X-factor dues, 48 hours, {due} lots. {_eta_sameness(payload)} "
         f"ResiliMES {_pooled(xf, 'resilimes')}, mean {res['on_time_pct']}%. "
         f"EDD {_pooled(xf, 'edd')}, mean {edd['on_time_pct']}%. "
         f"FIFO mean {fifo['on_time_pct']}%. CR mean {cr['on_time_pct']}%. "
         "ResiliMES beats FIFO and CR by a wide margin. "
-        f"Versus EDD it gives up about 2 of {due} lots, with fewer re-cleans "
-        f"({res['recleans']} vs {round(edd['recleans'])}; means {res['recleans']} and "
-        f"{edd['recleans']}) and fewer Q-time violations "
-        f"({res['qtime_violations']} vs {edd['qtime_violations']}). "
-        "Seed 2 misses are three lots at `Diffusion_BE_123`. "
-        "Seed 5 misses are five lots at `Dielectric_BE_28` "
-        "(`Init_Lot_2_7`, `Init_Lot_2_8`, `Init_Lot_2_13`, `Init_Lot_2_23`, "
-        "`Init_Lot_8_20`) plus `Init_Lot_1_10` at `WE_BE_14`. "
-        "`Init_Lot_2_23` is on time under EDD and late under ResiliMES on "
-        "seeds 5 and 6 (2.67 h and 4.26 h). Seed 6 is outside the five-seed means.\n\n"
+        f"{versus}, with re-cleans {res['recleans']} against {edd['recleans']} "
+        f"and Q-time violations {res['qtime_violations']} against "
+        f"{edd['qtime_violations']} (five-seed means).\n\n"
         "Published dues, 48 hours, 56 lots. "
         f"ResiliMES {_pooled(published, 'resilimes')}, "
         f"mean {published['resilimes']['mean']['on_time_pct']}%. "
         f"EDD {_pooled(published, 'edd')}, "
         f"mean {published['edd']['mean']['on_time_pct']}%. "
-        "EDD is slightly ahead. Seed 1 ties at 31/56.\n\n"
+        f"{_published_order(published)}\n\n"
         "Tight VIP dues rewrites the dues for the stress test. It is not the "
         "published order book. Denominator 21 lots. "
         f"ResiliMES {_pooled(payload['tight'], 'resilimes')}. "
@@ -442,8 +447,66 @@ def _trade(payload: dict[str, Any]) -> str:
         f"CR {_pooled(payload['tight'], 'cr')}. "
         f"Seed 1 weighted tardiness is {tight_edd['weighted_tardiness_min']} "
         f"under EDD and {tight_res['weighted_tardiness_min']} under ResiliMES. "
-        "The 12-hour lithography click is a seed-1 tie, 2/19. "
-        "It is not the 48-hour lithography study in the appendix."
+        "The 12-hour lithography click is one seed. "
+        "It is not the 48-hour lithography study in the appendix.\n\n"
+        "Every number in this file comes from the simulator after the stale-queue "
+        "fix. Before it, a lot that had already started could stay in its old "
+        "family queue and start its next step on a tool of the wrong family. "
+        "The trace checker and the pre-fix numbers are in [invariants.md](invariants.md)."
+    )
+
+
+def _pooled_count(block: dict[str, Any], policy: str) -> int:
+    return sum(
+        _count(float(item["on_time_pct"]), int(item["due_in_horizon"]))
+        for item in block[policy]["seeds"]
+    )
+
+
+def _published_order(block: dict[str, Any]) -> str:
+    res = _pooled_count(block, "resilimes")
+    edd = _pooled_count(block, "edd")
+    if res == edd:
+        return "ResiliMES and EDD tie on pooled on-time lots."
+    if edd > res:
+        return f"EDD is ahead by {edd - res} pooled lots."
+    return f"ResiliMES is ahead by {res - edd} pooled lots."
+
+
+def _eta_sameness(payload: dict[str, Any]) -> str:
+    """Say whether the on-time row moves with the repair time, from the rows."""
+    etas = payload["xfactor"]["etas"]
+    same: list[str] = []
+    moved: list[str] = []
+    for policy in ("resilimes", "edd"):
+        rows = {
+            tuple(
+                _count(float(item["on_time_pct"]), int(item["due_in_horizon"]))
+                for item in block[policy]["seeds"]
+            )
+            for block in etas.values()
+            if policy in block
+        }
+        (same if len(rows) == 1 else moved).append("ResiliMES" if policy == "resilimes" else "EDD")
+    minutes = ", ".join(str(eta).removesuffix(".0") for eta in etas)
+    if not moved:
+        return f"On-time for ResiliMES and EDD is the same at a {minutes} minute repair."
+    if not same:
+        return f"On-time moves with the repair time ({minutes} minutes) for both policies."
+    return (
+        f"On-time is the same at a {minutes} minute repair for {same[0]} and moves for {moved[0]}."
+    )
+
+
+def _busy_latency(payload: dict[str, Any]) -> str:
+    seeds = payload["xfactor"]["etas"]["600.0"]["resilimes"]["seeds"]
+    p50 = [item.get("dispatch_busy_p50_ms") for item in seeds]
+    p95 = [item.get("dispatch_busy_p95_ms") for item in seeds]
+    if any(value is None for value in p50 + p95):
+        return ""
+    return (
+        "Nonempty-queue decisions on the X-factor ResiliMES runs, seeds 1-5, "
+        f"were p50 {min(p50)}-{max(p50)} ms and p95 {min(p95)}-{max(p95)} ms on this run. "
     )
 
 
@@ -481,9 +544,7 @@ def _markdown(payload: dict[str, Any]) -> str:
         "Dispatch latency is the time to choose the next lot for one idle tool, "
         "look-ahead 24 (8 when that family's queue exceeds two lots per tool). "
         "The headline p50/p95 includes empty wakes. "
-        "Nonempty-queue decisions on the X-factor ResiliMES runs, seeds 1-5, "
-        "are p50 0.0090-0.0107 ms and p95 about 0.25-0.26 ms "
-        "(recorded 0.244-0.250 ms). "
+        f"{_busy_latency(payload)}"
         "It is not the full simulation time. Simulation time is the whole 48-hour run.",
         "",
         "The WIP column is a candidate cap, not a replan. "
@@ -554,16 +615,7 @@ def _markdown(payload: dict[str, Any]) -> str:
         "",
         _seed_otd(payload["xfactor"]["etas"]["600.0"]),
         "",
-        (
-            "On-time at 180, 300, 600, and 705.59 minutes is the same row for "
-            "ResiliMES and for EDD. Seed 2 misses are three lots at "
-            "`Diffusion_BE_123`. Seed 5 misses are `Init_Lot_2_7`, "
-            "`Init_Lot_2_8`, `Init_Lot_2_13`, `Init_Lot_2_23`, and "
-            "`Init_Lot_8_20` at `Dielectric_BE_28`, plus `Init_Lot_1_10` at "
-            "`WE_BE_14`. `Init_Lot_2_23` is on time under EDD and late under "
-            "ResiliMES on seeds 5 and 6 (2.67 h and 4.26 h). Seed 6 is outside "
-            "the five-seed means."
-        ),
+        _eta_sameness(payload),
         "",
         _xfactor_price(payload),
         "",
@@ -662,9 +714,9 @@ def _heldout_control(fab: Fab) -> dict[str, Any]:
 def _heldout(payload: dict[str, Any]) -> str:
     """Seeds 9-13. The control is regenerated. The arm table is a lab note."""
     fresh = _heldout_fresh(payload.get("heldout_seeds_9_13") or {})
-    lab = """## Seeds 9-13 arm decisions (lab note, not regenerated by make smt-bench)
+    lab = """## Seeds 9-13 arm decisions (pre-fix lab note, not regenerated by make smt-bench)
 
-The rows below are the one-shot recorded before `make smt-bench` regenerated the control. The expose-due and dry-etch arms are not in the code, so this command does not recompute them. Do not read the lab-note control as the current score. The current score is the regenerated table above.
+The rows below are the one-shot recorded before `make smt-bench` regenerated the control, and before the stale-queue fix in [invariants.md](invariants.md). They were measured on the simulator that let a lot start a step on a tool of the wrong family. The expose-due and dry-etch arms are not in the code, so this command does not recompute them. Do not read the lab-note control as the current score. The current score is the regenerated table above.
 
 Registered before that one-shot. Seeds 9, 10, 11, 12, 13. X-factor book: due = remaining process times 2.75, 48 hours, 87 lots due, `Litho_FE_92-1` down 600 minutes. Published-due book: 48 hours, 56 lots due. Policies: ResiliMES, EDD, FIFO, CR. Slack threshold 7200 seconds. Keep a ResiliMES arm only when, on both books, the on-time lot count is not lower and re-cleans are not higher and Q-time violations are not higher than the control. EDD, FIFO, and CR matched the control on every arm.
 
@@ -938,7 +990,8 @@ def _xfactor_price(payload: dict[str, Any]) -> str:
     else:
         worst = ", ".join(f"{item['lot_id']} +{item['extra_h']} h" for item in price["worst"])
         paid = (
-            f"Seed 1, who paid: {price['lots']} non-hot lots, "
+            f"Seed 1, who paid: {price['lots']} non-hot "
+            f"{'lot' if price['lots'] == 1 else 'lots'}, "
             f"{price['extra_h']} extra hours ({worst})."
         )
     xf = price.get("xfactor") or {}
