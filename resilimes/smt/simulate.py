@@ -91,6 +91,8 @@ class RunResult:
     # Starts committed while a down window covered the tool. Empty when the
     # loop refuses those starts before choose().
     down_starts: list[dict[str, Any]] = field(default_factory=list)
+    # Filled only with ``record=True``. Read by ``resilimes.smt.invariants``.
+    events: list[tuple[Any, ...]] = field(default_factory=list)
 
 
 def interrupt_remaining(started: float, moment: float, proc: float) -> tuple[float, float]:
@@ -261,6 +263,7 @@ def run_policy(
     watch: tuple[int, ...] = (),
     bar_family: int | None = None,
     bar_until: float | None = None,
+    record: bool = False,
 ) -> RunResult:
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
@@ -279,6 +282,7 @@ def run_policy(
         watch=watch,
         bar_family=bar_family,
         bar_until=bar_until,
+        record=record,
     )
     return sim.run()
 
@@ -326,8 +330,11 @@ class _Sim:
         watch: tuple[int, ...] = (),
         bar_family: int | None = None,
         bar_until: float | None = None,
+        record: bool = False,
     ) -> None:
         self.fab = fab
+        self.record = record
+        self.events: list[tuple[Any, ...]] = []
         self.policy = policy
         self.seed = seed
         self.horizon = horizon
@@ -808,6 +815,8 @@ class _Sim:
         self.piece_proc[tool] = piece
         if self.overlaps_pm(tool, moment, piece):
             self.pm_overlaps += 1
+        if self.record:
+            self.events.append(("start", moment, tool, tuple(started), index, finish))
         self.push(finish, _DONE, tool, self.tool_gen[tool])
         self.busy_until[tool] = finish
         self.busy_litho[tool] = self.fab.families[fam].litho
@@ -834,6 +843,8 @@ class _Sim:
         self.depth[fam] = max(0, self.depth[fam] - 1)
         if lot in self.queues[fam]:
             self.queues[fam].remove(lot)
+        if self.record:
+            self.events.append(("reclean", moment, lot, index, origin))
         self.step[lot] = origin
         self.partial[lot] = 0.0
         self.enqueue(lot, moment)
@@ -897,6 +908,8 @@ class _Sim:
         self.bound_tool[lot] = -1
         if lot == self.hot_lot:
             self.hot_steps += 1
+        if self.record:
+            self.events.append(("end", moment, lot, index))
         if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
             self.deadline[lot] = moment + route.cqt_limit[index]
             self.cqt_limit[lot] = route.cqt_limit[index]
@@ -928,6 +941,8 @@ class _Sim:
             remain, ready = interrupt_remaining(
                 self.piece_started[tool], moment, self.piece_proc[tool]
             )
+            if self.record:
+                self.events.append(("interrupt", moment, tool, tuple(lots)))
             for lot in lots:
                 if remain <= 1e-6:
                     self.finish_lot(lot, moment)
@@ -1037,4 +1052,5 @@ class _Sim:
             qtime_gates=self.gated,
             recleans=self.recleans,
             down_starts=self.down_starts,
+            events=self.events,
         )
