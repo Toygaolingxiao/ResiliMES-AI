@@ -495,7 +495,6 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
     n = len(inp.lot_id)
     avail = litho_availability(fab)
     litho = [item.litho for item in fab.families]
-    group_of = [item.group for item in fab.families]
     horizon_guess = max([inp.release_until, *inp.lot_due, now]) + 365 * DAY_SEC
     pm = family_pm(fab, horizon_guess, shift_sec=inp.pm_shift_sec)
     pm_ends = {fam: [end for _start, end in spans] for fam, spans in pm.items()}
@@ -560,7 +559,7 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
             pos += 1
             if pos < last:
                 nxt = route.family[path[pos]]
-                moment = end + (60.0 if group_of[fam] == group_of[nxt] else 180.0)
+                moment = end + transport_seconds(fab, fam, nxt)
             else:
                 moment = end
         done_at[lot] = moment
@@ -597,7 +596,7 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
             nxt = pos + 1
             if nxt < len(paths[lot]):
                 nfam = route.family[paths[lot][nxt]]
-                move = 60.0 if group_of[route.family[index]] == group_of[nfam] else 180.0
+                move = transport_seconds(fab, route.family[index], nfam)
                 flow(lot, nxt, end + move)
             else:
                 done_at[lot] = end
@@ -606,15 +605,21 @@ def build_plan(fab: Fab, inp: PlanInput) -> PlanningOutput:
     for lot in range(n):
         flow(lot, 0, inp.lot_ready[lot])
     while events:
-        moment, kind, a, b, _seq = heapq.heappop(events)
-        if kind == _ARRIVE:
-            route = fab.routes[inp.lot_route[a]]
-            fam = route.family[paths[a][b]]
-            heapq.heappush(queues[fam], (tiers[a], lstart[a][b], a, b))
+        # Apply every event at this instant before dispatching, so lots that
+        # arrive together are started in priority order, not arrival order.
+        moment = events[0][0]
+        touched: set[int] = set()
+        while events and events[0][0] == moment:
+            _moment, kind, a, b, _seq = heapq.heappop(events)
+            if kind == _ARRIVE:
+                fam = fab.routes[inp.lot_route[a]].family[paths[a][b]]
+                heapq.heappush(queues[fam], (tiers[a], lstart[a][b], a, b))
+            else:
+                fam = a
+                idle[fam].append(b)
+            touched.add(fam)
+        for fam in sorted(touched):
             dispatch(fam, moment)
-        else:
-            idle[a].append(b)
-            dispatch(a, moment)
 
     lots = _lot_plans(fab, inp, paths, sdue, lstart, p_start, p_end, done_at, litho_wait, tiers)
     days = _litho_days(fab, inp, paths, lstart, p_start, pm, avail)
