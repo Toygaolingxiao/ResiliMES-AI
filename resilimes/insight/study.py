@@ -127,7 +127,8 @@ def run_investigator(
             extra=(
                 f"{case.case_id} ai={ai_part.get('primary_cause')} "
                 f"| ai top1 {summary['ai_top1']}/{summary['n']} "
-                f"base top1 {summary['baseline_top1']}/{summary['n']}"
+                f"base top1 {summary['baseline_top1']}/{summary['n']} "
+                f"| non-nemotron {summary['model_audit']['non_nemotron_responses']}"
             ),
         )
     summary = summarize_investigator(rows, label)
@@ -146,6 +147,7 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         cell["base_top1"] += int(row["baseline_score"]["top1"])
     return {
         "label": label,
+        "model_audit": model_audit(rows),
         "n": len(rows),
         "errors": len(rows) - len(ok),
         "ai_top1": sum(int(r["ai_score"]["top1"]) for r in ok),
@@ -157,6 +159,30 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         "no_answer": sum(1 for r in ok if r["ai"]["primary_cause"] is None),
         "mean_tool_calls": round(sum(len(r["ai"]["calls"]) for r in ok) / max(1, len(ok)), 2),
         "by_fault": by_fault,
+    }
+
+
+# ---- model audit ---------------------------------------------------------------------------
+def is_nemotron(model: str) -> bool:
+    """The model the response reported. A response that reported none is not confirmed."""
+    model = model or ""
+    return not model.startswith("unreported:") and "nemotron" in model.lower()
+
+
+def model_audit(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Which model actually answered each response; flags any that is not Nemotron."""
+    counts: dict[str, int] = {}
+    flagged: list[str] = []
+    for row in rows:
+        for model in (row.get("ai") or {}).get("response_models") or []:
+            counts[model] = counts.get(model, 0) + 1
+            if not is_nemotron(model):
+                flagged.append(str(row.get("case_id") or row.get("lot") or row.get("id")))
+    return {
+        "responses": sum(counts.values()),
+        "models": counts,
+        "non_nemotron_responses": sum(n for m, n in counts.items() if not is_nemotron(m)),
+        "non_nemotron_items": sorted(set(flagged)),
     }
 
 
@@ -203,7 +229,8 @@ def run_explainer(
             extra=(
                 f"s{seed} {lot_id} saved={cf.get('saving_min')} "
                 f"| exact {summary['exact_sum']}/{summary['n']} "
-                f"cf hit {summary['cf_hit']}/{summary['cf_verified']}"
+                f"cf hit {summary['cf_hit']}/{summary['cf_verified']} "
+                f"| non-nemotron {summary['model_audit']['non_nemotron_responses']}"
             ),
         )
     summary = summarize_explainer(rows, label)
@@ -222,6 +249,7 @@ def summarize_explainer(rows: list[dict[str, Any]], label: str) -> dict[str, Any
     savings = [row["cf"]["saving_min"] for row in verified]
     return {
         "label": label,
+        "model_audit": model_audit(rows),
         "n": len(rows),
         "errors": len(rows) - len(ok),
         "exact_sum": sum(int(r["split"]["exact"]) for r in ok),
@@ -285,7 +313,23 @@ def main(argv: list[str] | None = None) -> int:
             print(f"wrote {out}")
             summaries[name] = summary
     total = args.out_dir / f"summary_{tag}.json"
-    _write(total, {"provider": tag, "mocked": provider is None, "studies": summaries})
+    flagged = sum(int(item["model_audit"]["non_nemotron_responses"]) for item in summaries.values())
+    models: dict[str, int] = {}
+    for item in summaries.values():
+        for model, count in item["model_audit"]["models"].items():
+            models[model] = models.get(model, 0) + count
+    check = {
+        "models": models,
+        "non_nemotron_responses": flagged,
+        "all_nemotron": provider is not None and bool(models) and flagged == 0,
+    }
+    _write(
+        total,
+        {"provider": tag, "mocked": provider is None, "model_check": check, "studies": summaries},
+    )
+    if provider is not None:
+        verdict = "OK all Nemotron" if check["all_nemotron"] else "FLAG non-Nemotron responses"
+        print(f"MODEL CHECK: {verdict}: {flagged} flagged; models {models}")
     print(f"wrote {total}")
     return 0
 

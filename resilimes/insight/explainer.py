@@ -68,6 +68,8 @@ class Explanation:
     provider: str = ""
     model: str = ""
     mocked: bool = True
+    # The model each response actually came from (LlmResult.model), one per LLM call.
+    response_models: list[str] = field(default_factory=list)
     language: str = "en"
     error: str | None = None
 
@@ -215,6 +217,7 @@ def explain(
             out.error = f"provider: {type(exc).__name__}"
             break
         out.llm_calls += 1
+        out.response_models.append(reply.provider_model or f"unreported:{reply.model}")
         messages.append({"role": "assistant", "content": reply.content})
         try:
             candidate = extract_json_object(reply.content)

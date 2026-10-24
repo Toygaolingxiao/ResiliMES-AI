@@ -60,6 +60,8 @@ merged), with a progress line per arm and partial results after every item:
     cd C:\code\ResiliMES-AI
     powershell -ExecutionPolicy Bypass -File scripts\run_ai_evals.ps1
 
+**Model check:** every row records `response_models`, the model each response reported (`provider_model` from the API response; `unreported:<requested>` if the response named none). Each arm summary has `model_audit`, `summary_nightshift.json` has `model_check`, the progress line shows a `non-nemotron` count, and the script ends with `MODEL CHECK OK` or `MODEL CHECK FLAG`.
+
 Explainer only: `-Arms explainer`. Output: `outputs\ai_eval\explainer_nightshift.json` and
 `summary_nightshift.json`. Expect roughly 15–25 min for the explainer arm (one LLM call or a few
 per lot plus a ~10 s re-run).

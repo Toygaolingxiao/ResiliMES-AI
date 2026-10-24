@@ -102,3 +102,29 @@ def test_api_lists_and_explains_late_lots():
     assert body["answer"]["mocked"] and body["counterfactual"]["verified"]
     assert client.post("/api/ai/explain", json={"lot_id": "nope"}).status_code == 404
     assert client.post("/api/ai/explain", json={"lot_id": "x", "lang": "fr"}).status_code == 422
+
+
+def test_model_audit_flags_non_nemotron_responses():
+    from resilimes.insight.study import is_nemotron, model_audit
+
+    rows = [
+        {
+            "lot": "A_1",
+            "ai": {"response_models": ["nvidia/nemotron-3-super", "nvidia/nemotron-3-super"]},
+        },
+        {"lot": "B_2", "ai": {"response_models": ["gpt-4o-mini"]}},
+        {"lot": "C_3", "ai": {"response_models": ["unreported:nvidia/nemotron-3-super"]}},
+        {"lot": "D_4", "error": "x"},
+    ]
+    audit = model_audit(rows)
+    assert audit["responses"] == 4 and audit["non_nemotron_responses"] == 2
+    assert audit["non_nemotron_items"] == ["B_2", "C_3"]
+    assert is_nemotron("NVIDIA/Nemotron-Nano") and not is_nemotron("")
+
+
+def test_explainer_records_the_reported_model(run24):
+    lot_id = run24.fab.lot_id[late_lots(run24.timeline)[0]]
+    answer = explain(Toolkit(run24), lot_id, Scripted(["not json"]))
+    assert answer.response_models and all(
+        m.startswith("unreported:") for m in answer.response_models
+    )

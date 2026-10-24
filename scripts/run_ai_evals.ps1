@@ -22,5 +22,14 @@ $started = Get-Date
 python -m resilimes.insight.study $Arms --provider nightshift --temperature $Temperature
 $code = $LASTEXITCODE
 $took = (Get-Date) - $started
+$summaryPath = "outputs\ai_eval\summary_nightshift.json"
+if (Test-Path $summaryPath) {
+    $check = (Get-Content $summaryPath -Raw -Encoding UTF8 | ConvertFrom-Json).model_check
+    if ($check -and $check.all_nemotron) {
+        Write-Host "MODEL CHECK OK: every response came from a Nemotron model."
+    } else {
+        Write-Host "MODEL CHECK FLAG: some responses did not come from Nemotron (or none recorded). See model_check / model_audit in $summaryPath" -ForegroundColor Yellow
+    }
+}
 Write-Host ("run_ai_evals finished in {0:hh\:mm\:ss}, exit {1}. Results: outputs\ai_eval\summary_nightshift.json" -f $took, $code)
 exit $code
