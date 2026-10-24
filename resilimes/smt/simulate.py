@@ -1255,9 +1255,12 @@ class _Sim:
                 # up (``_hq_wake``); the late fallback covers time-only changes.
                 gated = True
                 self.hq.wait_on(tool)
-                when = moment + HQ_FALLBACK_SEC
-                if gate_wake is None or when < gate_wake:
-                    gate_wake = when
+                if self.hq.fallback_at.get(tool, -1.0) <= moment:
+                    # One pending fallback wake per tool, or wakes multiply.
+                    when = moment + HQ_FALLBACK_SEC
+                    self.hq.fallback_at[tool] = when
+                    if gate_wake is None or when < gate_wake:
+                        gate_wake = when
                 continue
             if self.policy == "resilimes" and not (
                 self.hq is not None and self.hq.expedited(lot, moment)

@@ -114,6 +114,7 @@ class HardQtime:
         self.version = 0
         self.waiters: dict[int, set[int]] = {}
         self.blocked_fam = -1
+        self.fallback_at: dict[int, float] = {}
         self.base: dict[int, tuple[float, int, bool]] = {}
         self.exempt_starts = 0
         self.expedited_lots = 0
