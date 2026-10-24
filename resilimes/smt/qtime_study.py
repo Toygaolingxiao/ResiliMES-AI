@@ -8,7 +8,10 @@
   (full-queue batching, the timed deadline, reporting, the scanner-pin fix)
   without the ResiliMES policy fixes 1-3. Only ResiliMES differs from
   ``after``, so only ResiliMES runs.
-* ``after``: this branch as shipped.
+* ``after``: this branch as shipped (dynamic risk weight, 300 s scheduling
+  tick for every policy).
+* ``ablate``: ResiliMES only, published and X-factor books, each subset of
+  fixes 1-3 on its own (``r2_fixes``); the row's ``variant`` names it.
 
 Q-time buckets and batch fill are recomputed from the recorded events with
 one replay for every arm, so the arms are scored the same way: a window
@@ -52,6 +55,8 @@ _ETA_SEC = 600.0 * 60.0
 _STRESS_HOURS = 2.0
 _WAFERS = int(getattr(sim_mod, "_WAFERS", 25))
 _BUCKETS = ("met", "late", "held", "recleaned", "expired")
+ABLATE_BOOKS = ("published", "xfactor_eta600")
+ABLATE_VARIANTS = ("1", "2", "3", "1+2", "2+3", "1+3")
 
 
 def _seeds(book: str) -> tuple[int, ...]:
@@ -191,14 +196,18 @@ _FAB: list[Fab] = []
 _ARM: list[str] = []
 
 
-def _one(item: tuple[str, int, str]) -> dict[str, Any]:
-    book, seed, policy = item
+def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, Any]:
+    book, seed, policy = item[:3]
     fab = _FAB[0]
     plant, kwargs = _setup(fab, book, seed, policy)
     if _ARM[0] == "mech":
         kwargs["r2_policy"] = False
-    result = run_policy(plant, **kwargs)
     row: dict[str, Any] = {"book": book, "seed": seed, "policy": policy}
+    if len(item) == 4:
+        variant = str(item[3])
+        kwargs["r2_fixes"] = tuple(int(part) for part in variant.split("+"))
+        row["variant"] = variant
+    result = run_policy(plant, **kwargs)
     for key in (
         "on_time_pct",
         "due_in_horizon",
@@ -225,6 +234,14 @@ def _one(item: tuple[str, int, str]) -> dict[str, Any]:
         "qtime_hold_lot_min",
         "qtime_shortlist_added",
         "repins",
+        "reserve_replanned",
+        "replan_ticks",
+        "replan_stalls",
+        "replan_stalls_batch",
+        "replan_tick_p50_ms",
+        "replan_tick_p95_ms",
+        "replan_tick_total_s",
+        "flow_wait_ratio",
     ):
         row[key] = getattr(result, key, None)
     row["on_time"] = round(result.on_time_pct * result.due_in_horizon / 100.0)
@@ -237,7 +254,16 @@ def main() -> None:
     _ARM.append(arm)
     _FAB.append(load_fab())
     policies = ("resilimes",) if arm == "mech" else POLICIES
-    items = [(book, seed, policy) for book in BOOKS for seed in _seeds(book) for policy in policies]
+    items: list[Any] = [
+        (book, seed, policy) for book in BOOKS for seed in _seeds(book) for policy in policies
+    ]
+    if arm == "ablate":
+        items = [
+            (book, seed, "resilimes", variant)
+            for variant in ABLATE_VARIANTS
+            for book in ABLATE_BOOKS
+            for seed in _seeds(book)
+        ]
     workers = max(1, int(os.environ.get("RESILIMES_STUDY_WORKERS", "5")))
     with get_context("fork").Pool(workers, maxtasksperchild=10) as pool:
         rows = pool.map(_one, items, chunksize=1)
