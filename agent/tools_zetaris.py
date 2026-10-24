@@ -66,20 +66,27 @@ def _timeout(timeout_s: float | None) -> float:
     return float(raw)
 
 
-def run_sql(sql: str, *, timeout_s: float | None = None) -> dict[str, Any]:
+def run_sql(
+    sql: str, *, timeout_s: float | None = None, limit: int | None = None
+) -> dict[str, Any]:
     """
     Execute one Lightning SQL statement via Zetaris REST.
 
     Returns the parsed JSON body. Typical shape includes `headers` and `data`.
+    ``limit`` is sent as the body's ``limit`` field (the SQL editor's row cap)
+    only when given, so existing calls send ``{"sql": ...}`` unchanged.
     """
     statement = (sql or "").strip()
     if not statement:
         raise ZetarisError("SQL statement is empty")
 
+    body: dict[str, Any] = {"sql": statement}
+    if limit is not None:
+        body["limit"] = int(limit)
     response = requests.post(
         _sql_url(),
         headers=_headers(),
-        json={"sql": statement},
+        json=body,
         timeout=_timeout(timeout_s),
     )
     if response.status_code >= 400:
