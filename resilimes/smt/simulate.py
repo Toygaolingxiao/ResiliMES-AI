@@ -56,6 +56,7 @@ from resilimes.smt.fab import (
 )
 from resilimes.smt.faults import FaultPlan
 from resilimes.smt.freeze import FreezeConfig, Freezer
+from resilimes.smt.hard_qtime import CAUSES, HardQtime, classify
 from resilimes.smt.layout import FabLayout, family_buildings, resolve
 
 _DONE = 0
@@ -71,6 +72,9 @@ _QDEADLINE = 5
 # reservation hold plan and release stale holds, count stalled idle tools,
 # snapshot the plan. It never starts a lot: dispatch stays event-triggered.
 _TICK = 6
+# Hard Q-time: re-check a gated origin tool at least this often (it is also
+# woken event-driven when its target family frees up).
+HQ_FALLBACK_SEC = 1800.0
 REPLAN_SEC = 300.0
 # ``run_policy(progress=...)`` is called every 4096 events.
 _PROGRESS_MASK = 4095
@@ -241,6 +245,10 @@ class RunResult:
     # cross-building moves, and second transports (freeze tracking) weighted
     # by their transport time.
     layout: dict[str, Any] = field(default_factory=dict)
+    # Missed dispatcher windows by cause (``hard_qtime.classify``, read-only),
+    # and the hard Q-time gate / expedite summary (empty when off).
+    qtime_causes: dict[str, int] = field(default_factory=dict)
+    hard_qtime: dict[str, Any] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -504,6 +512,7 @@ def make_sim(
     freeze: FreezeConfig | None = None,
     layout: FabLayout | bool | str | None = None,
     sched_mode: str | None = None,
+    hard_qtime: bool | None = None,
 ) -> _Sim:
     """A ready simulator; ``.run()`` is one run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
@@ -517,7 +526,9 @@ def make_sim(
     from the environment, default off. ``layout`` is the multi-building
     transport layout (``resilimes.smt.layout``): False off (one building, as
     main), True the example two-building layout, or a ``FabLayout``; unset
-    reads RESILIMES_FAB_LAYOUT, default off.
+    reads RESILIMES_FAB_LAYOUT, default off. ``hard_qtime`` gates CQT origin
+    starts by a per-target Q-time kanban and expedites missed lots
+    (``resilimes.smt.hard_qtime``); unset reads RESILIMES_HARD_QTIME, default off.
     ``plan`` (the planning layer's output, computed once before the run) turns
     on the step-due risk for ResiliMES fix 2, the plan band/rank tie-break, the
     per-tool schedule at each tick and the deviation log; None is the
@@ -535,6 +546,8 @@ def make_sim(
     plan (the qtime-r2 fix-2 order alone)."""
     if plan_wait not in {"position", "family"}:
         raise ValueError(f"Unknown plan_wait {plan_wait}")
+    if hard_qtime is None:
+        hard_qtime = os.environ.get("RESILIMES_HARD_QTIME", "").strip() == "1"
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     if shift_lead is not None and policy != "resilimes":
@@ -577,6 +590,7 @@ def make_sim(
         faults=faults,
         freeze=FreezeConfig.from_env() if freeze is None else freeze,
         layout=resolve(layout),
+        hard_qtime=hard_qtime,
     )
     sim.progress = progress
     return sim
@@ -654,12 +668,18 @@ class _Sim:
         faults: FaultPlan | None = None,
         freeze: FreezeConfig | None = None,
         layout: FabLayout | None = None,
+        hard_qtime: bool = False,
     ) -> None:
         self.fab = fab
         # AI shift lead hook (off when None): asked at exceptions in tick().
         self.lead = shift_lead
         # Progress callback (off when None): reads the clock, changes nothing.
         self.progress: Callable[[float], None] | None = None
+        # Read-only miss causes; the hard Q-time gate only when switched on.
+        self.qcause: dict[int, str] = {}
+        self.causes: dict[str, int] = dict.fromkeys(CAUSES, 0)
+        self.hq_causes: dict[str, int] = {}
+        self.hq: HardQtime | None = None
         self.layout = layout
         self.buildings = family_buildings(fab, layout) if layout is not None else None
         self.cross_sec = layout.cross_building_sec if layout is not None else 0.0
@@ -888,6 +908,8 @@ class _Sim:
         self.fz: Freezer | None = None
         if freeze is not None and freeze.active:
             self.fz = Freezer(self, freeze, wafers=_WAFERS, wake_kind=_WAKE)
+        if hard_qtime:
+            self.hq = HardQtime(self)
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -909,6 +931,8 @@ class _Sim:
         self._started_at = time.perf_counter()
         for lot, origin, target, limit in inherited_windows(self.fab):
             self.open_window(lot, origin, target, limit, 0.0, inherited=True)
+            if self.hq is not None:
+                self.hq.commit(lot, target, self.deadline[lot])
         held = self.faults.hold_until if self.faults is not None else {}
         for lot in range(self.n):
             release = self.entry[lot]
@@ -952,6 +976,7 @@ class _Sim:
             self.clock = moment
             if kind == _DONE:
                 self.complete(tool, moment, gen)
+                self._hq_wake(tool, moment)
             elif kind == _DOWN_START:
                 self.down_start(tool, moment)
             elif kind == _ARRIVE:
@@ -961,6 +986,8 @@ class _Sim:
             elif kind == _TICK:
                 self.tick(moment)
             elif kind in (_DOWN_END, _WAKE):
+                if kind == _DOWN_END:
+                    self._hq_wake(tool, moment)
                 if kind == _WAKE:
                     self.wakes[tool] -= 1
                 self.release_idle(tool)
@@ -996,6 +1023,18 @@ class _Sim:
         """Count the window's outcome once and close it."""
         bucket = self.qinh if self.inherited[lot] else self.qout
         bucket[outcome] += 1
+        cause = self.qcause.pop(lot, "unclassified")
+        if outcome in _MISSED and not self.inherited[lot]:
+            self.causes[cause] += 1
+        if self.hq is not None:
+            if outcome in _MISSED:
+                if not self.inherited[lot]:
+                    kind = "admitted" if self.hq.admitted[lot] else "exempt"
+                    key = f"{kind}:{cause}"
+                    self.hq_causes[key] = self.hq_causes.get(key, 0) + 1
+                self.hq.on_miss(lot, self.cqt_at[lot], self.clock, outcome)
+            elif outcome == "skipped":
+                self.hq.drop(lot)
         if lot in self.res_by_lot:
             self.release(self.res_by_lot[lot], self.clock, "cancelled")
         if outcome in _MISSED and not self.inherited[lot]:
@@ -1014,6 +1053,7 @@ class _Sim:
         """
         if gen != self.qgen[lot] or self.cqt_at[lot] < 0:
             return
+        self.qcause[lot] = classify(self, lot, moment)
         if self.waiting[lot]:
             self.expire(lot, moment, queued=True)
         else:
@@ -1210,7 +1250,21 @@ class _Sim:
             if pm_start is not None and moment + proc > pm_start:
                 skipped = True
                 continue
-            if self.policy == "resilimes":
+            if self.hq is not None and not self.hq.admit(lot, moment, proc):
+                # Woken when the target family finishes a step or a tool comes
+                # up (``_hq_wake``); the late fallback covers time-only changes.
+                gated = True
+                self.hq.wait_on(tool)
+                if self.hq.fallback_at.get(tool, -1.0) <= moment:
+                    # One pending fallback wake per tool, or wakes multiply.
+                    when = moment + HQ_FALLBACK_SEC
+                    self.hq.fallback_at[tool] = when
+                    if gate_wake is None or when < gate_wake:
+                        gate_wake = when
+                continue
+            if self.policy == "resilimes" and not (
+                self.hq is not None and self.hq.expedited(lot, moment)
+            ):
                 opened = self.downstream_ready(lot, moment, proc)
                 if opened is not None and opened > moment + proc + self._open_limit(lot):
                     gated = True
@@ -1412,6 +1466,9 @@ class _Sim:
             return "qtime_urgent", None
         cap_at = min(self.ready[lot] for lot in group) + BATCH_MAX_WAIT_SEC
         hot = [self.ready[lot] for lot in taken if self.tier(lot) < 2]
+        if self.hq is not None:
+            # Hard Q-time: an expedited lot waits like a hot lot, not forever.
+            hot += [self.ready[lot] for lot in taken if self.hq.expedited(lot, moment)]
         if hot and min(hot) + HOT_BATCH_WAIT_SEC < cap_at:
             cap_at = min(hot) + HOT_BATCH_WAIT_SEC
             if moment >= cap_at - 1e-6:
@@ -1440,7 +1497,29 @@ class _Sim:
         """0 VIP, 1 hot, 2 normal, from SMT2020 PRIOR (or the promoted hot lot)."""
         return class_tier(self.lot_kind(lot))
 
+    def expedite_key(self, lot: int, moment: float) -> tuple[float, float, float]:
+        """Hard Q-time order, inside the class tier where the policy has one.
+
+        Like a hot lot under the existing rules (a Q-time-urgent lot outranks a
+        hot one): lots inside an open window that is lost unless they start
+        now, then missed lots (expedite, oldest miss first), then the other
+        lots inside an open window by least slack, then everyone else.
+        """
+        assert self.hq is not None
+        tier = float(self.tier(lot)) if self.policy in ("resilimes", "smt_rule") else 0.0
+        if self.hq.x_target[lot] >= 0:
+            return (tier, 1.0, self.hq.x_since[lot])
+        if self.in_window(lot):
+            slack = self.deadline[lot] - moment - self.qtime_need(lot)
+            return (tier, 0.0 if slack <= QTIME_URGENT_MARGIN_SEC else 2.0, slack)
+        return (tier, 3.0, 0.0)
+
     def cheap(self, lot: int, moment: float) -> tuple[float, ...]:
+        if self.hq is not None:
+            return (*self.expedite_key(lot, moment), *self._cheap_key(lot, moment))
+        return self._cheap_key(lot, moment)
+
+    def _cheap_key(self, lot: int, moment: float) -> tuple[float, ...]:
         if self.policy == "edd":
             return (self.due[lot], self.ready[lot], lot)
         if self.policy == "cr":
@@ -1466,6 +1545,11 @@ class _Sim:
         return (self.ready[lot], self.due[lot], lot)
 
     def rank(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
+        if self.hq is not None:
+            return (*self.expedite_key(lot, moment), *self._rank_key(lot, tool, moment))
+        return self._rank_key(lot, tool, moment)
+
+    def _rank_key(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
         if self.policy == "resilimes":
             band = float(self.urgency_band(lot, moment)) + self.lead_bias(lot)
             return (band, *self.plain_rank(lot, tool, moment))
@@ -2186,6 +2270,8 @@ class _Sim:
             if self.cqt_at[lot] == index:
                 late = self.deadline[lot] > 0 and moment > self.deadline[lot]
                 self.close_window(lot, "late" if late else "met")
+            if self.hq is not None:
+                self.hq.on_start(lot, index, moment)
             self.waiting[lot] = False
             self.depth[fam] -= 1
             started.append(lot)
@@ -2486,6 +2572,14 @@ class _Sim:
                 }
             )
 
+    def _hq_wake(self, tool: int, moment: float) -> None:
+        """Hard Q-time: wake origin tools gated on this tool's family."""
+        if self.hq is None:
+            return
+        for waiter in self.hq.woken(self.fab.tool_family[tool]):
+            if self.running[waiter] < 0:
+                self.push(moment, _WAKE, waiter)
+
     def complete(self, tool: int, moment: float, gen: int) -> None:
         if gen != self.tool_gen[tool]:
             return
@@ -2729,6 +2823,12 @@ class _Sim:
             flow_wait_ratio=round(self.wait_sum / self.proc_sum, 4) if self.proc_sum else 0.0,
             sched_freeze=self.fz.summary() if self.fz is not None else {},
             layout=self._layout_kpis(),
+            qtime_causes=dict(self.causes),
+            hard_qtime=(
+                {**self.hq.summary(), "miss_causes": dict(sorted(self.hq_causes.items()))}
+                if self.hq is not None
+                else {}
+            ),
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)
