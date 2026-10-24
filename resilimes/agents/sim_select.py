@@ -438,7 +438,7 @@ class CaseMemory(Protocol):
 
     def recall(self, view: dict[str, Any]) -> list[dict[str, Any]]: ...
 
-    def remember(self, view: dict[str, Any], entry: dict[str, Any]) -> None: ...
+    def remember(self, view: dict[str, Any], entry: dict[str, Any]) -> Any: ...
 
     def skip_twin(self, cases: list[dict[str, Any]]) -> bool: ...
 
@@ -644,7 +644,7 @@ class SimShiftLead(ShiftLead):
         }
         self.log.append(entry)
         if self.memory is not None:
-            self.memory.remember(view, entry)
+            self.memory.remember(view, {**entry, "_recalled": cases})
         if self.progress is not None:
             self.progress.decision(entry)
         if sim.record:
