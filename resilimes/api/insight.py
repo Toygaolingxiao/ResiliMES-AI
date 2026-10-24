@@ -136,3 +136,35 @@ def explain_lot(body: ExplainBody, request: Request) -> dict[str, Any]:
         "counterfactual": verify(base, body.lot_id, answer) if answer.lever else None,
         "advice_only": True,
     }
+
+
+# ---- shift handover ------------------------------------------------------------------------
+class HandoverBody(BaseModel):
+    seed: int = Field(default=1, ge=1, le=4)
+    start_h: float = Field(default=12.0, ge=0.0, le=36.0)
+    lang: str = Field(default="en", pattern="^(en|zh|ja)$")
+
+
+@router.get("/handover/shifts")
+def handover_shifts() -> dict[str, Any]:
+    """12 h shifts of the 48 h run that the study and the UI offer."""
+    from resilimes.insight.handover import CHUNK_H, LANGUAGES, SHIFT_H, SHIFTS
+
+    return {
+        "shift_h": SHIFT_H,
+        "chunk_h": CHUNK_H,
+        "languages": list(LANGUAGES),
+        "shifts": [
+            {"seed": seed, "start_h": start, "end_h": start + SHIFT_H} for seed, start in SHIFTS
+        ],
+    }
+
+
+@router.post("/handover")
+def handover_report(body: HandoverBody, request: Request) -> dict[str, Any]:
+    """Write one 12 h handover report in 2 h chunks (advice only, fact-checked)."""
+    from resilimes.insight.handover import handover
+
+    return handover(
+        _explainer_base(body.seed), body.start_h, _provider(request), language=body.lang
+    )

@@ -267,13 +267,83 @@ def summarize_explainer(rows: list[dict[str, Any]], label: str) -> dict[str, Any
     }
 
 
+# ---- shift handover ------------------------------------------------------------------------
+def run_handover(
+    fab: Fab,
+    provider: Completer | None,
+    out: Path,
+    *,
+    limit: int = 0,
+    temperature: float = 0.2,
+) -> dict[str, Any]:
+    from resilimes.insight import explainer as ex
+    from resilimes.insight import handover as ho
+
+    label = "mock" if provider is None else f"real:{provider.model_for(ho.LANE)}"
+    work = [(seed, start, lang) for seed, start in ho.SHIFTS for lang in ho.LANGUAGES]
+    if limit:
+        work = work[:limit]
+    bases = {seed: ex.base_run(fab, seed) for seed in sorted({seed for seed, _s, _l in work})}
+    progress = Progress("handover", len(work))
+    rows: list[dict[str, Any]] = []
+    for index, (seed, start, lang) in enumerate(work):
+        row: dict[str, Any] = {"id": f"s{seed}-{start:g}h-{lang}", "seed": seed, "lang": lang}
+        try:
+            result = ho.handover(
+                bases[seed], start, provider, language=lang, temperature=temperature
+            )
+            row["ai"] = result
+        except Exception as exc:
+            row["error"] = redact(repr(exc))
+        rows.append(row)
+        summary = summarize_handover(rows, label)
+        _write(out, {"summary": summary, "rows": rows})
+        ai: dict[str, Any] = row.get("ai") or {}
+        progress.update(
+            index + 1,
+            extra=(
+                f"{row['id']} {ai.get('engine')} recall={ai.get('must_recall')} "
+                f"| fact ok {summary['fact_ok']}/{summary['n']} "
+                f"| non-nemotron {summary['model_audit']['non_nemotron_responses']}"
+            ),
+        )
+    summary = summarize_handover(rows, label)
+    progress.finish(extra=f"fact ok {summary['fact_ok']}/{summary['n']}")
+    _write(out, {"summary": summary, "rows": rows})
+    return summary
+
+
+def summarize_handover(rows: list[dict[str, Any]], label: str) -> dict[str, Any]:
+    ok = [row["ai"] for row in rows if "error" not in row]
+    reported = [ai for ai in ok if ai["report"]]
+    recalls = [float(ai["must_recall"]) for ai in reported]
+    engines: dict[str, int] = {}
+    for ai in ok:
+        engines[ai["engine"]] = engines.get(ai["engine"], 0) + 1
+    return {
+        "label": label,
+        "model_audit": model_audit(rows),
+        "n": len(rows),
+        "errors": len(rows) - len(ok),
+        "reports": len(reported),
+        "fact_ok": sum(int(ai["fact_ok"]) for ai in reported),
+        "repaired": sum(int(ai["repaired"]) for ai in reported),
+        "mean_must_recall": round(sum(recalls) / max(1, len(recalls)), 3),
+        "min_must_recall": min(recalls, default=0.0),
+        "engines": engines,
+        "chunks_ok": sum(int(ai["chunks_ok"]) for ai in ok),
+        "chunks": sum(len(ai["chunks"]) for ai in ok),
+        "llm_calls": sum(int(ai["llm_calls"]) for ai in ok),
+    }
+
+
 # ---- CLI -----------------------------------------------------------------------------------
 STUDIES: dict[str, Callable[..., Any]] = {}
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m resilimes.insight.study")
-    parser.add_argument("study", choices=["cases", "investigator", "explainer", "all"])
+    parser.add_argument("study", choices=["cases", "investigator", "explainer", "handover", "all"])
     parser.add_argument("--provider", choices=["mock", "nightshift"], default="mock")
     parser.add_argument("--cases", type=Path, default=CASES_PATH)
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
@@ -289,7 +359,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     provider = provider_for(args.provider, settings)
     tag = args.provider
-    arms = ["investigator", "explainer"]
+    arms = ["investigator", "explainer", "handover"]
     studies = arms if args.study == "all" else [args.study]
     summaries: dict[str, Any] = {}
     for name in studies:
@@ -307,6 +377,14 @@ def main(argv: list[str] | None = None) -> int:
         if name == "explainer":
             out = args.out_dir / f"explainer_{tag}.json"
             summary = run_explainer(
+                fab, provider, out, limit=args.limit, temperature=args.temperature
+            )
+            print(json.dumps(summary, indent=1))
+            print(f"wrote {out}")
+            summaries[name] = summary
+        if name == "handover":
+            out = args.out_dir / f"handover_{tag}.json"
+            summary = run_handover(
                 fab, provider, out, limit=args.limit, temperature=args.temperature
             )
             print(json.dumps(summary, indent=1))

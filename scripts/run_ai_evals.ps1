@@ -4,7 +4,8 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\run_ai_evals.ps1
 #
 # Runs every investigator case, every late-lot explanation and every handover
-# report sequentially with one progress line per arm. Results land in
+# report (12: 4 shifts x en/zh/ja) sequentially with one progress line per arm
+# (-Arms investigator|explainer|handover runs one). Results land in
 # outputs\ai_eval\ (JSON per arm plus summary_nightshift.json). Partial results are
 # written after each item, so a stopped run keeps what it finished.
 # Needs METERLESS_BASE_URL, METERLESS_RUNTIME_TOKEN and NEMOTRON_MODEL in the
