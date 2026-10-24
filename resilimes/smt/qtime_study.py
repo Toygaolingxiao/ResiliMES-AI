@@ -71,9 +71,24 @@ def _seeds(book: str) -> tuple[int, ...]:
     return HELDOUT_SEEDS if book.startswith("heldout") else tuple(SEEDS)
 
 
-def _setup(fab: Fab, book: str, seed: int, policy: str) -> tuple[Fab, dict[str, Any]]:
-    """The plant and run_policy kwargs of one run (mirrors ``benchmark.py``)."""
-    horizon = STUDY_HORIZON_SEC
+def _releases() -> bool:
+    return os.environ.get("RESILIMES_STUDY_RELEASES", "0") == "1"
+
+
+def _horizon() -> float:
+    hours = os.environ.get("RESILIMES_STUDY_HORIZON_H")
+    return float(hours) * 3600.0 if hours else STUDY_HORIZON_SEC
+
+
+def _setup(
+    fab: Fab, book: str, seed: int, policy: str, releases: bool | None = None
+) -> tuple[Fab, dict[str, Any]]:
+    """The plant and run_policy kwargs of one run (mirrors ``benchmark.py``).
+
+    ``releases`` (default: env ``RESILIMES_STUDY_RELEASES=1``, else off) adds
+    the ``order.txt`` lots released inside the horizon, at step 0.
+    """
+    horizon = _horizon()
     kwargs: dict[str, Any] = {"policy": policy, "seed": seed, "trace": False, "record": True}
     plant = fab
     if book in ("published", "heldout_published"):
@@ -120,6 +135,10 @@ def _setup(fab: Fab, book: str, seed: int, policy: str) -> tuple[Fab, dict[str, 
         pm = pm_windows(fab, horizon)
     else:
         raise KeyError(book)
+    if _releases() if releases is None else releases:
+        from resilimes.smt.planning import with_releases
+
+        plant = with_releases(plant, until=horizon)
     kwargs.update(horizon=horizon, downs=downs, pm=pm)
     return plant, kwargs
 
@@ -580,6 +599,8 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
     elif _ARM[0] == "std":
         kwargs["plan"] = book_plan(fab, book, "standard")
     row: dict[str, Any] = {"book": book, "seed": seed, "policy": policy}
+    row["lots"] = len(plant.lot_id)
+    row["released_lots"] = len(plant.lot_id) - len(fab.lot_id)
     if len(item) == 4:
         variant = str(item[3])
         kwargs["r2_fixes"] = tuple(int(part) for part in variant.split("+"))
