@@ -10,7 +10,7 @@ import pytest
 
 from resilimes.smt.fab import Fab, load_fab
 from resilimes.smt.hard_qtime import CAUSES
-from resilimes.smt.simulate import RunResult, pm_windows, run_policy, sample_downs
+from resilimes.smt.simulate import RunResult, make_sim, pm_windows, run_policy, sample_downs
 
 HOURS = 12.0
 SKIP = {
@@ -84,3 +84,34 @@ def test_on_gates_and_expedites(fab: Fab, policy: str, monkeypatch: pytest.Monke
     missed = sum(on.qtime_windows[key] for key in ("late", "held", "recleaned", "expired"))
     assert sum(stats["miss_causes"].values()) == missed
     assert stats["recovered"] + stats["unrecovered_at_horizon"] <= stats["expedited_lots"]
+
+
+def test_segment_gate_and_intermediate_expedite(fab: Fab) -> None:
+    """The kanban commits every measured step of a segment, and a lot at an
+    intermediate step of an open window ranks like one at the target."""
+    horizon = 6 * 3600.0
+    sim = make_sim(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=horizon,
+        downs=sample_downs(fab, 1, horizon),
+        pm=pm_windows(fab, horizon),
+        hard_qtime=True,
+    )
+    sim.run_until(horizon)
+    hq = sim.hq
+    assert hq is not None
+    entries = [
+        (lot, step, target)
+        for fam in hq.committed
+        for (lot, step), (_work, target, _latest, _need) in fam.items()
+    ]
+    assert entries
+    assert any(step < target for _lot, step, target in entries)
+    for lot, step, target in entries:
+        assert sim.step[lot] <= step <= target
+    middle = [lot for lot, step, target in entries if sim.step[lot] < target and sim.in_window(lot)]
+    assert middle
+    for lot in middle:
+        assert sim.expedite_key(lot, horizon)[1] in (0.0, 2.0)
