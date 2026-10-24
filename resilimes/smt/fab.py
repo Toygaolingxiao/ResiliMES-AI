@@ -54,7 +54,7 @@ QTIME_URGENT_MARGIN_SEC = 900.0
 # assumption, not the SMT2020 value: fromto.txt has a single Fab-to-Fab row
 # (uniform 7.5 +/- 2.5 min) and every tool family's STNFAMLOC is "Fab", so the
 # dataset names no bays. The bay of a family is its STNGRP station group
-# (Dry_Etch, Litho, Wet_Etch, Delay, ...; 14 groups). Same group 1 min, other
+# (Dry_Etch, Litho, Wet_Etch, Delay, ...; 13 groups). Same group 1 min, other
 # group 3 min. No AMHS, no vehicle limit. Q-time windows keep running.
 TRANSPORT_SAME_BAY_SEC = 60.0
 TRANSPORT_OTHER_BAY_SEC = 180.0
