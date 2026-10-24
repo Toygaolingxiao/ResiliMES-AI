@@ -235,6 +235,87 @@ Side effect:
 
 This is a planning figure, not a simulation result.
 
+## Flexible PM execution (`pm_decision`)
+
+The staggered plan gives every PM a *planned* start. A PM does not have to
+run at that exact time. When a family has a lot of WIP waiting, its PMs move
+later; when a tool is idle with nothing to run, it can take its PM early. All
+of it is pure logic in `pm_plan.py`; `simulate.py` is not changed.
+
+### Window: the fab's ±1 day rule
+
+SMT2020 has no PM tolerance field. The window is **the fab owner's rule**, not
+a dataset field: a PM may move **up to ±24 h** from its planned start
+(`PM_WINDOW_SEC = 24 h`, one parameter, not tuned on results).
+
+```text
+earliest = max(planned - 24 h, end of the tool's previous planned PM, 0)
+latest   = min(planned + 24 h, start of the tool's next planned PM - this PM's duration)
+```
+
+"Previous / next planned PM" means the same tool, any calendar (WK, MN and QT
+windows interleave). So two PMs of one tool can never overlap or merge. In the
+56-day plan, 73 of 1566 PMs have a latest start capped by the tool's next PM,
+and 92 have an earliest start capped by the previous PM's end. Some are
+back-to-back and have no slack on that side.
+
+### Decision at every scheduling tick
+
+`pm_decision(tool, now, state) -> PmDecision` looks at the tool's next PM that
+is not yet committed. The checks run in this order:
+
+| result | when |
+|---|---|
+| `defer` (not logged) | no PM left, the previous PM is still on, or `now < earliest` |
+| `start_now` | inside the window, all of: tool up and idle; fewer than `lanes` tools of the family in PM (the stagger plan's limit); the family's eligible queue fits on the other tools during the PM duration. Reason: `no_queue` or `queue_absorbed`, plus `early` / `on_time` / `late` |
+| `defer` | `tool_down`, `tool_busy` (never start on a running tool), `concurrency_cap(k/lanes)`, or `queue_heavy(Qh>Ah)`: the queue is larger than what the remaining up tools can process during the PM, so taking this tool down now would grow the queue |
+| `force` | waiting one more tick (300 s) would pass `latest`. The PM starts now, or as soon as the current lot or batch, a down, or the previous PM is over. Reason: `latest_start,<what held it>`. If the family is already at its lane cap, the force still goes ahead and is counted as `forced_over_cap` |
+
+- **Queue measure.** `queue_work_sec(fab, [(route, step), ...])` gives
+  standard work seconds from the master-data step times (`route.cycle`). A
+  batch step counts as one lot's share of a full batch (`cycle / batch_max`).
+- **Absorb measure.** For each other tool of the family, absorb counts the
+  part of `[now, now + D)` after that tool is free of its lot, any down and
+  its committed PM.
+- **Commitment.** `start_now` and `force` *commit* the PM. A deferred PM
+  keeps its place, and every planned PM is committed exactly once.
+- **Dispatch guard.** `state.may_start_lot(tool, now, proc_sec)` is false
+  while a committed PM is pending or running. It is also false if the lot
+  would end after the latest start of the tool's next PM, so a lot never
+  crosses a committed PM and never pushes a PM past its window.
+- **Log.** Every in-window decision goes to `state.log` with its reason, queue,
+  absorb, family PMs in progress and lanes.
+
+### KPIs (`state.kpis()`)
+
+- **PM shift** (actual − planned start): count, mean and max for deferral and
+  for advance.
+- **Forced:** count of forced PMs, and `forced_over_cap`.
+- **PM-hours in high-queue periods:** at the planned times
+  (`pm_h_high_queue_planned`) and at the actual times
+  (`pm_h_high_queue_actual`). A high-queue period is a tick where the family
+  queue exceeds what all but one of its tools can do during its shortest PM.
+  `set_queue` samples this once per family per tick.
+- **Count check:** `pm_committed + pm_pending == pm_planned`.
+
+For the before/after report, run the same seeds twice:
+
+- **before:** the rigid plan (PM at its planned start). Its PM-hours in
+  high-queue periods equal `pm_h_high_queue_planned`.
+- **after:** `pm_decision`.
+
+The unit harness in the tests is not a simulation: it uses random lots, and
+its queue is light or heavy by day. On FE_92, BE_110 and Diffusion_FE_120 over
+21 days (98 PMs) it gives:
+
+- **30 % heavy days:**
+  - 64 PMs advanced: mean 17.7 h, max 24 h;
+  - 34 deferred: mean 13.7 h, max 24 h;
+  - 13 forced, 5 of them over the cap;
+  - PM-hours in high-queue periods: 312 → 68.
+- **95 % heavy days:** every PM is held to its latest start and forced; the
+  high-queue PM-hours do not change.
+
 ## Integration with simulate.py (separate step)
 
 `simulate.py` is not changed here. The planning-r1 study runs on the published
@@ -266,7 +347,23 @@ as its own PR:
    window, 53 staggered PMs do. Use the planning-window plan, clipped by the
    simulator, rather than rebuilding the plan with `H = 2 days`, and state this
    in the results.
-6. **Report separately.** The switch changes every policy's baseline: litho
+6. **Flexible PM at the scheduling tick** (owned by the scheduling-tick work
+   on planning-r1; not wired here):
+   - **Setup:** build `state = PmState.build(fab, plan)` once per run.
+     `simulate.py` then stops pre-blocking PM windows. A PM exists only once
+     it is committed.
+   - **Each 300 s tick, in this order:**
+     1. `state.set_tool(t, busy_until=..., down_until=...)` for the PM
+        families' tools;
+     2. `state.set_queue(fam, queue_work_sec(fab, eligible_queue), now)`;
+     3. `pm_decision(t, now, state)` for each tool. For `start_now`/`force`,
+        put the tool into PM over `[start_sec, start_sec + D)`.
+   - **Dispatch:** before starting a lot or batch on tool `t`, require
+     `state.may_start_lot(t, now, proc_sec)`.
+   - **Planner:** it can keep using the planned windows (`with_pm_plan`),
+     which are within ±24 h of the actual ones.
+   - **Report:** `state.kpis()` next to the rigid-plan run (step 7).
+7. **Report separately.** The switch changes every policy's baseline: litho
    capacity no longer drops to zero for a few hours each week, and the
    furnaces never lose a whole family. So:
    - first re-run all policies on both calendars with the same seeds;
@@ -292,3 +389,21 @@ as its own PR:
   toy staggered PM lets the other scanner run, and staggered capacity on
   BE_110 and FE_92 has the same total, a higher minimum and fewer overload
   days.
+
+The flexible-PM tests in the same file cover:
+
+- the ±24 h window, its cap by the tool's next and previous PM (WK and MN
+  back-to-back on one tool), and every dataset-plan window holding its planned
+  start;
+- opportunistic early start when idle with no queue, and nothing logged
+  before the window;
+- defer under a heavy queue, and start once the other tools absorb it;
+- force at the latest start, never on a running tool (forced after the lot)
+  and the dispatch guard while committed;
+- the guard refusing a lot that crosses the latest start;
+- the lane cap (second tool deferred `concurrency_cap(1/1)` until the first
+  PM ends);
+- `queue_work_sec` with a batch share;
+- a 21-day tick replay at 30 % and 95 % heavy days checking that every PM is
+  committed once, in order, with its own duration, inside its window and with
+  no overlap; the KPIs match the log.

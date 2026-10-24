@@ -39,15 +39,43 @@ published, after the same optional ``shift_sec`` as ``simulate.pm_windows``):
    its whole duration. Calendars with different intervals (WK 168 h, MN
    720 h, QT 2184 h) drift against each other, so a few occurrences start
    later than nominal; ``max_delay_h`` reports by how much.
+
+Flexible execution (``pm_decision``)
+------------------------------------
+The plan above gives every PM a *planned* start. PMs are not mandatory at that
+exact time: each planned PM gets an allowed window and the scheduling layer
+calls ``pm_decision(tool, now, state)`` at every scheduling tick.
+
+* **Window (fab rule ``PM_WINDOW_SEC``).** SMT2020 has no PM tolerance field;
+  the window is the fab owner's rule, one parameter, default 24 h: a PM may
+  move up to one day either side of its planned start,
+  ``earliest = planned - 24 h`` and ``latest = planned + 24 h``. ``latest`` never
+  passes the same tool's next planned PM (any calendar) minus this PM's
+  duration, and ``earliest`` is never before the end of the tool's previous
+  planned PM, nor before 0. Not tuned.
+* **force** when waiting one more tick would pass ``latest`` (the PM then
+  starts as soon as the tool's current lot or batch is done).
+* **start_now** (opportunistic, also before the planned time) when the tool
+  is inside its window, up and idle, fewer than ``lanes`` tools of the family
+  hold a PM, and the family's eligible queue (standard work seconds from the
+  master-data step times) fits on the other tools during the PM duration.
+* **defer** otherwise: the queue exceeds what the other up tools can process
+  during the PM (taking this tool down now would grow the queue), the tool is
+  running, down, or the family is at its PM cap.
+
+A started or forced PM is *committed*: ``PmState.may_start_lot`` refuses a lot
+that would run into it or past the latest start of the tool's next PM. Every
+planned PM is committed exactly once (deferral moves it, never drops or merges
+it). Every in-window decision is logged with its reason.
 """
 
 from __future__ import annotations
 
 import math
 from bisect import bisect_left, insort
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from resilimes.smt.fab import Fab
 
@@ -66,6 +94,7 @@ class PmWindow:
     nominal_sec: float  # evenly staggered start
     start_sec: float  # planned start (>= nominal)
     end_sec: float
+    interval_sec: float = 0.0  # published MTBPM of this calendar
 
     @property
     def delay_sec(self) -> float:
@@ -229,6 +258,7 @@ def build_pm_plan(fab: Fab, horizon: float, *, shift_sec: float = 0.0) -> PmPlan
         placed: list[tuple[float, float, int]] = []  # (start, end, tool), sorted by start
         busy: dict[int, list[tuple[float, float]]] = {tool: [] for tool in tools}
         fam_windows: list[PmWindow] = []
+        interval_of = {name: interval for name, _f, interval, _d in cals}
         for nominal, _order, pos, k, published, duration, name in jobs:
             tool = tools[pos]
             if n == 1:
@@ -248,6 +278,7 @@ def build_pm_plan(fab: Fab, horizon: float, *, shift_sec: float = 0.0) -> PmPlan
                     nominal_sec=nominal,
                     start_sec=begin,
                     end_sec=end,
+                    interval_sec=interval_of[name],
                 )
             )
         windows.extend(fam_windows)
@@ -357,6 +388,328 @@ def _merge(spans: list[tuple[float, float]]) -> list[tuple[float, float]]:
         else:
             out.append((start, end))
     return out
+
+
+# ----------------------------------------------------------------- flexible
+
+# Fab rule from the fab owner, not a dataset field (SMT2020 publishes no PM
+# tolerance): a PM may move up to one day either side of its planned start.
+PM_WINDOW_SEC = 24 * 3600.0
+# Scheduling tick of the dispatch layer (s); a PM is forced on the last tick
+# that still starts it by its latest start.
+PM_TICK_SEC = 300.0
+
+PmAction = Literal["start_now", "defer", "force"]
+
+
+@dataclass(frozen=True)
+class FlexPm:
+    """One planned PM with its allowed start window."""
+
+    window: PmWindow
+    earliest_sec: float
+    latest_sec: float
+
+    @property
+    def tool(self) -> int:
+        return self.window.tool
+
+    @property
+    def planned_sec(self) -> float:
+        return self.window.start_sec
+
+    @property
+    def duration_sec(self) -> float:
+        return self.window.end_sec - self.window.start_sec
+
+
+def flexible_windows(plan: PmPlan, window_sec: float = PM_WINDOW_SEC) -> dict[int, list[FlexPm]]:
+    """Allowed window per planned PM, per tool in planned order (module docstring)."""
+    found: dict[int, list[FlexPm]] = {}
+    by_tool: dict[int, list[PmWindow]] = {}
+    for item in plan.windows:
+        by_tool.setdefault(item.tool, []).append(item)
+    for tool, items in sorted(by_tool.items()):
+        items.sort(key=lambda w: (w.start_sec, w.end_sec))
+        out: list[FlexPm] = []
+        for pos, item in enumerate(items):
+            slack = window_sec
+            planned = item.start_sec
+            earliest = max(0.0, planned - slack)
+            if pos > 0:
+                earliest = max(earliest, items[pos - 1].end_sec)
+            latest = planned + slack
+            if pos + 1 < len(items):
+                latest = min(latest, items[pos + 1].start_sec - (item.end_sec - planned))
+            out.append(
+                FlexPm(
+                    window=item,
+                    earliest_sec=min(earliest, planned),
+                    latest_sec=max(latest, planned),
+                )
+            )
+        found[tool] = out
+    return found
+
+
+def queue_work_sec(fab: Fab, steps: Iterable[tuple[int, int]]) -> float:
+    """Standard work seconds of queued lots ``(route index, step index)``.
+
+    Master-data step time per lot; a batch step counts its process time over
+    the full batch size (``batch_max``), i.e. one lot's share of a full batch.
+    """
+    total = 0.0
+    for route_i, step in steps:
+        route = fab.routes[route_i]
+        size = route.batch_max[step]
+        total += route.cycle[step] / size if size > 1 else route.cycle[step]
+    return total
+
+
+@dataclass
+class ToolStatus:
+    """What the scheduling layer knows about one tool at a tick."""
+
+    busy_until: float = 0.0  # end of the running lot / batch (<= now: idle)
+    down_until: float = 0.0  # unscheduled down (<= now: up)
+
+
+@dataclass(frozen=True)
+class CommittedPm:
+    pm: FlexPm
+    start_sec: float
+    end_sec: float
+    action: PmAction
+    reason: str
+    over_cap: bool = False
+
+    @property
+    def shift_sec(self) -> float:
+        return self.start_sec - self.pm.planned_sec
+
+
+@dataclass(frozen=True)
+class PmDecision:
+    tool: int
+    family: int
+    now: float
+    action: PmAction
+    reason: str
+    pm: FlexPm | None = None
+    start_sec: float | None = None  # set for start_now / force
+    queue_sec: float = 0.0
+    absorb_sec: float = 0.0
+    in_pm: int = 0
+    lanes: int = 1
+
+
+@dataclass
+class PmState:
+    """Runtime PM state the scheduling layer keeps and updates every tick."""
+
+    pms: dict[int, list[FlexPm]]
+    tool_family: dict[int, int]
+    family_tools: dict[int, list[int]]
+    lanes: dict[int, int]
+    window_sec: float = PM_WINDOW_SEC
+    tick_sec: float = PM_TICK_SEC
+    status: dict[int, ToolStatus] = field(default_factory=dict)
+    queue_sec: dict[int, float] = field(default_factory=dict)
+    committed: dict[int, list[CommittedPm]] = field(default_factory=dict)
+    log: list[PmDecision] = field(default_factory=list)
+    samples: dict[int, list[tuple[float, bool]]] = field(default_factory=dict)
+    _head: dict[int, int] = field(default_factory=dict, repr=False)
+    _ref: dict[int, float] = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def build(
+        cls,
+        fab: Fab,
+        plan: PmPlan,
+        *,
+        window_sec: float = PM_WINDOW_SEC,
+        tick_sec: float = PM_TICK_SEC,
+    ) -> PmState:
+        pms = flexible_windows(plan, window_sec)
+        family_tools: dict[int, list[int]] = {}
+        tool_family: dict[int, int] = {}
+        for fam in plan.families:
+            item = fab.families[fam]
+            family_tools[fam] = list(range(item.tool0, item.tool0 + item.tools))
+            for tool in family_tools[fam]:
+                tool_family[tool] = fam
+        return cls(
+            pms=pms,
+            tool_family=tool_family,
+            family_tools=family_tools,
+            lanes={fam: item.lanes for fam, item in plan.families.items()},
+            window_sec=window_sec,
+            tick_sec=tick_sec,
+        )
+
+    # --- inputs from the scheduling layer
+    def set_tool(self, tool: int, *, busy_until: float = 0.0, down_until: float = 0.0) -> None:
+        self.status[tool] = ToolStatus(busy_until=busy_until, down_until=down_until)
+
+    def set_queue(self, family: int, work_sec: float, now: float) -> None:
+        """Family eligible queue (standard work s); also sampled for the KPIs.
+
+        A sample is a high-queue period when the queue exceeds what all but one
+        of the family's tools can process during its shortest PM: the defer
+        test with every tool up and idle.
+        """
+        self.queue_sec[family] = work_sec
+        tools = self.family_tools.get(family, [])
+        if family not in self._ref:
+            durations = [p.duration_sec for t in tools for p in self.pms.get(t, [])]
+            self._ref[family] = min(durations, default=0.0)
+        limit = (max(1, len(tools)) - 1) * self._ref[family]
+        self.samples.setdefault(family, []).append((now, work_sec > limit + _EPS))
+
+    # --- queries
+    def head(self, tool: int) -> FlexPm | None:
+        """The tool's next PM not yet committed (planned order)."""
+        items = self.pms.get(tool, [])
+        pos = self._head.get(tool, 0)
+        return items[pos] if pos < len(items) else None
+
+    def last_committed(self, tool: int) -> CommittedPm | None:
+        items = self.committed.get(tool)
+        return items[-1] if items else None
+
+    def free_at(self, tool: int, now: float) -> float:
+        """When the tool is free of its lot, a down and its last committed PM."""
+        st = self.status.get(tool, ToolStatus())
+        last = self.last_committed(tool)
+        return max(now, st.busy_until, st.down_until, last.end_sec if last else 0.0)
+
+    def in_pm(self, family: int, now: float, *, exclude: int = -1) -> int:
+        """Tools of the family holding a committed PM that has not ended."""
+        count = 0
+        for tool in self.family_tools.get(family, []):
+            last = self.last_committed(tool)
+            if tool != exclude and last is not None and last.end_sec > now + _EPS:
+                count += 1
+        return count
+
+    def absorb_sec(self, family: int, tool: int, now: float, duration: float) -> float:
+        """Work the family's other tools can do in ``[now, now + duration)``."""
+        total = 0.0
+        for other in self.family_tools.get(family, []):
+            if other != tool:
+                total += max(0.0, now + duration - self.free_at(other, now))
+        return total
+
+    def may_start_lot(self, tool: int, now: float, proc_sec: float) -> bool:
+        """Dispatch guard: no lot into a committed PM or past the next latest start."""
+        last = self.last_committed(tool)
+        if last is not None and last.end_sec > now + _EPS:
+            return False
+        nxt = self.head(tool)
+        return nxt is None or now + proc_sec <= nxt.latest_sec + _EPS
+
+    def pending(self) -> list[FlexPm]:
+        return [p for tool, items in self.pms.items() for p in items[self._head.get(tool, 0) :]]
+
+    def _commit(self, pm: FlexPm, start: float, action: PmAction, reason: str, cap: bool) -> None:
+        self.committed.setdefault(pm.tool, []).append(
+            CommittedPm(pm, start, start + pm.duration_sec, action, reason, cap)
+        )
+        self._head[pm.tool] = self._head.get(pm.tool, 0) + 1
+
+    # --- KPIs
+    def kpis(self) -> dict[str, Any]:
+        done = [c for items in self.committed.values() for c in items]
+        late = [c.shift_sec / 3600.0 for c in done if c.shift_sec > _EPS]
+        early = [-c.shift_sec / 3600.0 for c in done if c.shift_sec < -_EPS]
+        high = self._high_spans()
+        planned_h = actual_h = 0.0
+        for c in done:
+            spans = high.get(self.tool_family[c.pm.tool], [])
+            planned_h += _overlap(spans, c.pm.planned_sec, c.pm.window.end_sec)
+            actual_h += _overlap(spans, c.start_sec, c.end_sec)
+        return {
+            "pm_planned": sum(len(items) for items in self.pms.values()),
+            "pm_committed": len(done),
+            "pm_pending": len(self.pending()),
+            "deferred": len(late),
+            "deferral_mean_h": sum(late) / len(late) if late else 0.0,
+            "deferral_max_h": max(late, default=0.0),
+            "advanced": len(early),
+            "advance_mean_h": sum(early) / len(early) if early else 0.0,
+            "advance_max_h": max(early, default=0.0),
+            "forced": sum(1 for c in done if c.action == "force"),
+            "forced_over_cap": sum(1 for c in done if c.over_cap),
+            "pm_h_high_queue_planned": planned_h / 3600.0,
+            "pm_h_high_queue_actual": actual_h / 3600.0,
+        }
+
+    def _high_spans(self) -> dict[int, list[tuple[float, float]]]:
+        found: dict[int, list[tuple[float, float]]] = {}
+        for fam, items in self.samples.items():
+            spans: list[tuple[float, float]] = []
+            for pos, (t, high) in enumerate(items):
+                end = items[pos + 1][0] if pos + 1 < len(items) else t + self.tick_sec
+                if high and end > t:
+                    spans.append((t, end))
+            found[fam] = _merge(spans)
+        return found
+
+
+def pm_decision(tool: int, now: float, state: PmState) -> PmDecision:
+    """start_now / defer / force for the tool's next PM at this tick (logged).
+
+    start_now and force commit the PM (``state.committed``). Decisions outside
+    the PM's window (before ``earliest``, no PM left, previous PM still on) are
+    returned as defer but not logged: they are not decisions about a PM.
+    """
+    fam = state.tool_family.get(tool, -1)
+    lanes = state.lanes.get(fam, 1)
+    pm = state.head(tool)
+    if pm is None:
+        return PmDecision(tool, fam, now, "defer", "no_pending_pm", lanes=lanes)
+    last = state.last_committed(tool)
+    if last is not None and last.end_sec > now + _EPS:
+        return PmDecision(tool, fam, now, "defer", "previous_pm_on", pm, lanes=lanes)
+    if now < pm.earliest_sec - _EPS:
+        return PmDecision(tool, fam, now, "defer", "before_window", pm, lanes=lanes)
+    st = state.status.get(tool, ToolStatus())
+    queue = state.queue_sec.get(fam, 0.0)
+    absorb = state.absorb_sec(fam, tool, now, pm.duration_sec)
+    others = state.in_pm(fam, now, exclude=tool)
+
+    def done(action: PmAction, reason: str, start: float | None = None) -> PmDecision:
+        out = PmDecision(tool, fam, now, action, reason, pm, start, queue, absorb, others, lanes)
+        state.log.append(out)
+        return out
+
+    at_latest = now + state.tick_sec > pm.latest_sec + _EPS or now >= pm.latest_sec - _EPS
+    if st.down_until > now + _EPS:
+        hold = "tool_down"
+    elif st.busy_until > now + _EPS:
+        hold = "tool_busy"
+    elif others >= lanes:
+        hold = f"concurrency_cap({others}/{lanes})"
+    elif queue > absorb + _EPS:
+        hold = f"queue_heavy({queue / 3600:.2f}h>{absorb / 3600:.2f}h)"
+    else:
+        when = "early" if now < pm.planned_sec - _EPS else "on_time"
+        if now > pm.planned_sec + _EPS:
+            when = "late"
+        why = ("no_queue" if queue <= _EPS else "queue_absorbed") + "," + when
+        state._commit(pm, now, "start_now", why, False)
+        return done("start_now", why, now)
+    if not at_latest:
+        return done("defer", hold)
+    start = state.free_at(tool, now)
+    cap = state.in_pm(fam, start, exclude=tool) >= lanes
+    why = f"latest_start,{hold}"
+    state._commit(pm, start, "force", why, cap)
+    return done("force", why, start)
+
+
+def _overlap(spans: list[tuple[float, float]], begin: float, end: float) -> float:
+    return sum(max(0.0, min(hi, end) - max(lo, begin)) for lo, hi in spans)
 
 
 def markdown_table(plan: PmPlan) -> str:
