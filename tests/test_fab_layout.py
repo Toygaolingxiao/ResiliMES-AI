@@ -38,6 +38,9 @@ SKIP = {
     "replan_tick_total_s",
     "sched_freeze",
     "layout",
+    # Q-time miss causes and the hard Q-time summary (tests/test_hard_qtime.py).
+    "qtime_causes",
+    "hard_qtime",
 }
 # Planning-layer fields (planning-r1): constant zeros/empty when no plan is passed.
 PLAN_FIELDS = {
