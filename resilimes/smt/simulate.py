@@ -27,7 +27,7 @@ import math
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from resilimes.kernel.score import class_tier, dynamic_priority, ped_risk, tiered_key
 from resilimes.smt.fab import (
@@ -72,6 +72,25 @@ X_FACTOR = 2.75
 # Lots at least this tight stay in the candidate list when the family cap is on.
 # Pre-registered at 7200 s before the seeds 9-13 run. Not changed after that run.
 SLACK_CANDIDATE_SEC = 7200.0
+
+
+if TYPE_CHECKING:
+    from resilimes.smt.planning import LotPlan, PlanningOutput
+
+# Why a dispatch start differs from the scheduling layer's head for that tool
+# (``plan`` runs only). ``schedule_stale`` is the remainder: the live order at
+# the event differs from the order the last tick wrote.
+DEVIATION_REASONS = (
+    "qtime_urgent",
+    "batch_ready",
+    "setup",
+    "not_arrived",
+    "ineligible",
+    "tool_down",
+    "pm",
+    "hold",
+    "schedule_stale",
+)
 
 
 @dataclass
@@ -133,6 +152,18 @@ class RunResult:
     repins: int = 0
     # Mean queue wait per started step, by class tier (VIP, hot, normal).
     class_wait_min: dict[str, float] = field(default_factory=dict)
+    # Planning layer (``plan`` given): steps whose step due came from the plan,
+    # risk evaluations that fell back to raw slack (step not on the plan path),
+    # starts that followed the schedule head, deviations by reason, and the
+    # schedule build time inside the tick.
+    plan_used: bool = False
+    plan_due_fallbacks: int = 0
+    sched_starts: int = 0
+    sched_follow: int = 0
+    deviations: dict[str, int] = field(default_factory=dict)
+    sched_stale_detail: dict[str, int] = field(default_factory=dict)
+    sched_build_p95_ms: float = 0.0
+    sched_build_total_s: float = 0.0
     # Sampled metrology steps a lot skipped (StepPercent < 100, lot-ID rule),
     # and Q-time windows that ended because their target step was skipped.
     skipped: int = 0
@@ -357,13 +388,18 @@ def run_policy(
     r2_policy: bool = True,
     r2_fixes: tuple[int, ...] = (1, 2, 3),
     replan_sec: float = REPLAN_SEC,
+    plan: PlanningOutput | None = None,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
     ResiliMES-only Q-time r2 dispatch rules (shortlist admission, graded
     urgency, bounded tool reservation); False is the ablation. ``r2_fixes``
     picks which of fixes 1-3 are on (per-fix ablation). ``replan_sec`` is the
-    re-evaluation tick period for every policy (0 turns the tick off)."""
+    re-evaluation tick period for every policy (0 turns the tick off).
+    ``plan`` (the planning layer's output, computed once before the run) turns
+    on the step-due risk for ResiliMES fix 2, the plan band/rank tie-break, the
+    per-tool schedule at each tick and the deviation log; None is the
+    unchanged qtime-r2 path."""
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     sim = _Sim(
@@ -387,6 +423,7 @@ def run_policy(
         r2_policy=r2_policy,
         r2_fixes=r2_fixes,
         replan_sec=replan_sec,
+        plan=plan,
     )
     return sim.run()
 
@@ -456,6 +493,7 @@ class _Sim:
         r2_policy: bool = True,
         r2_fixes: tuple[int, ...] = (1, 2, 3),
         replan_sec: float = REPLAN_SEC,
+        plan: PlanningOutput | None = None,
     ) -> None:
         self.fab = fab
         self.r2 = r2_policy and policy == "resilimes"
@@ -619,6 +657,39 @@ class _Sim:
         self.held = 0
         self.q_pending = [False] * self.n
         self.deadline_event = deadline_event
+        # Planning layer. Sim lot -> its LotPlan (by lot id), plan rank and
+        # band index; a lot the plan does not know ranks after every planned
+        # lot and uses raw slack.
+        self.plan = plan
+        self.plan_lot: list[LotPlan | None] = []
+        self.plan_rank: list[float] = []
+        self.plan_band: list[float] = []
+        self.plan_fallback: set[tuple[int, int]] = set()
+        # Scheduling layer (plan runs): per tool the lots it should start next,
+        # as (lot, step, start generation); whether the tool was down or in PM
+        # when the tick wrote it; follow / deviation counters.
+        self.sched: list[list[tuple[int, int, int]]] = [[] for _ in range(self.tools)]
+        self.sched_gone = [False] * self.tools
+        self.start_gen = [0] * self.n
+        self.in_hold = [False] * self.n
+        self.sched_starts = 0
+        self.sched_follow = 0
+        self.deviations: dict[str, int] = {}
+        self.stale_detail: dict[str, int] = {}
+        self.sched_at = 0.0
+        self.sched_samples: list[float] = []
+        if plan is not None:
+            from resilimes.smt.planning import BANDS
+
+            for lot in range(self.n):
+                row = plan.find(fab.lot_id[lot])
+                self.plan_lot.append(row)
+                if row is None:
+                    self.plan_rank.append(float(self.n + 10**6 + lot))
+                    self.plan_band.append(float(len(BANDS)))
+                else:
+                    self.plan_rank.append(float(row.rank))
+                    self.plan_band.append(float(BANDS.index(row.band)))
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -646,6 +717,8 @@ class _Sim:
                 self.push(0.0, _WAKE, tool)
         if self.replan_sec > 0:
             self.refresh_estimates(0.0)
+            if self.plan is not None:
+                self.build_schedule(0.0)
             self.push(self.replan_sec, _TICK, -1)
         steps = 0
         while self.heap:
@@ -736,6 +809,7 @@ class _Sim:
             if lot in self.queues[fam]:
                 self.queues[fam].remove(lot)
         self.held += 1
+        self.in_hold[lot] = True
         self.hold_sec += max(0.0, min(REWORK_SEC, self.horizon - moment))
         if self.record:
             self.events.append(("qhold", moment, lot, index, target))
@@ -746,6 +820,7 @@ class _Sim:
             self.expire(lot, moment, queued=False)
             return
         self.q_pending[lot] = False
+        self.in_hold[lot] = False
         route = self.fab.routes[self.fab.lot_route[lot]]
         fam = route.family[self.step[lot]]
         self.ready[lot] = moment
@@ -1117,6 +1192,16 @@ class _Sim:
             band = float(self.urgency_band(lot, moment))
             if self.fix2:
                 risk, least = self.risk(lot, moment)
+                if self.plan is not None:
+                    return (
+                        band,
+                        float(self.tier(lot)),
+                        -risk,
+                        self.plan_band[lot],
+                        self.plan_rank[lot],
+                        self.ready[lot],
+                        lot,
+                    )
                 return (band, float(self.tier(lot)), -risk, least, self.ready[lot], lot)
             slack = self._slack(lot, moment)
             late = 0.0 if slack <= 0.0 else 1.0
@@ -1195,6 +1280,13 @@ class _Sim:
             # first. Below 1 setup avoidance comes first, then risk.
             risk, least = self.risk(lot, moment)
             tier = float(self.tier(lot))
+            if self.plan is not None:
+                # Planning layer: the plan's band and rank break ties in
+                # place of the least slack.
+                base = (self.plan_band[lot], self.plan_rank[lot], self.ready[lot], float(lot))
+                if risk >= 1.0:
+                    return (tier, 0.0, -risk, setup, *base)
+                return (tier, 1.0, setup, -risk, *base)
             if risk >= 1.0:
                 return (tier, 0.0, -risk, setup, least, self.ready[lot], float(lot))
             return (tier, 1.0, setup, -risk, least, self.ready[lot], float(lot))
@@ -1264,6 +1356,12 @@ class _Sim:
         * Due date: slack = due - now - remaining raw process. Expected wait =
           live wait estimate here plus the observed fab-wide queue/process
           ratio times the raw process still due after this step.
+        * Due date with a ``plan``: slack = this step's plan step due - now -
+          this step's process time, expected wait = live wait estimate here
+          only. The plan's backward pass already spreads the lot due over the
+          rest of the route, so no fab-wide ratio is needed. A step the plan
+          does not visit (rework back past the snapshot step) uses the raw
+          slack above.
 
         Slack <= 0 is infinite risk. Wait estimates come from the last tick
         (``refresh_estimates``), so they are at most ``replan_sec`` old.
@@ -1277,9 +1375,19 @@ class _Sim:
         route = self.fab.routes[self.fab.lot_route[lot]]
         index = self.step[lot]
         here = self.fam_wait[route.family[index]]
-        slack = self._slack(lot, moment)
-        after = max(0.0, route.remain[index] - route.cycle[index])
-        wait = here + self.flow_wait * after
+        if self.plan is not None:
+            row = self.plan_lot[lot]
+            step_due = None if row is None else row.due_of(index)
+            if step_due is None:
+                self.plan_fallback.add((lot, index))
+                slack = self._slack(lot, moment)
+            else:
+                slack = step_due - moment - route.cycle[index]
+            wait = here
+        else:
+            slack = self._slack(lot, moment)
+            after = max(0.0, route.remain[index] - route.cycle[index])
+            wait = here + self.flow_wait * after
         risk = math.inf if slack <= 0.0 else wait / slack
         least = slack
         if self.in_window(lot):
@@ -1337,7 +1445,8 @@ class _Sim:
         hold no longer needed and set the hold plan (which inbound Q-time
         lots warrant a held tool); (c) count an idle, up tool with an
         eligible ready lot and no pending wake (stall detector, count only);
-        (d) with ``record``, snapshot each family's queue order and the next
+        (d) with a ``plan``, write the per-tool schedule (``build_schedule``);
+        (e) with ``record``, snapshot each family's queue order and the next
         planned lot per tool.
         """
         t0 = time.perf_counter()
@@ -1369,10 +1478,151 @@ class _Sim:
                 self.tick_stalls_batch += 1
             if self.record:
                 self.events.append(("tick_stall", moment, tool, len(ready), batch))
+        if self.plan is not None:
+            self.build_schedule(moment)
         if self.record:
             self.snapshot(moment)
         self.tick_samples.append(time.perf_counter() - t0)
         self.push(moment + self.replan_sec, _TICK, -1)
+
+    def build_schedule(self, moment: float) -> None:
+        """Scheduling layer with a plan: the per-tool queue until the next tick.
+
+        Each family's live queue is ordered by (urgency band, plan rank). Tools
+        take lots in the order they come free (now, end of the running piece,
+        end of a down or PM), each the first lot it may run (a pinned lot only
+        on its scanner), until every tool is booked past the next tick. A
+        batch-step lot books its time over the batch size in lots. Dispatch
+        compares each start with the head of the tool's list.
+        """
+        t0 = time.perf_counter()
+        self.sched_at = moment
+        limit = moment + self.replan_sec
+        for fam, family in enumerate(self.fab.families):
+            first = family.tool0
+            tools = range(first, first + family.tools)
+            free: dict[int, float] = {}
+            for tool in tools:
+                self.sched[tool] = []
+                gone = _covering(self.downs[tool], moment) or _covering(self.pm[tool], moment)
+                self.sched_gone[tool] = gone is not None
+                if gone is not None:
+                    free[tool] = gone[1]
+                elif self.running[tool] >= 0:
+                    free[tool] = max(moment, self.busy_until[tool])
+                else:
+                    free[tool] = moment
+            if not self.queues[fam]:
+                continue
+            rows = self.live(fam)
+            if not rows:
+                continue
+            order = sorted(
+                rows, key=lambda lot: (self.urgency_band(lot, moment), self.plan_rank[lot], lot)
+            )
+            heap = [(at, tool) for tool, at in free.items()]
+            heapq.heapify(heap)
+            for lot in order:
+                while heap and heap[0][0] != free[heap[0][1]]:
+                    heapq.heappop(heap)
+                if not heap or heap[0][0] > limit:
+                    break
+                index = self.step[lot]
+                pinned = self.pin_for(lot, index)
+                if pinned >= 0 and _covering(self.downs[pinned], moment) is None:
+                    tool = pinned
+                    if free[tool] > limit:
+                        continue
+                else:
+                    tool = heap[0][1]
+                route = self.fab.routes[self.fab.lot_route[lot]]
+                size = max(1, route.batch_max[index] // _WAFERS)
+                self.sched[tool].append((lot, index, self.start_gen[lot]))
+                free[tool] = max(free[tool], self.ready[lot]) + route.cycle[index] / size
+                heapq.heappush(heap, (free[tool], tool))
+        self.sched_samples.append(time.perf_counter() - t0)
+
+    def sched_head(self, tool: int) -> int:
+        """The tool's next scheduled lot not yet started anywhere, or -1."""
+        rows = self.sched[tool]
+        while rows:
+            lot, index, gen = rows[0]
+            if self.start_gen[lot] == gen and self.step[lot] == index and self.finished_at[lot] < 0:
+                return lot
+            rows.pop(0)
+        return -1
+
+    def deviation(
+        self, tool: int, fam: int, moment: float, started: list[int], reason: str
+    ) -> None:
+        """Compare a start with the schedule head; log a deviation with its reason."""
+        self.sched_starts += 1
+        head = self.sched_head(tool)
+        if head in started:
+            self.sched_follow += 1
+            return
+        lead = started[0]
+        cause = "schedule_stale"
+        if head < 0:
+            cause = "tool_down" if self.sched_gone[tool] else "schedule_stale"
+        elif reason == "reserved":
+            cause = "hold"
+        elif reason == "qtime_urgent" or (
+            self.pending_override is not None and self.pending_override[0] == lead
+        ):
+            cause = "qtime_urgent"
+        elif self.in_hold[head] or self.res_by_lot.get(head, tool) != tool:
+            cause = "hold"
+        elif not self.waiting[head] or self.ready[head] > moment + 1e-6:
+            cause = "not_arrived"
+        elif not self.eligible(head, tool, moment):
+            cause = "ineligible"
+        elif self.sched_gone[tool]:
+            cause = "tool_down"
+        else:
+            pm_start = self.next_pm_start(tool, moment)
+            head_piece = self.piece_seconds(head, tool)
+            head_route = self.fab.routes[self.fab.lot_route[head]]
+            lead_route = self.fab.routes[self.fab.lot_route[lead]]
+            if pm_start is not None and moment + head_piece > pm_start:
+                cause = "pm"
+            elif (
+                len(started) > 1
+                or lead_route.batch_max[self.step[lead]] > 0
+                or head_route.batch_max[self.step[head]] > 0
+            ):
+                cause = "batch_ready"
+            elif (
+                head_piece - head_route.cycle[self.step[head]]
+                > self.piece_seconds(lead, tool) - lead_route.cycle[self.step[lead]]
+            ):
+                cause = "setup"
+        self.deviations[cause] = self.deviations.get(cause, 0) + 1
+        if cause == "schedule_stale":
+            detail = self.stale_where(tool, fam, lead)
+            self.stale_detail[detail] = self.stale_detail.get(detail, 0) + 1
+        if self.record:
+            self.events.append(("deviation", moment, tool, head, lead, cause))
+
+    def stale_where(self, tool: int, fam: int, lead: int) -> str:
+        """Diagnostic split of ``schedule_stale``: where the started lot was.
+
+        ``later_in_list`` behind the head on this tool; ``other_tool`` on
+        another tool's list in the family; ``new_since_tick`` it reached the
+        queue after the tick; ``beyond_horizon`` queued at the tick but not
+        booked before the next one; ``no_head`` the tool's list was empty.
+        """
+        if any(row[0] == lead for row in self.sched[tool]):
+            return "later_in_list"
+        family = self.fab.families[fam]
+        for other in range(family.tool0, family.tool0 + family.tools):
+            if other != tool and any(row[0] == lead for row in self.sched[other]):
+                return "other_tool"
+        if self.ready[lead] > self.sched_at:
+            return "new_since_tick"
+        if not self.sched[tool]:
+            return "no_head"
+        return "beyond_horizon"
 
     def plan_holds(self, moment: float) -> None:
         """Fix 3, scheduling side: review holds and set the hold plan.
@@ -1534,6 +1784,10 @@ class _Sim:
             if tool not in self.idle[fam]:
                 self.idle[fam].append(tool)
             return
+        if self.plan is not None and self.replan_sec > 0:
+            self.deviation(tool, fam, moment, started, reason)
+            for lot in started:
+                self.start_gen[lot] += 1
         self.res_cool[tool] = False
         # A started lot leaves this queue now. Left in place, it is still
         # listed here when it waits again for its next step in another family.
@@ -2055,4 +2309,12 @@ class _Sim:
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)
             },
+            plan_used=self.plan is not None,
+            plan_due_fallbacks=len(self.plan_fallback),
+            sched_starts=self.sched_starts,
+            sched_follow=self.sched_follow,
+            deviations=dict(sorted(self.deviations.items())),
+            sched_stale_detail=dict(sorted(self.stale_detail.items())),
+            sched_build_p95_ms=round(_percentile(self.sched_samples, 95) * 1000.0, 4),
+            sched_build_total_s=round(sum(self.sched_samples), 4),
         )

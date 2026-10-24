@@ -199,6 +199,10 @@ class PlanningOutput:
     def lot(self, lot_id: str) -> LotPlan:
         return self._by_id[lot_id]
 
+    def find(self, lot_id: str) -> LotPlan | None:
+        """The lot's plan, or None when the plan does not know the lot."""
+        return self._by_id.get(lot_id)
+
     def priority_key(self, lot_id: str) -> tuple[float, ...]:
         """Sort key for the scheduler: smaller is more urgent."""
         item = self._by_id[lot_id]
