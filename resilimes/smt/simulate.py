@@ -47,6 +47,7 @@ from resilimes.smt.fab import (
     transport_seconds,
 )
 from resilimes.smt.freeze import FreezeConfig, Freezer
+from resilimes.smt.layout import FabLayout, family_buildings, resolve
 
 _DONE = 0
 _DOWN_START = 1
@@ -188,6 +189,11 @@ class RunResult:
     # Frozen dispatch zone and plan-stability KPIs (``resilimes.smt.freeze``);
     # empty unless the freeze or tick tracking is on.
     sched_freeze: dict[str, Any] = field(default_factory=dict)
+    # Transport KPIs and the multi-building layout (``resilimes.smt.layout``):
+    # layout name (None = one building, as main), moves, transport minutes,
+    # cross-building moves, and second transports (freeze tracking) weighted
+    # by their transport time.
+    layout: dict[str, Any] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -374,6 +380,7 @@ def run_policy(
     r2_fixes: tuple[int, ...] | None = None,
     replan_sec: float = REPLAN_SEC,
     freeze: FreezeConfig | None = None,
+    layout: FabLayout | bool | str | None = None,
 ) -> RunResult:
     """One run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
@@ -384,7 +391,10 @@ def run_policy(
     re-evaluation tick period for every policy (0 turns the tick off).
     ``freeze`` is the frozen dispatch zone and tick log
     (``resilimes.smt.freeze``); unset reads RESILIMES_SCHED_FREEZE and friends
-    from the environment, default off."""
+    from the environment, default off. ``layout`` is the multi-building
+    transport layout (``resilimes.smt.layout``): False off (one building, as
+    main), True the example two-building layout, or a ``FabLayout``; unset
+    reads RESILIMES_FAB_LAYOUT, default off."""
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     sim = _Sim(
@@ -409,6 +419,7 @@ def run_policy(
         r2_fixes=r2_fixes,
         replan_sec=replan_sec,
         freeze=FreezeConfig.from_env() if freeze is None else freeze,
+        layout=resolve(layout),
     )
     return sim.run()
 
@@ -479,8 +490,15 @@ class _Sim:
         r2_fixes: tuple[int, ...] | None = None,
         replan_sec: float = REPLAN_SEC,
         freeze: FreezeConfig | None = None,
+        layout: FabLayout | None = None,
     ) -> None:
         self.fab = fab
+        self.layout = layout
+        self.buildings = family_buildings(fab, layout) if layout is not None else None
+        self.cross_sec = layout.cross_building_sec if layout is not None else 0.0
+        self.moves = 0
+        self.move_sec = 0.0
+        self.cross_moves = 0
         self.r2 = r2_policy and policy == "resilimes"
         if r2_fixes is None:
             r2_fixes = default_r2_fixes()
@@ -796,16 +814,32 @@ class _Sim:
     def send(self, lot: int, moment: float, origin: int, target: int) -> None:
         """Queue the lot at ``target`` once it has been moved there from ``origin``."""
         move = self.move_seconds(origin, target)
+        if move > 0:
+            self.moves += 1
+            self.move_sec += move
+            if self.buildings is not None and self.buildings[origin] != self.buildings[target]:
+                self.cross_moves += 1
         if move <= 0:
             self.enqueue(lot, moment)
         else:
             self.push(moment + move, _ARRIVE, lot)
 
+    def _layout_kpis(self) -> dict[str, Any]:
+        second = self.fz.second_sec if self.fz is not None else 0.0
+        return {
+            "name": self.layout.name if self.layout is not None else None,
+            "cross_building_min": round(self.cross_sec / 60.0, 3),
+            "transport_moves": self.moves,
+            "transport_min": round(self.move_sec / 60.0, 1),
+            "cross_building_moves": self.cross_moves,
+            "second_transport_min": round(second / 60.0, 1),
+        }
+
     def move_seconds(self, origin: int, target: int) -> float:
         """Transport from one family to the next. 0 only for the no-transport ablation."""
         if not self.transport:
             return 0.0
-        return transport_seconds(self.fab, origin, target)
+        return transport_seconds(self.fab, origin, target, self.buildings, self.cross_sec)
 
     def wake_family(self, fam: int) -> None:
         """Every idle tool in the family gets one look.
@@ -2099,6 +2133,7 @@ class _Sim:
             replan_tick_total_s=round(sum(self.tick_samples), 4),
             flow_wait_ratio=round(self.wait_sum / self.proc_sum, 4) if self.proc_sum else 0.0,
             sched_freeze=self.fz.summary() if self.fz is not None else {},
+            layout=self._layout_kpis(),
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)
