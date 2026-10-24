@@ -13,11 +13,14 @@ simulated as a station with its published process time.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
-from resilimes.config import ROOT
+from resilimes.config import ROOT, ConfigError, Settings, get_settings
 from resilimes.data.smt2020_kernel import (
     SNAPSHOT,
     _cycle_sec,
@@ -75,6 +78,15 @@ READ_QUERY = (
     "scripts/zetaris_setup.sh loads the same kernel tables into Postgres "
     "datasources resilimes, fab_cmms, and fab_erp."
 )
+# Where the master data came from. RESILIMES_SMT_SOURCE picks file, zetaris,
+# or auto (Zetaris when settings.use_zetaris, else the files). The fab is read
+# once at load; the simulator never queries per dispatch.
+FILE_LABEL = "SMT2020 local extract (data/smt2020)"
+ZETARIS_LABEL = "SMT2020 via Zetaris"
+FALLBACK_LABEL = "SMT2020 local extract (Zetaris read failed, file fallback)"
+
+Rows = Callable[[str], list[dict[str, str]]]
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -191,6 +203,9 @@ class Fab:
     snapshot: str = "2018-01-01T00:00:00Z"
     products: int = 10
     group_names: list[str] = field(default_factory=list)
+    # Provenance of the master data (file, zetaris, or file after a failed
+    # Zetaris read). Not part of equality: both sources build the same fab.
+    origin: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
     @property
     def litho_tools(self) -> int:
@@ -201,21 +216,135 @@ class Fab:
         return sum(item.tools for item in self.families if item.scanner)
 
 
-def load_fab() -> Fab:
-    return _load(str(ROOT / "data" / "smt2020"))
+def load_fab(settings: Settings | None = None) -> Fab:
+    """The SMT2020 fab, from data/smt2020 or from the Zetaris smt_* tables.
+
+    ``file`` (and ``auto`` without Zetaris) is the cached local extract, the
+    same object as before this switch. ``zetaris`` raises on a failed read.
+    ``auto`` with Zetaris configured falls back to the files on a failed read
+    and says so in ``fab.origin``.
+    """
+    root = str(ROOT / "data" / "smt2020")
+    if settings is None:
+        try:
+            settings = get_settings()
+        except ConfigError:
+            return _load(root)
+    active = settings
+    requested = active.smt_source
+    if requested == "file":
+        return _load(root)
+    if requested == "auto":
+        try:
+            wanted = active.use_zetaris
+        except ConfigError:
+            wanted = False
+        if not wanted:
+            return _load(root)
+    try:
+        return load_fab_zetaris(active)
+    except Exception as exc:
+        if requested == "zetaris":
+            raise
+        logger.warning(
+            "SMT2020 Zetaris read failed, using data/smt2020",
+            extra={"fields": {"error": str(exc)[:300]}},
+        )
+        fab = replace(_load(root))
+        fab.origin = {
+            "source": "file",
+            "requested": requested,
+            "label": FALLBACK_LABEL,
+            "fallback": True,
+            "error": str(exc)[:300],
+            "queries": [],
+        }
+        return fab
+
+
+_ZETARIS_CACHE: dict[tuple[Any, ...], Fab] = {}
+
+
+def load_fab_zetaris(settings: Settings, run: Any = None, *, cache: bool = True) -> Fab:
+    """Build the fab from the smt_* tables through Zetaris. Successes are cached."""
+    from resilimes.data.smt2020_sql import ZetarisRows
+
+    key = (
+        settings.zetaris_schema,
+        tuple(sorted(settings.zetaris_table_sources.items())),
+        settings.zetaris_rest_url,
+    )
+    if cache and run is None and key in _ZETARIS_CACHE:
+        return _ZETARIS_CACHE[key]
+    reader = ZetarisRows(
+        run,
+        schema=settings.zetaris_schema,
+        sources=settings.zetaris_table_sources,
+        timeout_s=settings.zetaris_timeout_s,
+    )
+    fab = _build(reader)
+    fab.origin = {
+        "source": "zetaris",
+        "requested": settings.smt_source,
+        "label": ZETARIS_LABEL,
+        "fallback": False,
+        "error": "",
+        "queries": [record.model_dump() for record in reader.records],
+    }
+    if cache and run is None:
+        _ZETARIS_CACHE[key] = fab
+    return fab
+
+
+def fab_digest(fab: Fab) -> str:
+    """SHA-256 over every compared field, for parity between file and Zetaris loads."""
+    import hashlib
+    from dataclasses import fields
+
+    parts = [f"{item.name}={getattr(fab, item.name)!r}" for item in fields(fab) if item.compare]
+    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
+
+
+def fab_source(fab: Fab) -> dict[str, Any]:
+    """Public provenance block for API payloads. Never holds credentials."""
+    origin = fab.origin or {"source": "file", "label": FILE_LABEL, "fallback": False}
+    return {
+        "source": origin.get("source", "file"),
+        "requested": origin.get("requested", "file"),
+        "label": origin.get("label", FILE_LABEL),
+        "fallback": bool(origin.get("fallback")),
+        "error": origin.get("error", ""),
+        "tables": [
+            {"table": item["name"], "rows": item["row_count"]} for item in origin.get("queries", [])
+        ],
+    }
 
 
 @lru_cache(maxsize=1)
 def _load(root: str) -> Fab:
     path = Path(root)
-    families, tool_family, tool_name, family_index = _tools(path / "tool.txt.1l")
+    fab = _build(lambda name: _rows(path / name))
+    fab.origin = {
+        "source": "file",
+        "requested": "file",
+        "label": FILE_LABEL,
+        "fallback": False,
+        "error": "",
+        "queries": [],
+    }
+    return fab
+
+
+def _build(read: Rows) -> Fab:
+    """Assemble the fab from rows keyed by SMT2020 file name (files or Zetaris)."""
+    families, tool_family, tool_name, family_index = _tools(read)
     recipes: dict[str, int] = {"": 0}
     recipe_name = [""]
-    routes, route_index = _routes(path, family_index, recipes, recipe_name)
-    setup = _setups(path, family_index, recipes, recipe_name)
-    lots = _lots(path, route_index, routes)
-    down_mttf, down_mttr = _downs(path)
-    pm = _pm(path, family_index)
+    routes, route_index = _routes(read, family_index, recipes, recipe_name)
+    setup = _setups(read, family_index, recipes, recipe_name)
+    lots = _lots(read, route_index, routes)
+    down_mttf, down_mttr = _downs(read)
+    pm = _pm(read, family_index)
     focus_family = _largest_scanner(families)
     focus = families[focus_family]
     focus_tool = focus.tool0  # {family}-1
@@ -251,12 +380,12 @@ def _load(root: str) -> Fab:
     )
 
 
-def _tools(path: Path) -> tuple[list[Family], list[int], list[str], dict[str, int]]:
+def _tools(read: Rows) -> tuple[list[Family], list[int], list[str], dict[str, int]]:
     families: list[Family] = []
     tool_family: list[int] = []
     tool_name: list[str] = []
     index: dict[str, int] = {}
-    for row in _rows(path):
+    for row in read("tool.txt.1l"):
         name = row["STNFAM"].strip()
         if name in index:
             raise ValueError(f"Duplicate station family {name}")
@@ -291,16 +420,16 @@ def _recipe(name: str, recipes: dict[str, int], recipe_name: list[str]) -> int:
 
 
 def _routes(
-    path: Path,
+    read: Rows,
     family_index: dict[str, int],
     recipes: dict[str, int],
     recipe_name: list[str],
 ) -> tuple[list[Route], dict[str, int]]:
     routes: list[Route] = []
     index: dict[str, int] = {}
-    for part in _rows(path / "part.txt"):
+    for part in read("part.txt"):
         route_id = part["ROUTE"].strip()
-        steps = list(_rows(path / part["ROUTEFILE"]))
+        steps = list(read(part["ROUTEFILE"]))
         by_number = {int(step["STEP"]): pos for pos, step in enumerate(steps)}
         dedicate_root = _dedicate_root(steps, by_number)
         family: list[int] = []
@@ -402,13 +531,13 @@ def _dedicate_root(steps: list[dict[str, str]], by_number: dict[int, int]) -> li
 
 
 def _setups(
-    path: Path,
+    read: Rows,
     family_index: dict[str, int],
     recipes: dict[str, int],
     recipe_name: list[str],
 ) -> dict[tuple[int, int, int], float]:
     matrix: dict[tuple[int, int, int], float] = {}
-    for row in _rows(path / "setup.txt"):
+    for row in read("setup.txt"):
         fam_name = row["IGNORE"].strip()
         fam = family_index.get(fam_name)
         if fam is None:
@@ -416,8 +545,8 @@ def _setups(
         src = _recipe(row["CURSETUP"].strip(), recipes, recipe_name)
         dst = _recipe(row["NEWSETUP"].strip(), recipes, recipe_name)
         matrix[(fam, src, dst)] = _to_sec(float(row["STIME"]), row["STUNITS"] or "min")
-    for part in _rows(path / "part.txt"):
-        for step in _rows(path / part["ROUTEFILE"]):
+    for part in read("part.txt"):
+        for step in read(part["ROUTEFILE"]):
             setup = step["SETUP"].strip()
             stime = step["STIME"].strip()
             if not setup or not stime:
@@ -431,13 +560,13 @@ def _setups(
 
 
 def _lots(
-    path: Path,
+    read: Rows,
     route_index: dict[str, int],
     routes: list[Route],
 ) -> list[tuple[str, str, int, int, float, float, str, int]]:
-    parts = {row["PART"].strip(): row["ROUTE"].strip() for row in _rows(path / "part.txt")}
+    parts = {row["PART"].strip(): row["ROUTE"].strip() for row in read("part.txt")}
     lots: list[tuple[str, str, int, int, float, float, str, int]] = []
-    for row in _rows(path / "WIP.txt"):
+    for row in read("WIP.txt"):
         route_id = parts[row["PART"].strip()]
         route_i = route_index[route_id]
         step_no = int(float(row["CURSTEP"]))
@@ -462,20 +591,20 @@ def _lots(
     return lots
 
 
-def _downs(path: Path) -> tuple[dict[str, float], dict[str, float]]:
+def _downs(read: Rows) -> tuple[dict[str, float], dict[str, float]]:
     mttf: dict[str, float] = {}
     mttr: dict[str, float] = {}
-    for row in _rows(path / "downcal.txt"):
+    for row in read("downcal.txt"):
         group = row["IGNORE"].strip()
         mttf[group] = _to_sec(float(row["MTTF"]), row["MTTFUNITS"] or "min")
         mttr[group] = _to_sec(float(row["MTTR"]), row["MTTRUNITS"] or "min")
     return mttf, mttr
 
 
-def _pm(path: Path, family_index: dict[str, int]) -> list[tuple[int, float, float, float, str]]:
-    attach = {row["CALNAME"]: row for row in _rows(path / "attach.txt")}
+def _pm(read: Rows, family_index: dict[str, int]) -> list[tuple[int, float, float, float, str]]:
+    attach = {row["CALNAME"]: row for row in read("attach.txt")}
     rows: list[tuple[int, float, float, float, str]] = []
-    for row in _rows(path / "pmcal.txt"):
+    for row in read("pmcal.txt"):
         linked = attach.get(row["PMCALNAME"])
         if linked is None or linked["CALTYPE"].strip() != "pm":
             continue
