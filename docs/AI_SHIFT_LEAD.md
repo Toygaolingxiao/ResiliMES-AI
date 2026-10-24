@@ -259,3 +259,35 @@ python -m resilimes.smt.qtime_study shift_lead --provider nightshift \
 
 Compare the result with the heuristic and rules arms (same book and seed).
 Then check `fallback_causes` and latency p50/p95 in the summary.
+
+### Watching a long run
+
+A live run makes one slow model call per exception, so the study now shows
+where it is. On stderr it prints a start line, then one progress line,
+redrawn in place on a terminal and printed every 10 s
+(`--progress-every`) when stderr goes to a log file:
+
+```
+shift_lead 2/2 published s1 nightshift | sim 14.4/48h  30% [######--------------] | exc 30 | AI 31/200 ok 24 fb 6 (timeout 3, invalid 3) | LLM avg 12.5s last 12.5s wait 8s | 0:11:23 ETA 0:14:54
+```
+
+- `sim`: simulated time against the horizon of the current run.
+- `exc`: exceptions so far. `AI`: model calls against the budget.
+- `ok`: decisions accepted. `fb`: rule fallbacks, by reason: timeout,
+  invalid (bad JSON or unknown option), guardrail, budget, or error.
+- `LLM`: average and last call latency. `wait`: a call is in flight.
+- Elapsed time and ETA. `ETA >…` is a lower bound, used while no run of a
+  later arm has finished yet.
+
+The line is plain ASCII, so it works in a cp932 Windows console. The same
+numbers go to `<out>.progress.json` every 2 s through an atomic replace, with
+`status` running, done or failed. Change the path with `--progress-file`
+(`''` writes no file), or turn both off with `--no-progress`. The other
+qtime_study arms print a line per finished run and write the same file;
+`RESILIMES_STUDY_PROGRESS=0` turns that off.
+
+`GET /api/shift-lead/status` returns the newest progress file, with `age_s`
+and `stale` (running, no update for 60 s). The file comes from
+`RESILIMES_PROGRESS_FILE`, or else the newest in `RESILIMES_PROGRESS_DIR`
+(default: the server's working directory). The console shows it as a card
+with a bar under the rail. Results are the same with progress on or off.
