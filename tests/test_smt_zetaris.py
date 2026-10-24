@@ -177,7 +177,14 @@ def test_auto_falls_back_to_files_and_says_so(monkeypatch: pytest.MonkeyPatch) -
     def broken(settings: Settings, run: Any = None, *, cache: bool = True) -> Any:
         raise SmtZetarisError("connection refused")
 
-    monkeypatch.setattr(fab_module, "load_fab_zetaris", broken)
+    calls: list[int] = []
+
+    def counting(settings: Settings, run: Any = None, *, cache: bool = True) -> Any:
+        calls.append(1)
+        return broken(settings, run, cache=cache)
+
+    monkeypatch.setattr(fab_module, "load_fab_zetaris", counting)
+    monkeypatch.setattr(fab_module, "_ZETARIS_FAILED", {})
     live = Settings(
         mode="auto", zetaris_rest_url="http://x", zetaris_org_id="1", zetaris_api_key="k"
     )
@@ -187,6 +194,8 @@ def test_auto_falls_back_to_files_and_says_so(monkeypatch: pytest.MonkeyPatch) -
     assert source["fallback"] is True and source["source"] == "file"
     assert "connection refused" in source["error"]
     assert fab_source(load_fab(Settings(mode="mock")))["fallback"] is False
+    assert fab_source(load_fab(live))["fallback"] is True
+    assert len(calls) == 1  # a failed read is not retried for RETRY_AFTER_SEC
     with pytest.raises(SmtZetarisError):
         load_fab(live.model_copy(update={"smt_source": "zetaris"}))
 
@@ -199,3 +208,27 @@ def test_env_switch_is_validated(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RESILIMES_SMT_SOURCE", "ftp")
     with pytest.raises(ConfigError):
         load_settings()
+
+
+def test_api_labels_the_master_data_source(seed: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from resilimes.api.app import create_app
+
+    fake = FakeZetaris(seed)
+    via_zetaris = load_fab_zetaris(_settings(), fake, cache=False)
+    monkeypatch.setattr(fab_module, "load_fab_zetaris", lambda *a, **k: via_zetaris)
+    live = Settings(
+        mode="auto",
+        smt_source="zetaris",
+        zetaris_rest_url="http://x",
+        zetaris_org_id="1",
+        zetaris_api_key="secret-key-xyz",
+    )
+    client = TestClient(create_app(live))
+    body = client.get("/api/scenarios").json()
+    assert body["smt_source"]["label"] == "SMT2020 via Zetaris"
+    assert body["smt_source"]["source"] == "zetaris"
+    health = client.get("/api/health").json()
+    assert health["smt_source"]["source"] == "zetaris"
+    assert "secret-key-xyz" not in str(health["smt_source"])

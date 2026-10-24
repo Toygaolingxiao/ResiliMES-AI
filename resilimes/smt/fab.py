@@ -14,6 +14,7 @@ simulated as a station with its published process time.
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
@@ -241,39 +242,57 @@ def load_fab(settings: Settings | None = None) -> Fab:
             wanted = False
         if not wanted:
             return _load(root)
-    try:
-        return load_fab_zetaris(active)
-    except Exception as exc:
-        if requested == "zetaris":
-            raise
-        logger.warning(
-            "SMT2020 Zetaris read failed, using data/smt2020",
-            extra={"fields": {"error": str(exc)[:300]}},
-        )
-        fab = replace(_load(root))
-        fab.origin = {
-            "source": "file",
-            "requested": requested,
-            "label": FALLBACK_LABEL,
-            "fallback": True,
-            "error": str(exc)[:300],
-            "queries": [],
-        }
-        return fab
+    key = _zetaris_key(active)
+    failed = _ZETARIS_FAILED.get(key)
+    if requested == "auto" and failed and time.monotonic() - failed[0] < RETRY_AFTER_SEC:
+        error = failed[1]
+    else:
+        try:
+            fab = load_fab_zetaris(active)
+        except Exception as exc:
+            if requested == "zetaris":
+                raise
+            error = str(exc)[:300]
+            _ZETARIS_FAILED[key] = (time.monotonic(), error)
+            logger.warning(
+                "SMT2020 Zetaris read failed, using data/smt2020",
+                extra={"fields": {"error": error}},
+            )
+        else:
+            _ZETARIS_FAILED.pop(key, None)
+            return fab
+    fab = replace(_load(root))
+    fab.origin = {
+        "source": "file",
+        "requested": requested,
+        "label": FALLBACK_LABEL,
+        "fallback": True,
+        "error": error,
+        "queries": [],
+    }
+    return fab
 
 
 _ZETARIS_CACHE: dict[tuple[Any, ...], Fab] = {}
+# auto mode: after a failed read, serve the files for this long before retrying,
+# so /api/health polling does not wait on a dead Zetaris every call.
+RETRY_AFTER_SEC = 60.0
+_ZETARIS_FAILED: dict[tuple[Any, ...], tuple[float, str]] = {}
+
+
+def _zetaris_key(settings: Settings) -> tuple[Any, ...]:
+    return (
+        settings.zetaris_schema,
+        tuple(sorted(settings.zetaris_table_sources.items())),
+        settings.zetaris_rest_url,
+    )
 
 
 def load_fab_zetaris(settings: Settings, run: Any = None, *, cache: bool = True) -> Fab:
     """Build the fab from the smt_* tables through Zetaris. Successes are cached."""
     from resilimes.data.smt2020_sql import ZetarisRows
 
-    key = (
-        settings.zetaris_schema,
-        tuple(sorted(settings.zetaris_table_sources.items())),
-        settings.zetaris_rest_url,
-    )
+    key = _zetaris_key(settings)
     if cache and run is None and key in _ZETARIS_CACHE:
         return _ZETARIS_CACHE[key]
     reader = ZetarisRows(
