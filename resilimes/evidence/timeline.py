@@ -259,23 +259,27 @@ def build_timeline(
     for visit_rows in timeline.visits.values():
         for visit in visit_rows:
             timeline.by_family.setdefault(visit.family, []).append(visit)
-    for family, rows in timeline.by_family.items():
-        rows.sort(key=lambda item: item.ready)
-        timeline._ready_index[family] = [item.ready for item in rows]
+    for family, fam_visits in timeline.by_family.items():
+        fam_visits.sort(key=lambda item: item.ready)
+        timeline._ready_index[family] = [item.ready for item in fam_visits]
     for moment, tool, lot in overrides:
         until = _busy_end(busy[tool], moment, horizon)
         timeline.displaced.setdefault(lot, []).append(
             Displacement(lot=lot, tool=tool, at=moment, until=until, source="qtime_override")
         )
-    for row in ai_events:
-        tool = int(row.get("tool", -1))
+    for decision in ai_events:
+        tool = int(decision.get("tool", -1))
         if tool < 0:
             continue
-        until = _busy_end(busy[tool], float(row["t"]), horizon)
-        for lot in row.get("displaced", []) or []:
+        until = _busy_end(busy[tool], float(decision["t"]), horizon)
+        for lot in decision.get("displaced", []) or []:
             timeline.displaced.setdefault(int(lot), []).append(
                 Displacement(
-                    lot=int(lot), tool=tool, at=float(row["t"]), until=until, source="ai_decision"
+                    lot=int(lot),
+                    tool=tool,
+                    at=float(decision["t"]),
+                    until=until,
+                    source="ai_decision",
                 )
             )
     return timeline
