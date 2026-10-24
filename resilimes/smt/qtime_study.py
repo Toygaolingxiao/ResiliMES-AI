@@ -176,8 +176,8 @@ def book_plan(fab: Fab, book: str, releases: bool | None = None) -> Any:
             family = fab.families[fab.focus_family]
             for tool in range(family.tool0, family.tool0 + family.tools):
                 inp.down_until[tool] = _STRESS_HOURS * 3600.0
-        _PLANS[book] = build_plan(fab, inp)
-    return _PLANS[book]
+        _PLANS[key] = build_plan(fab, inp)
+    return _PLANS[key]
 
 
 def _inherited(fab: Fab) -> Iterator[tuple[int, int, int, float]]:
