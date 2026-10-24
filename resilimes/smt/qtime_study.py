@@ -13,6 +13,9 @@
 * ``plan``: ``after`` plus the planning layer (``book_plan``): step-due
   risk and plan band/rank tie-break for ResiliMES, the per-tool schedule and
   the deviation log for every policy.
+* ``plan_famwait``: ``plan`` with ``plan_wait="family"`` (the risk's
+  expected wait is the family average, planning-r1 before the
+  position-in-queue fix); for the old-vs-new A/B.
 * ``ablate_plan``: ``ablate`` with the plan.
 * ``ablate``: ResiliMES only, published and X-factor books, each subset of
   fixes 1-3 on its own (``r2_fixes``); the row's ``variant`` names it.
@@ -594,8 +597,11 @@ def _one(item: tuple[str, int, str] | tuple[str, int, str, str]) -> dict[str, An
     plant, kwargs = _setup(fab, book, seed, policy)
     if _ARM[0] == "mech":
         kwargs["r2_policy"] = False
-    if _ARM[0] in ("plan", "ablate_plan"):
+    if _ARM[0] in ("plan", "ablate_plan", "plan_famwait"):
         kwargs["plan"] = book_plan(fab, book)
+    if _ARM[0] == "plan_famwait":
+        # planning-r1 before the position-in-queue wait (A/B study arm).
+        kwargs["plan_wait"] = "family"
     row: dict[str, Any] = {"book": book, "seed": seed, "policy": policy}
     row["lots"] = len(plant.lot_id)
     row["released_lots"] = len(plant.lot_id) - len(fab.lot_id)

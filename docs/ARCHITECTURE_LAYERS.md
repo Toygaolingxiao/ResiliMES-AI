@@ -251,6 +251,8 @@ the plan below, and why:
 - The stress run (`RESILIMES_STRESS_PLAN=1`) uses the same t=0 plan, which does
   not know about the outage.
 - Results and regressions: `docs/QTIME_R2.md`, "Step-due risk".
+- 7 d study (closed and with releases), balance KPIs and the root cause of the
+  plan arm's regression against main: `docs/PLANNING_R1_STUDY.md`.
 
 The original plan:
 
