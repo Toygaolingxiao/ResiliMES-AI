@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from tests.test_smt_invariants import _qtime_fab, _two_family_fab
 
 from resilimes.smt.fab import Fab, Family, Route, inherited_windows, load_fab
@@ -242,13 +244,26 @@ def test_open_window_lot_is_admitted_to_a_capped_shortlist() -> None:
     after = _run(fab, policy="resilimes", horizon=25_000.0)
     before = _run(fab, policy="resilimes", horizon=25_000.0, r2_policy=False)
     # Without the rule L_Q (largest slack) stays off the 8-lot shortlist until
-    # the queue falls to the threshold (12 starts); with it, its Q-time risk
-    # ranks it near the front.
+    # the queue falls to the threshold (12 starts). With it, L_Q is a
+    # candidate at every start and is ranked by its live risk: the 30000 s
+    # window outlasts the 21000 s queue, so it need not go first, but it
+    # starts earlier than before and inside its window.
     assert _b_position(before) >= 12
-    assert _b_position(after) <= 1
+    assert _b_position(after) < _b_position(before)
     assert after.qtime_shortlist_added > 0
     assert before.qtime_shortlist_added == 0
+    start = next(e[1] for e in after.events if e[0] == "start" and 0 in e[3])
+    assert start <= 30_000.0
+    assert after.qtime_violations == 0
     assert check_trace(fab, after, downs=NO_DOWNS, pm=NO_DOWNS)["total"] == 0
+
+
+def test_window_shorter_than_the_queue_goes_first() -> None:
+    # 8000 s window, 21000 s of work queued: Q-time risk > 1, the most at risk.
+    fab = _crowded_b_fab(cqt_limit=8_000.0)
+    after = _run(fab, policy="resilimes", horizon=25_000.0)
+    assert _b_position(after) == 0
+    assert after.qtime_violations == 0
 
 
 def test_shortlist_admission_is_resilimes_only() -> None:
@@ -256,7 +271,7 @@ def test_shortlist_admission_is_resilimes_only() -> None:
     assert result.qtime_shortlist_added == 0
 
 
-# Fix 2: graded urgency -------------------------------------------------------
+# Fix 2: dynamic risk (unified Q-time / due-date weight) ---------------------
 
 
 def _sim(fab, policy="resilimes", r2_policy=True):
@@ -301,31 +316,110 @@ def _three_step_fab() -> Fab:
     return fab
 
 
-def test_graded_urgency_is_monotonic_and_peaks_at_the_latest_start() -> None:
+def test_dynamic_risk_is_wait_over_slack_and_monotonic() -> None:
     sim = _sim(_three_step_fab())
     for lot in (0, 1):
         sim.open_window(lot, 0, 2, 1000.0, 0.0, inherited=True)
-    # Target lot: need 0, latest start 1000 s.
-    grades = [sim.qtime_grade(1, t) for t in (0.0, 250.0, 500.0, 999.0, 1000.0, 1500.0)]
-    assert grades == sorted(grades)
-    assert grades[0] == 0.0 and grades[2] == 0.5
-    assert grades[4] == 1.0 and grades[5] == 1.0
-    # Upstream lot: still needs 300 s at B plus the 60 s move, so its latest
-    # start here is 640 s and it is graded ahead of the target lot.
+    # No live wait yet: no risk (nothing is expected to make a lot wait).
+    assert sim.risk(1, 0.0)[0] == 0.0
+    sim.fam_wait[1] = 400.0
+    sim.risk_at = -1.0  # the memo is per moment; a tick resets it
+    # Target lot: Q slack = deadline - now = 1000 - t; its due date is far.
+    risks = [sim.risk(1, t)[0] for t in (0.0, 250.0, 500.0, 999.0, 1000.0, 1500.0)]
+    assert risks == sorted(risks)
+    assert risks[0] == 0.4 and risks[2] == 0.8
+    assert math.isinf(risks[4]) and math.isinf(risks[5])
+    assert sim.risk(1, 500.0)[1] == 500.0
+    # Upstream lot: still needs 300 s at B plus the 60 s move (latest start
+    # 640 s) and waits at B twice (here and at the target): 800 / 640.
     assert sim.qtime_need(0) == 360.0
-    assert sim.qtime_grade(0, 640.0) == 1.0
-    assert sim.qtime_grade(0, 320.0) > sim.qtime_grade(1, 320.0)
-    # Same value through the PED slot of the tiered key; 0 outside a window.
-    assert sim.ped(1, 500.0) == 0.5
+    assert sim.risk(0, 0.0)[0] == 800.0 / 640.0
+    assert sim.risk(0, 320.0)[0] > sim.risk(1, 320.0)[0]
+    # Closed window: only the due-date risk is left (far due date, ~0).
     sim.close_window(1, "met")
-    assert sim.ped(1, 500.0) == 0.0
+    assert sim.risk(1, 500.0)[0] < 0.01
 
 
-def test_graded_urgency_is_resilimes_only() -> None:
+def test_due_risk_uses_the_observed_flow_ratio() -> None:
+    sim = _sim(_three_step_fab())
+    sim.due[0] = 2_000.0
+    sim.fam_wait[1] = 100.0
+    sim.risk_at = -1.0
+    # Due slack = 2000 - 0 - 600 (raw remaining); 300 s still due after this
+    # step. No observed queueing yet: wait = 100.
+    assert sim.risk(0, 0.0) == (100.0 / 1400.0, 1400.0)
+    sim.wait_sum, sim.proc_sum = 600.0, 300.0
+    sim.refresh_estimates(0.0)
+    assert sim.flow_wait == 2.0
+    # refresh_estimates recomputes the family wait from the (empty) state.
+    sim.fam_wait[1] = 100.0
+    sim.risk_at = -1.0
+    assert sim.risk(0, 0.0)[0] == (100.0 + 2.0 * 300.0) / 1400.0
+    sim.due[0] = 500.0
+    sim.risk_at = -1.0
+    assert math.isinf(sim.risk(0, 0.0)[0])
+
+
+def test_dynamic_risk_is_resilimes_only() -> None:
+    for policy, on in (("resilimes", True), ("edd", False)):
+        sim = _sim(_three_step_fab(), policy=policy)
+        assert sim.fix2 is on
     sim = _sim(_three_step_fab(), r2_policy=False)
+    assert not (sim.fix1 or sim.fix2 or sim.fix3)
+    # The PR #18 PED curve (exp) is kept in the PED slot for the ablation.
     sim.open_window(1, 0, 2, 1000.0, 0.0, inherited=True)
-    # The PR #18 PED curve (exp) is kept for the ablation: not linear.
     assert sim.ped(1, 500.0) != 0.5
+
+
+def test_live_family_wait_counts_queue_and_busy_tools() -> None:
+    sim = _sim(_three_step_fab())
+    for lot in (0, 1):
+        sim.enqueue(lot, 0.0)
+    sim.refresh_estimates(0.0)
+    # Two lots of 300 s at B, one B tool up and idle.
+    assert sim.fam_wait[1] == 600.0
+    sim.running[1], sim.busy_until[1] = 0, 250.0
+    sim.refresh_estimates(100.0)
+    assert sim.fam_wait[1] == 750.0
+
+
+# Replan tick (all policies) ---------------------------------------------------
+
+
+def test_tick_fires_every_300_s_for_every_policy() -> None:
+    for policy in ("resilimes", "edd", "fifo", "cr", "smt_rule"):
+        result = _run(_crowded_b_fab(), policy=policy, horizon=3_000.0)
+        assert result.replan_ticks == 10
+        snaps = [e for e in result.events if e[0] == "replan"]
+        assert [e[1] for e in snaps] == [300.0 * k for k in range(1, 11)]
+        orders, plan = snaps[0][2], snaps[0][3]
+        # Family B queue order, and the next lot planned for its one tool.
+        assert set(orders) == {1} and plan[1] == orders[1][0]
+        off = _run(_crowded_b_fab(), policy=policy, horizon=3_000.0, replan_sec=0.0)
+        assert off.replan_ticks == 0
+
+
+def test_tick_counts_a_stalled_idle_tool_and_starts_nothing() -> None:
+    from resilimes.smt.simulate import _WAKE
+
+    sim = _sim(_crowded_b_fab())
+    sim.record = True
+    real_push = sim.push
+
+    def lossy_push(moment, kind, tool, gen=0):
+        # Lose the first wake of Clean_B-1: it never looks at its queue.
+        if kind == _WAKE and tool == 1 and moment == 0.0:
+            return
+        real_push(moment, kind, tool, gen)
+
+    sim.push = lossy_push
+    result = sim.run()
+    # Dispatch is event-triggered: the tick only counts the stall.
+    assert not [e for e in result.events if e[0] == "start" and e[2] == 1]
+    stalls = [e for e in result.events if e[0] == "tick_stall"]
+    assert result.replan_stalls == result.replan_ticks == len(stalls) == 33
+    assert stalls[0][:3] == ("tick_stall", 300.0, 1)
+    assert result.replan_stalls_batch == 0
 
 
 # Fix 3: bounded tool reservation --------------------------------------------
@@ -344,7 +438,15 @@ def _reserve_fab() -> Fab:
     return fab
 
 
-def _run_reserve(fab, *, pm=NO_DOWNS, downs=NO_DOWNS, **kwargs):
+# The hold plan is set at scheduling ticks; dispatch honours it at events.
+# Clean_B-1 is down 0-150 s so its first dispatch comes after the tick at
+# 100 s (a test-only period), which sees L_Q inbound (eta 280, latest 400).
+B_DOWN = [(0.0, 150.0)]
+
+
+def _run_reserve(fab, *, pm=NO_DOWNS, downs=None, **kwargs):
+    downs = [[], list(B_DOWN)] if downs is None else downs
+    kwargs.setdefault("replan_sec", 100.0)
     return run_policy(
         fab,
         policy="resilimes",
@@ -357,25 +459,35 @@ def _run_reserve(fab, *, pm=NO_DOWNS, downs=NO_DOWNS, **kwargs):
     )
 
 
+RES_DOWNS = [[], list(B_DOWN)]
+
+
 def test_reservation_holds_one_tool_for_the_inbound_qtime_lot() -> None:
     fab = _reserve_fab()
     result = _run_reserve(fab)
     holds = [e for e in result.events if e[0] == "reserve"]
     assert len(holds) == 1
     _kind, at, tool, lot, until, eta = holds[0]
-    assert (at, tool, lot) == (0.0, 1, 0) and until == 400.0 and eta == 280.0
+    # Set on the plan at the 100 s tick, honoured at Clean_B-1's 150 s event.
+    assert (at, tool, lot) == (150.0, 1, 0) and until == 400.0 and eta == 280.0
     assert _b_starts(fab, result, 0) == [280.0]
     assert result.tool_reservations == 1 and result.reserve_used == 1
-    assert result.reserved_min == round(280.0 / 60.0, 1)
+    assert result.reserved_min == round(130.0 / 60.0, 1)
     assert result.qtime_windows["met"] == 1 and result.qtime_violations == 0
-    assert check_trace(fab, result, downs=NO_DOWNS, pm=NO_DOWNS)["total"] == 0
+    assert check_trace(fab, result, downs=RES_DOWNS, pm=NO_DOWNS)["total"] == 0
+
+
+def test_no_hold_without_a_scheduling_tick() -> None:
+    # Dispatch alone never decides a hold: with the tick off there is no plan.
+    result = _run_reserve(_reserve_fab(), replan_sec=0.0)
+    assert result.tool_reservations == 0
 
 
 def test_reservation_is_resilimes_policy_only() -> None:
     fab = _reserve_fab()
     for result in (
         _run_reserve(fab, r2_policy=False),
-        run_policy(fab, policy="edd", seed=1, horizon=5000.0, downs=NO_DOWNS, pm=NO_DOWNS),
+        run_policy(fab, policy="edd", seed=1, horizon=5000.0, downs=RES_DOWNS, pm=NO_DOWNS),
     ):
         assert result.tool_reservations == 0
         assert result.qtime_windows["held"] == 1
@@ -386,16 +498,16 @@ def test_no_reservation_on_a_tool_with_pm_during_the_hold() -> None:
     pm = [[], [(600.0, 700.0)]]
     result = _run_reserve(fab, pm=pm)
     assert result.tool_reservations == 0
-    assert check_trace(fab, result, downs=NO_DOWNS, pm=pm)["total"] == 0
+    assert check_trace(fab, result, downs=RES_DOWNS, pm=pm)["total"] == 0
 
 
 def test_breakdown_cancels_the_reservation() -> None:
     fab = _reserve_fab()
-    downs = [[], [(200.0, 250.0)]]
+    downs = [[], [*B_DOWN, (200.0, 250.0)]]
     result = _run_reserve(fab, downs=downs)
     releases = [e for e in result.events if e[0] == "release"]
     assert [(e[1], e[4]) for e in releases] == [(200.0, "cancelled")]
-    assert result.reserve_cancelled == 1 and result.reserved_min == round(200.0 / 60.0, 1)
+    assert result.reserve_cancelled == 1 and result.reserved_min == round(50.0 / 60.0, 1)
     assert check_trace(fab, result, downs=downs, pm=NO_DOWNS)["total"] == 0
 
 
@@ -407,6 +519,6 @@ def test_reservation_checks_flag_a_start_on_a_held_tool_and_a_long_hold() -> Non
     row[4] = row[1] + 901.0
     result.events[at] = tuple(row)
     # A start of another lot on the held tool before the release.
-    result.events.insert(at + 1, ("start", 1.0, 1, (1,), (0,), 501.0, "", (1,)))
-    counts = check_trace(fab, result, downs=NO_DOWNS, pm=NO_DOWNS)["counts"]
+    result.events.insert(at + 1, ("start", 151.0, 1, (1,), (0,), 651.0, "", (1,)))
+    counts = check_trace(fab, result, downs=RES_DOWNS, pm=NO_DOWNS)["counts"]
     assert counts["reservation"] >= 2
