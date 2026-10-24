@@ -78,7 +78,7 @@ W/T/L counts seeds where the arm is better/tied/worse than `rules`.
 | arm | wt min (mean) | Δwt vs rules | W/T/L (wt) | Q-time viol. | ΔQ vs rules | W/T/L (Q) | on-time % | escalations/run | wall s/run |
 |---|---|---|---|---|---|---|---|---|---|
 | rules | 14355.3 | 0 | – | 38.2 | 0 | – | 25.0 | – | 52 |
-| heuristic (one-step lookahead, no twin) | 15082.6 | +727.3 | 0/0/5 | 42.6 | +4.4 | 0/1/4 | 25.0 | – | 77 |
+| heuristic (one-step lookahead, no twin) | 15082.6 | +727.3 | 0/0/5 | 42.6 | +4.4 | 1/0/4 | 25.0 | – | 77 |
 | sim (twin + Pareto) | 14411.5 | **+56.2 (worse)** | 1/0/4 | 36.0 | **−2.2 (better)** | 4/1/0 | 25.0 | 143 | 1730 |
 
 Per seed (wt / Q-viol): rules 14549.5/40, 13932.4/41, 14332.8/38, 14452.9/35,
