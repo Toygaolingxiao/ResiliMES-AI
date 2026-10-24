@@ -48,6 +48,7 @@ import gzip
 import heapq
 import json
 import os
+import re
 from dataclasses import dataclass
 from typing import IO, TYPE_CHECKING, Any
 
@@ -783,3 +784,50 @@ class Freezer:
             "fill_starts": self.fill_starts,
             "frozen_waits": self.frozen_waits,
         }
+
+
+# ---- reading tick logs (API) -------------------------------------------
+
+TICK_LOG_DIR_ENV = "RESILIMES_TICK_LOG_DIR"
+_RUN_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,120}$")
+
+
+def tick_log_dir() -> str:
+    """Folder the API reads tick logs from (``RESILIMES_TICK_LOG_DIR``)."""
+    return os.environ.get(TICK_LOG_DIR_ENV, os.path.join("out", "sched_ticks"))
+
+
+def list_tick_logs(folder: str) -> list[str]:
+    """Run names with a ``.jsonl`` or ``.jsonl.gz`` tick log in ``folder``."""
+    if not os.path.isdir(folder):
+        return []
+    names = []
+    for name in os.listdir(folder):
+        for ext in (".jsonl.gz", ".jsonl"):
+            if name.endswith(ext):
+                names.append(name[: -len(ext)])
+                break
+    return sorted(names)
+
+
+def read_tick_log(folder: str, run: str, offset: int = 0, limit: int = 50) -> dict[str, Any]:
+    """Ticks ``offset .. offset+limit`` of one run's log. KeyError if absent."""
+    if not _RUN_NAME.match(run) or run.startswith("."):
+        raise KeyError(run)
+    path = os.path.join(folder, run + ".jsonl")
+    if not os.path.isfile(path):
+        path += ".gz"
+        if not os.path.isfile(path):
+            raise KeyError(run)
+    ticks: list[dict[str, Any]] = []
+    more = False
+    opener = gzip.open if path.endswith(".gz") else open
+    with opener(path, "rt", encoding="utf-8") as handle:
+        for index, line in enumerate(handle):
+            if index < offset:
+                continue
+            if len(ticks) >= limit:
+                more = True
+                break
+            ticks.append(json.loads(line))
+    return {"run": run, "offset": offset, "count": len(ticks), "more": more, "ticks": ticks}

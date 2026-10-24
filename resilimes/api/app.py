@@ -34,6 +34,7 @@ from resilimes.domain.scenarios import list_scenarios
 from resilimes.engines.contracts import ContractError
 from resilimes.llm.nightshift import probe_nightshift
 from resilimes.logging_config import configure_logging
+from resilimes.smt.freeze import list_tick_logs, read_tick_log, tick_log_dir
 from resilimes.smt.scenarios import SCENARIOS as SMT_SCENARIOS
 from resilimes.smt.scenarios import run_smt, scenario_payload
 from resilimes.txn.engine import InMemoryEngine, LockError
@@ -247,6 +248,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
+
+    @app.get("/api/sched/ticks")
+    def sched_ticks(run: str | None = None, offset: int = 0, limit: int = 50) -> dict[str, Any]:
+        """Scheduling-tick log of a sim run (sched-freeze), paged; no run lists runs."""
+        folder = tick_log_dir()
+        if run is None:
+            return {"folder": folder, "runs": list_tick_logs(folder)}
+        try:
+            return read_tick_log(folder, run, max(0, offset), max(1, min(limit, 500)))
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown tick log.") from exc
 
     @app.post("/api/providers/probe")
     def probe() -> dict[str, object]:
