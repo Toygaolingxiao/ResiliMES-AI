@@ -932,7 +932,7 @@ class _Sim:
         for lot, origin, target, limit in inherited_windows(self.fab):
             self.open_window(lot, origin, target, limit, 0.0, inherited=True)
             if self.hq is not None:
-                self.hq.commit(lot, target, self.deadline[lot])
+                self.hq.commit(lot, self.step[lot] - 1, target, self.deadline[lot])
         held = self.faults.hold_until if self.faults is not None else {}
         for lot in range(self.n):
             release = self.entry[lot]
