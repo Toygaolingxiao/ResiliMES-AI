@@ -93,6 +93,7 @@ async function init() {
   COPY = await getJson("/assets/i18n.json");
   state.health = await getJson("/api/health");
   state.horizon = state.health.horizon;
+  if (state.health.fab === "smt2020" && window.Fab) state.tab = "fab-overview";
   const payload = await getJson("/api/scenarios");
   state.scenarioItems = payload.scenarios;
   state.bay = payload.bay || [];
@@ -224,7 +225,15 @@ function paintTabs() {
   const host = $("#tabs");
   host.innerHTML = "";
   const tips = { recover: copy.tabRecoverTip, analyze: copy.tabAnalyzeTip, verify: copy.tabVerifyTip };
-  for (const [id, label] of [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify]]) {
+  const fabTabs = fabEnabled() ? window.Fab.tabs() : [];
+  const base = [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify]];
+  for (const [id, label] of [...fabTabs, ...base]) {
+    if (fabTabs.length && id === "recover") {
+      const gap = document.createElement("span");
+      gap.className = "tab-gap";
+      gap.setAttribute("aria-hidden", "true");
+      host.appendChild(gap);
+    }
     const button = document.createElement("button");
     button.type = "button";
     button.setAttribute("role", "tab");
@@ -241,11 +250,21 @@ function paintTabs() {
   showPanel();
 }
 
+function fabEnabled() {
+  return Boolean(window.Fab && state.health && state.health.fab === "smt2020" && $("#panel-fab"));
+}
+
 function showPanel() {
+  const fab = fabEnabled() && state.tab.startsWith("fab-");
   for (const id of ["recover", "analyze", "verify"]) {
     const panel = $(`#panel-${id}`);
-    panel.hidden = state.tab !== id;
+    panel.hidden = fab || state.tab !== id;
   }
+  const fabPanel = $("#panel-fab");
+  if (fabPanel) fabPanel.hidden = !fab;
+  const layout = document.querySelector(".layout");
+  if (layout) layout.classList.toggle("fab-wide", fab);
+  if (fab) window.Fab.show(state.tab.slice(4));
 }
 
 function paintScenarios() {
@@ -1390,6 +1409,14 @@ function resultBlock(result, intent, copy) {
   const lots = (result.affected_lots || []).map((item) => item.lot_id).filter(Boolean);
   wrap.appendChild(paragraph(`${intent.affected} · ${lots.length ? lots.join(", ") : intent.none}`));
   if (result.review_panel) wrap.appendChild(reviewBlock(result.review_panel, copy));
+  if (result.book && window.Fab && copy.fab) {
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "fab-open";
+    open.textContent = copy.fab.whatifOpen;
+    open.addEventListener("click", () => window.Fab.openBook(result.book));
+    wrap.appendChild(open);
+  }
   return wrap;
 }
 
