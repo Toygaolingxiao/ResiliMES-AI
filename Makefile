@@ -1,6 +1,6 @@
 PY ?= python3
 
-.PHONY: install demo demo-bay demo-live test lint typecheck check format sql smoke redis kernel-sql smt-bench
+.PHONY: install demo demo-bay demo-live test lint typecheck check format sql smoke redis kernel-sql smt-bench smt-invariants
 
 install:
 	$(PY) -m pip install -r requirements-dev.txt
@@ -44,3 +44,6 @@ kernel-sql:
 
 smt-bench:
 	$(PY) -m resilimes.smt.benchmark
+
+smt-invariants:
+	$(PY) -m resilimes.smt.invariant_sweep
