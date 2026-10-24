@@ -52,6 +52,8 @@ import re
 from dataclasses import dataclass
 from typing import IO, TYPE_CHECKING, Any
 
+from resilimes.smt.fab import LOOKAHEAD
+
 if TYPE_CHECKING:
     from resilimes.smt.simulate import _Sim
 
@@ -490,6 +492,7 @@ class Freezer:
         taken: set[int] = set(self.fam_frozen[fam]) if self.enabled else set()
         free: list[tuple[float, int]] = []
         loads: dict[int, int] = {}
+        recipe_at: dict[int, int] = {}
         for tool in range(family.tool0, family.tool0 + family.tools):
             if _covering(sim.downs[tool], moment) is not None or sim.res_lot[tool] >= 0:
                 continue
@@ -498,11 +501,13 @@ class Freezer:
             if gone is not None:
                 at = max(at, gone[1])
             count = 0
+            recipe_at[tool] = sim.tool_recipe[tool]
             if self.enabled and self.frozen[tool]:
                 zone[tool] = list(self.frozen[tool])
                 for lot in self.frozen[tool]:
                     at = max(at, sim.ready[lot]) + sim.piece_seconds(lot, tool)
                     count += 1
+                    recipe_at[tool] = self._recipe(lot)
             loads[tool] = count
             free.append((at, tool))
         heapq.heapify(free)
@@ -512,17 +517,12 @@ class Freezer:
         open_batch: dict[int, tuple[int, int, float, float, bool]] = {}
         while free and rest and spare > 0:
             at, tool = heapq.heappop(free)
-            pick = -1
-            for lot in rest:
-                if not sim.eligible(lot, tool, moment):
-                    continue
-                if sim.overlaps_pm(tool, max(at, sim.ready[lot]), sim.piece_seconds(lot, tool)):
-                    continue
-                pick = lot
-                break
+            zone_slot = not planned.get(tool) and loads[tool] < self.cfg.max_lots and at <= horizon
+            pick = self._pick(tool, at, rest, moment, recipe_at[tool], zone_slot)
             if pick < 0:
                 continue
             rest.remove(pick)
+            recipe_at[tool] = self._recipe(pick)
             route = sim.fab.routes[sim.fab.lot_route[pick]]
             index = sim.step[pick]
             proc = sim.piece_seconds(pick, tool)
@@ -558,6 +558,46 @@ class Freezer:
                 spare -= 1
             heapq.heappush(free, (end, tool))
         return zone, planned
+
+    def _recipe(self, lot: int) -> int:
+        route = self.sim.fab.routes[self.sim.fab.lot_route[lot]]
+        return route.recipe[self.sim.step[lot]]
+
+    def _pick(
+        self, tool: int, at: float, rest: list[int], moment: float, recipe: int, zone_slot: bool
+    ) -> int:
+        """The lot the tool takes when it comes free at ``at`` in the plan.
+
+        Beyond the zone: the first feasible lot of the family order. For a
+        zone slot: the policy's own per-tool choice, i.e. the best
+        ``rank`` (setup from the recipe the tool will hold then) among the
+        first ``LOOKAHEAD`` feasible lots ready by ``at`` -- the same
+        candidate cap the dispatcher uses.
+        """
+        sim = self.sim
+        first = -1
+        candidates: list[int] = []
+        for lot in rest:
+            if not sim.eligible(lot, tool, moment):
+                continue
+            if sim.overlaps_pm(tool, max(at, sim.ready[lot]), sim.piece_seconds(lot, tool)):
+                continue
+            if first < 0:
+                first = lot
+                if not zone_slot:
+                    return first
+            if sim.ready[lot] <= at + 1e-6:
+                candidates.append(lot)
+                if len(candidates) >= LOOKAHEAD:
+                    break
+        if not candidates:
+            return first
+        held = sim.tool_recipe[tool]
+        sim.tool_recipe[tool] = recipe
+        try:
+            return min(candidates, key=lambda lot: sim.rank(lot, tool, moment))
+        finally:
+            sim.tool_recipe[tool] = held
 
     def on_tick(self, moment: float) -> None:
         sim = self.sim
