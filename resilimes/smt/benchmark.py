@@ -552,7 +552,8 @@ def _markdown(payload: dict[str, Any]) -> str:
         "under 7200 seconds. "
         "The adjacent Wet_Etch look-ahead fired 0 times on these books. "
         "`macro_aps_ms` does not feed `dpi()`. "
-        "`rank()` calls `dispatch_score`. "
+        "`rank()` for resilimes uses `tiered_key`: class tier, late band, "
+        "Q-time risk, setup, then slack. `dispatch_score` is no longer used there. "
         "A down tool queues the end of every covering window, so a forced outage "
         "that overlaps an MTTF draw still releases at the later end. "
         "Seeds 1-5 on-time on the books below match the figures in this file.",

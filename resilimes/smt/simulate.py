@@ -26,7 +26,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from resilimes.kernel.score import class_tier, dispatch_score, dynamic_priority, ped_risk
+from resilimes.kernel.score import class_tier, dynamic_priority, ped_risk, tiered_key
 from resilimes.smt.fab import (
     BATCH_MAX_WAIT_SEC,
     HOT_BATCH_WAIT_SEC,
@@ -107,6 +107,8 @@ class RunResult:
     rework_lot_min: float = 0.0
     # Litho lots moved off a down dedicated scanner.
     repins: int = 0
+    # Mean queue wait per started step, by class tier (VIP, hot, normal).
+    class_wait_min: dict[str, float] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -450,6 +452,8 @@ class _Sim:
         self.setup_sec = 0.0
         self.reworks = 0
         self.repins = 0
+        self.class_wait: dict[str, float] = {}
+        self.class_starts: dict[str, int] = {}
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -568,7 +572,7 @@ class _Sim:
                 pool = pool[:limit]
             else:
 
-                def _cheap(lot: int) -> tuple[float, float, int]:
+                def _cheap(lot: int) -> tuple[float, ...]:
                     return self.cheap(lot, moment)
 
                 ranked = heapq.nsmallest(limit, pool, key=_cheap)
@@ -765,19 +769,24 @@ class _Sim:
                     count += 1
         return count
 
+    def lot_kind(self, lot: int) -> str:
+        if self.promote_hot and lot == self.hot_lot:
+            return "VIP"
+        return self.fab.lot_class[lot]
+
     def tier(self, lot: int) -> int:
         """0 VIP, 1 hot, 2 normal, from SMT2020 PRIOR (or the promoted hot lot)."""
-        if self.promote_hot and lot == self.hot_lot:
-            return 0
-        return class_tier(self.fab.lot_class[lot])
+        return class_tier(self.lot_kind(lot))
 
-    def cheap(self, lot: int, moment: float) -> tuple[float, float, int]:
+    def cheap(self, lot: int, moment: float) -> tuple[float, ...]:
         if self.policy == "edd":
             return (self.due[lot], self.ready[lot], lot)
         if self.policy == "cr":
             return (self.cr(lot, moment), self.due[lot], lot)
         if self.policy == "resilimes":
-            return (-self.dpi(lot, moment), self.ready[lot], lot)
+            slack = self._slack(lot, moment)
+            late = 0.0 if slack <= 0.0 else 1.0
+            return (float(self.tier(lot)), late, slack, self.ready[lot], lot)
         return (self.ready[lot], self.due[lot], lot)
 
     def rank(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
@@ -789,13 +798,17 @@ class _Sim:
             return (self.cr(lot, moment), self.due[lot], lot)
         if self.policy == "smt_rule":
             return self.smt_rule_key(lot, tool, moment)
+        # Tiered: class tier, late band, Q-time risk, setup, slack. No weights.
         fam = self.fab.tool_family[tool]
         route = self.fab.routes[self.fab.lot_route[lot]]
         setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], route.recipe[self.step[lot]])
-        score = dispatch_score(
-            dpi=self.dpi(lot, moment), setup_sec=setup, ped=self.ped(lot, moment)
+        key = tiered_key(
+            order_class=self.lot_kind(lot),
+            slack_sec=self._slack(lot, moment),
+            setup_sec=setup,
+            ped=self.ped(lot, moment),
         )
-        return (-score, self.ready[lot], lot)
+        return (*key, self.ready[lot], float(lot))
 
     def smt_rule_key(self, lot: int, tool: int, moment: float) -> tuple[float, ...]:
         """Dataset cascade from ``tool.txt.1l``. Not ``dispatch_score``.
@@ -822,7 +835,7 @@ class _Sim:
 
     def dpi(self, lot: int, moment: float) -> float:
         route = self.fab.routes[self.fab.lot_route[lot]]
-        kind = "VIP" if self.promote_hot and lot == self.hot_lot else self.fab.lot_class[lot]
+        kind = self.lot_kind(lot)
         return dynamic_priority(
             due_sec=self.due[lot],
             now_sec=moment,
@@ -939,6 +952,9 @@ class _Sim:
                     self.repins += 1
                 self.dedicate_tool[lot] = tool
             self.lot_tool[lot] = tool
+            kind = ("VIP", "hot", "normal")[self.tier(lot)]
+            self.class_wait[kind] = self.class_wait.get(kind, 0.0) + moment - self.ready[lot]
+            self.class_starts[kind] = self.class_starts.get(kind, 0) + 1
             self.inproc.setdefault(_step_key(self.fab.lot_route[lot], index), set()).add(lot)
         if head_route.batch_max[steps[0]] > 0:
             self.batch_starts += 1
@@ -1212,4 +1228,8 @@ class _Sim:
             reworks=self.reworks,
             rework_lot_min=round(self.reworks * REWORK_SEC / 60.0, 1),
             repins=self.repins,
+            class_wait_min={
+                kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
+                for kind in sorted(self.class_wait)
+            },
         )

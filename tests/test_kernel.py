@@ -262,3 +262,25 @@ def test_redis_store_round_trip() -> None:
     assert store.compare_and_set(key, "token-a", "token-c") is True
     store.delete(key)
     assert store.get(key) is None
+
+
+def test_tiered_key_class_tier_beats_lateness() -> None:
+    from resilimes.kernel.score import tiered_key
+
+    late_normal = tiered_key(order_class="normal", slack_sec=-50_000.0, setup_sec=0.0, ped=1.0)
+    on_time_vip = tiered_key(order_class="VIP", slack_sec=90_000.0, setup_sec=900.0, ped=0.0)
+    on_time_hot = tiered_key(order_class="hot", slack_sec=90_000.0, setup_sec=900.0, ped=0.0)
+    assert on_time_vip < on_time_hot < late_normal
+
+
+def test_tiered_key_late_lots_do_not_tie_at_a_cap() -> None:
+    from resilimes.kernel.score import tiered_key
+
+    very_late = tiered_key(order_class="normal", slack_sec=-90_000.0, setup_sec=0.0, ped=0.0)
+    a_bit_late = tiered_key(order_class="normal", slack_sec=-60.0, setup_sec=0.0, ped=0.0)
+    on_time = tiered_key(order_class="normal", slack_sec=60.0, setup_sec=0.0, ped=0.0)
+    assert very_late < a_bit_late < on_time
+    # Inside the same tier and band, no setup goes before a setup.
+    no_setup = tiered_key(order_class="normal", slack_sec=500.0, setup_sec=0.0, ped=0.0)
+    setup = tiered_key(order_class="normal", slack_sec=100.0, setup_sec=600.0, ped=0.0)
+    assert no_setup < setup
