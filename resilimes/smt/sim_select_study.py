@@ -63,6 +63,7 @@ LEAD = (
     "chosen_llm_plan",
     "llm_plans",
     "llm_plans_invalid",
+    "non_nemotron_replies",
 )
 
 
@@ -299,6 +300,7 @@ def table(result: dict[str, Any]) -> str:
         ("llm_calls", "LLM calls"),
         ("llm_ms_p50", "LLM p50 ms"),
         ("fallbacks", "fallbacks"),
+        ("non_nemotron_replies", "non-Nemotron"),
         ("wall_s", "wall s"),
     )
     lines = [

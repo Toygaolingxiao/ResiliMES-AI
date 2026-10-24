@@ -17,6 +17,13 @@ Order (pre-registered, nothing tuned on held-out seeds):
 3. ``rules``, ``sim``, ``sim_hmem``: the LLM-free baselines on the same
    machine for paired deltas (``--skip-baselines`` to leave them out).
 
+The model is pinned to ``NEMOTRON_MODEL`` (default
+nvidia/nemotron-3.5-lightning-30b-a3b; the script refuses any other family).
+Every reply's served model (Meterless ``provider_model``, else the response
+``model`` field) is counted per run in ``shift_lead.served_models``; a reply
+served by anything else (e.g. Gemini) is not used, the rule default is applied,
+it is counted as ``non_nemotron`` and flagged after each arm.
+
 Budgets are only for runtime and safety, set high so no decision is cut
 short: no cap on escalations, 1200 s per LLM call (the rule default is applied
 if a call exceeds it, and counted as a fallback), ``NEMOTRON_MAX_TOKENS``
@@ -35,8 +42,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+PINNED_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
 DEFAULTS = {
     "RESILIMES_MODE": "live",
+    "NEMOTRON_MODEL": PINNED_MODEL,
     "NEMOTRON_MAX_TOKENS": "16384",
     "METERLESS_TIMEOUT_S": "900",
     "LLM_MAX_RETRIES": "5",
@@ -57,6 +66,20 @@ class _Tee:
 
     def flush(self) -> None:
         self.stdout.flush()
+
+
+def _check_models(out: Path, arm: str, book: str) -> None:
+    """Print the models that actually served each run; flag any non-Nemotron."""
+    import json
+
+    for path in sorted((out / arm).glob(f"{book}_s*.json")):
+        lead = json.loads(path.read_text("utf-8")).get("shift_lead", {})
+        served = lead.get("served_models") or {}
+        if not served:
+            continue
+        bad = {m: n for m, n in served.items() if "nemotron" not in m.lower()}
+        flag = f"  <-- NON-NEMOTRON replies (not used, rule default applied): {bad}" if bad else ""
+        print(f"  {path.name}: served {served}{flag}", flush=True)
 
 
 def main() -> int:
@@ -80,6 +103,12 @@ def main() -> int:
     from resilimes.smt import sim_select_study as study
 
     settings = load_settings()
+    if not settings.nemotron_model.lower().startswith("nvidia/nemotron"):
+        print(
+            f"NEMOTRON_MODEL={settings.nemotron_model!r} is not an nvidia/nemotron model; refusing"
+        )
+        return 4
+    print("pinned model:", settings.nemotron_model, flush=True)
     if not settings.use_nightshift:
         print("Nightshift is not configured: set RESILIMES_MODE=live and the token in .env")
         return 2
@@ -98,6 +127,7 @@ def main() -> int:
     for number, arm in enumerate(arms, 1):
         print(f"=== arm {number}/{len(arms)}: {arm}", flush=True)
         study.main(["run", "--arms", arm, *common])
+        _check_models(out, arm, args.book)
     study.main(["report", *common])
     print(f"=== done {time.strftime('%Y-%m-%d %H:%M:%S')}; report: {out / 'report.md'}")
     return 0

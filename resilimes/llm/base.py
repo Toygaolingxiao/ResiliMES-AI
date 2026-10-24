@@ -34,3 +34,4 @@ class LlmResult(BaseModel):
     completion_id: str = ""
     meterless_request_id: str = ""
     provider_model: str = ""
+    response_model: str = ""  # the "model" field of the provider response

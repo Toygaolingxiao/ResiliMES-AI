@@ -125,6 +125,7 @@ class NightshiftProvider:
             completion_id=completion_id,
             meterless_request_id=meterless_request_id,
             provider_model=provider_model,
+            response_model=str(getattr(response, "model", "") or ""),
         )
 
     def _create(

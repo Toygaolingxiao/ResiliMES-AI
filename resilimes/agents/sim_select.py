@@ -53,6 +53,7 @@ from resilimes.smt.twin import PlanScore, Twin
 
 PLAN_LANE = "shift_lead_plan"
 SELECT_LANE = "shift_lead_select"
+REQUIRED_MODEL = "nemotron"  # live replies must be served by a Nemotron model
 MAX_PLANS = 4
 MAX_LEVERS = 4
 BOOST_MAX_MIN = 60.0
@@ -483,6 +484,7 @@ class SimShiftLead(ShiftLead):
         self.llm_fail: dict[str, int] = {}
         self.escalations = 0
         self.twin_skips = 0
+        self.models: dict[str, int] = {}
 
     def on_tick(self, sim: Any, moment: float) -> None:
         if self.planned is None:
@@ -523,6 +525,12 @@ class SimShiftLead(ShiftLead):
             if "error" in box:
                 raise DecisionError("provider_error", type(box["error"]).__name__)
             result: LlmResult = box["result"]
+            served = result.provider_model or result.response_model or result.model
+            self.models[served] = self.models.get(served, 0) + 1
+            if not result.mocked and REQUIRED_MODEL not in served.lower():
+                # Pinned to Nemotron: a reply served by any other model
+                # (e.g. a Gemini fallback in the proxy) is not used.
+                raise DecisionError("non_nemotron", served[:60])
             try:
                 return extract_json_object(result.content)
             except ValueError as error:
@@ -670,6 +678,8 @@ class SimShiftLead(ShiftLead):
                 "llm_ms_p50": pct(0.5),
                 "llm_ms_p95": pct(0.95),
                 "llm_failures": dict(self.llm_fail),
+                "served_models": dict(self.models),
+                "non_nemotron_replies": self.llm_fail.get("non_nemotron", 0),
                 "llm_plans": sum(
                     1 for e in self.log for p in e.get("plans", []) if p["source"] == "llm"
                 ),

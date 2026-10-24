@@ -112,8 +112,8 @@ class _Scripted:
     name = "scripted"
     mocked = True
 
-    def __init__(self, plan: Any, select: Any) -> None:
-        self.plan, self.select = plan, select
+    def __init__(self, plan: Any, select: Any, served: str = "") -> None:
+        self.plan, self.select, self.served = plan, select, served
         self.mock = MockProvider()
 
     def model_for(self, lane: str) -> str:
@@ -125,7 +125,10 @@ class _Scripted:
         real = self.mock.complete(messages, lane=lane)
         hook = self.plan if lane == PLAN_LANE else self.select
         content = hook(real.content) if hook is not None else real.content
-        return real.model_copy(update={"content": content})
+        update: dict[str, Any] = {"content": content}
+        if self.served:  # pretend to be a live reply served by this model
+            update.update({"mocked": False, "provider_model": self.served})
+        return real.model_copy(update=update)
 
 
 def _run(lead_kwargs: dict[str, Any]) -> SimShiftLead:
@@ -192,3 +195,15 @@ def test_out_of_scope_plans_are_rejected() -> None:
         llm = [plan for plan in entry["plans"] if plan["source"] == "llm"]
         assert llm and all(not plan["valid"] for plan in llm)
         assert entry["chosen"] in ("A", "B", "C", "D", "E")
+
+
+def test_replies_not_served_by_nemotron_are_not_used() -> None:
+    lead = _run(
+        {"completer": _Scripted(None, None, served="google/gemini-2.5-flash"), "selector": "llm"}
+    )
+    assert _escalated(lead)
+    for entry in _escalated(lead):
+        assert entry["chosen"] == entry["default"] and entry["fallback"]
+    summary = lead.summary()
+    assert summary["non_nemotron_replies"] > 0
+    assert summary["served_models"] == {"google/gemini-2.5-flash": summary["llm_calls"]}

@@ -35,7 +35,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from resilimes.agents.jsonutil import extract_json_object
 from resilimes.agents.sim_select import PLAN_SYSTEM, SELECT_SYSTEM
 from resilimes.config import load_settings
-from resilimes.llm.nightshift import build_openai_client, probe_nightshift, strip_reasoning
+from resilimes.llm.nightshift import (
+    _response_ids,
+    build_openai_client,
+    probe_nightshift,
+    strip_reasoning,
+)
 from resilimes.llm.urls import normalize_base_url
 from resilimes.smt.progress import redact
 
@@ -97,8 +102,13 @@ def _call(client: Any, model: str, timeout: float, **kw: Any) -> dict[str, Any]:
         }
     choice = response.choices[0]
     usage = getattr(response, "usage", None)
+    _cid, _rid, provider_model = _response_ids(response)
+    served = provider_model or str(getattr(response, "model", "") or "")
     return {
         "ok": True,
+        "response_model": str(getattr(response, "model", "") or ""),
+        "provider_model": provider_model,
+        "non_nemotron": "nemotron" not in served.lower(),
         "ms": round((time.perf_counter() - started) * 1000),
         "finish_reason": choice.finish_reason,
         "reasoning_returned": _reasoning(choice.message),
@@ -206,11 +216,23 @@ def main(argv: list[str] | None = None) -> int:
             "reasoning_returned": sum(1 for r in rows if r.get("reasoning_returned")),
             "tool_calls": sum(1 for r in rows if r.get("tool_calls")),
             "truncated": sum(1 for r in rows if r.get("finish_reason") == "length"),
+            "non_nemotron": sum(1 for r in rows if r.get("non_nemotron")),
         }
         for name, rows in checks.items()
     }
     Path(args.out).write_text(json.dumps(report, indent=1), encoding="utf-8")
     print(json.dumps(report["summary"], indent=1))
+    served = sorted(
+        {
+            str(r.get("provider_model") or r.get("response_model") or "")
+            for rows in checks.values()
+            for r in rows
+        }
+        - {""}
+    )
+    print("served models:", served)
+    if any(r.get("non_nemotron") for rows in checks.values() for r in rows):
+        print("WARNING: some replies were NOT served by Nemotron (see non_nemotron)")
     print(f"wrote {args.out} (no token inside)")
     answered = any(r.get("ok") for rows in checks.values() for r in rows)
     return 0 if answered else 1
