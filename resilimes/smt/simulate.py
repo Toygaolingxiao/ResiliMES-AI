@@ -35,6 +35,8 @@ from resilimes.smt.fab import (
     WIP_FLOOR,
     WIP_PER_TOOL,
     Fab,
+    lot_number,
+    measured,
 )
 
 _DONE = 0
@@ -109,6 +111,10 @@ class RunResult:
     repins: int = 0
     # Mean queue wait per started step, by class tier (VIP, hot, normal).
     class_wait_min: dict[str, float] = field(default_factory=dict)
+    # Sampled metrology steps a lot skipped (StepPercent < 100, lot-ID rule),
+    # and Q-time windows that ended because their target step was skipped.
+    skipped: int = 0
+    qtime_skipped: int = 0
 
 
 def rework_ready(moment: float) -> float:
@@ -453,6 +459,9 @@ class _Sim:
         self.reworks = 0
         self.repins = 0
         self.class_wait: dict[str, float] = {}
+        self.skipped = 0
+        self.qtime_skipped = 0
+        self.lot_no = [lot_number(name, lot) for lot, name in enumerate(fab.lot_id)]
         self.class_starts: dict[str, int] = {}
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
@@ -1073,8 +1082,20 @@ class _Sim:
             self.cqt_at[lot] = route.cqt_target[index]
             self.cqt_from[lot] = index
         nxt = index + 1
+        # Sampled metrology: a lot not picked by the lot-ID rule moves past
+        # the step with no queue and no process time.
+        while nxt < len(route.family) and not measured(route, nxt, self.lot_no[lot]):
+            self.skipped += 1
+            if self.record:
+                self.events.append(("skip", moment, lot, nxt))
+            if self.cqt_at[lot] == nxt:
+                # The Q-time window ends at its target step; an unmeasured lot
+                # never visits it, so the window is closed without a check.
+                self.cqt_at[lot] = -1
+                self.qtime_skipped += 1
+            nxt += 1
         if nxt >= len(route.family):
-            self.step[lot] = max(index, 0)
+            self.step[lot] = len(route.family) - 1
             self.finished_at[lot] = moment
             return
         self.step[lot] = nxt
@@ -1228,6 +1249,8 @@ class _Sim:
             reworks=self.reworks,
             rework_lot_min=round(self.reworks * REWORK_SEC / 60.0, 1),
             repins=self.repins,
+            skipped=self.skipped,
+            qtime_skipped=self.qtime_skipped,
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)

@@ -157,7 +157,7 @@ def test_tight_vip_dues_make_edd_lose_on_seed_one() -> None:
     assert after["weighted_tardiness_min"] < before["weighted_tardiness_min"] * 0.7
     assert after["qtime_violations"] < before["qtime_violations"]
     tight = report["tight"]
-    assert tight["spotlight_lot"] == "Init_Lot_2_23"
+    assert tight["spotlight_lot"] == "Init_Lot_2_13"
     assert tight["spotlight_late_h_before"] > 5
     assert tight["spotlight_late_h_after"] == 0
     assert "public industry benchmark (SMT2020)" in tight["note"]

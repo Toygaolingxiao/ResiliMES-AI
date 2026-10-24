@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from resilimes.smt.fab import Fab, Family, Route, load_fab
+from resilimes.smt.fab import Fab, Family, Route, load_fab, lot_number, measured
 from resilimes.smt.invariants import check_trace
 from resilimes.smt.simulate import pm_windows, run_policy, sample_downs
 
@@ -157,3 +157,51 @@ def test_qtime_recount_uses_a_strict_greater_than() -> None:
     assert result.qtime_violations == 1
     assert report["qtime_recount"] == 1
     assert report["total"] == 0
+
+
+@pytest.mark.parametrize("pct", [10.0, 33.0, 37.0, 52.0, 59.0, 100.0])
+def test_sampling_rule_measures_exactly_pct_of_every_hundred_lots(pct: float) -> None:
+    route = _two_family_fab().routes[0]
+    route.sample_pct = [100.0, pct]
+    route.step_no = [1, 2]
+    for start in (0, 7, 250):
+        hits = [measured(route, 1, number) for number in range(start, start + 100)]
+        assert sum(hits) == int(pct)
+    assert lot_number("Init_Lot_3_17", 0) == 17
+    assert lot_number("odd", 5) == 5
+
+
+def test_unsampled_q_time_target_is_skipped_and_closes_the_window() -> None:
+    fab = _two_family_fab(cqt_limit=1.0)
+    route = fab.routes[0]
+    route.sample_pct = [100.0, 0.0]
+    route.step_no = [1, 2]
+    result = run_policy(
+        fab, policy="edd", seed=1, horizon=5000, downs=[[], []], pm=[[], []], record=True
+    )
+    # L_AB skips B (0 % sampled) right after A: no Q-time check, route done.
+    assert result.skipped == 1
+    assert result.qtime_skipped == 1
+    assert result.qtime_violations == 0
+    assert any(event[0] == "skip" and event[3] == 1 for event in result.events)
+    report = check_trace(fab, result, downs=[[], []], pm=[[], []])
+    assert report["total"] == 0, report["examples"]
+    # Forging a skip of a measured step is caught.
+    route.sample_pct = [100.0, 100.0]
+    assert check_trace(fab, result, downs=[[], []], pm=[[], []])["counts"]["sampling"] == 1
+
+
+def test_full_fab_skips_sampled_steps_at_the_dataset_rate() -> None:
+    fab = load_fab()
+    sampled = sum(1 for route in fab.routes for pct in route.sample_pct if pct < 100.0)
+    assert sampled > 0
+    horizon = 4 * 3600.0
+    result = run_policy(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=horizon,
+        downs=sample_downs(fab, 1, horizon),
+        pm=pm_windows(fab, horizon),
+    )
+    assert result.skipped > 0

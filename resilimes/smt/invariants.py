@@ -23,6 +23,8 @@ Checks, one counter each:
   reason (``hot_cap``, ``max_wait``, ``no_arrivals``).
 - ``qtime_recount``: Q-time violations recounted from the trace, with the
   simulator's strict ``>``, differ from the reported count.
+- ``sampling``: a lot skips only steps the lot-ID rule leaves unmeasured,
+  and never runs such a step (its snapshot step excepted).
 
 This is a replay of the simulator's own events, not a second simulator.
 """
@@ -31,7 +33,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from resilimes.smt.fab import REWORK_SEC, Fab
+from resilimes.smt.fab import REWORK_SEC, Fab, lot_number, measured
 
 _WAFERS = 25
 CHECKS = (
@@ -47,6 +49,7 @@ CHECKS = (
     "batch_all_started",
     "batch_min",
     "qtime_recount",
+    "sampling",
 )
 UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals")
 
@@ -132,6 +135,10 @@ def check_trace(
                     flag("family", f"{lot_id} step {index} on {name}, needs {want}")
                 if running[lot] or step[lot] != index:
                     flag("route_order", f"{lot_id} started step {index}, next is {step[lot]}")
+                start_step = fab.lot_step[lot]
+                number = lot_number(lot_id, lot)
+                if index != start_step and not measured(route, index, number):
+                    flag("sampling", f"{lot_id} ran unsampled step {index}")
                 if rework_step[lot] >= 0:
                     early = moment < rework_at[lot] + REWORK_SEC - 1e-6
                     if index != rework_step[lot] or early:
@@ -178,6 +185,14 @@ def check_trace(
             if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
                 q_deadline[lot] = moment + route.cqt_limit[index]
                 q_target[lot] = route.cqt_target[index]
+            step[lot] = index + 1
+        elif kind == "skip":
+            _kind, moment, lot, index = event
+            route = fab.routes[fab.lot_route[lot]]
+            if step[lot] != index or measured(route, index, lot_number(fab.lot_id[lot], lot)):
+                flag("sampling", f"{fab.lot_id[lot]} skipped step {index}")
+            if q_target[lot] == index:
+                q_target[lot] = -1
             step[lot] = index + 1
         elif kind == "reclean":
             _kind, moment, lot, index, origin = event
