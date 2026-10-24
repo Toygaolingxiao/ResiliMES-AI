@@ -12,5 +12,6 @@ def build_source(settings: Settings) -> SampleSource | ZetarisSource:
         return ZetarisSource(
             schema=settings.zetaris_schema,
             timeout_s=settings.zetaris_timeout_s,
+            sources=settings.zetaris_table_sources,
         )
     return SampleSource(settings.data_dir, schema=settings.zetaris_schema)

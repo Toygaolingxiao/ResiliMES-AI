@@ -13,7 +13,9 @@ from resilimes.config import HORIZON, Settings
 
 
 def _settings() -> Settings:
-    return Settings(mode="mock", horizon=HORIZON, scout_signing_secret="stream-secret")
+    return Settings(
+        mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="stream-secret"
+    )
 
 
 def _events(raw: str) -> list[tuple[str, dict[str, object]]]:

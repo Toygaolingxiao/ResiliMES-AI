@@ -21,9 +21,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Hackathon scaffold path; override with ZETARIS_SQL_PATH if your tenant uses run-query.
-DEFAULT_SQL_PATH = "/sql-editor/sqls/run"
-DEFAULT_TIMEOUT_S = 30
+# Verified on the owner's bundle. /sql-editor/sqls/run accepts the same body.
+DEFAULT_SQL_PATH = "/sql-editor/sqls/run-query"
+DEFAULT_TIMEOUT_S = 30.0
 
 
 class ZetarisError(RuntimeError):
@@ -57,7 +57,16 @@ def _headers() -> dict[str, str]:
     }
 
 
-def run_sql(sql: str, *, timeout_s: float = DEFAULT_TIMEOUT_S) -> dict[str, Any]:
+def _timeout(timeout_s: float | None) -> float:
+    if timeout_s is not None:
+        return timeout_s
+    raw = os.getenv("ZETARIS_TIMEOUT_S", "").strip()
+    if not raw:
+        return DEFAULT_TIMEOUT_S
+    return float(raw)
+
+
+def run_sql(sql: str, *, timeout_s: float | None = None) -> dict[str, Any]:
     """
     Execute one Lightning SQL statement via Zetaris REST.
 
@@ -71,7 +80,7 @@ def run_sql(sql: str, *, timeout_s: float = DEFAULT_TIMEOUT_S) -> dict[str, Any]
         _sql_url(),
         headers=_headers(),
         json={"sql": statement},
-        timeout=timeout_s,
+        timeout=_timeout(timeout_s),
     )
     if response.status_code >= 400:
         raise ZetarisError(f"Zetaris SQL failed ({response.status_code}): {response.text[:500]}")
@@ -119,7 +128,10 @@ def check_web(timeout_s: float = 10.0) -> dict[str, Any]:
     }
 
 
-def check_rest_sql(timeout_s: float = DEFAULT_TIMEOUT_S) -> dict[str, Any]:
-    """Run SELECT 1 against the REST SQL endpoint."""
+def check_rest_sql(timeout_s: float | None = None) -> dict[str, Any]:
+    """Run SELECT 1 against the REST SQL endpoint.
+
+    A missing timeout reads ``ZETARIS_TIMEOUT_S`` (default 30).
+    """
     result = run_sql("SELECT 1", timeout_s=timeout_s)
     return {"ok": True, "result": result}

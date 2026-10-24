@@ -22,6 +22,7 @@ from resilimes.llm.urls import assert_runtime_token, normalize_base_url
 def _settings() -> Settings:
     return Settings(
         mode="mock",
+        fab="sample",
         horizon=HORIZON,
         scout_signing_secret="loop-secret",
     )

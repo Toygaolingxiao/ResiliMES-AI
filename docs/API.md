@@ -1,6 +1,6 @@
 # Dispatch API
 
-Nemotron does not compute a schedule. It returns one tool call. This service validates that call, Scout signs it, and a later confirm runs the transactional operation. The scheduling branch owns the real database transaction and the optional Redis `StateStore`. This repository ships the interface and an in-memory default. It does not edit `schedule_plant`.
+Nemotron does not compute a schedule. It returns one tool call. This service validates that call, Scout signs it, and a later confirm runs the transactional operation. `InMemoryEngine` is that transaction. `InMemoryStateStore` is the default. `REDIS_URL` selects `RedisStateStore`, which implements the same protocol. Neither store edits `schedule_plant`.
 
 ## Tool call
 
@@ -84,6 +84,10 @@ class EngineTransaction(Protocol):
 `InMemoryEngine` in `resilimes/txn/engine.py` is the default. A held lot is removed from the returned book after dispatch, because this branch does not change the scheduler. `recover` already reads priority. `preferred_equipment` is written when the target tool can run a remaining step. A PM with `new_start_min == 0` sets the tool to `MAINTENANCE` until `duration_min`. A later start is recorded on the maintenance log and does not take the tool down yet.
 
 The plant snapshot lives at key `plant`. Pending confirmations live at `confirm:{id}`.
+
+## Redis
+
+`RedisStateStore` is in `resilimes/txn/store.py`. `compare_and_set(key, None, token)` is `SET key token NX`. A present expected value is a Lua compare-and-swap. `make redis` starts Redis 7 on port 6379. The live round trip is skipped when nothing is listening. The lock key stays `lock:{equipment_id}`. `InMemoryEngine` does not change when the store changes.
 
 ## Qualitative review
 

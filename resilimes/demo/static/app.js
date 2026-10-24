@@ -222,15 +222,15 @@ const COPY = {
       Clean: "Clean",
     },
     scenarios: {
-      litho_down: ["Machine breakdown", "LITHO-02 is down for 10 h. LOT-1001 is blocked, due 18:00 UTC."],
+      litho_down: ["Lithography breakdown", "Litho_FE_92-1 is down for the published 705.59 min lithography repair. Snapshot 2018-01-01."],
       rush_order: ["Rush order", "A hot lot is due in 3 h. Running lots stay on their tools."],
       material_shortage: ["Material shortage", "RESIST-UV is at zero. Lots that still need it wait."],
       rework: ["Overlay rework", "LOT-1004 overlay failed at measure. Strip, re-expose, re-measure once."],
-      qtime: ["Queue time", "Clean already finished. The next film must start within 15 min."],
+      qtime: ["Queue time", "Published CQT limits. ResiliMES adds PED risk and a Wet_Etch gate. That gate fired 0 times on the stored seeds. FIFO does not use the gate."],
       scale: ["Scale", "1,000 lots, 36 tools. One scanner is down for 10 h."],
     },
-    chartBefore: { litho_down: "Wait for repair", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "8 h queue time", scale: "vs. EDD dispatch" },
-    chartAfter: { litho_down: "Rescheduled", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "15 min queue time", scale: "Priority recovery" },
+    chartBefore: { litho_down: "EDD on this seed", rush_order: "Book without the rush", material_shortage: "Resist available", rework: "No rework", qtime: "FIFO", scale: "vs. EDD dispatch" },
+    chartAfter: { litho_down: "ResiliMES on this seed", rush_order: "Book with the rush", material_shortage: "RESIST-UV stockout", rework: "Strip, expose, measure", qtime: "ResiliMES, published CQT", scale: "Priority recovery" },
     scaleWindow: "First 12 hours",
     scaleNote: "Busy share of each tool, by hour. A hatch means the tool is down.",
     scheduleWord: "Schedule",
@@ -415,15 +415,15 @@ const COPY = {
     status: { IDLE: "空闲", RUNNING: "加工", DOWN: "宕机", MAINTENANCE: "维护", ok: "有库存", short: "短缺" },
     areas: { Lithography: "光刻", Etch: "刻蚀", CMP: "抛光", Deposition: "沉积", Metrology: "量测", Clean: "清洗" },
     scenarios: {
-      litho_down: ["设备故障", "光刻机 02 宕机 10 小时。LOT-1001 被挡住，交期 18:00 UTC。"],
+      litho_down: ["光刻故障", "Litho_FE_92-1 按已发表的光刻维修时间 705.59 分钟停机。快照时刻 2018-01-01。"],
       rush_order: ["急单", "一个热批次 3 小时内要交。正在加工的批次留在原设备。"],
       material_shortage: ["缺料", "RESIST-UV 库存为零。还要用它的批次等待。"],
       rework: ["套刻返工", "LOT-1004 量测套刻失败。去胶、再曝光、再量一次。"],
-      qtime: ["队列时间", "清洗已经结束。下一道成膜必须在 15 分钟内开工。"],
+      qtime: ["队列时间", "已发表的 CQT。ResiliMES 增加 PED 风险和湿法刻蚀闸门。该闸门在已存储的种子上触发 0 次。FIFO 不使用该闸门。"],
       scale: ["规模", "1000 个批次、36 台设备。一台光刻机宕机 10 小时。"],
     },
-    chartBefore: { litho_down: "修理等待", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "8 小时队列", scale: "对比 EDD 派工" },
-    chartAfter: { litho_down: "已重排", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "15 分钟队列", scale: "优先级恢复" },
+    chartBefore: { litho_down: "本种子的 EDD", rush_order: "没有急单", material_shortage: "有光刻胶", rework: "无返工", qtime: "FIFO", scale: "对比 EDD 派工" },
+    chartAfter: { litho_down: "本种子的 ResiliMES", rush_order: "放入急单", material_shortage: "RESIST-UV 缺货", rework: "去胶、曝光、复测", qtime: "ResiliMES，已发表 CQT", scale: "优先级恢复" },
     scaleWindow: "前 12 小时",
     scaleNote: "每台设备每小时的忙碌占比。斜线表示宕机。",
     scheduleWord: "排程",
@@ -608,15 +608,15 @@ const COPY = {
     status: { IDLE: "空き", RUNNING: "加工", DOWN: "停止", MAINTENANCE: "保全", ok: "在庫あり", short: "不足" },
     areas: { Lithography: "リソ", Etch: "エッチ", CMP: "CMP", Deposition: "成膜", Metrology: "測定", Clean: "洗浄" },
     scenarios: {
-      litho_down: ["装置故障", "リソ 02 が 10 時間停止。LOT-1001 が詰まり、納期 18:00 UTC。"],
+      litho_down: ["リソグラフィ故障", "Litho_FE_92-1 が公開されたリソグラフィ修理 705.59 分のあいだ停止。スナップショット 2018-01-01。"],
       rush_order: ["特急", "ホットロットの納期は 3 時間。加工中のロットは装置に残す。"],
       material_shortage: ["資材不足", "RESIST-UV はゼロ。まだ必要なロットは待つ。"],
       rework: ["重ね合わせ再加工", "LOT-1004 は測定で不良。剥離し、再露光し、再測定する。"],
-      qtime: ["待ち時間", "洗浄は終了済み。次の成膜は 15 分以内に始める。"],
+      qtime: ["待ち時間", "公開された CQT。ResiliMES は PED リスクとウェットエッチのゲートを加える。そのゲートは保存済みシードで 0 回だった。FIFO はそのゲートを使わない。"],
       scale: ["規模", "1000 ロット、36 台。スキャナー 1 台が 10 時間停止。"],
     },
-    chartBefore: { litho_down: "修理を待つ", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "待ち 8 時間", scale: "EDD 差し立てとの比較" },
-    chartAfter: { litho_down: "再計画", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "待ち 15 分", scale: "優先度の回復" },
+    chartBefore: { litho_down: "このシードの EDD", rush_order: "特急なし", material_shortage: "レジストあり", rework: "再加工なし", qtime: "FIFO", scale: "EDD 差し立てとの比較" },
+    chartAfter: { litho_down: "このシードの ResiliMES", rush_order: "特急を入れる", material_shortage: "RESIST-UV 欠品", rework: "剥離、再露光、再測定", qtime: "ResiliMES、公開 CQT", scale: "優先度の回復" },
     scaleWindow: "最初の 12 時間",
     scaleNote: "装置ごとの 1 時間の稼働割合。斜線は停止。",
     scheduleWord: "計画",
@@ -664,6 +664,11 @@ const state = {
   running: false,
   incidentText: "",
   utilSide: "after",
+  smtGroup: "all",
+  smtStart: 0,
+  smtEnd: 720,
+  smtDrill: "",
+  smtPinned: "",
 };
 
 const $ = (id) => document.querySelector(id);
@@ -750,17 +755,30 @@ function paint() {
   $("#empty-title").textContent = copy.emptyTitle;
   $("#empty-hint").textContent = copy.emptyHint;
   $("#clock").textContent = `${copy.clock} ${formatClock(state.horizon)} UTC`;
-  const mock = state.health.llm === "mock" && state.health.data === "sample";
+  const source = state.health.data_source || state.health.data || "sample";
+  const mock = state.health.llm === "mock" && source === "sample";
   const badge = $("#mode-badge");
   badge.textContent = mock ? copy.offline : state.health.label;
   badge.className = mock ? "badge" : "badge live";
   const banner = $("#banner");
   banner.hidden = false;
-  banner.textContent = mock ? copy.mock : copy.live;
+  if (source === "smt2020") {
+    const counts = `${state.health.groups || 106} groups · ${state.health.tools || 1313} tools · ${state.health.litho_tools || 102} litho · ${state.health.lots || 2156} lots`;
+    banner.textContent = `public industry benchmark (SMT2020) · data source: smt2020 · ${counts}`;
+    $("#bay-label").textContent = "Tool groups";
+    $("#tagline").textContent = "Public industry benchmark (SMT2020)";
+  } else {
+    banner.textContent = `${mock ? copy.mock : copy.live} data source: ${source}`;
+  }
+  const query = $("#query-line");
+  const queryBody = formatBenchmark(state.report, state.steps);
+  query.hidden = !queryBody;
+  query.textContent = queryBody;
   $("#theme").textContent = state.theme === "dark" ? copy.themeDark : copy.themeLight;
   document.querySelectorAll("[data-lang]").forEach((button) => {
     button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
   });
+  if (state.report && state.report.board) state.bay = state.report.board;
   paintTabs();
   paintScenarios();
   paintBay(bayStatus());
@@ -803,7 +821,10 @@ function paintScenarios() {
   const copy = t();
   host.innerHTML = "";
   for (const item of state.scenarioItems || []) {
-    const text = copy.scenarios[item.id] || [item.title, item.summary];
+    const smt = state.health && state.health.fab === "smt2020";
+    const text = smt && item.summary
+      ? [item.title, item.summary]
+      : (copy.scenarios[item.id] || [item.title, item.summary]);
     const row = document.createElement("div");
     row.className = "scenario" + (item.id === state.activeScenario ? " active" : "");
     const words = document.createElement("div");
@@ -838,6 +859,10 @@ function bayStatus() {
 function paintBay(statusById) {
   const host = $("#bay");
   host.innerHTML = "";
+  if ((state.bay[0] && state.bay[0].kind === "group") || (state.health && state.health.fab === "smt2020" && state.bay.length && state.bay[0].kind === "group")) {
+    paintGroups(host);
+    return;
+  }
   const scaleRows = state.report && state.report.scenario_id === "scale" && state.report.load && state.report.load.after && state.report.load.after.rows;
   if (scaleRows) {
     const counts = {};
@@ -889,8 +914,223 @@ function flash(id) {
   lamp.classList.add("flash");
 }
 
+function paintGroups(host) {
+  const rows = state.bay.slice().sort((a, b) => (b.tools || 0) - (a.tools || 0));
+  for (const item of rows) {
+    const li = document.createElement("li");
+    li.dataset.id = item.id;
+    const down = item.down || item.status === "DOWN";
+    const queue = item.queue == null ? "" : `q ${item.queue}`;
+    const downText = down ? `${item.down || ""} down` : "up";
+    li.innerHTML = `<span class="lamp ${down ? "down" : "up"}"></span><span>${escapeHtml(item.id)}</span><small>${item.tools || ""} · ${escapeHtml(downText)} · ${escapeHtml(queue)}</small>`;
+    li.addEventListener("click", () => {
+      state.smtGroup = state.smtGroup === item.id ? "all" : item.id;
+      if (state.report && state.report.fab === "smt2020") paintSmtCharts(state.report);
+    });
+    host.appendChild(li);
+  }
+}
+
+function formatBenchmark(report, steps) {
+  const fromStep = (steps || []).find((step) => step.phase === "query");
+  const slots = (fromStep && fromStep.slots) || (report && report.zetaris) || null;
+  if (!slots || !slots.queries) {
+    return (report && report.query) || "";
+  }
+  const live = slots.mode === "zetaris" && !slots.error;
+  const head = live
+    ? "Zetaris"
+    : slots.error
+      ? "Zetaris query failed"
+      : "local extract (Zetaris not called)";
+  const sources = `sources: ${(slots.sources || []).join(", ")}`;
+  const rows = slots.row_counts || {};
+  const counts = `rows: ${Object.entries(rows).map(([name, count]) => `${name} ${count}`).join(" · ")}`;
+  const sql = (slots.queries || []).map((item) => item.sql).join("\n");
+  return [head, sources, counts, sql].filter(Boolean).join("\n");
+}
+
+function paintSmtRecover(report) {
+  $("#empty").hidden = true;
+  $("#story").hidden = false;
+  $("#cards").hidden = !report.kpis;
+  $("#stepper").hidden = false;
+  $("#result").hidden = !report.gantt;
+  const focus = report.focus || {};
+  const tight = report.tight;
+  if (tight && state.smtPinned !== report.scenario_id) {
+    state.smtGroup = tight.group || "Dielectric";
+    state.smtEnd = Math.round((report.horizon_h || 24) * 60);
+    state.smtPinned = report.scenario_id;
+  }
+  $("#headline").textContent = report.incident || "";
+  const hot = report.hot_lot || {};
+  const refused = report.refusal && report.refusal.detail;
+  const review = smtReviewCopy(report);
+  const knock = review.knock
+    ? review.knock
+    : report.scenario_id === "tight_p1" && tight
+    ? `${tight.tool} is down ${tight.down_min} min. ${tight.p1_lots.length} VIP lots due at ${tight.p1_due_h} h. ${tight.decoy_lots.length} normal lots in the same queue due at ${tight.decoy_due_h} h. ${tight.spotlight_lot} is ${tight.spotlight_late_h_before} h late under EDD and ${tight.spotlight_late_h_after} h late under ResiliMES on this seed.`
+    : report.scenario_id === "litho_down"
+    ? `${focus.tool} in ${focus.family} (${focus.tools_in_family} tools) is down ${focus.down_min} min. Sibling starts ${focus.sibling_starts_before} → ${focus.sibling_starts_after}. Family queue peak ${focus.queue_max_before} → ${focus.queue_max_after}. Downstream queue peak ${focus.downstream_queue_max_before} → ${focus.downstream_queue_max_after}.`
+    : report.scenario_id === "hot_lot"
+      ? `${hot.lot_id} (${hot.product}) steps ${hot.steps_before} → ${hot.steps_after}. Scanner start ${hot.scanner_start_min_before ?? "—"} → ${hot.scanner_start_min_after ?? "—"} min.`
+      : report.scenario_id === "pm_avoid"
+        ? `${(report.pm && report.pm.calendar) || "PM"} shifted ${report.pm && report.pm.shift_h} h so the published window opens inside this run.`
+        : "";
+  $("#refusal").textContent = [refused, knock, review.paid].filter(Boolean).join(" ");
+  if (report.kpis) renderSmtCards(report);
+  paintStepper();
+  paintSmtCharts(report);
+}
+
+function renderSmtCards(report) {
+  const host = $("#cards");
+  host.innerHTML = "";
+  const before = report.kpis.before;
+  const after = report.kpis.after;
+  const onTime = (row) => {
+    const denom = row.due_in_horizon;
+    return `${row.on_time_pct}% (${Math.round(row.on_time_pct / 100 * denom)}/${denom})`;
+  };
+  const cycle = (row) => row.cycle_time_h == null ? "—" : `${row.cycle_time_h} h`;
+  const factor = (row) => row.mean_x_factor == null ? "—" : String(row.mean_x_factor);
+  const rows = [
+    ["Re-cleans", String(before.recleans ?? "—"), String(after.recleans ?? "—"), "One wet-step return after a miss. Not the published rework percent."],
+    ["Q-time violations", String(before.qtime_violations), String(after.qtime_violations), "Published CQT"],
+    ["Weighted tardiness", `${before.weighted_tardiness_min} min`, `${after.weighted_tardiness_min} min`, "Open lots are censored at the horizon"],
+    ["X-factor / cycle", `${factor(before)} · ${cycle(before)}`, `${factor(after)} · ${cycle(after)}`, "X-factor is completion over remaining raw process. Cycle is mean hours of finished routes."],
+    ["Litho utilization", `${before.litho_util_pct}%`, `${after.litho_util_pct}%`, "102 Litho_* tools"],
+    ["On time", onTime(before), onTime(after), before.due_in_horizon === after.due_in_horizon
+      ? `Seed ${report.seed}. ${before.due_in_horizon} lots due in the horizon, ${before.already_late} already late at the snapshot.`
+      : `Seed ${report.seed}. ${before.due_in_horizon} lots due on the left, ${after.due_in_horizon} on the right.`],
+  ];
+  for (const [label, left, right, note] of rows) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.innerHTML = `<p>${escapeHtml(label)}</p><strong>${escapeHtml(left)} → ${escapeHtml(right)}</strong><small>${escapeHtml(note)}</small>`;
+    host.appendChild(card);
+  }
+  const timing = report.timing || {};
+  const line = document.createElement("p");
+  line.className = "smt-timing";
+  const busy = timing.dispatch_busy_p50_ms == null
+    ? "Headline p50/p95 include empty wakes."
+    : `Nonempty-queue p50 ${timing.dispatch_busy_p50_ms} ms, p95 ${timing.dispatch_busy_p95_ms} ms (${timing.dispatch_busy_decisions} decisions). Headline p50 ${timing.dispatch_p50_ms} / p95 ${timing.dispatch_p95_ms} includes empty wakes.`;
+  const pm = report.scenario_id === "pm_avoid"
+    ? ` PM avoided ${before.pm_avoided} → ${after.pm_avoided} (baseline overlaps ${before.pm_overlaps} → ${after.pm_overlaps}).`
+    : "";
+  line.textContent = `${busy}${pm} Macro APS ${timing.scanner_steps} scanner steps (about 0.3 s on the CI VM) does not feed dpi(). Simulation ${timing.sim_before_s}s / ${timing.sim_after_s}s. Policies ${report.policies.before} → ${report.policies.after}. Seed ${report.seed}, horizon ${report.horizon_h} h.`;
+  host.appendChild(line);
+  if (report.study_note) {
+    const study = document.createElement("p");
+    study.className = "smt-timing";
+    study.textContent = report.study_note;
+    host.appendChild(study);
+  }
+}
+
+function paintSmtCharts(report) {
+  const gantt = report.gantt;
+  if (!gantt) return;
+  ensureSmtControls();
+  renderVirtualGantt($("#gantt-before"), gantt.before || [], report);
+  renderVirtualGantt($("#gantt-after"), gantt.after || [], report);
+}
+
+function ensureSmtControls() {
+  const tools = document.querySelector(".chart-tools");
+  if (!tools || tools.querySelector(".smt-controls")) return;
+  const bar = document.createElement("div");
+  bar.className = "smt-controls";
+  bar.innerHTML = `<label>From <input id="smt-start" type="number" min="0" step="15" value="${state.smtStart}"> min</label><label>To <input id="smt-end" type="number" min="15" step="15" value="${state.smtEnd}"> min</label><button type="button" id="smt-window">Window</button><button type="button" id="smt-clear">All groups</button>`;
+  tools.appendChild(bar);
+  bar.querySelector("#smt-window").addEventListener("click", () => {
+    state.smtStart = Number(bar.querySelector("#smt-start").value) || 0;
+    state.smtEnd = Number(bar.querySelector("#smt-end").value) || 720;
+    if (state.report) paintSmtCharts(state.report);
+  });
+  bar.querySelector("#smt-clear").addEventListener("click", () => {
+    state.smtGroup = "all";
+    state.smtDrill = "";
+    if (state.report) paintSmtCharts(state.report);
+  });
+}
+
+function renderVirtualGantt(host, rows, report) {
+  const group = state.smtGroup;
+  let visible = rows.filter((row) => group === "all" || row.group === group);
+  if (state.smtDrill) {
+    const focus = report.focus || {};
+    if (state.smtDrill === focus.family && report.gantt && host.id === "gantt-after") {
+      const byTool = {};
+      for (const bar of report.gantt.focus_bars || []) {
+        (byTool[bar.tool] || (byTool[bar.tool] = [])).push(bar);
+      }
+      visible = Object.keys(byTool).sort().map((tool) => ({
+        id: tool,
+        group: focus.group,
+        bars: byTool[tool].map((bar) => ({ s: bar.s, e: bar.e, n: 1 })),
+      }));
+    }
+  }
+  host.innerHTML = "";
+  const view = document.createElement("div");
+  view.className = "vscroll";
+  const spacer = document.createElement("div");
+  const inner = document.createElement("div");
+  inner.className = "vrows";
+  view.appendChild(spacer);
+  view.appendChild(inner);
+  host.appendChild(view);
+  const rowHeight = 28;
+  const startMin = state.smtStart;
+  const endMin = Math.max(startMin + 15, state.smtEnd);
+  const span = endMin - startMin;
+  function draw() {
+    const height = view.clientHeight || 440;
+    spacer.style.height = `${visible.length * rowHeight}px`;
+    const first = Math.max(0, Math.floor(view.scrollTop / rowHeight) - 2);
+    const count = Math.ceil(height / rowHeight) + 6;
+    inner.style.transform = `translateY(${first * rowHeight}px)`;
+    inner.replaceChildren();
+    for (const row of visible.slice(first, first + count)) {
+      const line = document.createElement("div");
+      line.className = "smt-row" + (row.scanner ? " scanner" : "");
+      const label = document.createElement("button");
+      label.type = "button";
+      label.className = "smt-label";
+      label.textContent = row.id;
+      label.addEventListener("click", () => {
+        state.smtDrill = state.smtDrill === row.id ? "" : row.id;
+        paintSmtCharts(report);
+      });
+      const track = document.createElement("div");
+      track.className = "smt-track";
+      for (const bar of row.bars || []) {
+        if (bar.e <= startMin || bar.s >= endMin) continue;
+        const left = Math.max(0, (Math.max(bar.s, startMin) - startMin) / span);
+        const right = Math.min(1, (Math.min(bar.e, endMin) - startMin) / span);
+        const mark = document.createElement("i");
+        mark.style.left = `${left * 100}%`;
+        mark.style.width = `${Math.max(0.4, (right - left) * 100)}%`;
+        mark.title = `${row.id} ${bar.s}–${bar.e} min · ${bar.n} tools`;
+        track.appendChild(mark);
+      }
+      line.append(label, track);
+      inner.appendChild(line);
+    }
+  }
+  view.addEventListener("scroll", draw);
+  requestAnimationFrame(draw);
+}
+
 function paintRecover() {
   const report = state.report;
+  if (report && report.fab === "smt2020") {
+    paintSmtRecover(report);
+    return;
+  }
   const empty = $("#empty");
   const story = $("#story");
   const cards = $("#cards");
@@ -1596,7 +1836,13 @@ function stepOutput(phase, slots, copy) {
     const conf = typeof slots.confidence === "number" ? ` · ${Math.round(slots.confidence * 100)}%` : "";
     return `${label}${conf}`;
   }
-  if (phase === "query") return `${slots.reads ?? 0} ${copy.reads}`;
+  if (phase === "query") {
+    const sources = (slots.sources || []).join(", ");
+    const rows = slots.row_counts || {};
+    const rendered = Object.entries(rows).map(([name, count]) => `${name} ${count}`).join(", ");
+    return [sources, rendered].filter(Boolean).join(" · ");
+  }
+  if (phase === "critique" && slots.lot_id) return `${slots.lot_id} blocked on ${slots.tool || "down tool"}`;
   if (phase === "sense") return `${slots.facts ?? 0} ${copy.facts}`;
   if (phase === "plan") return `${slots.operations ?? 0} ${copy.ops} · ${slots.holds ?? 0} ${copy.holds}`;
   if (phase === "critique") return String((copy.verdicts && copy.verdicts[slots.verdict]) || slots.verdict || "");
@@ -2246,6 +2492,40 @@ async function getJson(url) {
 window.addEventListener("resize", () => {
   if (state.report && state.report.gantt) renderCharts(state.report);
 });
+
+// SMT2020 review copy. New sentences live in this block so the scenario
+// lines above stay free for the first-impression wording pass.
+function smtReviewCopy(report) {
+  const xf = report.xfactor;
+  if (xf && state.smtPinned !== report.scenario_id) {
+    state.smtGroup = "Litho";
+    state.smtEnd = Math.round((report.horizon_h || 48) * 60);
+    state.smtPinned = report.scenario_id;
+  }
+  const price = report.price;
+  const paid = !price
+    ? ""
+    : price.lots
+      ? `Non-hot lots delayed by the recovery: ${price.lots}, ${price.extra_h} h extra. Worst ${((price.worst || [])[0] || {}).lot_id || ""}.`
+      : "No scored non-hot lot finished later under the recovery.";
+  const knock = xf
+    ? `Dues are remaining process x ${xf.factor}. ${xf.tool} is down ${xf.down_min} min. Mean X-factor ${xf.mean_x_before} → ${xf.mean_x_after}. Upstream gates ${xf.gates}. Re-cleans ${(report.kpis && report.kpis.before && report.kpis.before.recleans) ?? "—"} → ${(report.kpis && report.kpis.after && report.kpis.after.recleans) ?? xf.recleans}. Q-time ${(report.kpis && report.kpis.before && report.kpis.before.qtime_violations) ?? "—"} → ${(report.kpis && report.kpis.after && report.kpis.after.qtime_violations) ?? "—"}.`
+    : "";
+  return { paid, knock };
+}
+
+function smtReviewCards(report) {
+  const xf = report.xfactor;
+  if (!xf) return [];
+  const before = xf.mean_x_before == null ? "—" : String(xf.mean_x_before);
+  const after = xf.mean_x_after == null ? "—" : String(xf.mean_x_after);
+  return [[
+    "X-factor",
+    before,
+    after,
+    `Due = remaining process x ${xf.factor}. Gates ${xf.gates}. Re-cleans ${xf.recleans}.`,
+  ]];
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
