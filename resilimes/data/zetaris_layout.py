@@ -162,44 +162,73 @@ def qualify(
 
 
 def _sql_statements(sql: str) -> list[str]:
-    """Split on semicolons that are outside single-quoted literals."""
+    """Split SQL into statements, comments removed.
+
+    Semicolons count only outside ``'...'`` literals (``''`` escapes),
+    ``"..."`` identifiers (``""`` escapes), ``-- ...`` line comments and
+    ``/* ... */`` block comments (nested, as in Postgres). Comments are
+    dropped from the output, so a statement never starts with comment text
+    and pure-comment fragments disappear. Dollar quoting is not supported;
+    the seeds do not use it, and ``split_sql`` rejects anything that does
+    not name a ``resilimes`` table.
+    """
     parts: list[str] = []
     buf: list[str] = []
-    quoted = False
     index = 0
-    while index < len(sql):
+    size = len(sql)
+    while index < size:
         char = sql[index]
-        if char == "'" and quoted and index + 1 < len(sql) and sql[index + 1] == "'":
-            buf.append("''")
-            index += 2
+        pair = sql[index : index + 2]
+        if pair == "--":
+            newline = sql.find("\n", index)
+            index = size if newline < 0 else newline
             continue
-        if char == "'":
-            quoted = not quoted
-            buf.append(char)
-            index += 1
+        if pair == "/*":
+            depth = 0
+            while index < size:
+                if sql.startswith("/*", index):
+                    depth += 1
+                    index += 2
+                elif sql.startswith("*/", index):
+                    depth -= 1
+                    index += 2
+                    if depth == 0:
+                        break
+                else:
+                    index += 1
+            if depth:
+                raise ValueError("Unterminated /* comment in SQL")
+            buf.append(" ")
             continue
-        if char == ";" and not quoted:
+        if char in "'\"":
+            close = index + 1
+            while True:
+                close = sql.find(char, close)
+                if close < 0:
+                    raise ValueError(f"Unterminated {char} quote in SQL")
+                if sql.startswith(char * 2, close):
+                    close += 2
+                    continue
+                break
+            buf.append(sql[index : close + 1])
+            index = close + 1
+            continue
+        if char == ";":
             parts.append("".join(buf))
             buf = []
             index += 1
             continue
         buf.append(char)
         index += 1
-    if buf:
-        parts.append("".join(buf))
-    return parts
+    parts.append("".join(buf))
+    return [part.strip() for part in parts if part.strip()]
 
 
 def split_sql(sql: str) -> dict[str, str]:
     """Route each ``resilimes.<table>`` statement to the database that owns it."""
     buckets: dict[str, list[str]] = {name: [] for name in DATASOURCE_FOR_DATABASE}
     for raw in _sql_statements(sql):
-        lines = [
-            line for line in raw.splitlines() if line.strip() and not line.strip().startswith("--")
-        ]
-        statement = "\n".join(lines).strip()
-        if not statement:
-            continue
+        statement = "\n".join(line.rstrip() for line in raw.splitlines() if line.strip())
         tables = {name.lower() for name in _TABLE_REF.findall(statement)}
         if not tables:
             raise ValueError(f"SQL does not name a resilimes table: {statement[:80]}")
@@ -271,7 +300,8 @@ def tables_in(sql_paths: list[Path]) -> list[str]:
     found: set[str] = set()
     for path in sql_paths:
         if path.is_file():
-            found.update(name.lower() for name in _TABLE_REF.findall(path.read_text("utf-8")))
+            for statement in _sql_statements(path.read_text("utf-8")):
+                found.update(name.lower() for name in _TABLE_REF.findall(statement))
     return sorted(found & set(DATABASE_FOR_TABLE))
 
 

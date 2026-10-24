@@ -323,3 +323,152 @@ def test_credentials_prefer_fab_pg_names_and_fall_back_to_postgres(tmp_path: Pat
     both = {**old, "FAB_PG_USER": "fab", "FAB_PG_PASSWORD": "newpw"}
     assert credentials({}, both, {})["jdbc_password"] == "newpw"
     assert credentials({}, {}, {})["email"] == "admin@zetaris.com"
+
+
+def test_splitter_ignores_semicolons_in_comments_quotes_and_identifiers() -> None:
+    from resilimes.data.zetaris_layout import _sql_statements
+
+    sql = (
+        "-- header; run: python scripts/export_zetaris_sql.py\n"
+        "--\n"
+        "/* block; comment /* nested; */ still; */\n"
+        "INSERT INTO resilimes.bom VALUES ('a;b', 'it''s; fine', '-- not; a comment');\n"
+        'CREATE TABLE resilimes."odd;name" (x TEXT); -- trailing; note\n'
+        "/* only a comment; */ -- and another;\n"
+    )
+    statements = _sql_statements(sql)
+    assert statements == [
+        "INSERT INTO resilimes.bom VALUES ('a;b', 'it''s; fine', '-- not; a comment')",
+        'CREATE TABLE resilimes."odd;name" (x TEXT)',
+    ]
+    with pytest.raises(ValueError):
+        _sql_statements("SELECT 'open;")
+    with pytest.raises(ValueError):
+        _sql_statements("/* open; SELECT 1;")
+
+
+_SQL_START = ("CREATE ", "DROP ", "INSERT ", "ALTER ", "COMMENT ", "UPDATE ", "DELETE ")
+
+
+def test_write_split_on_the_committed_seeds_emits_only_sql(tmp_path: Path) -> None:
+    from resilimes.config import ROOT
+    from resilimes.data.zetaris_layout import tables_in
+
+    sql_dir = ROOT / "data" / "sql"
+    seeds = [sql_dir / "seed.sql", sql_dir / "smt2020_seed.sql", sql_dir / "kernel.sql"]
+    # The header that broke the PC load: a ';' inside a '--' comment.
+    assert "hand; run:" in seeds[0].read_text(encoding="utf-8")
+    written = write_split(seeds, tmp_path)
+    assert sorted(written) == ["fab_cmms", "fab_erp", "fab_mes"]
+    from resilimes.data.zetaris_layout import _sql_statements
+
+    for database, path in written.items():
+        statements = _sql_statements(path.read_text(encoding="utf-8"))
+        assert statements[:2] == [
+            "DROP SCHEMA IF EXISTS resilimes CASCADE",
+            "CREATE SCHEMA resilimes",
+        ]
+        for statement in statements:
+            assert statement.upper().startswith(_SQL_START), (database, statement[:80])
+            assert "run: python" not in statement
+    assert len(tables_in(seeds)) == 30
+    scale = sql_dir / "scale_seed.sql"
+    if scale.is_file():
+        for statement in _sql_statements(scale.read_text(encoding="utf-8")):
+            assert statement.upper().startswith(_SQL_START), statement[:80]
+
+
+def _pg_bin() -> Path | None:
+    import shutil
+
+    found = shutil.which("pg_ctl")
+    if found:
+        return Path(found).parent
+    candidates = sorted(Path("/usr/lib/postgresql").glob("*/bin/pg_ctl"))
+    return candidates[-1].parent if candidates else None
+
+
+@pytest.mark.skipif(_pg_bin() is None, reason="no local PostgreSQL binaries")
+def test_split_files_load_into_a_real_postgres(tmp_path: Path) -> None:
+    """Apply all three split files with ON_ERROR_STOP to a throwaway local cluster."""
+    import os
+    import subprocess
+
+    from resilimes.config import ROOT
+
+    if os.geteuid() == 0:
+        pytest.skip("initdb refuses to run as root")
+    bin_dir = _pg_bin()
+    assert bin_dir is not None
+    sql_dir = ROOT / "data" / "sql"
+    written = write_split(
+        [sql_dir / "seed.sql", sql_dir / "smt2020_seed.sql", sql_dir / "kernel.sql"],
+        tmp_path / "split",
+    )
+    data = tmp_path / "pgdata"
+    sock = tmp_path / "sock"
+    sock.mkdir()
+    run = subprocess.run
+    run(
+        [str(bin_dir / "initdb"), "-D", str(data), "-U", "fab", "-A", "trust"],
+        check=True,
+        capture_output=True,
+    )
+    options = f"-c listen_addresses='' -c unix_socket_directories={sock}"
+    # The server must not inherit our pipes, or run() waits for it to exit.
+    run(
+        [
+            str(bin_dir / "pg_ctl"),
+            *("-D", str(data), "-o", options, "-l", str(tmp_path / "pg.log"), "-w", "start"),
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=120,
+    )
+    try:
+        psql = [str(bin_dir / "psql"), "-h", str(sock), "-U", "fab", "-X", "-q"]
+        counts: dict[str, int] = {}
+        for database, path in written.items():
+            run(
+                [*psql, "-d", "postgres", "-c", f"CREATE DATABASE {database}"],
+                check=True,
+                capture_output=True,
+                timeout=60,
+            )
+            for _ in range(2):  # a reload over an existing schema must also apply
+                run(
+                    [*psql, "-v", "ON_ERROR_STOP=1", "-d", database, "-f", str(path)],
+                    check=True,
+                    capture_output=True,
+                )
+            out = run(
+                [
+                    *psql,
+                    "-At",
+                    "-d",
+                    database,
+                    "-c",
+                    "select count(*) from pg_tables where schemaname='resilimes'",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            counts[database] = int(out.stdout.strip())
+        assert sum(counts.values()) == 30
+        assert all(counts.values())
+        rows = run(
+            [*psql, "-At", "-d", "fab_mes", "-c", "select count(*) from resilimes.smt_route"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert int(rows.stdout.strip()) == 4013
+    finally:
+        run(
+            [str(bin_dir / "pg_ctl"), "-D", str(data), "-m", "immediate", "stop"],
+            check=False,
+            capture_output=True,
+            timeout=60,
+        )
