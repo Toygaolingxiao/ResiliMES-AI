@@ -160,13 +160,92 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
     }
 
 
+# ---- late-lot explainer --------------------------------------------------------------------
+def run_explainer(
+    fab: Fab,
+    provider: Completer | None,
+    out: Path,
+    *,
+    seeds: tuple[int, ...] | None = None,
+    limit: int = 0,
+    temperature: float = 0.2,
+) -> dict[str, Any]:
+    from resilimes.evidence.lateness import late_lots
+    from resilimes.insight import explainer as ex
+
+    label = "mock" if provider is None else f"real:{provider.model_for(ex.LANE)}"
+    seeds = seeds or ex.SEEDS
+    bases = {seed: ex.base_run(fab, seed) for seed in seeds}
+    work = [(seed, lot) for seed in seeds for lot in late_lots(bases[seed].timeline)]
+    if limit:
+        work = work[:limit]
+    progress = Progress("explainer", len(work))
+    rows: list[dict[str, Any]] = []
+    for index, (seed, lot) in enumerate(work):
+        base = bases[seed]
+        lot_id = fab.lot_id[lot]
+        row: dict[str, Any] = {"seed": seed, "lot": lot_id}
+        try:
+            row["split"] = ex.exact_split(base, lot)
+            late = Toolkit(base).lot_lateness(lot_id)["while_late_min"]
+            row["true_dominant"] = max(late, key=late.get) if late else None
+            answer = ex.explain(Toolkit(base), lot_id, provider, temperature=temperature)
+            row["ai"] = answer.to_json()
+            row["cf"] = ex.verify(base, lot_id, answer) if answer.lever else {"verified": False}
+        except Exception as exc:
+            row["error"] = redact(repr(exc))
+        rows.append(row)
+        summary = summarize_explainer(rows, label)
+        _write(out, {"summary": summary, "rows": rows})
+        cf: dict[str, Any] = row.get("cf") or {}
+        progress.update(
+            index + 1,
+            extra=(
+                f"s{seed} {lot_id} saved={cf.get('saving_min')} "
+                f"| exact {summary['exact_sum']}/{summary['n']} "
+                f"cf hit {summary['cf_hit']}/{summary['cf_verified']}"
+            ),
+        )
+    summary = summarize_explainer(rows, label)
+    progress.finish(extra=f"cf hit {summary['cf_hit']}/{summary['cf_verified']}")
+    _write(out, {"summary": summary, "rows": rows})
+    return summary
+
+
+def summarize_explainer(rows: list[dict[str, Any]], label: str) -> dict[str, Any]:
+    ok = [row for row in rows if "error" not in row]
+    answered = [row for row in ok if row["ai"]["lever"]]
+    verified = [row for row in ok if row["cf"].get("verified")]
+    levers: dict[str, int] = {}
+    for row in answered:
+        levers[row["ai"]["lever"]] = levers.get(row["ai"]["lever"], 0) + 1
+    savings = [row["cf"]["saving_min"] for row in verified]
+    return {
+        "label": label,
+        "n": len(rows),
+        "errors": len(rows) - len(ok),
+        "exact_sum": sum(int(r["split"]["exact"]) for r in ok),
+        "shown_sum_ok": sum(int(r["split"]["shown_sum_ok"]) for r in ok),
+        "max_residual_sec": max((r["split"]["residual_sec"] for r in ok), default=0.0),
+        "answered": len(answered),
+        "fact_ok": sum(int(r["ai"]["fact_ok"]) for r in answered),
+        "repaired": sum(int(r["ai"]["repaired"]) for r in answered),
+        "dominant_match": sum(int(r["ai"]["dominant"] == r["true_dominant"]) for r in answered),
+        "cf_verified": len(verified),
+        "cf_hit": sum(int(r["cf"]["hit"]) for r in verified),
+        "cf_helped": sum(1 for s in savings if s > 0),
+        "mean_saving_min": round(sum(savings) / max(1, len(savings)), 1),
+        "levers": levers,
+    }
+
+
 # ---- CLI -----------------------------------------------------------------------------------
 STUDIES: dict[str, Callable[..., Any]] = {}
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m resilimes.insight.study")
-    parser.add_argument("study", choices=["cases", "investigator", "all"])
+    parser.add_argument("study", choices=["cases", "investigator", "explainer", "all"])
     parser.add_argument("--provider", choices=["mock", "nightshift"], default="mock")
     parser.add_argument("--cases", type=Path, default=CASES_PATH)
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
@@ -182,7 +261,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     provider = provider_for(args.provider, settings)
     tag = args.provider
-    arms = ["investigator"]
+    arms = ["investigator", "explainer"]
     studies = arms if args.study == "all" else [args.study]
     summaries: dict[str, Any] = {}
     for name in studies:
@@ -193,6 +272,14 @@ def main(argv: list[str] | None = None) -> int:
             out = args.out_dir / f"investigator_{tag}.json"
             summary = run_investigator(
                 fab, cases, provider, settings, out, temperature=args.temperature
+            )
+            print(json.dumps(summary, indent=1))
+            print(f"wrote {out}")
+            summaries[name] = summary
+        if name == "explainer":
+            out = args.out_dir / f"explainer_{tag}.json"
+            summary = run_explainer(
+                fab, provider, out, limit=args.limit, temperature=args.temperature
             )
             print(json.dumps(summary, indent=1))
             print(f"wrote {out}")
