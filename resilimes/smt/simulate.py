@@ -46,6 +46,7 @@ from resilimes.smt.fab import (
     inherited_windows,
     lot_number,
     measured,
+    release_at,
     transport_seconds,
 )
 
@@ -541,6 +542,8 @@ class _Sim:
             if hot_due is not None:
                 self.due[hot_lot] = hot_due
         self.ready = [0.0] * self.n
+        # Entry moment per lot: 0 for WIP, the order.txt release otherwise.
+        self.entry = [release_at(fab, lot) for lot in range(self.n)]
         self.waiting = [False] * self.n
         self.deadline = [0.0] * self.n
         self.cqt_at = [-1] * self.n
@@ -707,7 +710,11 @@ class _Sim:
         for lot, origin, target, limit in inherited_windows(self.fab):
             self.open_window(lot, origin, target, limit, 0.0, inherited=True)
         for lot in range(self.n):
-            self.enqueue(lot, 0.0)
+            release = self.entry[lot]
+            if release > 0.0:
+                self.push(release, _ARRIVE, lot)
+            else:
+                self.enqueue(lot, 0.0)
         for tool, spans in enumerate(self.downs):
             opened = False
             for start_at, end_at in spans:
@@ -2185,7 +2192,7 @@ class _Sim:
             end = self.finished_at[lot]
             if end >= 0:
                 completed += 1
-                cycle_sum += end
+                cycle_sum += end - self.entry[lot]
             if self.due[lot] > self.horizon:
                 continue
             finish = end if end >= 0 else self.horizon
@@ -2201,7 +2208,7 @@ class _Sim:
         scored = qout["met"] + sum(qout[key] for key in _MISSED)
         denom = len(due_lots)
         xs = [
-            self.finished_at[lot] / self.raw_remain[lot]
+            (self.finished_at[lot] - self.entry[lot]) / self.raw_remain[lot]
             for lot in range(self.n)
             if self.finished_at[lot] >= 0 and self.raw_remain[lot] > 1e-6
         ]

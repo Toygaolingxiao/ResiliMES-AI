@@ -56,6 +56,7 @@ from resilimes.smt.fab import (
     inherited_windows,
     lot_number,
     measured,
+    release_at,
     transport_seconds,
 )
 
@@ -78,6 +79,7 @@ CHECKS = (
     "transport",
     "qtime_hold",
     "reservation",
+    "release",
 )
 UNDER_MIN_REASONS = ("hot_cap", "max_wait", "no_arrivals", "qtime_urgent")
 
@@ -240,6 +242,8 @@ def check_trace(
             for lot, index in zip(lots, steps, strict=True):
                 lot_id = fab.lot_id[lot]
                 route = fab.routes[fab.lot_route[lot]]
+                if moment < release_at(fab, lot) - 1e-6:
+                    flag("release", f"{lot_id} started t={moment:.1f} before its release")
                 if index >= len(route.family) or route.family[index] != fam:
                     want = (
                         fab.families[route.family[index]].name

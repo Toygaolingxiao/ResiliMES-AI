@@ -325,15 +325,19 @@ _PLAN: list[Any] = []
 
 def _job(item: tuple[str, int, float]) -> dict[str, Any]:
     """One stress run. ``RESILIMES_STRESS_PLAN=1`` adds the published t=0 plan
-    (WIP only); the outage is unplanned, as in a real fab."""
+    (WIP only, standard lead time targets; ``=raw`` for raw targets); the
+    outage is unplanned, as in a real fab."""
     policy, seed, start = item
     extra: dict[str, Any] = {}
-    if os.environ.get("RESILIMES_STRESS_PLAN") == "1":
+    mode = os.environ.get("RESILIMES_STRESS_PLAN")
+    if mode in ("1", "raw"):
         if not _PLAN:
             from resilimes.smt.planning import build_plan, scenario_input
 
             fab = _FAB[0]
-            _PLAN.append(build_plan(fab, scenario_input(fab, "published", releases=False)))
+            targets = "raw" if mode == "raw" else "standard"
+            inp = scenario_input(fab, "published", releases=False, targets=targets)
+            _PLAN.append(build_plan(fab, inp))
         extra["plan"] = _PLAN[0]
     row = stress_one(_FAB[0], policy, seed, start, **extra)
     if extra:

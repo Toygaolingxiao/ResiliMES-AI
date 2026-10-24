@@ -70,10 +70,24 @@ flowchart TB
 1. **Visit path.** The visit path is the current step plus every later step
    that this lot number is measured at. Skipped sampled metrology is skipped
    here as well, exactly as in the sim.
-2. **Backward pass.** This pass starts from the lot due and works backwards
-   over the remaining path, using raw process time and fixed transport. It
-   gives each step a *step due* (latest finish) and a *latest start*. There is
-   no queueing slack and no weight.
+2. **Step targets from the standard lead time** (`targets="standard"`, the
+   default). The standard lead time (LT) of a product and priority class is the
+   dataset's own: `order.txt` DUE − START (normal 23.8–56.4 d, hot 16.9–38.3 d,
+   SuperHot part_3 38.3 d). It is spread over the visited steps in proportion
+   to raw process plus transport time, with one flow factor per product,
+   `F = LT / raw` over the full visited route. Each step gets a standard time
+   `F × (process + transport in)`, and its step due (target) is
+   `due − F × raw after the step`. For a released lot that equals release +
+   the standard cumulative time to the step. The standard start is the target
+   minus the step's standard time. A (product, class) with no order row takes
+   the product's tightest listed LT; a product with no order row keeps F = 1.
+   - `targets="raw"` keeps the earlier backward pass (F = 1): latest finish at
+     raw time, no queueing slack.
+   - In the published snapshot 510 of 2156 WIP lots have a due tighter than
+     their standard remaining time (`summary()["due_tighter_than_standard"]`),
+     against 20 that are tighter than raw time.
+   - Later refinement (not done): one flow factor per tool family instead of
+     per product, so the bottleneck gets more of the standard time.
 3. **Forward capacity check.** The check is an event-driven forward pass over
    every lot from its ready time:
    - Non-litho steps take raw time, so capacity there is unlimited.
@@ -90,24 +104,24 @@ flowchart TB
 
    Dataset releases up to the latest WIP due are planned as competing litho
    load.
-4. **Baseline priority.** Three quantities feed the priority:
-   - `raw_slack` = due − (ready + remaining raw time)
-   - `plan_slack` = due − capacity-feasible finish
-   - `score` = `plan_slack` / remaining raw time
-
-   The score is dimensionless: it is the slack as a fraction of the work
-   still to do.
+4. **Baseline priority** (standard targets). `progress` = standard start of
+   the lot's current step − the time the lot is ready there (positive: ahead
+   of its standard curve). `score` = progress / standard time still to run.
 
    | band | rule |
    |---|---|
-   | `critical` | `raw_slack < 0`: late even with zero queueing |
-   | `behind` | `score < 0`: late once the litho capacity is accounted for |
-   | `on_plan` | `0 ≤ score < 1` |
-   | `ahead` | `score ≥ 1`: more slack than the remaining work itself |
+   | `critical` | due < ready + remaining raw time: late even with zero waiting |
+   | `behind` | progress < 0: behind its standard curve |
+   | `on_plan` | on or ahead of the curve, but the capacity plan finishes after the due |
+   | `ahead` | on or ahead of the curve, and the capacity plan finishes by the due |
 
-   The rank sorts on (class tier, band, score, due). VIP comes before hot,
-   which comes before normal, as the published HotLotFIRST rule does. Within
-   a tier, the most urgent band and the lowest score come first.
+   The rank sorts on (class tier, band, progress). VIP comes before hot,
+   which comes before normal, as the published HotLotFIRST rule does.
+
+   With `targets="raw"` the earlier rule applies: `plan_slack` = due −
+   capacity-feasible finish, `score` = plan_slack / remaining raw time,
+   `behind` if score < 0, `ahead` if score ≥ 1, otherwise `on_plan`; rank by
+   (tier, band, score, due).
 5. **Q-time.** Q-time applies only to steps that have a dataset CQT. The plan
    counts each lot's CQT windows on the path, including windows the lot is
    already inside, which are inherited. It also flags the windows the plan
@@ -121,6 +135,14 @@ flowchart TB
 
    `overload` means demand > capacity on that day. `cum_overload` means
    cumulative demand > cumulative capacity up to that day.
+
+**Releases in the simulator** (flag, default off). `with_releases(fab, until=…)`
+appends the `order.txt` lots released before `until` after the WIP, at step 0,
+with the dataset product, class, priority and due (release + LT); raw material
+is always available. The simulator enqueues each one at its release time
+(`Fab.lot_release`), cycle time and X-factor run from release, and the
+invariant checker flags any start before release. The study switches it on
+with `RESILIMES_STUDY_RELEASES=1` (horizon `RESILIMES_STUDY_HORIZON_H`).
 
 **Out of scope for this layer.** The scheduling layer handles these:
 setups, batching, dedication, rework, and capacity outside litho.
@@ -200,20 +222,21 @@ stable. In PR #22 the plan runs once at t=0 (see "Integration plan"). The schedu
 | Scheduling | `_Sim.tick` (300 s): wait estimates, Q-time hold plan, stall counter; with a plan, `build_schedule` (one tick ahead) | Per-tool queue for the next few hours |
 | Dispatching | `_Sim` rank keys, Q-time override, reservation; with a plan, a reasoned deviation log | Follow the schedule head unless a hard rule overrides it |
 
-**Known gap.** The sim does not release `order.txt` lots yet. Only the 2,156
-WIP lots flow. The plan already includes the releases, so planned litho load
-is higher than the sim's load. When the sim releases lots, it should use
-`planning.dataset_releases`, the same parser.
+**Releases.** The sim can release `order.txt` lots (`planning.with_releases`,
+the same `dataset_releases` parser; flag, default off). With the flag off only
+the 2,156 WIP lots flow, while `plan_scenario` still plans the releases up to
+the latest WIP due, so its litho load is higher than the sim's. The study's
+`book_plan` plans exactly the lots the sim runs.
 
 ## Integration plan (after PR #21 lands)
 
 **Simplified version: done in PR #22 (branch `planning-r1`).** Differences from
 the plan below, and why:
 
-- The plan is built once at t=0 from the WIP only (`releases=False`), because the
-  sim does not release `order.txt` lots yet.
-- No daily replan. Step dues depend only on the route and the due date (backward
-  pass, no queueing), so a replan gives the same step dues and could move only
+- The plan is built once at t=0 from the lots the sim runs: the WIP, plus the
+  `order.txt` releases inside the horizon when the releases flag is on.
+- No daily replan. Step dues depend only on the route, the product's standard
+  lead time and the due date (no queueing), so a replan gives the same step dues and could move only
   band and rank. It is not worth the cost while dues do not depend on state.
 - Step 4's reasons come from a fixed check order on the live state at the start
   (see `_Sim.deviation`), not from the branch that chose; anything else is
