@@ -25,7 +25,7 @@ from resilimes.engines.scout.engine import Scout, default_scout
 from resilimes.llm.factory import build_provider
 from resilimes.logging_config import get_logger
 from resilimes.smt.fab import load_fab
-from resilimes.smt.intents import run_whatif, smt_id_errors, smt_tool_call
+from resilimes.smt.intents import mentions_full_fab, run_whatif, smt_id_errors, smt_tool_call
 from resilimes.txn.engine import InMemoryEngine, lock_targets
 
 logger = get_logger("resilimes.intents")
@@ -81,7 +81,9 @@ def propose_intent(settings: Settings, engine: InMemoryEngine, body: IntentBody)
             }
         },
     )
-    full_fab = settings.fab == "smt2020"
+    # Bay ids (ETCH-03, LOT-1001) keep the sample-plant path; full-fab ids
+    # (tools, families, areas, lots) run against the SMT2020 replay.
+    full_fab = settings.fab == "smt2020" and mentions_full_fab(load_fab(), text)
     source = parsed.source
     if full_fab:
         call_or_none, errors, source = _smt_call(parsed, text)

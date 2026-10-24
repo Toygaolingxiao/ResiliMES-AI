@@ -62,6 +62,12 @@ def find_ids(fab: Fab, text: str) -> SmtIds:
     return SmtIds(lot=lot, tool=tool, family=family, group=group)
 
 
+def mentions_full_fab(fab: Fab, text: str) -> bool:
+    """True when the sentence names any SMT2020 tool, family, area or lot."""
+    ids = find_ids(fab, text)
+    return bool(ids.lot or ids.tool or ids.family or ids.group)
+
+
 def smt_tool_call(fab: Fab, text: str) -> ToolCall | None:
     """The deterministic parser with full-fab ids in place of sample ids."""
     ids = find_ids(fab, text)

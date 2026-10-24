@@ -18,8 +18,14 @@ from resilimes.smt.fab import load_fab
 
 router = APIRouter(prefix="/api/fab", tags=["fab"])
 
-BOOK = Query(default="base", max_length=40, pattern=r"^[a-z0-9_\-]+$")
-TIME = Query(default=None, ge=0.0, le=10_000_000.0)
+
+def _book_query() -> Any:
+    return Query(default="base", max_length=40, pattern=r"^[a-z0-9_\-]+$")
+
+
+def _time_query() -> Any:
+    # A fresh Query per parameter: a shared FieldInfo picks up the first alias.
+    return Query(default=None, ge=0.0, le=10_000_000.0)
 
 
 def _book(request: Request, key: str) -> replay.Replay:
@@ -38,7 +44,7 @@ def _books() -> list[dict[str, Any]]:
 
 
 @router.get("/meta")
-def fab_meta(request: Request, book: str = BOOK) -> dict[str, Any]:
+def fab_meta(request: Request, book: str = _book_query()) -> dict[str, Any]:
     rp = _book(request, book)
     body = replay.meta(rp)
     body["books"] = _books()
@@ -46,7 +52,9 @@ def fab_meta(request: Request, book: str = BOOK) -> dict[str, Any]:
 
 
 @router.get("/overview")
-def fab_overview(request: Request, book: str = BOOK, t: float | None = TIME) -> dict[str, Any]:
+def fab_overview(
+    request: Request, book: str = _book_query(), t: float | None = _time_query()
+) -> dict[str, Any]:
     rp = _book(request, book)
     return replay.overview(rp, replay.clamp_t(rp, t))
 
@@ -54,8 +62,8 @@ def fab_overview(request: Request, book: str = BOOK, t: float | None = TIME) -> 
 @router.get("/tools")
 def fab_tools(
     request: Request,
-    book: str = BOOK,
-    t: float | None = TIME,
+    book: str = _book_query(),
+    t: float | None = _time_query(),
     group: str | None = Query(default=None, max_length=40),
     family: str | None = Query(default=None, max_length=60),
 ) -> dict[str, Any]:
@@ -73,14 +81,16 @@ def fab_tools(
 
 
 @router.get("/flow")
-def fab_flow(request: Request, book: str = BOOK, t: float | None = TIME) -> dict[str, Any]:
+def fab_flow(
+    request: Request, book: str = _book_query(), t: float | None = _time_query()
+) -> dict[str, Any]:
     rp = _book(request, book)
     return replay.flow_view(rp, replay.clamp_t(rp, t))
 
 
 @router.get("/lot/{lot_id}")
 def fab_lot(
-    request: Request, lot_id: str, book: str = BOOK, t: float | None = TIME
+    request: Request, lot_id: str, book: str = _book_query(), t: float | None = _time_query()
 ) -> dict[str, Any]:
     rp = _book(request, book)
     lot = replay.resolve_lot(rp, lot_id)
@@ -90,7 +100,9 @@ def fab_lot(
 
 
 @router.get("/batches")
-def fab_batches(request: Request, book: str = BOOK, t: float | None = TIME) -> dict[str, Any]:
+def fab_batches(
+    request: Request, book: str = _book_query(), t: float | None = _time_query()
+) -> dict[str, Any]:
     rp = _book(request, book)
     return replay.batches_view(rp, replay.clamp_t(rp, t))
 
@@ -98,9 +110,9 @@ def fab_batches(request: Request, book: str = BOOK, t: float | None = TIME) -> d
 @router.get("/events")
 def fab_events(
     request: Request,
-    book: str = BOOK,
+    book: str = _book_query(),
     t0: float = Query(default=0.0, ge=0.0),
-    t1: float | None = TIME,
+    t1: float | None = _time_query(),
     kind: str = Query(default="", max_length=200),
     q: str = Query(default="", max_length=80),
     limit: int = Query(default=200, ge=1, le=1000),
@@ -114,7 +126,7 @@ def fab_events(
 
 
 @router.get("/kpis")
-def fab_kpis(request: Request, book: str = BOOK) -> dict[str, Any]:
+def fab_kpis(request: Request, book: str = _book_query()) -> dict[str, Any]:
     rp = _book(request, book)
     body = kpi.daily(rp)
     return {"book": rp.spec.key, "counters": replay.counters(rp), **body}
