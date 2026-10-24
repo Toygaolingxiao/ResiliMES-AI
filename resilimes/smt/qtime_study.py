@@ -160,18 +160,23 @@ BOOK_SCENARIO = {
 _PLANS: dict[str, Any] = {}
 
 
-def book_plan(fab: Fab, book: str, targets: str = "standard") -> Any:
-    """The planning layer's output for one book, computed once (t=0, WIP only).
+def book_plan(fab: Fab, book: str, targets: str = "standard", releases: bool | None = None) -> Any:
+    """The planning layer's output for one book, computed once (t=0).
 
-    WIP only: the sim does not release ``order.txt`` lots yet, so the plan's
-    litho load is the load the sim runs. Seeds share the plan: it uses the
-    expected availability (MTTF/(MTTF+MTTR)), not the sampled downs.
+    The plan holds the lots the sim runs: the WIP, plus (``releases``, default
+    env ``RESILIMES_STUDY_RELEASES=1``) the ``order.txt`` lots released inside
+    the run's horizon, the same set ``_setup`` adds. Seeds share the plan: it
+    uses the expected availability (MTTF/(MTTF+MTTR)), not the sampled downs.
     """
-    key = f"{book}:{targets}"
+    released = _releases() if releases is None else releases
+    until = (TIGHT_HORIZON_SEC if book == "tight_vip" else _horizon()) if released else None
+    key = f"{book}:{targets}:{until}"
     if key not in _PLANS:
         from resilimes.smt.planning import build_plan, scenario_input
 
-        inp = scenario_input(fab, BOOK_SCENARIO[book], releases=False, targets=targets)
+        inp = scenario_input(
+            fab, BOOK_SCENARIO[book], releases=released, targets=targets, release_until=until
+        )
         if book == "litho_family_2h":
             family = fab.families[fab.focus_family]
             for tool in range(family.tool0, family.tool0 + family.tools):

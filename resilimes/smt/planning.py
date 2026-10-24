@@ -487,7 +487,12 @@ def plan_input(
 
 
 def scenario_input(
-    fab: Fab, scenario_id: str, *, releases: bool = True, targets: str = "standard"
+    fab: Fab,
+    scenario_id: str,
+    *,
+    releases: bool = True,
+    targets: str = "standard",
+    release_until: float | None = None,
 ) -> PlanInput:
     """Planning input for one headline scenario (``resilimes.smt.scenarios``).
 
@@ -495,9 +500,11 @@ def scenario_input(
     only what the simulator changes: dues and classes (tight, xfactor, hot), a
     forced litho down (litho, xfactor) and the PM shift (pm). The tight book's
     Dielectric down is outside litho, so it does not change litho capacity.
+    ``release_until`` (default: the latest WIP due) bounds the planned releases.
     """
+    until = release_until if release_until is not None else max(fab.lot_due, default=0.0)
     if scenario_id == SCENARIO_PUBLISHED:
-        return plan_input(fab, releases=releases, targets=targets)
+        return plan_input(fab, releases=releases, release_until=until, targets=targets)
     from resilimes.smt.fab import LITHO_MTTR_MIN
     from resilimes.smt.scenarios import HOT_DUE_SEC, PM_OPEN_SEC, SCENARIOS
     from resilimes.smt.simulate import pm_shift_to_open
@@ -530,7 +537,7 @@ def scenario_input(
         lot_due=dues,
         lot_class=kinds,
         releases=releases,
-        release_until=max(fab.lot_due),
+        release_until=until,
         down_until=down,
         pm_shift_sec=shift,
         targets=targets,

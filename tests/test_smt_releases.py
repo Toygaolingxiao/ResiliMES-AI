@@ -75,3 +75,17 @@ def test_check_trace_flags_a_start_before_release() -> None:
     late = replace(fab, lot_release=[0.0, 3000.0])
     counts = check_trace(late, result, downs=NO_DOWNS, pm=NO_DOWNS)["counts"]
     assert counts["release"] > 0
+
+
+def test_study_plan_holds_every_released_lot(monkeypatch: pytest.MonkeyPatch) -> None:
+    from resilimes.smt import qtime_study as study
+
+    monkeypatch.setenv("RESILIMES_STUDY_HORIZON_H", "48")
+    fab = load_fab()
+    plant, _ = study._setup(fab, "published", 1, "resilimes", releases=True)
+    plan = study.book_plan(fab, "published", "standard", releases=True)
+    assert len(plant.lot_id) > len(fab.lot_id)
+    assert all(plan.find(lot_id) is not None for lot_id in plant.lot_id)
+    released = plant.lot_id[len(fab.lot_id) :]
+    assert all(plan.lot(lot_id).released for lot_id in released)
+    assert study.book_plan(fab, "published", "standard", releases=False) is not plan
