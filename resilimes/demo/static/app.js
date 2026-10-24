@@ -214,6 +214,7 @@ function paint() {
   paintRecover();
   paintAnalyze();
   paintVerify();
+  if (typeof paintAi === "function") paintAi();
   if (state.running && !state.report) $("#status").textContent = copy.working;
   else if (state.report) $("#status").textContent = state.report.blocked ? copy.refused : doneStatus(state.report);
   else $("#status").textContent = "";
@@ -223,8 +224,8 @@ function paintTabs() {
   const copy = t();
   const host = $("#tabs");
   host.innerHTML = "";
-  const tips = { recover: copy.tabRecoverTip, analyze: copy.tabAnalyzeTip, verify: copy.tabVerifyTip };
-  for (const [id, label] of [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify]]) {
+  const tips = { recover: copy.tabRecoverTip, analyze: copy.tabAnalyzeTip, verify: copy.tabVerifyTip, ai: copy.tabAiTip };
+  for (const [id, label] of [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify], ["ai", copy.tabAi]]) {
     const button = document.createElement("button");
     button.type = "button";
     button.setAttribute("role", "tab");
@@ -242,9 +243,9 @@ function paintTabs() {
 }
 
 function showPanel() {
-  for (const id of ["recover", "analyze", "verify"]) {
+  for (const id of ["recover", "analyze", "verify", "ai"]) {
     const panel = $(`#panel-${id}`);
-    panel.hidden = state.tab !== id;
+    if (panel) panel.hidden = state.tab !== id;
   }
 }
 

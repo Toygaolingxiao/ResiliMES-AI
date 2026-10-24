@@ -393,6 +393,24 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `intent.concernDown` | {id} is down or in maintenance. | {id} 宕机或保养中。 | {id} は停止または保全中です。 |
 | `intent.concernHeld` | {id} is held. | {id} 被暂扣。 | {id} は保留中です。 |
 | `intent.suggestHold` | Review the hold on {id} before the book is published. | 发布前复核 {id} 的暂扣。 | 公開前に {id} の保留を確認してください。 |
+| `tabAi` | AI evidence | AI 证据 | AI エビデンス |
+| `tabAiTip` | Investigator, late-lot explainer and shift handover; advice only | 根因调查、迟交批次解释与交班报告；仅供参考 | 原因調査・遅延ロット説明・シフト引き継ぎ（助言のみ） |
+| `ai.intro` | Answers are written by the model from simulator evidence. Every number is checked against the tool results; nothing here changes the plan. | 回答由模型根据仿真证据撰写。每个数字都与工具结果核对；这里不会改动计划。 | 回答はシミュレーションの証拠からモデルが書きます。数字はすべてツール結果と照合し、計画は変更しません。 |
+| `ai.mock` | offline stand-in | 离线替身 | オフライン代替 |
+| `ai.live` | Nemotron | Nemotron | Nemotron |
+| `ai.factOk` | Fact check passed: every number and ID comes from a tool result. | 事实核对通过：每个数字和编号都来自工具结果。 | 事実確認に合格：数字と ID はすべてツール結果に由来します。 |
+| `ai.factFlag` | Not found in any tool result: | 以下内容在工具结果中找不到： | ツール結果に見つからない値： |
+| `ai.working` | Working… | 处理中… | 処理中… |
+| `ai.invTitle` | Investigator | 根因调查 | 原因調査 |
+| `ai.invHelp` | Pick an injected-fault case. The investigator re-runs it, gathers evidence in at most 6 calls and names one cause. | 选择一个注入故障的案例。调查器会重跑仿真，最多调用 6 次工具收集证据，并给出一个原因。 | 故障を注入したケースを選びます。調査役はシミュレーションを再実行し、最大 6 回の呼び出しで証拠を集め、原因を 1 つ挙げます。 |
+| `ai.invRun` | Investigate | 开始调查 | 調査する |
+| `ai.cause` | Primary cause | 主要原因 | 主因 |
+| `ai.second` | second | 次要 | 次点 |
+| `ai.lever` | Suggested lever | 建议措施 | 推奨アクション |
+| `ai.adviceOnly` | advice only, not applied | 仅为建议，未执行 | 助言のみ・未適用 |
+| `ai.calls` | Evidence calls | 证据调用 | 証拠の呼び出し |
+| `ai.truth` | Injected fault | 注入的故障 | 注入した故障 |
+| `ai.baseline` | Biggest-anomaly baseline | 最大异常基线 | 最大異常ベースライン |
 
 ## zh / ja strings for owner review
 
