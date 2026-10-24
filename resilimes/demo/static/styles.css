@@ -285,6 +285,17 @@ textarea {
 .custom-wrap .run { margin-top: 6px; }
 .status { margin: 0; color: var(--muted); font-size: 14px; min-height: 1.2em; }
 
+/* AI shift lead study progress (GET /api/shift-lead/status) */
+.sl-progress { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.sl-progress h2 { margin: 0; }
+.sl-head { margin: 0; font-size: 13px; font-weight: 600; }
+.sl-line { margin: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sl-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.sl-bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.4s ease; }
+.sl-progress.stale .sl-bar span { opacity: 0.45; }
+.sl-progress.failed { border-color: var(--amber); }
+.sl-progress.failed .sl-bar span { background: var(--amber); }
+
 .workspace { min-height: 0; overflow: hidden; display: flex; }
 .panel {
   min-height: 0;
