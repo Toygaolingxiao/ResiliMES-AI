@@ -270,7 +270,14 @@ def check_trace(
                     rework_step[lot] = -1
                 if 0 <= index < len(route.dedicate_root) and route.dedicate_root[index] >= 0:
                     old = pinned[lot]
-                    if old >= 0 and old != tool:
+                    # The pin binds the later steps of its own layer only (the
+                    # root step of a new layer, or another family, is free).
+                    binds = (
+                        route.dedicate_root[index] < index
+                        and old >= 0
+                        and fab.tool_family[old] == route.family[index]
+                    )
+                    if binds and old != tool:
                         down = any(a <= moment < b for a, b in downs[old])
                         if not down:
                             flag("dedication", f"{lot_id} step {index} on {name}")

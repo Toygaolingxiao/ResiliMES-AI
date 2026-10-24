@@ -887,12 +887,30 @@ class _Sim:
         route = self.fab.routes[self.fab.lot_route[lot]]
         return self.due[lot] - moment - route.remain[self.step[lot]]
 
+    def pin_for(self, lot: int, index: int) -> int:
+        """The scanner this step is pinned to, or -1.
+
+        A pin binds only the later steps of the layer that set it: the step
+        has a dedication root before it, and the pinned scanner is in this
+        step's family. The root step of a new layer chooses freely. Before
+        Q-time r2 the pin from an earlier layer also bound the root of the
+        next layer, even in another litho family, and no tool there could
+        ever start the lot unless the old scanner was down (found by the
+        2-hour litho stress; ``docs/QTIME_R2.md``).
+        """
+        route = self.fab.routes[self.fab.lot_route[lot]]
+        root = route.dedicate_root[index]
+        pinned = self.dedicate_tool[lot]
+        if root < 0 or root >= index or pinned < 0:
+            return -1
+        if self.fab.tool_family[pinned] != route.family[index]:
+            return -1
+        return pinned
+
     def eligible(self, lot: int, tool: int, moment: float) -> bool:
         """The dedicated scanner after layer 1, unless that scanner is down."""
-        route = self.fab.routes[self.fab.lot_route[lot]]
-        root = route.dedicate_root[self.step[lot]]
-        pinned = self.dedicate_tool[lot]
-        if root < 0 or pinned < 0 or pinned == tool:
+        pinned = self.pin_for(lot, self.step[lot])
+        if pinned < 0 or pinned == tool:
             return True
         return _covering(self.downs[pinned], moment) is not None
 
@@ -1297,7 +1315,7 @@ class _Sim:
         for lot, index in zip(started, steps, strict=True):
             route = self.fab.routes[self.fab.lot_route[lot]]
             if route.dedicate_root[index] >= 0 and self.dedicate_tool[lot] != tool:
-                if self.dedicate_tool[lot] >= 0:
+                if self.pin_for(lot, index) >= 0:
                     self.repins += 1
                 self.dedicate_tool[lot] = tool
             self.lot_tool[lot] = tool
@@ -1407,9 +1425,9 @@ class _Sim:
             if done_at <= latest:
                 continue
             lot_route = self.fab.routes[self.fab.lot_route[lot]]
-            pinned = self.dedicate_tool[lot]
+            pinned = self.pin_for(lot, nxt)
             pinned_up = pinned >= 0 and _covering(self.downs[pinned], moment) is None
-            if lot_route.dedicate_root[nxt] >= 0 and pinned != tool and pinned_up:
+            if pinned != tool and pinned_up:
                 continue
             setup = setup_seconds(self.fab, fam, self.tool_recipe[tool], lot_route.recipe[nxt])
             if self.overlaps_pm(
