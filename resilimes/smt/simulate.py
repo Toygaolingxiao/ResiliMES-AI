@@ -485,8 +485,19 @@ class _Sim:
         if fam in self.downstream and self.depth[fam] > self.downstream_max:
             self.downstream_max = self.depth[fam]
 
+    def step_family(self, lot: int) -> int:
+        return self.fab.routes[self.fab.lot_route[lot]].family[self.step[lot]]
+
     def live(self, fam: int) -> list[int]:
-        rows = [lot for lot in self.queues[fam] if self.waiting[lot]]
+        """Lots waiting for a step of this family.
+
+        ``try_start`` drops a started lot from its queue. The family check
+        keeps a lot whose step has moved on out of a queue it no longer
+        belongs to, so a tool never starts a step of another family.
+        """
+        rows = [
+            lot for lot in self.queues[fam] if self.waiting[lot] and self.step_family(lot) == fam
+        ]
         self.queues[fam] = rows
         return rows
 
@@ -774,7 +785,7 @@ class _Sim:
         index = self.step[chosen[0]]
         started: list[int] = []
         for lot in chosen:
-            if not self.waiting[lot] or self.step[lot] != index:
+            if not self.waiting[lot] or self.step[lot] != index or self.step_family(lot) != fam:
                 continue
             if self._reclean(lot, fam, moment):
                 continue
@@ -789,6 +800,10 @@ class _Sim:
             if tool not in self.idle[fam]:
                 self.idle[fam].append(tool)
             return
+        # A started lot leaves this queue now. Left in place, it is still
+        # listed here when it waits again for its next step in another family.
+        gone = set(started)
+        self.queues[fam] = [lot for lot in self.queues[fam] if lot not in gone]
         covered = _covering(self.downs[tool], moment)
         if covered is not None:
             down_min = (covered[1] - covered[0]) / 60.0
