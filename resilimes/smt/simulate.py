@@ -404,7 +404,13 @@ def default_r2_fixes() -> tuple[int, ...]:
     return DEFAULT_R2_FIXES
 
 
-def run_policy(
+def run_policy(fab: Fab, **kwargs: Any) -> RunResult:
+    """One run: ``make_sim(fab, **kwargs).run()``. Arguments are documented
+    on ``make_sim``."""
+    return make_sim(fab, **kwargs).run()
+
+
+def make_sim(
     fab: Fab,
     *,
     policy: str,
@@ -434,8 +440,8 @@ def run_policy(
     faults: FaultPlan | None = None,
     freeze: FreezeConfig | None = None,
     layout: FabLayout | bool | str | None = None,
-) -> RunResult:
-    """One run. ``deadline_event`` (all policies) sends an un-started lot to
+) -> _Sim:
+    """A ready simulator; ``.run()`` is one run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
     ResiliMES-only Q-time r2 dispatch rules (shortlist admission, graded
     urgency, bounded tool reservation); False is the ablation. ``r2_fixes``
@@ -496,7 +502,7 @@ def run_policy(
         layout=resolve(layout),
     )
     sim.progress = progress
-    return sim.run()
+    return sim
 
 
 def _downstream(fab: Fab, focus: int) -> set[int]:
@@ -750,6 +756,9 @@ class _Sim:
         self.place_snap: dict[int, tuple[int, int, float]] = {}
         self.wakes = [0] * tools
         self.ticks = 0
+        # Run state for start() / run_until(): events handled, wall clock at start.
+        self.steps = 0
+        self._started_at = -1.0
         self.tick_stalls = 0
         self.tick_stalls_batch = 0
         # Scheduling layer, fix 3: inbound Q-time lots that warrant a held
@@ -812,7 +821,15 @@ class _Sim:
         heapq.heappush(self.heap, (moment, self.seq, kind, tool, gen))
 
     def run(self) -> RunResult:
-        started = time.perf_counter()
+        self.start()
+        self.run_until(self.horizon)
+        return self.finish(time.perf_counter() - self._started_at)
+
+    def start(self) -> None:
+        """Seed the event heap (WIP, releases, downs, first tick). Once per run."""
+        if self._started_at >= 0.0:
+            raise RuntimeError("simulation already started")
+        self._started_at = time.perf_counter()
         for lot, origin, target, limit in inherited_windows(self.fab):
             self.open_window(lot, origin, target, limit, 0.0, inherited=True)
         held = self.faults.hold_until if self.faults is not None else {}
@@ -839,11 +856,22 @@ class _Sim:
             if self.plan is not None:
                 self.build_schedule(0.0)
             self.push(self.replan_sec, _TICK, -1)
-        steps = 0
+
+    def run_until(self, until: float) -> None:
+        """Process every event at or before ``min(until, horizon)``.
+
+        ``run()`` is ``start()``, ``run_until(horizon)`` and ``finish()``, so a
+        run that never stops early is event-for-event the same as before. A
+        caller may stop at ``t``, copy the simulator (``resilimes.smt.twin``)
+        and continue either copy; the event at ``t`` itself is processed.
+        """
+        if self._started_at < 0.0:
+            self.start()
+        stop = min(until, self.horizon)
         while self.heap:
-            moment, _seq, kind, tool, gen = heapq.heappop(self.heap)
-            if moment > self.horizon:
+            if self.heap[0][0] > stop:
                 break
+            moment, _seq, kind, tool, gen = heapq.heappop(self.heap)
             self.clock = moment
             if kind == _DONE:
                 self.complete(tool, moment, gen)
@@ -860,12 +888,11 @@ class _Sim:
                     self.wakes[tool] -= 1
                 self.release_idle(tool)
                 self.try_start(tool, moment)
-            steps += 1
-            if self.progress is not None and not steps & _PROGRESS_MASK:
+            self.steps += 1
+            if self.progress is not None and not self.steps & _PROGRESS_MASK:
                 self.progress(moment)
-            if steps > 2_000_000:
+            if self.steps > 2_000_000:
                 raise RuntimeError("SMT simulation exceeded 2e6 events")
-        return self.finish(time.perf_counter() - started)
 
     def open_window(
         self,
@@ -1738,6 +1765,12 @@ class _Sim:
             self.plan_holds(moment)
         if self.lead is not None:
             self.lead.on_tick(self, moment)
+        self.tick_rest(moment, t0)
+
+    def tick_rest(self, moment: float, t0: float) -> None:
+        """The part of ``tick`` after the shift lead: stall count, schedule,
+        snapshot, next tick. A copy taken inside ``lead.on_tick`` finishes the
+        tick through this (``resilimes.smt.twin.fork``)."""
         for tool in range(len(self.running)):
             if self.running[tool] >= 0 or self.wakes[tool] > 0 or self.res_lot[tool] >= 0:
                 continue
