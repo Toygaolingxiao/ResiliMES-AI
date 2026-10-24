@@ -1,4 +1,4 @@
-"""Hard Q-time: origin-step gating by a per-target Q-time kanban, plus expedite.
+"""Hard Q-time: origin-step gating by a whole-segment Q-time kanban, plus expedite.
 
 Two parts, both read by ``simulate._Sim`` (see ``docs/HARD_QTIME.md``):
 
@@ -11,14 +11,15 @@ Two parts, both read by ``simulate._Sim`` (see ``docs/HARD_QTIME.md``):
   ``batch_fill`` (at a batch target with an up, idle tool: waiting to fill),
   ``queueing`` (at the target, every up tool busy). It changes no decision.
 * ``HardQtime`` (``hard_qtime=True``, default off): a lot may start a CQT
-  origin step only if the work already committed to the target family (lots
-  inside an open window or at a CQT origin heading there) plus its own fits
-  the up tools of that family within the limit. Dataset process time, batch
+  origin step only if, for every family of the CQT segment (each measured
+  intermediate step and the target), the work already committed there (the
+  remaining segment steps of lots inside an open window or at a CQT origin)
+  plus its own fits the up tools before each step's latest start. Dataset process time, batch
   size, transport and the PM calendar only; future breakdowns are not used.
   A lot that missed (or is about to miss) its window is never gated and is
   expedited: inside its class tier it ranks right behind lots whose open
   window is lost unless they start now (the hot-lot rule of main) and ahead
-  of everyone else, at its target and through re-clean and the re-opened
+  of everyone else, at intermediate steps and its target, through re-clean and the re-opened
   window, until its target step starts.
 """
 
@@ -101,10 +102,14 @@ class HardQtime:
     def __init__(self, sim: _Sim) -> None:
         self.sim = sim
         nfam = len(sim.fab.families)
-        # Target family -> lot -> (work seconds at the target, target step,
-        # latest target start estimated when the origin started).
-        self.committed: list[dict[int, tuple[float, int, float]]] = [{} for _ in range(nfam)]
-        self.where: dict[int, int] = {}
+        # Family -> (lot, step) -> (work seconds at that step, target step,
+        # latest target start estimated when the origin started, seconds the
+        # lot still needs from that step's start to the target start). One
+        # entry per step of the CQT segment after the origin, target included.
+        self.committed: list[dict[tuple[int, int], tuple[float, int, float, float]]] = [
+            {} for _ in range(nfam)
+        ]
+        self.where: dict[int, list[tuple[int, int]]] = {}
         # Expedite: the target step a missed lot must still start, and since when.
         self.x_target = [-1] * sim.n
         self.x_since = [0.0] * sim.n
@@ -128,22 +133,50 @@ class HardQtime:
         lots = max(1, route.batch_min[target] // _WAFERS) if route.batch_max[target] > 0 else 1
         return float(route.cycle[target]) / lots
 
-    def commit(self, lot: int, target: int, latest: float) -> None:
+    def segment(self, lot: int, origin: int, target: int) -> list[tuple[int, int, float, float]]:
+        """(family, step, work, need to target) for each step after the origin.
+
+        The measured intermediate steps of the CQT segment and the target.
+        """
+        sim = self.sim
+        route = sim.fab.routes[sim.fab.lot_route[lot]]
+        number = sim.lot_no[lot]
+        out = []
+        for step in range(origin + 1, target + 1):
+            if step == target or measured(route, step, number):
+                need = sim.qtime_need(lot, step, target) if step < target else 0.0
+                out.append((route.family[step], step, self._work(route, step), need))
+        return out
+
+    def commit(self, lot: int, origin: int, target: int, latest: float) -> None:
         sim = self.sim
         route = sim.fab.routes[sim.fab.lot_route[lot]]
         if not measured(route, target, sim.lot_no[lot]):
             return
         self.drop(lot)
         self.version += 1
-        fam = route.family[target]
-        self.committed[fam][lot] = (self._work(route, target), target, latest)
-        self.where[lot] = fam
+        keys = []
+        for fam, step, work, need in self.segment(lot, origin, target):
+            self.committed[fam][(lot, step)] = (work, target, latest, need)
+            keys.append((fam, step))
+        self.where[lot] = keys
 
-    def drop(self, lot: int) -> None:
-        fam = self.where.pop(lot, -1)
-        if fam >= 0:
-            self.version += 1
-            self.committed[fam].pop(lot, None)
+    def drop(self, lot: int, upto: int | None = None) -> None:
+        """Release the lot's segment load (only steps <= ``upto`` if given)."""
+        keys = self.where.get(lot)
+        if not keys:
+            return
+        self.version += 1
+        keep = []
+        for fam, step in keys:
+            if upto is None or step <= upto:
+                self.committed[fam].pop((lot, step), None)
+            else:
+                keep.append((fam, step))
+        if keep:
+            self.where[lot] = keep
+        else:
+            del self.where[lot]
 
     def expedited(self, lot: int, moment: float) -> bool:
         """Missed its window, or inside one with no more than the urgent margin left."""
@@ -159,15 +192,17 @@ class HardQtime:
         self,
         fam: int,
         moment: float,
-        extra: tuple[float, float] | None = None,
+        extra: list[tuple[float, float]] | None = None,
     ) -> bool:
-        """Fluid EDF test: can every committed lot start its target in time?
+        """Fluid EDF test: can every committed lot start its step here in time?
 
         Up tools (current state and the PM calendar only, never future
         breakdowns) are free from their current job's end; committed lots, by
         latest start, must fit in the cumulative free tool time. Missed lots
         (expedited) take capacity first with no deadline of their own.
-        ``extra`` adds a candidate (work, latest start).
+        A committed step's latest start is the target's latest start minus
+        what the lot still needs from that step. ``extra`` adds a candidate's
+        (work, latest start) pairs.
         """
         sim = self.sim
         family = sim.fab.families[fam]
@@ -179,15 +214,15 @@ class HardQtime:
             free.append((tool, max(moment, start)))
         missed = 0.0
         items: list[tuple[float, float]] = []
-        for lot, (work, target, latest) in self.committed[fam].items():
+        for (lot, _step), (work, target, latest, need) in self.committed[fam].items():
             if self.x_target[lot] >= 0:
                 missed += work
                 continue
             if sim.cqt_at[lot] == target and sim.deadline[lot] > 0:
                 latest = sim.deadline[lot]
+            items.append((latest - need, work))
+        for work, latest in extra or ():
             items.append((latest, work))
-        if extra is not None:
-            items.append((extra[1], extra[0]))
         items.sort()
         cum = missed
         for latest, work in items:
@@ -225,16 +260,20 @@ class HardQtime:
         self.gate_checks += 1
         post = sim.qtime_need(lot, index, target) - route.cycle[index]
         latest = moment + proc + limit
-        fam = route.family[target]
-        ok = (
-            post < limit
-            and self.base_ok(fam, moment)
-            and self.feasible(fam, moment, extra=(self._work(route, target), latest))
-        )
-        if not ok:
+        if post >= limit:
             self.gate_blocks += 1
-            self.blocked_fam = fam
-        return ok
+            self.blocked_fam = route.family[target]
+            return False
+        # Every family of the segment (intermediate steps and the target).
+        extra: dict[int, list[tuple[float, float]]] = {}
+        for fam, _step, work, need in self.segment(lot, index, target):
+            extra.setdefault(fam, []).append((work, latest - need))
+        for fam, pairs in extra.items():
+            if not (self.base_ok(fam, moment) and self.feasible(fam, moment, extra=pairs)):
+                self.gate_blocks += 1
+                self.blocked_fam = fam
+                return False
+        return True
 
     def wait_on(self, tool: int) -> None:
         """``tool`` was just gated on ``blocked_fam``; wake it when that family frees up."""
@@ -249,9 +288,8 @@ class HardQtime:
         sim = self.sim
         self.version += 1  # a tool just turned busy
         route = sim.fab.routes[sim.fab.lot_route[lot]]
-        held = self.where.get(lot, -1)
-        if held >= 0 and self.committed[held].get(lot, (0.0, -1, 0.0))[1] == index:
-            self.drop(lot)
+        if lot in self.where:
+            self.drop(lot, upto=index)
         if self.x_target[lot] == index:
             self.recover_sec.append(moment - self.x_since[lot])
             self.x_target[lot] = -1
@@ -261,7 +299,7 @@ class HardQtime:
                 self.exempt_starts += 1
             self.admitted[lot] = not exempt
             latest = moment + route.cycle[index] + route.cqt_limit[index]
-            self.commit(lot, route.cqt_target[index], latest)
+            self.commit(lot, index, route.cqt_target[index], latest)
 
     def on_miss(self, lot: int, target: int, moment: float, outcome: str) -> None:
         if self.x_target[lot] < 0:

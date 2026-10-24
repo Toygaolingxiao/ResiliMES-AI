@@ -73,7 +73,7 @@ _QDEADLINE = 5
 # snapshot the plan. It never starts a lot: dispatch stays event-triggered.
 _TICK = 6
 # Hard Q-time: re-check a gated origin tool at least this often (it is also
-# woken event-driven when its target family frees up).
+# woken event-driven when the blocking family frees up).
 HQ_FALLBACK_SEC = 1800.0
 REPLAN_SEC = 300.0
 # ``run_policy(progress=...)`` is called every 4096 events.
@@ -527,7 +527,7 @@ def make_sim(
     transport layout (``resilimes.smt.layout``): False off (one building, as
     main), True the example two-building layout, or a ``FabLayout``; unset
     reads RESILIMES_FAB_LAYOUT, default off. ``hard_qtime`` gates CQT origin
-    starts by a per-target Q-time kanban and expedites missed lots
+    starts by a whole-segment Q-time kanban and expedites missed lots
     (``resilimes.smt.hard_qtime``); unset reads RESILIMES_HARD_QTIME, default off.
     ``plan`` (the planning layer's output, computed once before the run) turns
     on the step-due risk for ResiliMES fix 2, the plan band/rank tie-break, the
@@ -932,7 +932,7 @@ class _Sim:
         for lot, origin, target, limit in inherited_windows(self.fab):
             self.open_window(lot, origin, target, limit, 0.0, inherited=True)
             if self.hq is not None:
-                self.hq.commit(lot, target, self.deadline[lot])
+                self.hq.commit(lot, self.step[lot] - 1, target, self.deadline[lot])
         held = self.faults.hold_until if self.faults is not None else {}
         for lot in range(self.n):
             release = self.entry[lot]
@@ -1251,7 +1251,7 @@ class _Sim:
                 skipped = True
                 continue
             if self.hq is not None and not self.hq.admit(lot, moment, proc):
-                # Woken when the target family finishes a step or a tool comes
+                # Woken when the blocking family finishes a step or a tool comes
                 # up (``_hq_wake``); the late fallback covers time-only changes.
                 gated = True
                 self.hq.wait_on(tool)
