@@ -3,9 +3,9 @@
 ``python -m resilimes.smt.hard_qtime_study OUT.json`` runs the published book,
 seeds 1-3, 168 h (``RESILIMES_STUDY_HORIZON_H``), for each policy in
 ``RESILIMES_HQ_POLICIES`` (default ``planning,edd``; ``planning`` is ResiliMES
-with the planning layer, the ``plan`` arm of ``qtime_study``), arms ``H0``
-(hard Q-time off, main) and ``H1`` (``hard_qtime=True``). Settings as
-``qtime_study`` (``_setup``, ``book_plan``, Q-time r2 fixes 1-3). True Q-time is the event
+in main's default mode: the auto planning layer, r2 fixes 2+3, closed fab),
+arms ``H0`` (hard Q-time off, main) and ``H1`` (``hard_qtime=True``). Plant,
+downs and PM as ``qtime_study._setup``. True Q-time is the event
 replay of ``qtime_study``; ``q_steady_pct`` scores only windows opened after
 the first 24 h (the snapshot WIP start-up wave is over by then). Miss causes
 come from ``resilimes.smt.hard_qtime.classify``. No weights, due dates or
@@ -76,9 +76,6 @@ def _one(item: tuple[int, str, str]) -> dict[str, Any]:
     hard = dict(ARMS)[arm]
     sim_policy = "resilimes" if policy == "planning" else policy
     plant, kwargs = qtime_study._setup(_FAB[0], BOOK, seed, sim_policy)
-    if policy == "planning":
-        kwargs["plan"] = qtime_study.book_plan(_FAB[0], BOOK)
-    kwargs.setdefault("r2_fixes", (1, 2, 3))
     result = run_policy(plant, hard_qtime=hard, **kwargs)
     horizon = kwargs["horizon"]
     row: dict[str, Any] = {"book": BOOK, "seed": seed, "policy": policy, "arm": arm}
