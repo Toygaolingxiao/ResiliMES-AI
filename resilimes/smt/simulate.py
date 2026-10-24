@@ -38,6 +38,7 @@ from resilimes.smt.fab import (
     WIP_FLOOR,
     WIP_PER_TOOL,
     Fab,
+    inherited_windows,
     lot_number,
     measured,
     transport_seconds,
@@ -50,6 +51,8 @@ _WAKE = 3
 # A lot reaches the next family's queue after its transport. The slot holds the lot.
 _ARRIVE = 4
 _BIN_SEC = 900.0
+_BUCKETS = ("met", "late", "held", "recleaned", "expired", "live", "skipped")
+_MISSED = ("late", "held", "recleaned", "expired")
 _WAFERS = 25
 # Due dates in the X-factor book. Middle of the 2.5-3 range.
 X_FACTOR = 2.75
@@ -127,6 +130,27 @@ class RunResult:
     transport: bool = True
     qtime_overrides: int = 0
     qtime_override_displaced: dict[str, int] = field(default_factory=dict)
+    # Q-time window outcomes. Windows opened in this run (a CQT origin step
+    # ended): met (target started by the deadline), late (started after it),
+    # held (the deadline passed un-started and the lot went to Q-time hold),
+    # recleaned, expired (deadline at or before the horizon, still open), live
+    # (deadline after the horizon), skipped (sampling skipped the target).
+    # ``qtime_violations`` = late + held + recleaned + expired.
+    qtime_windows: dict[str, int] = field(default_factory=dict)
+    # The same buckets for windows inherited from the snapshot (a lot already
+    # inside a CQT span at t=0, ``inherited_windows``). Not in qtime_violations.
+    qtime_inherited: dict[str, int] = field(default_factory=dict)
+    qtime_met: int = 0
+    qtime_late: int = 0
+    qtime_held: int = 0
+    qtime_recleaned: int = 0
+    qtime_expired: int = 0
+    qtime_rate_pct: float | None = None
+    qtime_inherited_windows: int = 0
+    qtime_inherited_missed: int = 0
+    # Lot-minutes of Q-time hold (deadline passed, not reworkable), apart from
+    # the breakdown rework hold in rework_lot_min.
+    qtime_hold_lot_min: float = 0.0
 
 
 def rework_ready(moment: float) -> float:
@@ -483,6 +507,13 @@ class _Sim:
         self.override_displaced: dict[str, int] = {}
         # Set by choose(): (lead lot, displaced lot, remaining s, need s).
         self.pending_override: tuple[int, int, float, float] | None = None
+        # Q-time window bookkeeping. qgen changes whenever a lot's window opens
+        # or closes, so a stale deadline event can be told apart.
+        self.inherited = [False] * self.n
+        self.qgen = [0] * self.n
+        self.qout: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
+        self.qinh: dict[str, int] = dict.fromkeys(_BUCKETS, 0)
+        self.hold_sec = 0.0
 
     def push(self, moment: float, kind: int, tool: int, gen: int = 0) -> None:
         if moment > self.horizon:
@@ -492,6 +523,8 @@ class _Sim:
 
     def run(self) -> RunResult:
         started = time.perf_counter()
+        for lot, origin, target, limit in inherited_windows(self.fab):
+            self.open_window(lot, origin, target, limit, 0.0, inherited=True)
         for lot in range(self.n):
             self.enqueue(lot, 0.0)
         for tool, spans in enumerate(self.downs):
@@ -523,6 +556,34 @@ class _Sim:
             if steps > 2_000_000:
                 raise RuntimeError("SMT simulation exceeded 2e6 events")
         return self.finish(time.perf_counter() - started)
+
+    def open_window(
+        self,
+        lot: int,
+        origin: int,
+        target: int,
+        limit: float,
+        moment: float,
+        *,
+        inherited: bool = False,
+    ) -> None:
+        """A dataset CQT window opens: ``target`` must start by moment + limit."""
+        self.deadline[lot] = moment + limit
+        self.cqt_limit[lot] = limit
+        self.cqt_at[lot] = target
+        self.cqt_from[lot] = origin
+        self.inherited[lot] = inherited
+        self.qgen[lot] += 1
+
+    def close_window(self, lot: int, outcome: str) -> None:
+        """Count the window's outcome once and close it."""
+        bucket = self.qinh if self.inherited[lot] else self.qout
+        bucket[outcome] += 1
+        if outcome in _MISSED and not self.inherited[lot]:
+            self.violations += 1
+        self.cqt_at[lot] = -1
+        self.inherited[lot] = False
+        self.qgen[lot] += 1
 
     def enqueue(self, lot: int, moment: float) -> None:
         route = self.fab.routes[self.fab.lot_route[lot]]
@@ -1018,10 +1079,9 @@ class _Sim:
                 self.batch_dropped += 1
                 continue
             index = self.step[lot]
-            if self.cqt_at[lot] == index and self.deadline[lot] > 0 and moment > self.deadline[lot]:
-                self.violations += 1
             if self.cqt_at[lot] == index:
-                self.cqt_at[lot] = -1
+                late = self.deadline[lot] > 0 and moment > self.deadline[lot]
+                self.close_window(lot, "late" if late else "met")
             self.waiting[lot] = False
             self.depth[fam] -= 1
             started.append(lot)
@@ -1114,10 +1174,9 @@ class _Sim:
             return False
         index = self.step[lot]
         origin = self.cqt_from[lot]
-        self.violations += 1
         self.recleans += 1
         self.rework[lot] += 1
-        self.cqt_at[lot] = -1
+        self.close_window(lot, "recleaned")
         self.deadline[lot] = 0.0
         self.waiting[lot] = False
         self.depth[fam] = max(0, self.depth[fam] - 1)
@@ -1191,10 +1250,8 @@ class _Sim:
         if self.record:
             self.events.append(("end", moment, lot, index))
         if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
-            self.deadline[lot] = moment + route.cqt_limit[index]
-            self.cqt_limit[lot] = route.cqt_limit[index]
-            self.cqt_at[lot] = route.cqt_target[index]
-            self.cqt_from[lot] = index
+            limit = route.cqt_limit[index]
+            self.open_window(lot, index, route.cqt_target[index], limit, moment)
         nxt = index + 1
         # Sampled metrology: a lot not picked by the lot-ID rule moves past
         # the step with no queue and no process time.
@@ -1205,7 +1262,7 @@ class _Sim:
             if self.cqt_at[lot] == nxt:
                 # The Q-time window ends at its target step; an unmeasured lot
                 # never visits it, so the window is closed without a check.
-                self.cqt_at[lot] = -1
+                self.close_window(lot, "skipped")
                 self.qtime_skipped += 1
             nxt += 1
         if nxt >= len(route.family):
@@ -1288,8 +1345,11 @@ class _Sim:
             if end >= 0 and end <= self.due[lot]:
                 on_time += 1
         for lot in range(self.n):
-            if self.cqt_at[lot] >= 0 and 0 < self.deadline[lot] <= self.horizon:
-                self.violations += 1
+            if self.cqt_at[lot] >= 0:
+                expired = 0 < self.deadline[lot] <= self.horizon
+                self.close_window(lot, "expired" if expired else "live")
+        qout, qinh = self.qout, self.qinh
+        scored = qout["met"] + sum(qout[key] for key in _MISSED)
         denom = len(due_lots)
         xs = [
             self.finished_at[lot] / self.raw_remain[lot]
@@ -1368,6 +1428,17 @@ class _Sim:
             transport=self.transport,
             qtime_overrides=self.overrides,
             qtime_override_displaced=dict(sorted(self.override_displaced.items())),
+            qtime_windows=dict(qout),
+            qtime_inherited=dict(qinh),
+            qtime_met=qout["met"],
+            qtime_late=qout["late"],
+            qtime_held=qout["held"],
+            qtime_recleaned=qout["recleaned"],
+            qtime_expired=qout["expired"],
+            qtime_rate_pct=round(100.0 * qout["met"] / scored, 2) if scored else None,
+            qtime_inherited_windows=sum(qinh.values()),
+            qtime_inherited_missed=sum(qinh[key] for key in _MISSED),
+            qtime_hold_lot_min=round(self.hold_sec / 60.0, 1),
             class_wait_min={
                 kind: round(self.class_wait[kind] / self.class_starts[kind] / 60.0, 2)
                 for kind in sorted(self.class_wait)

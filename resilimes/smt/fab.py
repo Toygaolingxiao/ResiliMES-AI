@@ -50,6 +50,11 @@ REWORK_SEC = 1800.0
 # published book), so an urgent lot sees at least one dispatch on its family,
 # and a quarter of the shortest SMT2020 CQT limit (1 h). Not tuned across seeds.
 QTIME_URGENT_MARGIN_SEC = 900.0
+# Bounded tool reservation (ResiliMES dispatch only). A tool may be held idle
+# for a Q-time-critical lot that is about to arrive for at most this long, and
+# at most one tool per family at a time. Set at 15 min by the owner's brief
+# before any run, the same value as the urgent margin. Not tuned.
+RESERVE_MAX_SEC = 900.0
 # Fixed lot transport between steps, the same for every policy. ResiliMES
 # assumption, not the SMT2020 value: fromto.txt has a single Fab-to-Fab row
 # (uniform 7.5 +/- 2.5 min) and every tool family's STNFAMLOC is "Fab", so the
@@ -134,6 +139,27 @@ def measured(route: Route, index: int, number: int) -> bool:
         return True
     n = number + route.step_no[index]
     return int((n + 1) * pct // 100) > int(n * pct // 100)
+
+
+def inherited_windows(fab: Fab) -> list[tuple[int, int, int, float]]:
+    """(lot, origin, target, limit) for every snapshot lot inside a CQT span.
+
+    A lot whose snapshot step lies after a dataset CQT origin step and at or
+    before that window's target (``origin < step <= target``) is already inside
+    an open window at t=0. WIP.txt gives no time for the end of the origin step
+    (every START is the snapshot), so the window is taken to open at t=0: its
+    deadline is the full limit. That is the most lenient reading, and these
+    windows are reported apart from the windows the dispatcher opens.
+    """
+    found: list[tuple[int, int, int, float]] = []
+    for lot, (route_i, step) in enumerate(zip(fab.lot_route, fab.lot_step, strict=True)):
+        route = fab.routes[route_i]
+        for origin in range(step - 1, -1, -1):
+            target = route.cqt_target[origin]
+            if route.cqt_limit[origin] > 0 and target >= step:
+                found.append((lot, origin, target, route.cqt_limit[origin]))
+                break
+    return found
 
 
 @dataclass

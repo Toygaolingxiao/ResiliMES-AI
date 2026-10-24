@@ -63,6 +63,15 @@ _KEYS = (
     "skipped",
     "qtime_skipped",
     "qtime_overrides",
+    "qtime_met",
+    "qtime_late",
+    "qtime_held",
+    "qtime_recleaned",
+    "qtime_expired",
+    "qtime_rate_pct",
+    "qtime_inherited_windows",
+    "qtime_inherited_missed",
+    "qtime_hold_lot_min",
 )
 
 _X_ETAS = (180.0, 300.0, 600.0, LITHO_MTTR_MIN)

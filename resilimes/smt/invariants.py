@@ -45,6 +45,7 @@ from resilimes.smt.fab import (
     QTIME_URGENT_MARGIN_SEC,
     REWORK_SEC,
     Fab,
+    inherited_windows,
     lot_number,
     measured,
     transport_seconds,
@@ -99,6 +100,13 @@ def check_trace(
     q_target = [-1] * n
     q_deadline = [0.0] * n
     q_origin = [-1] * n
+    # Windows inherited from the snapshot open at t=0 and are counted apart.
+    q_inherited = [False] * n
+    for lot, origin, target, limit in inherited_windows(fab):
+        q_target[lot] = target
+        q_origin[lot] = origin
+        q_deadline[lot] = limit
+        q_inherited[lot] = True
     # (tool, time, lead lot) of an override not yet matched to its start.
     open_override: tuple[int, float, int] | None = None
     policy = str(getattr(result, "policy", ""))
@@ -211,10 +219,11 @@ def check_trace(
                             flag("dedication", f"{lot_id} step {index} on {name}")
                     pinned[lot] = tool
                 if q_target[lot] == index:
-                    if moment > q_deadline[lot]:
+                    if moment > q_deadline[lot] and not q_inherited[lot]:
                         violations += 1
                     q_target[lot] = -1
                     q_origin[lot] = -1
+                    q_inherited[lot] = False
                 running[lot] = True
                 holding[tool].add(lot)
         elif kind == "interrupt":
@@ -247,6 +256,7 @@ def check_trace(
                 q_deadline[lot] = moment + route.cqt_limit[index]
                 q_target[lot] = route.cqt_target[index]
                 q_origin[lot] = index
+                q_inherited[lot] = False
             step[lot] = index + 1
         elif kind == "skip":
             _kind, moment, lot, index = event
@@ -256,15 +266,17 @@ def check_trace(
             if q_target[lot] == index:
                 q_target[lot] = -1
                 q_origin[lot] = -1
+                q_inherited[lot] = False
             step[lot] = index + 1
         elif kind == "reclean":
             _kind, moment, lot, index, origin = event
             if q_target[lot] == index and moment > q_deadline[lot]:
-                violations += 1
+                violations += 0 if q_inherited[lot] else 1
             else:
                 flag("qtime_recount", f"{fab.lot_id[lot]} re-clean without a missed window")
             q_target[lot] = -1
             q_origin[lot] = -1
+            q_inherited[lot] = False
             q_deadline[lot] = 0.0
             released[lot] = (moment, fab.routes[fab.lot_route[lot]].family[index])
             step[lot] = origin
@@ -276,7 +288,7 @@ def check_trace(
         if held and any(a <= horizon < b for a, b in downs[tool]):
             flag("stuck_on_down", f"{fab.tool_name[tool]} down at horizon holding {len(held)}")
     for lot in range(n):
-        if q_target[lot] >= 0 and 0 < q_deadline[lot] <= horizon:
+        if q_target[lot] >= 0 and 0 < q_deadline[lot] <= horizon and not q_inherited[lot]:
             violations += 1
     if violations != result.qtime_violations:
         flag(
