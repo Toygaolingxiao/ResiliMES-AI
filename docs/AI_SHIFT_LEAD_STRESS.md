@@ -143,3 +143,55 @@ project an avoidable miss or a late hot lot.
 
 Order for any subset: seed-major, then P2-1..P2-3, after the first set
 (`--book stress2` runs P2 only).
+
+## Results
+
+Added after all runs finished (box, mock/no-LLM arms only: `rules` and
+`sim`). Nothing above this section was changed. Raw per-run JSON:
+`stress_out/{rules,sim}/<scenario>_s<seed>.json` (not committed); produced by
+`python -m eval.sim_select_study --book stress` and `--book stress2`.
+
+All 8 scenarios (P1: 5, P2: 3) x seeds 9, 10, 11 = 24 pairs, 8 h horizon,
+fork 8 h, 3 futures. Sums over the three seeds, `rules / sim`:
+
+| scenario | avoidable Q-time | all Q-time viol. | hot late | weighted tardiness (min) | exceptions (sim) | escalated (sim) | sim vs rules W-T-L |
+|---|---|---|---|---|---|---|---|
+| `stress_furnace_down` | 0 / 0 | 0 / 0 | 0 / 0 (of 0 due) | 16254.4 / 16254.4 | 267 | 0 | 0-3-0 |
+| `stress_hot_cqt` | 0 / 0 | 31 / 31 | 0 / 0 (of 3 due) | 15628.3 / 15628.3 | 286 | 0 | 0-3-0 |
+| `stress_release_burst` | 0 / 0 | 10 / 10 | 0 / 0 (of 0 due) | 16195.8 / 16195.8 | 268 | 0 | 0-3-0 |
+| `stress_pm_peak` | 0 / 0 | 31 / 31 | 0 / 0 (of 0 due) | 16254.4 / 16254.4 | 286 | 0 | 0-3-0 |
+| `stress_batch_cap` | 0 / 0 | 35 / 35 | 0 / 0 (of 0 due) | 16254.4 / 16254.4 | 294 | 0 | 0-3-0 |
+| `stress2_furnace_crisis` | 0 / 0 | 14 / 14 | 0 / 0 (of 0 due) | 16195.8 / 16195.8 | 286 | 0 | 0-3-0 |
+| `stress2_rush_hot` | 0 / 0 | 31 / 31 | 0 / 0 (of 3 due) | 15628.3 / 15628.3 | 286 | 0 | 0-3-0 |
+| `stress2_fe_furnace_crisis` | 0 / 0 | 31 / 31 | 0 / 0 (of 0 due) | 16254.4 / 16254.4 | 298 | 0 | 0-3-0 |
+| **total (24 pairs)** | **0 / 0** | 183 / 183 | **0 / 0** (of 6 due) | 128665.8 / 128665.8 | 2271 | **0** | 0-24-0 |
+
+* **AI called: no.** In none of the 8 scenarios and none of the 3 seeds did
+  the no-AI twin preview of the rule default project an avoidable Q-time
+  violation or a late hot lot, so the `sim` arm escalated **0 times out of
+  2271 exceptions**. By the decision rule above, no scenario "needs the AI".
+* **Bar**: identical to `rules` in every pair (0 avoidable, 0 hot late, same
+  weighted tardiness): the twin found no reason to deviate from the rule plan.
+* All 183 Q-time violations in these runs are classified unavoidable by
+  `hard_qtime.miss_class` (169 `unavoidable_pre_gate`: the lot had already
+  entered the window before the snapshot / gate; 14
+  `unavoidable_disruption`). None is avoidable.
+* The live arms (`sim_llm`, `sim_llm_hmem`) were **not run** for this book:
+  with 0 escalations in the mock `sim` arm they would call Nemotron 0 times
+  and reproduce the `sim` result; the runtime rule makes this a 0-LLM run.
+* Several scenarios give identical weighted tardiness (e.g. `stress_hot_cqt`
+  and `stress2_rush_hot`; `stress_furnace_down`, `stress_pm_peak`,
+  `stress_batch_cap`, `stress2_fe_furnace_crisis`): within an 8 h horizon the
+  furnace incidents delay lots that are not due inside the horizon, so the
+  censored tardiness of due lots does not move. The Q-time columns do move.
+
+**Conclusion (honest).** With hard Q-time gating (docs/HARD_QTIME.md) the
+rule plan already holds Q-time in all pre-registered incidents at the 8 h
+scale: the gate does not release a lot into a window it cannot close, so
+the incidents turn into queueing upstream of the CQT origin (tardiness), not
+into avoidable Q-time misses. The AI shift lead is a **safety net** that
+these incidents never trip. This is a negative result for "the AI is
+needed" and a positive result for the rules-first design. Demo cases where
+the AI is genuinely called are built separately, from moments where the
+rule failed in long runs, and are **not** part of this pre-registered
+evaluation (docs/AI_SHIFT_LEAD_DEMO.md).
