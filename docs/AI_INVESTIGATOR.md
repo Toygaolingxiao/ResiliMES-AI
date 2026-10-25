@@ -87,9 +87,37 @@ reading the evidence (setup minutes per start, lots per batch start) has to beat
 
 ### Real (Nemotron via Nightshift)
 
-Not run here: the build box has no Nightshift. Run it on the PC (below). It writes
+Run on the PC (below); the build box has no Nightshift. It writes
 `outputs/ai_eval/investigator_nightshift.json` with the same summary fields, labelled
 `real:<model id>`.
+
+**First live run (before the protocol):** AI top-1 **11/24** against the rule baseline's **20/24**.
+The fact check passed 22/24; the other 2 gave no answer because they hit the 10-turn limit. The
+model made 2.9 tool calls on average.
+
+Why it lost: the system prompt listed the tools and the answer format, but never said *how to
+decide*. The baseline compares the window with the 4 h before t1 and picks the cause whose metric
+changed most. The model read only absolute numbers in the window and followed the most visible
+signal. It answered `release_burst` whenever it saw many arrivals, including batch-cap and
+upstream-starvation cases where WIP fell. In one case it ranked a clear setup thrash (36.6 setup
+minutes per start, 130 changeovers) as secondary because one tool was down.
+
+**What changed (a prompt and tool fix, not tuning).**
+
+- **Protocol in the system prompt.** Always compare the window with the 4 h before t1. Check every
+  cause's indicator: down tool-hours, PM tool-hours, arrivals per hour, setup minutes per start,
+  lots per batch start, and the main upstream family's down time and feed. Pick the cause whose
+  indicator changed most relative to before, in the direction that points to it. If WIP falls,
+  consider upstream starvation first. Answer by about turn 6.
+- **New tool `compare_windows {family, start_h, end_h}`.** It returns, for each of the six causes,
+  the indicator before, in the window, and its relative change. It also gives waiting lots at the
+  window's start and end, and the main upstream family's down+PM tool-hours and feed into this
+  family. It uses the same metrics as the baseline (`cause_indicators`), and its numbers go into
+  the fact registry like every other tool. It gives **no ranking and no winner**, so the model
+  still has to reason.
+- **Mock stand-in.** It now calls `compare_windows` first. Its answers still equal the baseline's.
+
+Cases, seeds, weights and scoring are unchanged. The re-run result will be added here.
 
 ## PC commands
 
