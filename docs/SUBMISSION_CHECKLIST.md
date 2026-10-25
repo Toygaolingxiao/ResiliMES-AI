@@ -13,8 +13,8 @@ Deadline: **27 Oct 2026 23:45 UTC**. Ties break on Impact, then submission times
 | At least one Meterless engine in a working feature | Scout Intent on every recovery. Tests: `tests/test_scout_engine.py`. Also used: World Model, Markovian. | Name Scout Intent and the test path on the form. |
 | Meterless Nightshift as primary AI provider, NVIDIA connected inside it | `resilimes/llm/nightshift.py`. Model id `NEMOTRON_MODEL`. | Install Nemotron in Nightshift. Paste the runtime token. Film one live call. |
 | Cursor for development | Event-page rule says required. Academy FAQ says recommended. This repo was built in Cursor. Say so in the sponsor field. | — |
-| Demo video, 1–4 minutes | Script: `docs/DEMO_SCRIPT.md` | Record it. Show one real Nightshift request if you can, with secrets off screen. Show the main workflow, the track, Zetaris, and Meterless. |
-| Slide deck | Outline mapped to the rubric: `docs/PITCH_DECK.md` | Make the slides. Add screenshots and both names. |
+| Demo video, 1–4 minutes | Script: `docs/DEMO_VIDEO_SCRIPT.md` (setup in `docs/DEMO_SCRIPT.md`) | Record it. Show one real Nightshift request if you can, with secrets off screen. Show the main workflow, the track, Zetaris, and Meterless. |
+| Slide deck | `docs/deck/index.html` (outline: `docs/PITCH_DECK.md`) | Fill the `[TBD: …]` slots (team names, video link, live Nemotron results). Export to PDF from the browser if the form wants a file. |
 | GitHub repo with source | This repository. | Confirm the repo is public or shared as the form requires. |
 | README covers setup, usage, dependencies | `README.md` sections Quick start, Usage, Dependencies. | — |
 | Sponsor-tech explanation, including the engine and the test | `docs/SPONSOR_TECH.md` | Paste the short version into HackOS. |
