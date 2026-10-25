@@ -188,7 +188,7 @@ function paint() {
     dispatchRun.textContent = command.submit || "";
     dispatchRun.disabled = state.running;
   }
-  $("#clock").textContent = `${copy.clock} ${formatClock(state.horizon)} UTC`;
+  paintClock(copy);
   paintMode(copy);
   const source = state.health.data_source || state.health.data || "sample";
   const banner = $("#banner");
@@ -202,10 +202,7 @@ function paint() {
   } else {
     banner.hidden = true;
   }
-  const query = $("#query-line");
-  const queryBody = formatBenchmark(state.report, state.steps);
-  query.hidden = !queryBody;
-  query.textContent = queryBody;
+  paintQueryLine();
   $("#theme").textContent = state.theme === "dark" ? copy.themeDark : copy.themeLight;
   document.querySelectorAll("[data-lang]").forEach((button) => {
     button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
@@ -508,6 +505,21 @@ function formatBenchmark(report, steps) {
   const counts = `rows: ${Object.entries(rows).map(([name, count]) => `${name} ${count}`).join(" · ")}`;
   const sql = (slots.queries || []).map((item) => item.sql).join("\n");
   return [head, sources, counts, sql].filter(Boolean).join("\n");
+}
+
+// The query line sits inside the data-source banner: a one-line summary (mode · sources · rows) that opens to the SQL.
+function paintQueryLine() {
+  const query = $("#query-line");
+  const lines = formatBenchmark(state.report, state.steps).split("\n").filter(Boolean);
+  query.hidden = !lines.length;
+  const summary = query.querySelector("summary");
+  const body = query.querySelector("pre");
+  const head = lines.filter((line) => !/^\s*(SELECT|WITH)\b/i.test(line));
+  const sql = lines.filter((line) => /^\s*(SELECT|WITH)\b/i.test(line));
+  summary.textContent = head.join(" · ");
+  summary.title = head.join("\n");
+  body.textContent = sql.join("\n");
+  body.hidden = !sql.length;
 }
 
 function paintSmtRecover(report) {
@@ -2718,6 +2730,29 @@ function formatDuration(minutes) {
 
 function shift(horizon, minutes) {
   return new Date(Date.parse(horizon) + minutes * 60000).toISOString();
+}
+
+// Header clock: the label and the year drop out on narrow screens (CSS); the full text stays in the tooltip.
+function paintClock(copy) {
+  const clock = $("#clock");
+  const stamp = formatClock(state.horizon);
+  const full = `${copy.clock} ${stamp} UTC`;
+  clock.title = full;
+  clock.setAttribute("aria-label", full);
+  clock.replaceChildren();
+  const label = document.createElement("span");
+  label.className = "clock-label";
+  label.textContent = `${copy.clock} `;
+  clock.append(label);
+  const match = /^(\d{4}-)(.*)$/.exec(stamp);
+  if (match) {
+    const year = document.createElement("span");
+    year.className = "clock-year";
+    year.textContent = match[1];
+    clock.append(year, `${match[2]} UTC`);
+  } else {
+    clock.append(`${stamp} UTC`);
+  }
 }
 
 function formatClock(iso) {
