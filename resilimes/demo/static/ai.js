@@ -249,6 +249,9 @@ function paintAi() {
   host.appendChild(aiEl("p", "muted", copy.intro));
   for (const section of AI_SECTIONS) {
     const card = aiEl("article", "plan-card ai-card");
+    const busy = Boolean(AI.busy[section.id]);
+    card.classList.toggle("busy", busy);
+    card.setAttribute("aria-busy", String(busy));
     section.render(card, copy);
     host.appendChild(card);
   }
