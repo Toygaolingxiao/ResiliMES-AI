@@ -1,0 +1,63 @@
+# Demo video script (submission film)
+
+Target **3:00**, hard limit **4:00** (rules: demo video 1–4 minutes, show one real request through Meterless Nightshift, hide all keys and tokens; [hackathon/HACKATHON_RULES.md](hackathon/HACKATHON_RULES.md) §4). English narration. Record the console at 1920×1080, browser zoom 100%, Light theme, language English. The deck is [deck/index.html](deck/index.html); shots 1, 5 and 9 cut to its slides.
+
+This file replaces the shot list in [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for the submission film. The setup there ("Before you hit record": `make demo-live`, badge, banner, Zetaris load) still applies and is not repeated here. The older shot lists in that file quote numbers from before the planning-layer default and are not used in this film.
+
+## Rules for this film
+
+- **Secrets.** Never open `.env`, PowerShell history, the Nightshift token file or the Zetaris login files on camera. Start the server from a terminal that was opened and scrolled clear before recording. If a terminal must be on screen, run `cls` / `clear` first. Blur any frame that shows a header value. Do not read a token aloud.
+- **One real request.** Shot 6 is a live Nemotron call through Nightshift (`http://127.0.0.1:8088/v1`, model `nvidia/nemotron-3.5-lightning-30b-a3b`). The chip next to the answer must read `Nemotron`, not `offline stand-in`. If it reads `offline stand-in`, stop: the token is not set and that take is not this film.
+- **Numbers.** Speak only numbers that are on screen in that frame, or that are on the deck slide being shown. Every deck number cites its repo doc. Do not tune a seed, due or weight to get a nicer take.
+- **TBD.** The live Nemotron eval (investigator re-run after PR #40, explainer, handover, shift lead) is still running. Before you record shot 9, fill the `[TBD: live Nemotron result]` cells on deck slide 10 from `outputs/ai_eval/summary_nightshift.json`, or say the line marked *(if still TBD)*.
+
+## Shot list
+
+| # | Time | Screen | Narration (English, spoken) |
+|---|---|---|---|
+| 1 | 0:00–0:15 | Deck slide 2 (Problem), then cut to the console Overview tab, idle. | "A fab shift lead trades delivery, queue time and plan stability every hour, and has to explain every call. ResiliMES-AI schedules the full public SMT2020 fab and uses AI only to explain and advise." |
+| 2 | 0:15–0:40 | Overview tab. Point at the banner (106 groups, 1313 tools, 102 litho, 2156 lots), then the Bottlenecks and WIP pile-ups cards. | "This is the public industry benchmark SMT2020: one thousand three hundred thirteen tools and two thousand one hundred fifty-six lots. These families are busy over their queue limit, and these are the WIP pile-ups the next shift inherits." |
+| 3 | 0:40–1:00 | Tools tab, Busiest families. Hover the first family's Next-up list (setup chip, slack chip). | "Per tool: the lot running now and the next lots in dispatch order, with setup and slack. The default is the planning layer: a daily plan gives every step a due, a five-minute tick plans the queues, and dispatch follows it or logs why not." |
+| 4 | 1:00–1:25 | Plan tab → **Lithography breakdown** → **Reschedule this shift**. Wait for the six cards. Point at re-cleans, Q-time violations and on-time with its denominator, then at the study line under the cards. | "Litho FE 92-1 goes down for the published repair. One click reschedules the shift. Read the cards with their denominators" *(read the before → after values on screen)*. "The line under the cards says this click is seed one, twelve hours, and is not the five-seed study." |
+| 5 | 1:25–1:50 | Deck slide 7, hold 10 s; then slide 8, hold 15 s. | "Over seven days the planning default ties EDD on on-time and meets five point four points more queue-time windows. Across nine books EDD is still about three points ahead on on-time. The hard Q-time gate lifts true Q-time to ninety-seven percent and cuts upstream misses from one thousand four hundred sixty-seven to two hundred twenty-five, but costs output and tardiness, so it ships off. So does the frozen dispatch window." |
+| 6 | 1:50–2:20 | **Live request.** AI evidence tab → Investigator → keep the first case → **Investigate**. While it works, keep the console in frame. When it answers, point at the `Nemotron` chip, the primary cause, the evidence-call chain, the fact-check line, and the injected fault and rule baseline shown beside it. Do not claim a win from one case. | "This is a real request to NVIDIA Nemotron through Meterless Nightshift on this PC. The investigator re-runs the faulted case, gets at most six evidence calls on the simulator run, names one cause from a fixed list, and every number in its answer is checked against a tool result. The lever is advice only; nothing changes the plan." |
+| 7 | 2:20–2:35 | Cut to a cleared terminal (no env, no history). Run the response check below and show only its output: `response_models` with the Nemotron id and `advice_only: true`. Optional 3 s cut to the Nightshift console request list with the key column cropped. | "The reply records the model that answered: Nemotron. The key never appears; it lives in the environment and is never logged." |
+| 8 | 2:35–2:45 | Terminal: `python scripts/check_zetaris_smt.py` → scroll to `PARITY OK`. | "The fab master data, eleven tables and six thousand nine hundred thirty-five rows, is loaded in Zetaris, and this check matches it row for row against the files: parity OK." |
+| 9 | 2:45–3:00 | Deck slide 10 (AI results), then slide 13 for the last second. | "We score every agent against a rule baseline. The first live investigator run lost, eleven of twenty-four against twenty, so we fixed the protocol, not the cases" *(then read the re-run cell, or if still TBD:)* "and the re-run is in progress. The schedule stays rule-based and tested; the AI explains it and has to cite its evidence." |
+
+Total 3:00. If a shot runs long, cut shot 3 to 10 s; do not cut shot 6 or 7.
+
+### Shot 7 command
+
+Run from a fresh terminal after `make demo-live` is serving. It sends no credentials; the server holds the token.
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/ai/explain \
+  -H 'content-type: application/json' \
+  -d '{"lot_id":"Init_Lot_6_2","seed":1,"lang":"en"}' \
+  | python -m json.tool | grep -E -A2 '"(response_models|advice_only)"'
+```
+
+If `Init_Lot_6_2` is not in `GET /api/ai/explainer/lots?seed=1` on your build, use the first lot that list returns. On PowerShell, put the JSON body in a file and pass `-d @body.json`.
+
+### Before the first take
+
+- `make demo-live` with the Nightshift token and Zetaris credentials in `.env` (see [DEMO_SCRIPT.md](DEMO_SCRIPT.md) "Before you hit record"). The query line under the banner must not say `local extract (Zetaris not called)`.
+- Rehearse shot 6 once: a live investigator answer takes model time. If it takes longer than about 20 s, record it as its own take and cut the wait; say in the edit that time was cut (a small "time cut" caption is enough).
+- Close every other app and browser tab. Turn off notifications.
+
+## 中文摘要（给自己看）
+
+| # | 时间 | 这一镜做什么 |
+|---|---|---|
+| 1 | 0:00–0:15 | 幻灯片第 2 页（问题），再切到控制台总览。讲：班长每小时都在交期、Q-time、计划稳定性之间取舍；我们排程全 SMT2020 工厂，AI 只解释和建议。 |
+| 2 | 0:15–0:40 | 总览页：指横幅（106 组、1313 台、2156 批）、瓶颈卡、WIP 堆积卡。 |
+| 3 | 0:40–1:00 | Tools 页：每台机当前批次、下一批（换型/余量）；说明默认是计划层 + 5 分钟排程 + 事件派工。 |
+| 4 | 1:00–1:25 | Plan 页：光刻宕机 → 重排本班；只念屏幕上的卡片数字和分母，并指出“这是 seed 1、12 小时，不是五种子研究”。 |
+| 5 | 1:25–1:50 | 幻灯片第 7、8 页：计划层与 EDD 准时率持平、Q-time 多 5.4 个百分点；9 本书里 EDD 准时率仍高约 3 点；硬 Q-time 到约 97%、上游违约 1467→225，但损失产出和延迟，所以默认关；冻结窗口同理。 |
+| 6 | 1:50–2:20 | **真实请求**：AI evidence → Investigator → Investigate。必须看到“Nemotron”标签（不是 offline stand-in），指出主因、证据调用链、事实核查行。 |
+| 7 | 2:20–2:35 | 干净终端跑 curl，只显示 `response_models`（Nemotron 型号）和 `advice_only: true`；可选 3 秒 Nightshift 请求列表，遮住 key 列。 |
+| 8 | 2:35–2:45 | 终端跑 `check_zetaris_smt.py`，停在 `PARITY OK`（11 张表、6935 行）。 |
+| 9 | 2:45–3:00 | 幻灯片第 10 页：首轮调查员 11/24 输给规则 20/24，已修协议（PR #40）；有结果就念重跑数字，没有就说“重跑进行中”。最后一秒第 13 页。 |
+
+注意：`.env`、token、PowerShell 历史一律不入镜；只念屏幕上或幻灯片上有出处的数字；第 6、7 镜不能剪掉。

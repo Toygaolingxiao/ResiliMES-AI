@@ -1,5 +1,7 @@
 # Demo script
 
+> **Submission film (2026-10-26):** the shot list is now [DEMO_VIDEO_SCRIPT.md](DEMO_VIDEO_SCRIPT.md), with the planning-layer default, the hard Q-time study, the AI evidence tab and one live Nemotron request. Use the "Before you hit record" setup below for it. The shot lists further down quote numbers recorded before the planning-layer default and are kept as history; do not read them in the new film.
+
 Target length: 2:45–3:15. English narration. Film the console full screen. Hide `.env`. Do not read a token aloud.
 
 This recording is the live path on the public industry benchmark (SMT2020). `make demo` forces mock mode and is not this shot. The six-lot bay is `make demo-bay` and is not this shot either.
