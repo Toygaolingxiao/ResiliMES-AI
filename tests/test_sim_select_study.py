@@ -21,7 +21,9 @@ def _keep_env() -> object:
         os.environ["RESILIMES_STUDY_HORIZON_H"] = before
 
 
-def test_runs_resume_and_report(tmp_path: Path) -> None:
+def test_runs_resume_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Legacy kind filter so a 2 h run has escalations for the memory to keep.
+    monkeypatch.setenv("SHIFT_LEAD_ESCALATE", "always")
     argv = [
         "--arms", "rules,sim_hmem", "--seeds", "9", "--warm-seeds", "1",
         "--horizon-h", "2", "--fork-h", "1", "--futures", "2", "--workers", "1",
@@ -32,12 +34,16 @@ def test_runs_resume_and_report(tmp_path: Path) -> None:
     row = json.loads(run.read_text("utf-8"))
     assert row["config"]["fork_h"] == 1.0 and row["memory"]["receipts"] > 0
     assert (tmp_path / "memory_sim_hmem.json").exists()
+    lead = row["shift_lead"]
+    assert row["config"]["escalation_mode"] == "always"
+    assert lead["rule_handled"] + lead["escalated"] == lead["exceptions"]
     stamp = run.stat().st_mtime_ns
     study.main(argv)  # resumes: nothing re-run
     assert run.stat().st_mtime_ns == stamp
     report = json.loads((tmp_path / "report.json").read_text("utf-8"))
     assert report["arms"]["rules"]["d_weighted_tardiness_min_vs_rules"] == 0.0
     assert set(report["arms"]) == {"rules", "sim_hmem"}
+    assert "rule_handled" in report["arms"]["sim_hmem"]
 
 
 def test_unknown_arm_rejected() -> None:

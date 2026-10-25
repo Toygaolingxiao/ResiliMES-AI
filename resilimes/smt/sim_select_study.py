@@ -52,7 +52,14 @@ HEADLINE = (
 )
 BALANCE = ("queue_var_mean", "queue_cv_families", "wip_quintile_mean")
 LEAD = (
+    "exceptions",
     "escalated",
+    "rule_handled",
+    "gate_checks",
+    "gate_forks",
+    "gate_wall_s",
+    "gate_ms_p50",
+    "gate_ms_p95",
     "twin_forks",
     "twin_skips",
     "twin_wall_s",
@@ -141,7 +148,10 @@ def run_one(
             last[0] = time.perf_counter()
             extra = ""
             if lead is not None and hasattr(lead, "escalations"):
-                extra = f" escalated={lead.escalations} llm_calls={lead.llm_calls}"
+                extra = (
+                    f" escalated={lead.escalations} rule_handled={lead.rule_handled}"
+                    f" llm_calls={lead.llm_calls}"
+                )
             _say(f"  {arm} {book} s{seed}: sim {t / 3600:.1f} h{extra}")
 
     try:
@@ -157,6 +167,7 @@ def run_one(
         "futures": args.futures,
         "llm_timeout_s": args.llm_timeout,
         "budget": args.budget,
+        "escalation_mode": getattr(lead, "escalation", None),
         "provider": getattr(getattr(lead, "completer", None), "name", None),
         "mocked": getattr(getattr(lead, "completer", None), "mocked", None),
     }
@@ -219,6 +230,8 @@ def run_arms(args: argparse.Namespace) -> None:
         _say(
             f"[{index}/{len(plan)}] {arm} s{seed}: wt={row.get('weighted_tardiness_min')} "
             f"qviol={row.get('qtime_violations')} on_time={row.get('on_time_pct')} "
+            f"exceptions={lead.get('exceptions')} escalated={lead.get('escalated')} "
+            f"rule_handled={lead.get('rule_handled')} gate_wall={lead.get('gate_wall_s')} s "
             f"llm_calls={lead.get('llm_calls')} wall={row['wall_s']} s"
         )
     report(args)
@@ -269,7 +282,8 @@ def report(args: argparse.Namespace) -> dict[str, Any]:
                 if isinstance(by_seed[s].get("shift_lead", {}).get(key), int | float)
             ]
             if vals:
-                entry[key] = round(sum(vals), 1) if not key.startswith("llm_ms") else _mean(vals)
+                pooled = key.startswith(("llm_ms", "gate_ms"))
+                entry[key] = _mean(vals) if pooled else round(sum(vals), 1)
         entry["wall_s"] = round(sum(float(by_seed[s]["wall_s"]) for s in seeds), 1)
         causes: dict[str, int] = {}
         for s in seeds:
@@ -279,6 +293,14 @@ def report(args: argparse.Namespace) -> dict[str, Any]:
                     causes[cause] = causes.get(cause, 0) + 1
         if causes:
             entry["fallback_causes"] = causes
+        reasons: dict[str, int] = {}
+        for s in seeds:
+            for d in by_seed[s].get("decisions", []):
+                why = d.get("escalation_reason")
+                if why:
+                    reasons[why] = reasons.get(why, 0) + 1
+        if reasons:
+            entry["escalation_reasons"] = reasons
         arms[arm] = entry
     result = {"book": args.book, "arms": arms}
     (out / "report.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
@@ -296,7 +318,10 @@ def table(result: dict[str, Any]) -> str:
         ("qtime_violations", "Q-viol"),
         ("d_qtime_violations_vs_rules", "ΔQ vs rules"),
         ("queue_cv_families", "queue CV"),
+        ("exceptions", "exceptions"),
         ("escalated", "escalated"),
+        ("rule_handled", "rule-handled"),
+        ("gate_wall_s", "gate s"),
         ("llm_calls", "LLM calls"),
         ("llm_ms_p50", "LLM p50 ms"),
         ("fallbacks", "fallbacks"),

@@ -6,7 +6,7 @@ only when a study arm or a caller builds `SimShiftLead` explicitly.
 
 ## What it does
 
-At an *escalated* exception the shift lead:
+At an *escalated* exception (see "When the shift lead is asked" below) the shift lead:
 
 1. **Recall** (optional, H-MEM): top-5 similar past cases with their receipts
    ([H_MEM.md](H_MEM.md)).
@@ -47,10 +47,68 @@ At an *escalated* exception the shift lead:
 6. **Receipt**: the log entry keeps every plan, its guardrail result, the
    per-future KPIs and the chosen-vs-default deltas.
 
-Escalation filter (pre-registered, not tuned): breakdown, pm_conflict,
-hot_insertion and batch_underfill always; qtime_competition only if the
-engine's best option is projected to save ≥ 2 Q-time violations over the
-default. Everything else is handled by the plain rule default.
+## When the shift lead is asked: rules first
+
+**Rules first; the AI shift lead is asked only for exceptions the rule plan
+can't handle.** Rule-based scheduling handles every event by itself. At each
+exception (any kind) the rule default plan is what runs, and a cheap no-AI
+check decides whether the shift lead is asked at all:
+
+- **Gate** (`rule_trigger` in `resilimes/agents/sim_select.py`): the twin forks
+  the **rule default alone** over the same fork horizon and futures as the
+  selection (default 8 h × 3 resampled futures). No model is involved.
+- **Trigger** (pre-registered, not tuned): escalate only if the rule default
+  is projected, as the mean over the futures, to cause **≥ 1 avoidable Q-time
+  violation** or **≥ 1 late hot/VIP lot** inside the fork horizon.
+  "Avoidable" is the hard Q-time notion of PR #46
+  (`hard_qtime.miss_class`, [HARD_QTIME.md](HARD_QTIME.md)): misses after a
+  breakdown of the fork's sampled future, disruptions (target down / PM,
+  rework, transport) and pre-gate windows are unavoidable and do not trigger.
+  "Late hot lot" is the fork's `hot_late`: a hot or VIP lot due inside the
+  horizon that misses its due date.
+- **Otherwise** there is no escalation and no LLM call; the decision log
+  records the exception with `escalated: false`,
+  `escalation_reason: "rule_ok"` and the gate's projected KPIs.
+- When escalated, the gate's default score is reused as the default row of
+  the numbers table (same snapshot, same futures), so only the alternative
+  plans are forked again. `escalation_reason` names the trigger
+  (`avoidable_qtime` or `hot_late`).
+- `summary()` and the study report count `exceptions`, `rule_handled`,
+  `escalated`, `escalation_triggers`, `gate_checks`, `gate_forks` and
+  `gate_wall_s` (wall-clock of the gate). The study prints them per run.
+- **Experiment switch, off by default:** `SHIFT_LEAD_ESCALATE=always` restores
+  the old kind filter (breakdown, pm_conflict, hot_insertion and
+  batch_underfill always; qtime_competition only if the engine's best option
+  is projected to save ≥ 2 Q-time violations), logged as
+  `escalation_reason: "filter"` when not escalated.
+
+Why: in a live run the kind filter escalated 49 exceptions in 7.6 simulated
+hours, each with a Nemotron call plus twin forks, so one 24 h seed took about
+5 h. A fab shift lead is asked only when there is a real problem.
+
+### Measured: rules first vs the old filter (MOCK, no LLM)
+
+**Mock / no-LLM measurement, not a model result.** Arm `sim_mock` (canned
+replies, no Nemotron call), book `heldout_published`, seed 9, 8 h horizon,
+fork 8 h × 3 futures, workers 3, llm-timeout 1200 s (the `run_live_eval.py`
+config). The trigger above was fixed before this run and not tuned on it.
+
+| | exceptions | escalated | handled by rule | LLM calls | twin forks | gate wall s (p50 / p95 per check) | run wall s |
+|---|---|---|---|---|---|---|---|
+| before (`main` b1799d2, kind filter) | 91 | 51 | 40 (44 %) | 102 | 612 | – | 288.6 |
+| after (rules first, default) | 93 | **0** | **93 (100 %)** | **0** | 279 (gate only) | 126.7 (1.41 / 2.12 s) | 131.5 |
+
+On this seed the twin never projected the rule default to cause an
+avoidable Q-time miss or a late hot lot: the gate's mean `qavoid` was 0 in
+89 checks and 0.67 in 4 (below the pre-registered ≥ 1), and `hot_late` was 0
+in all 93. The run's Q-time violations (7) and waiting time (5419 vs 5421 min
+before) are unchanged within noise. The exception count differs (91 vs 93)
+because the old run made 5 non-default choices, which changed the trajectory.
+Gate cost is about 1.4 s per exception (3 forks), with no model call. With
+zero escalations a live run on this seed makes no Nemotron calls. One seed
+and 8 h show the gate works and what it costs. They do not show that
+avoidable misses are rare in general: HARD_QTIME.md finds about 24 avoidable
+misses per 7-day run, roughly 1 per 8 h.
 
 ## Study (honest benchmark)
 

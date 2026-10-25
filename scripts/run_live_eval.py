@@ -2,6 +2,7 @@
 
     python scripts\\run_live_eval.py                 (Windows, from the repo root)
     python scripts/run_live_eval.py --out-dir study_sim_select_live
+    python scripts/run_live_eval.py --seeds 9 --horizon-h 8   (one seed, 8 h)
 
 Runs sequentially, one run at a time, and prints a timestamped line per run
 plus a sim-time / call-count line every 60 s. Each finished run is written to
@@ -29,6 +30,13 @@ short: no cap on escalations, 1200 s per LLM call (the rule default is applied
 if a call exceeds it, and counted as a fallback), ``NEMOTRON_MAX_TOKENS``
 16384 (the client retries once at 2x on an empty reply), ``METERLESS_TIMEOUT_S``
 900 and ``LLM_MAX_RETRIES`` 5, unless already set in the environment or .env.
+
+Rules first: the shift lead (and so Nemotron) is asked only when the twin
+projects the rule default to cause an avoidable Q-time violation or a late
+hot/VIP lot (``resilimes.agents.sim_select.rule_trigger``); every other
+exception is handled by the rule default and counted as ``rule_handled``.
+``SHIFT_LEAD_ESCALATE=always`` restores the old kind-based filter
+(experiment only).
 """
 
 from __future__ import annotations
@@ -86,6 +94,7 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     p.add_argument("--out-dir", default="study_sim_select_live")
     p.add_argument("--seeds", default="9,10,11,12,13")
+    p.add_argument("--horizon-h", default="24", help="simulated hours per run")
     p.add_argument("--book", default="heldout_published")
     p.add_argument("--workers", default="3", help="twin fork processes")
     p.add_argument("--skip-baselines", action="store_true")
@@ -109,6 +118,8 @@ def main() -> int:
         )
         return 4
     print("pinned model:", settings.nemotron_model, flush=True)
+    mode = os.environ.get("SHIFT_LEAD_ESCALATE") or "exception"
+    print(f"escalation: {mode} (seeds {args.seeds}, horizon {args.horizon_h} h)", flush=True)
     if not settings.use_nightshift:
         print("Nightshift is not configured: set RESILIMES_MODE=live and the token in .env")
         return 2
@@ -121,7 +132,7 @@ def main() -> int:
     arms = list(LIVE_ARMS) + ([] if args.skip_baselines else list(BASELINES))
     common = [
         "--book", args.book, "--seeds", args.seeds, "--workers", args.workers,
-        "--horizon-h", "24", "--fork-h", "8", "--futures", "3",
+        "--horizon-h", str(args.horizon_h), "--fork-h", "8", "--futures", "3",
         "--llm-timeout", "1200", "--progress-s", "60", "--out-dir", str(out),
     ]  # fmt: skip
     for number, arm in enumerate(arms, 1):

@@ -1,4 +1,4 @@
-"""Sim-select: escalation filter, guardrails, number checker, selection, fallbacks."""
+"""Sim-select: rules-first gate, guardrails, number checker, selection, fallbacks."""
 
 from __future__ import annotations
 
@@ -12,9 +12,11 @@ from resilimes.agents.sim_select import (
     SimShiftLead,
     check_numbers,
     escalate,
+    escalation_mode,
     flex_pm_error,
     numbers_table,
     pareto_pick,
+    rule_trigger,
 )
 from resilimes.llm.base import LlmResult
 from resilimes.llm.mock import MockProvider
@@ -45,7 +47,7 @@ def _exc(kind: str, default_q: int, best_q: int) -> FabException:
     )
 
 
-def test_escalation_filter_is_the_preregistered_one() -> None:
+def test_legacy_kind_filter_only_behind_the_switch() -> None:
     assert escalate(_exc("breakdown", 0, 0))
     assert escalate(_exc("pm_conflict", 0, 0))
     assert escalate(_exc("hot_insertion", 0, 0))
@@ -58,6 +60,33 @@ def _score(pid: str, **means: float) -> PlanScore:
     base = dict(wt_min=10.0, late_lots=0, on_time=5, due=5, qviol=1, qmissed=1, hot_late=0, moves=9)
     base.update(means)
     return PlanScore(pid, [ForkKpis(**base)])  # type: ignore[arg-type]
+
+
+def test_rules_first_is_the_default_and_always_is_an_experiment(monkeypatch: Any) -> None:
+    monkeypatch.delenv("SHIFT_LEAD_ESCALATE", raising=False)
+    assert escalation_mode() == "exception"
+    monkeypatch.setenv("SHIFT_LEAD_ESCALATE", "always")
+    assert escalation_mode() == "always"
+    assert escalation_mode("exception") == "exception"
+    monkeypatch.setenv("SHIFT_LEAD_ESCALATE", "sometimes")
+    try:
+        escalation_mode()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("unknown mode must be refused")
+
+
+def test_gate_escalates_only_avoidable_qtime_or_late_hot_lots() -> None:
+    # Unavoidable misses (qviol without qavoid) and plain tardiness: rule ok.
+    assert rule_trigger(_score("A", qviol=5, qavoid=0, wt_min=9e5, late_lots=40)) is None
+    assert rule_trigger(_score("A", qavoid=1)) == "avoidable_qtime"
+    assert rule_trigger(_score("A", hot_late=1)) == "hot_late"
+    # Means over futures: one avoidable miss in one of three futures is < 1.
+    runs = [ForkKpis(10.0, 0, 5, 5, 1, 1, 0, 9, qavoid=q) for q in (1, 0, 0)]
+    assert rule_trigger(PlanScore("A", runs)) is None
+    runs = [ForkKpis(10.0, 0, 5, 5, 1, 1, 0, 9, qavoid=q) for q in (2, 1, 0)]
+    assert rule_trigger(PlanScore("A", runs)) == "avoidable_qtime"
 
 
 def test_pareto_picks_only_a_plan_that_does_no_harm() -> None:
@@ -156,7 +185,7 @@ def _escalated(lead: SimShiftLead) -> list[dict[str, Any]]:
 
 
 def test_sim_only_and_mock_llm_lanes_end_to_end() -> None:
-    lead = _run({"completer": MockProvider(), "selector": "llm"})
+    lead = _run({"completer": MockProvider(), "selector": "llm", "escalation": "always"})
     for entry in _escalated(lead):
         assert entry["receipt"] is not None
         assert entry["fallback"] is False, entry["fallback_cause"]
@@ -170,12 +199,12 @@ def test_sim_only_and_mock_llm_lanes_end_to_end() -> None:
 
 def test_bad_output_falls_back_to_the_rule_default() -> None:
     lying = _Scripted(None, lambda content: content.replace('"reason": "', '"reason": "999999 '))
-    lead = _run({"completer": lying, "selector": "llm"})
+    lead = _run({"completer": lying, "selector": "llm", "escalation": "always"})
     for entry in _escalated(lead):
         assert entry["chosen"] == entry["default"]
         assert entry["fallback"] and "number_check" in entry["fallback_cause"]
     garbage = _Scripted(lambda _c: "not json", lambda _c: "{}")
-    lead = _run({"completer": garbage, "selector": "llm"})
+    lead = _run({"completer": garbage, "selector": "llm", "escalation": "always"})
     for entry in _escalated(lead):
         assert entry["chosen"] == entry["default"] and entry["fallback"]
         assert entry["propose_fallback"] and "bad_json" in entry["propose_fallback"]
@@ -190,7 +219,7 @@ def test_out_of_scope_plans_are_rejected() -> None:
         ]
         return json.dumps({"plans": plans})
 
-    lead = _run({"completer": _Scripted(rogue, None), "selector": "llm"})
+    lead = _run({"completer": _Scripted(rogue, None), "selector": "llm", "escalation": "always"})
     for entry in _escalated(lead):
         llm = [plan for plan in entry["plans"] if plan["source"] == "llm"]
         assert llm and all(not plan["valid"] for plan in llm)
@@ -199,7 +228,11 @@ def test_out_of_scope_plans_are_rejected() -> None:
 
 def test_replies_not_served_by_nemotron_are_not_used() -> None:
     lead = _run(
-        {"completer": _Scripted(None, None, served="google/gemini-2.5-flash"), "selector": "llm"}
+        {
+            "completer": _Scripted(None, None, served="google/gemini-2.5-flash"),
+            "selector": "llm",
+            "escalation": "always",
+        }
     )
     assert _escalated(lead)
     for entry in _escalated(lead):
@@ -207,3 +240,28 @@ def test_replies_not_served_by_nemotron_are_not_used() -> None:
     summary = lead.summary()
     assert summary["non_nemotron_replies"] > 0
     assert summary["served_models"] == {"google/gemini-2.5-flash": summary["llm_calls"]}
+
+
+def test_rules_first_gate_end_to_end() -> None:
+    """Default mode: every exception runs the rule plan through the no-AI gate;
+    the model is called only for escalated ones, and the counts add up."""
+    lead = _run({"completer": MockProvider(), "selector": "llm"})
+    summary = lead.summary()
+    assert summary["escalation_mode"] == "exception"
+    assert summary["exceptions"] == len(lead.log) > 0
+    assert summary["rule_handled"] + summary["escalated"] == summary["exceptions"]
+    assert summary["gate_checks"] == summary["exceptions"]
+    assert summary["llm_calls"] == 2 * summary["escalated"]  # propose + select
+    assert summary["rule_handled"] > 0
+    for entry in lead.log:
+        gate = entry["gate"]
+        assert gate is not None and gate["ms"] >= 0
+        if entry["escalated"]:
+            assert entry["escalation_reason"] == gate["trigger"]
+            assert entry["escalation_reason"] in ("avoidable_qtime", "hot_late")
+            # The gate's default score is reused as the receipt's default.
+            assert entry["receipt"]["default"] == gate["default"]
+        else:
+            assert entry["escalation_reason"] == "rule_ok" and gate["trigger"] is None
+            assert entry["chosen"] == entry["default"] and not entry["fallback"]
+            assert gate["default"]["qavoid"] < 1 and gate["default"]["hot_late"] < 1
