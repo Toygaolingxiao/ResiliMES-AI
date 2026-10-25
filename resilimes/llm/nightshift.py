@@ -5,6 +5,13 @@ result. The scheduler and the critic do not call a model. Every lane uses
 NEMOTRON_MODEL.
 
 Retries: 429 and connection / 5xx, with exponential backoff. The token is never logged.
+
+Time budgets (resilimes.llm.deadline) apply to calls made inside an AI task deadline (the
+investigator, explainer and handover): one ``complete`` call is capped at AI_CALL_DEADLINE_S
+and by the task deadline, whichever is sooner; each request carries ``meterless-ttfb-ms`` so
+Nightshift stops a stuck lane server-side; a larger empty-reply budget rung is not started
+with less than 30 s left. Calls outside a task deadline (the sim-select / shift-lead studies,
+which set their own long budgets) keep the plain METERLESS_TIMEOUT_S client timeout.
 """
 
 from __future__ import annotations
@@ -13,9 +20,10 @@ import re
 import time
 from typing import Any
 
-from openai import APIConnectionError, APIStatusError, OpenAI, RateLimitError
+from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI, RateLimitError
 
 from resilimes.config import Settings
+from resilimes.llm import deadline
 from resilimes.llm.base import LlmResult
 from resilimes.llm.urls import assert_runtime_token, normalize_base_url
 from resilimes.logging_config import get_logger
@@ -56,6 +64,11 @@ def _budget_ladder(budget: int) -> tuple[int, ...]:
 def _is_empty_response(exc: Exception) -> bool:
     """Nightshift returns 502 *_empty_response when reasoning used the whole budget."""
     return isinstance(exc, APIStatusError) and "empty_response" in str(exc)
+
+
+def ttfb_ms(timeout_s: float, ttfb_s: float) -> int:
+    """First-token limit for Nightshift: min(request timeout, ttfb_s), at most 300000 ms."""
+    return max(1000, min(deadline.TTFB_MAX_MS, int(min(timeout_s, ttfb_s) * 1000)))
 
 
 def build_openai_client(
@@ -104,16 +117,25 @@ class NightshiftProvider:
         model = self.model_for(lane)
         budget = _token_budget(self._settings)
         started = time.perf_counter()
+        call_end = self._call_end()
         response: Any = None
         content = ""
         budgets = _budget_ladder(budget)
         for index, max_tokens in enumerate(budgets):
+            left = self._left(call_end)
+            if index and left is not None and left < deadline.RUNG_MIN_S:
+                logger.info(
+                    "nightshift empty reply, no time for a larger budget",
+                    extra={"fields": {"lane": lane, "max_tokens": max_tokens}},
+                )
+                break
             response = self._create(
                 messages,
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 lane=lane,
+                call_end=call_end,
             )
             content = strip_reasoning(_message_text(response)) if response is not None else ""
             if content or index == len(budgets) - 1:
@@ -151,6 +173,22 @@ class NightshiftProvider:
             response_model=str(getattr(response, "model", "") or ""),
         )
 
+    def _call_end(self) -> float | None:
+        """End of this call's budget, or None outside an AI task deadline (no extra limits)."""
+        if deadline.remaining() is None:
+            return None
+        cap = self._settings.ai_call_deadline_s
+        cap = cap if cap > 0 else self._settings.meterless_timeout_s
+        return deadline.now() + cap
+
+    def _left(self, call_end: float | None) -> float | None:
+        """Seconds left for this call: the per-call cap or the task deadline, whichever is sooner."""
+        task = deadline.remaining()
+        if call_end is None:
+            return task
+        left = call_end - deadline.now()
+        return left if task is None else min(left, task)
+
     def _create(
         self,
         messages: list[dict[str, str]],
@@ -159,19 +197,39 @@ class NightshiftProvider:
         temperature: float,
         max_tokens: int,
         lane: str,
+        call_end: float | None = None,
     ) -> Any | None:
         delay = 0.5
         attempts = max(1, self._settings.llm_max_retries)
         last_error: Exception | None = None
         for attempt in range(attempts):
+            left = self._left(call_end)
+            budget: dict[str, Any] = {}
+            if left is not None:
+                if left <= 0:
+                    raise deadline.DeadlineExceeded(
+                        f"Nightshift {lane}: time budget used before the request"
+                    )
+                timeout = min(left, self._settings.meterless_timeout_s)
+                budget = {
+                    "timeout": timeout,
+                    "extra_headers": {
+                        "meterless-ttfb-ms": str(ttfb_ms(timeout, self._settings.ai_ttfb_s))
+                    },
+                }
             try:
                 return self._client.chat.completions.create(
                     model=model,
                     messages=messages,  # type: ignore[arg-type]
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    **budget,
                 )
             except (RateLimitError, APIConnectionError, APIStatusError) as exc:
+                if isinstance(exc, APITimeoutError) and left is not None:
+                    raise deadline.DeadlineExceeded(
+                        f"Nightshift {lane}: no reply within {budget['timeout']:.0f} s"
+                    ) from exc
                 if _is_empty_response(exc):
                     # Nemotron spent the whole budget reasoning. Retrying at the
                     # same budget only fails again; the caller raises the budget.
@@ -179,7 +237,8 @@ class NightshiftProvider:
                 if isinstance(exc, APIStatusError) and exc.status_code not in {429, 500, 502, 503}:
                     raise
                 last_error = exc
-                if attempt + 1 >= attempts:
+                left = self._left(call_end)
+                if attempt + 1 >= attempts or (left is not None and left <= delay):
                     break
                 time.sleep(delay)
                 delay *= 2

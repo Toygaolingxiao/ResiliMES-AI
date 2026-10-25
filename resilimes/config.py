@@ -71,6 +71,11 @@ class Settings(BaseModel):
     nemotron_model: str = "nvidia/nemotron-3.5-lightning-30b-a3b"
     nemotron_max_tokens: int = 4096
     llm_max_retries: int = 3
+    # Time budgets (docs/AI_INVESTIGATOR.md "Time budgets"): per model call, per agent task,
+    # and the first-token limit sent to Nightshift as meterless-ttfb-ms.
+    ai_call_deadline_s: float = 90.0
+    ai_task_deadline_s: float = 180.0
+    ai_ttfb_s: float = 60.0
 
     @property
     def token_configured(self) -> bool:
@@ -161,6 +166,9 @@ def load_settings() -> Settings:
         nemotron_model=_env("NEMOTRON_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b"),
         nemotron_max_tokens=int(_env("NEMOTRON_MAX_TOKENS", "4096") or "4096"),
         llm_max_retries=int(_env("LLM_MAX_RETRIES", "3") or "3"),
+        ai_call_deadline_s=float(_env("AI_CALL_DEADLINE_S", "90") or "90"),
+        ai_task_deadline_s=float(_env("AI_TASK_DEADLINE_S", "180") or "180"),
+        ai_ttfb_s=float(_env("AI_TTFB_S", "60") or "60"),
     )
 
 

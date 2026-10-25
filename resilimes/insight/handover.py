@@ -31,6 +31,7 @@ from resilimes.engines.contracts import ContractError, sign_body
 from resilimes.engines.markovian.engine import MarkovianEngine, compress
 from resilimes.evidence.factcheck import FactRegistry, check
 from resilimes.evidence.toolkit import HOUR, RecordedRun
+from resilimes.llm import deadline
 from resilimes.llm.base import Completer, LlmResult
 
 LANE = "handover"
@@ -483,8 +484,30 @@ def handover(
     language: str = "en",
     temperature: float = 0.2,
     secret: str | None = None,
+    deadline_s: float | None = None,
 ) -> dict[str, Any]:
-    """Write one shift handover report. Returns report, markdown, metrics and the engine used."""
+    """Write one shift handover report. Returns report, markdown, metrics and the engine used.
+
+    The report runs under a wall-clock budget (``deadline_s``, default AI_TASK_DEADLINE_S
+    = 180 s). On timeout no further model call is made; the result is marked ``timeout``
+    and keeps its deterministic parts (end-of-shift facts, must-mention list).
+    """
+    budget = deadline_s if deadline_s is not None else deadline.default_task_s()
+    with deadline.task_deadline(budget):
+        return _handover(
+            run, start_h, provider, language=language, temperature=temperature, secret=secret
+        )
+
+
+def _handover(
+    run: RecordedRun,
+    start_h: float,
+    provider: Completer | None,
+    *,
+    language: str,
+    temperature: float,
+    secret: str | None,
+) -> dict[str, Any]:
     end_h = start_h + SHIFT_H
     if provider is None or provider.mocked:
         provider = ScriptedHandover(language)
@@ -493,6 +516,18 @@ def handover(
     registry.add_text(f"{start_h} {end_h} {SHIFT_H} {CHUNK_H}")
     bundle: dict[str, Any] = {"calls": 0, "models": [], "chunk_notes": [], "errors": []}
     started = time.perf_counter()
+    t_start = deadline.now()
+
+    def complete(messages: list[dict[str, str]]) -> LlmResult:
+        """One model call, refused once the report's time budget is gone."""
+        if bundle.get("timeout") or deadline.expired():
+            bundle["timeout"] = True
+            raise deadline.DeadlineExceeded("handover time budget used")
+        try:
+            return provider.complete(messages, lane=LANE, temperature=temperature)
+        except deadline.DeadlineExceeded:
+            bundle["timeout"] = True
+            raise
 
     def ask(
         system: str, payload: dict[str, Any]
@@ -506,7 +541,7 @@ def handover(
             },
         ]
         for _attempt in range(3):
-            reply = provider.complete(messages, lane=LANE, temperature=temperature)
+            reply = complete(messages)
             bundle["calls"] += 1
             bundle["models"].append(reply.provider_model or f"unreported:{reply.model}")
             messages.append({"role": "assistant", "content": reply.content})
@@ -579,7 +614,7 @@ def handover(
                     + ". Rewrite the whole JSON using only those values."
                 )
             messages.append({"role": "user", "content": prompt})
-            reply = provider.complete(messages, lane=LANE, temperature=temperature)
+            reply = complete(messages)
             bundle["calls"] += 1
             bundle["models"].append(reply.provider_model or f"unreported:{reply.model}")
             messages.append({"role": "assistant", "content": reply.content})
@@ -611,6 +646,8 @@ def handover(
                 chunks.append({"index": index, "ok": True})
             except Exception as err:
                 chunks.append({"index": index, "ok": False, "error": type(err).__name__})
+    if "end" not in bundle:
+        bundle["end"] = end_facts(run, start_h, end_h)
     report = bundle.get("report")
     must = must_mention(bundle["end"]) if "end" in bundle else []
     text = render_markdown(report, language, [start_h, end_h]) if report else ""
@@ -639,8 +676,12 @@ def handover(
         "provider": provider.name,
         "mocked": provider.mocked,
         "latency_ms": round((time.perf_counter() - started) * 1000, 1),
+        "elapsed_s": round(deadline.now() - t_start, 3),
+        "timeout": bool(bundle.get("timeout")),
         "error": None
         if report
+        else "timeout: handover time budget used"
+        if bundle.get("timeout")
         else "no report (" + "; ".join(bundle["errors"] or ["compose failed"]) + ")",
         "advice_only": True,
     }

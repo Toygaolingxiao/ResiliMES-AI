@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 from collections.abc import Callable
@@ -117,7 +118,10 @@ def run_investigator(
                 "degrade_reason": answer.degrade_reason,
                 "ai": answer.to_json(),
                 # The AI's own answer, scored as before (degraded cases are not rescued).
-                "ai_score": score(case.fault, answer.primary_cause, answer.secondary_cause),
+                # A timeout is an AI miss whatever a half-finished answer said.
+                "ai_score": ai_score(case.fault, answer),
+                "timeout": answer.timed_out,
+                "elapsed_s": answer.elapsed_s,
                 # What the operator sees: the AI answer, or the rule answer when degraded.
                 "system_score": score(
                     case.fault,
@@ -150,6 +154,15 @@ def run_investigator(
     progress.finish(extra=f"ai top1 {summary['ai_top1']}/{summary['n']}")
     _write(out, {"summary": summary, "rows": rows})
     return summary
+
+
+def ai_score(truth: str, answer: Any) -> dict[str, bool]:
+    """Score the AI's own answer. A timeout is an AI miss whatever a half-finished answer said."""
+    from resilimes.insight.investigator import score
+
+    if answer.timed_out:
+        return score(truth, None, None)
+    return score(truth, answer.primary_cause, answer.secondary_cause)
 
 
 def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, Any]:
@@ -189,6 +202,37 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         "mean_tool_calls": round(sum(len(r["ai"]["calls"]) for r in ok) / max(1, len(ok)), 2),
         "by_fault": by_fault,
         "stop_reasons": stop_reasons,
+        **time_stats(rows),
+    }
+
+
+def _percentile(values: list[float], q: float) -> float:
+    """Nearest-rank percentile (q in 0..1); 0.0 for no values."""
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    rank = max(1, math.ceil(q * len(ordered)))
+    return round(ordered[rank - 1], 3)
+
+
+def time_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """p50/p95 wall-clock seconds per case and the number of cases that hit the deadline.
+
+    Reads ``elapsed_s`` / ``timeout`` from the row or its ``ai`` part.
+    """
+    elapsed: list[float] = []
+    timeouts = 0
+    for row in rows:
+        ai = row.get("ai") or {}
+        value = row.get("elapsed_s", ai.get("elapsed_s"))
+        if value is not None:
+            elapsed.append(float(value))
+        timed_out = row.get("timeout", ai.get("timeout", ai.get("timed_out")))
+        timeouts += int(bool(timed_out))
+    return {
+        "elapsed_s_p50": _percentile(elapsed, 0.5),
+        "elapsed_s_p95": _percentile(elapsed, 0.95),
+        "timeouts": timeouts,
     }
 
 
@@ -294,6 +338,7 @@ def summarize_explainer(rows: list[dict[str, Any]], label: str) -> dict[str, Any
         "cf_helped": sum(1 for s in savings if s > 0),
         "mean_saving_min": round(sum(savings) / max(1, len(savings)), 1),
         "levers": levers,
+        **time_stats(rows),
     }
 
 
@@ -364,6 +409,7 @@ def summarize_handover(rows: list[dict[str, Any]], label: str) -> dict[str, Any]
         "chunks_ok": sum(int(ai["chunks_ok"]) for ai in ok),
         "chunks": sum(len(ai["chunks"]) for ai in ok),
         "llm_calls": sum(int(ai["llm_calls"]) for ai in ok),
+        **time_stats(rows),
     }
 
 
