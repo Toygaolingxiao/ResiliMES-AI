@@ -49,10 +49,19 @@ HEADLINE = (
     "q_late",
     "q_expired",
     "mean_x_factor",
+    "qtime_avoidable",
+    "hot_late",
 )
 BALANCE = ("queue_var_mean", "queue_cv_families", "wip_quintile_mean")
 LEAD = (
+    "exceptions",
     "escalated",
+    "rule_handled",
+    "gate_checks",
+    "gate_forks",
+    "gate_wall_s",
+    "gate_ms_p50",
+    "gate_ms_p95",
     "twin_forks",
     "twin_skips",
     "twin_wall_s",
@@ -98,7 +107,7 @@ def run_one(
     from resilimes.agents.shift_lead import ShiftLead, build_decider
     from resilimes.smt.fab import load_fab
     from resilimes.smt.qtime_study import _setup, balance_kpis, replay
-    from resilimes.smt.simulate import run_policy
+    from resilimes.smt.simulate import make_sim
 
     fab = load_fab()
     plant, kwargs = _setup(fab, book, seed, "resilimes")
@@ -141,11 +150,15 @@ def run_one(
             last[0] = time.perf_counter()
             extra = ""
             if lead is not None and hasattr(lead, "escalations"):
-                extra = f" escalated={lead.escalations} llm_calls={lead.llm_calls}"
+                extra = (
+                    f" escalated={lead.escalations} rule_handled={lead.rule_handled}"
+                    f" llm_calls={lead.llm_calls}"
+                )
             _say(f"  {arm} {book} s{seed}: sim {t / 3600:.1f} h{extra}")
 
     try:
-        result = run_policy(plant, shift_lead=lead, progress=progress, **kwargs)
+        sim = make_sim(plant, shift_lead=lead, progress=progress, **kwargs)
+        result = sim.run()
     finally:
         if twin is not None:
             twin.close()
@@ -157,6 +170,7 @@ def run_one(
         "futures": args.futures,
         "llm_timeout_s": args.llm_timeout,
         "budget": args.budget,
+        "escalation_mode": getattr(lead, "escalation", None),
         "provider": getattr(getattr(lead, "completer", None), "name", None),
         "mocked": getattr(getattr(lead, "completer", None), "mocked", None),
     }
@@ -166,6 +180,9 @@ def run_one(
     row.update(
         {k: v for k, v in replay(plant, result.events, kwargs["horizon"]).items() if k in HEADLINE}
     )
+    row["qtime_miss_class"] = dict(getattr(result, "qtime_miss_class", None) or {})
+    row["qtime_avoidable"] = int(row["qtime_miss_class"].get("avoidable", 0))
+    row["hot_late"], row["hot_due"] = hot_late(sim, kwargs["horizon"])
     kpi = balance_kpis(plant, result.events, kwargs["horizon"], kwargs["downs"], kwargs["pm"])
     row["balance"] = {k: v for k, v in kpi.items() if isinstance(v, int | float)}
     if lead is not None:
@@ -179,6 +196,21 @@ def run_one(
     return row
 
 
+def hot_late(sim: Any, horizon: float) -> tuple[int, int]:
+    """(late, due): hot/VIP lots (tier < 2) due inside (0, horizon] and
+    whether they finished by their due (the twin's ``hot_late``, whole run)."""
+    late = due_n = 0
+    for lot in range(sim.n):
+        due = sim.due[lot]
+        if sim.tier(lot) >= 2 or not 0.0 < due <= horizon:
+            continue
+        due_n += 1
+        done = sim.finished_at[lot]
+        if not 0.0 <= done <= due:
+            late += 1
+    return late, due_n
+
+
 def _write(path: Path, row: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -186,11 +218,20 @@ def _write(path: Path, row: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def warm_memory(arm: str, args: argparse.Namespace) -> Path:
-    """Build the memory file once on the dev seeds (sequential, resumable)."""
+def warm_memory(arm: str, args: argparse.Namespace, book: str | None = None) -> Path | None:
+    """Build the memory file once on the dev seeds (sequential, resumable).
+
+    The stress book has no dev seeds: pre-registered, its memory arms start
+    every run with empty memory (``None``) and learn within the run.
+    """
+    from resilimes.smt import stress_book
+
+    book = book or args.book
+    if stress_book.is_stress(book):
+        return None
     out = Path(args.out_dir)
     mem_path = out / f"memory_{arm}.json"
-    dev_book = args.book.removeprefix("heldout_")
+    dev_book = book.removeprefix("heldout_")
     for seed in args.warm_seeds:
         done = out / arm / "warm" / f"{dev_book}_s{seed}.json"
         if done.exists():
@@ -202,23 +243,38 @@ def warm_memory(arm: str, args: argparse.Namespace) -> Path:
     return mem_path
 
 
+def pairs(args: argparse.Namespace) -> list[tuple[str, int]]:
+    """(book, seed) runs of one arm. ``--book stress``: the pre-registered
+    order (seed-major, then S1..S5), cut to the first ``--first`` pairs."""
+    from resilimes.smt import stress_book
+
+    if args.book in stress_book.BOOKS:
+        out = stress_book.ordered_pairs(args.seeds, args.book)
+    else:
+        out = [(args.book, seed) for seed in args.seeds]
+    return out[: args.first] if args.first else out
+
+
 def run_arms(args: argparse.Namespace) -> None:
     out = Path(args.out_dir)
-    plan = [(arm, seed) for arm in args.arms for seed in args.seeds]
+    plan = [(arm, book, seed) for arm in args.arms for book, seed in pairs(args)]
     _say(f"{len(plan)} runs: arms={','.join(args.arms)} seeds={args.seeds} book={args.book}")
-    for index, (arm, seed) in enumerate(plan, 1):
-        path = out / arm / f"{args.book}_s{seed}.json"
+    for index, (arm, book, seed) in enumerate(plan, 1):
+        path = out / arm / f"{book}_s{seed}.json"
         if path.exists():
-            _say(f"[{index}/{len(plan)}] {arm} s{seed}: done, skipped")
+            _say(f"[{index}/{len(plan)}] {arm} {book} s{seed}: done, skipped")
             continue
-        mem = warm_memory(arm, args) if arm in MEMORY_ARMS else None
-        _say(f"[{index}/{len(plan)}] {arm} s{seed}: start")
-        row = run_one(arm, args.book, seed, args, memory_path=mem)
+        mem = warm_memory(arm, args, book) if arm in MEMORY_ARMS else None
+        _say(f"[{index}/{len(plan)}] {arm} {book} s{seed}: start")
+        row = run_one(arm, book, seed, args, memory_path=mem)
         _write(path, row)
         lead = row.get("shift_lead", {})
         _say(
-            f"[{index}/{len(plan)}] {arm} s{seed}: wt={row.get('weighted_tardiness_min')} "
-            f"qviol={row.get('qtime_violations')} on_time={row.get('on_time_pct')} "
+            f"[{index}/{len(plan)}] {arm} {book} s{seed}: wt={row.get('weighted_tardiness_min')} "
+            f"qviol={row.get('qtime_violations')} avoid={row.get('qtime_avoidable')} "
+            f"hot_late={row.get('hot_late')} on_time={row.get('on_time_pct')} "
+            f"exceptions={lead.get('exceptions')} escalated={lead.get('escalated')} "
+            f"rule_handled={lead.get('rule_handled')} gate_wall={lead.get('gate_wall_s')} s "
             f"llm_calls={lead.get('llm_calls')} wall={row['wall_s']} s"
         )
     report(args)
@@ -229,10 +285,16 @@ def _mean(values: list[float]) -> float | None:
 
 
 def report(args: argparse.Namespace) -> dict[str, Any]:
+    if args.book in ("stress", "stress2"):
+        return stress_report(args)
+    return report_book(args, args.book)
+
+
+def report_book(args: argparse.Namespace, book: str, name: str = "report") -> dict[str, Any]:
     out = Path(args.out_dir)
     rows: dict[str, dict[int, dict[str, Any]]] = {}
     for arm in ARMS:
-        for path in sorted((out / arm).glob(f"{args.book}_s*.json")):
+        for path in sorted((out / arm).glob(f"{book}_s*.json")):
             row = json.loads(path.read_text("utf-8"))
             rows.setdefault(arm, {})[int(row["seed"])] = row
     arms: dict[str, Any] = {}
@@ -269,7 +331,8 @@ def report(args: argparse.Namespace) -> dict[str, Any]:
                 if isinstance(by_seed[s].get("shift_lead", {}).get(key), int | float)
             ]
             if vals:
-                entry[key] = round(sum(vals), 1) if not key.startswith("llm_ms") else _mean(vals)
+                pooled = key.startswith(("llm_ms", "gate_ms"))
+                entry[key] = _mean(vals) if pooled else round(sum(vals), 1)
         entry["wall_s"] = round(sum(float(by_seed[s]["wall_s"]) for s in seeds), 1)
         causes: dict[str, int] = {}
         for s in seeds:
@@ -279,12 +342,147 @@ def report(args: argparse.Namespace) -> dict[str, Any]:
                     causes[cause] = causes.get(cause, 0) + 1
         if causes:
             entry["fallback_causes"] = causes
+        reasons: dict[str, int] = {}
+        for s in seeds:
+            for d in by_seed[s].get("decisions", []):
+                why = d.get("escalation_reason")
+                if why:
+                    reasons[why] = reasons.get(why, 0) + 1
+        if reasons:
+            entry["escalation_reasons"] = reasons
         arms[arm] = entry
-    result = {"book": args.book, "arms": arms}
-    (out / "report.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
-    (out / "report.md").write_text(table(result), encoding="utf-8")
+    result = {"book": book, "arms": arms}
+    (out / f"{name}.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
+    (out / f"{name}.md").write_text(table(result), encoding="utf-8")
     print(table(result), flush=True)
     return result
+
+
+def lexi_key(row: dict[str, Any]) -> tuple[float, float, float]:
+    """Pre-registered metric: avoidable Q-time, then hot late, then wt."""
+    return (
+        float(row.get("qtime_avoidable") or 0),
+        float(row.get("hot_late") or 0),
+        float(row.get("weighted_tardiness_min") or 0.0),
+    )
+
+
+def lexi_cmp(row: dict[str, Any], base: dict[str, Any], band: float = 0.5) -> int:
+    """-1 win, 0 tie, +1 loss of ``row`` against ``base``."""
+    a, b = lexi_key(row), lexi_key(base)
+    for x, y in zip(a[:2], b[:2], strict=True):
+        if x != y:
+            return -1 if x < y else 1
+    if abs(a[2] - b[2]) <= band:
+        return 0
+    return -1 if a[2] < b[2] else 1
+
+
+def stress_report(args: argparse.Namespace) -> dict[str, Any]:
+    """Per (scenario, seed) rows of every arm, lexicographic W/T/L vs rules and
+    vs sim, and per-book reports (``report_<book>.md``)."""
+    out = Path(args.out_dir)
+    order = pairs(args)
+    rows: dict[str, dict[tuple[str, int], dict[str, Any]]] = {}
+    for arm in ARMS:
+        for book, seed in order:
+            path = out / arm / f"{book}_s{seed}.json"
+            if path.exists():
+                rows.setdefault(arm, {})[(book, seed)] = json.loads(path.read_text("utf-8"))
+    table_rows = []
+    for book, seed in order:
+        for arm, by_pair in rows.items():
+            row = by_pair.get((book, seed))
+            if row is None:
+                continue
+            lead = row.get("shift_lead", {})
+            table_rows.append(
+                {
+                    "book": book,
+                    "seed": seed,
+                    "arm": arm,
+                    "escalated": lead.get("escalated"),
+                    "exceptions": lead.get("exceptions"),
+                    "qtime_avoidable": row.get("qtime_avoidable"),
+                    "qtime_violations": row.get("qtime_violations"),
+                    "hot_late": row.get("hot_late"),
+                    "hot_due": row.get("hot_due"),
+                    "weighted_tardiness_min": row.get("weighted_tardiness_min"),
+                    "gate_wall_s": lead.get("gate_wall_s"),
+                    "llm_calls": lead.get("llm_calls"),
+                    "fallbacks": lead.get("fallbacks"),
+                    "wall_s": row.get("wall_s"),
+                }
+            )
+    summary: dict[str, Any] = {}
+    for arm, by_pair in rows.items():
+        entry: dict[str, Any] = {"pairs": len(by_pair)}
+        for key in ("qtime_avoidable", "hot_late", "weighted_tardiness_min"):
+            entry[key] = round(sum(float(r.get(key) or 0) for r in by_pair.values()), 1)
+        entry["escalated"] = sum(
+            int(r.get("shift_lead", {}).get("escalated") or 0) for r in by_pair.values()
+        )
+        for ref in ("rules", "sim"):
+            if ref == arm or ref not in rows:
+                continue
+            common = [p for p in by_pair if p in rows[ref]]
+            res = [lexi_cmp(by_pair[p], rows[ref][p]) for p in common]
+            entry[f"wtl_vs_{ref}"] = [res.count(-1), res.count(0), res.count(1)]
+            entry[f"more_avoidable_than_{ref}"] = sum(
+                1
+                for p in common
+                if (by_pair[p].get("qtime_avoidable") or 0)
+                > (rows[ref][p].get("qtime_avoidable") or 0)
+            )
+        summary[arm] = entry
+    books = sorted({b for b, _ in order}, key=[b for b, _ in order].index)
+    for book in books:
+        report_book(args, book, name=f"report_{book}")
+    result = {"book": args.book, "order": order, "rows": table_rows, "summary": summary}
+    (out / "report.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
+    (out / "report.md").write_text(stress_table(result), encoding="utf-8")
+    print(stress_table(result), flush=True)
+    return result
+
+
+def stress_table(result: dict[str, Any]) -> str:
+    cols = (
+        "escalated",
+        "exceptions",
+        "qtime_avoidable",
+        "qtime_violations",
+        "hot_late",
+        "hot_due",
+        "weighted_tardiness_min",
+        "gate_wall_s",
+        "llm_calls",
+        "fallbacks",
+        "wall_s",
+    )
+    lines = [
+        f"{result['book']} book (pre-registered, docs/AI_SHIFT_LEAD_STRESS.md)",
+        "",
+        "| scenario | seed | arm | " + " | ".join(cols) + " |",
+        "|---|---|---|" + "---|" * len(cols),
+    ]
+    for r in result["rows"]:
+        cells = [str(r.get(k, "")) for k in cols]
+        lines.append(f"| {r['book']} | {r['seed']} | {r['arm']} | " + " | ".join(cells) + " |")
+    lines += [
+        "",
+        "lexicographic (avoidable Q-time, hot late, wt ±0.5 min): W/T/L",
+        "",
+        "| arm | pairs | escalated | avoidable | hot late | wt min | vs rules | vs sim |"
+        " more avoidable than rules |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
+    for arm, e in result["summary"].items():
+        lines.append(
+            f"| {arm} | {e['pairs']} | {e['escalated']} | {e['qtime_avoidable']} | "
+            f"{e['hot_late']} | {e['weighted_tardiness_min']} | {e.get('wtl_vs_rules', '')} | "
+            f"{e.get('wtl_vs_sim', '')} | {e.get('more_avoidable_than_rules', '')} |"
+        )
+    return "\n".join(lines) + "\n"
 
 
 def table(result: dict[str, Any]) -> str:
@@ -295,8 +493,13 @@ def table(result: dict[str, Any]) -> str:
         ("on_time_pct", "on-time %"),
         ("qtime_violations", "Q-viol"),
         ("d_qtime_violations_vs_rules", "ΔQ vs rules"),
+        ("qtime_avoidable", "Q-avoid"),
+        ("hot_late", "hot late"),
         ("queue_cv_families", "queue CV"),
+        ("exceptions", "exceptions"),
         ("escalated", "escalated"),
+        ("rule_handled", "rule-handled"),
+        ("gate_wall_s", "gate s"),
         ("llm_calls", "LLM calls"),
         ("llm_ms_p50", "LLM p50 ms"),
         ("fallbacks", "fallbacks"),
@@ -321,8 +524,20 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     p.add_argument("command", nargs="?", default="run", choices=("run", "report"))
     p.add_argument("--arms", default="rules,heuristic,sim,sim_hmem")
-    p.add_argument("--book", default="heldout_published")
-    p.add_argument("--seeds", default=",".join(map(str, HELDOUT_SEEDS)))
+    p.add_argument(
+        "--book",
+        default="heldout_published",
+        help="study book; 'stress' / 'stress2' = the pre-registered stress books",
+    )
+    p.add_argument(
+        "--seeds", default=None, help="default: 9-13 (stress: the pre-registered 9,10,11)"
+    )
+    p.add_argument(
+        "--first",
+        type=int,
+        default=0,
+        help="stress: run only the first N (scenario, seed) pairs of the fixed order",
+    )
     p.add_argument("--warm-seeds", default="1,2,3")
     p.add_argument("--horizon-h", type=float, default=24.0)
     p.add_argument("--fork-h", type=float, default=8.0)
@@ -337,6 +552,11 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
     for arm in args.arms:
         if arm not in ARMS:
             p.error(f"unknown arm {arm!r}; choose from {', '.join(ARMS)}")
+    if args.seeds is None:
+        from resilimes.smt.stress_book import STRESS_SEEDS
+
+        stress = args.book in ("stress", "stress2")
+        args.seeds = ",".join(map(str, STRESS_SEEDS if stress else HELDOUT_SEEDS))
     args.seeds = [int(s) for s in str(args.seeds).split(",") if s]
     args.warm_seeds = [int(s) for s in str(args.warm_seeds).split(",") if s]
     # The horizon is read from the env by qtime_study._setup.

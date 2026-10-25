@@ -4,7 +4,16 @@ Off by default: only ``SimShiftLead`` (attached explicitly, e.g. by the
 study's ``sim-*`` arms) uses it; ``ShiftLead`` and the dispatcher are
 unchanged.
 
-At an exception that passes the pre-registered escalation filter:
+Rules first. At every exception the rule default plan is what runs. A
+no-AI gate (``rule_trigger``) forks the twin for the rule default alone and
+escalates only if that plan is projected (mean over the sampled futures) to
+cause at least one avoidable Q-time violation (``hard_qtime.miss_class``) or
+at least one late hot/VIP lot inside the fork horizon. Otherwise the rule
+default stands, no model is called, and the exception is logged as
+``rule_ok``. ``SHIFT_LEAD_ESCALATE=always`` restores the old kind-based
+filter (``escalate``) for experiments only.
+
+At an exception that is escalated:
 
 1. Candidates: the engine's options (``resilimes.smt.exceptions``), plus, with
    a proposer, up to ``MAX_PLANS`` typed plans from the model in a small JSON
@@ -22,12 +31,14 @@ At an exception that passes the pre-registered escalation filter:
    rule default.
 
 Every decision is logged with a counterfactual receipt (chosen vs default
-means on the same futures). Non-escalated exceptions keep the rule default.
+means on the same futures). Non-escalated exceptions keep the rule default
+and are logged with ``escalation_reason`` (``rule_ok`` or ``filter``).
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 import time
@@ -59,15 +70,46 @@ MAX_LEVERS = 4
 BOOST_MAX_MIN = 60.0
 KEEP_PIN_MAX_H = 8.0
 PM_FLEX_SEC = 24 * 3600.0
-QTIME_ESCALATE_MIN = 2  # default must project >= this many more Q-time misses
-ALWAYS_ESCALATE = ("breakdown", "pm_conflict", "hot_insertion", "batch_underfill")
+QTIME_ESCALATE_MIN = 2  # legacy filter: default projects >= this many more misses
+ALWAYS_ESCALATE = ("breakdown", "pm_conflict", "hot_insertion", "batch_underfill")  # legacy
+ESCALATE_ENV = "SHIFT_LEAD_ESCALATE"
+ESCALATE_MODES = ("exception", "always")  # exception: rules first (default)
+# Pre-registered gate (not tuned): the rule default's mean over the fork's
+# sampled futures must reach this many avoidable Q-time misses or late
+# hot/VIP lots for the shift lead to be asked.
+GATE_QAVOID_MIN = 1.0
+GATE_HOT_LATE_MIN = 1.0
 METRICS = ("wt_min", "qviol", "hot_late", "late_lots", "on_time")
 PROMPT_LOTS = 30
 
 
 # ------------------------------------------------------------------ escalation
+def escalation_mode(value: str | None = None) -> str:
+    """``exception`` (default, rules first) or ``always`` (legacy experiment)."""
+    raw = os.environ.get(ESCALATE_ENV, "") if value is None else value
+    mode = (raw or "exception").strip().lower()
+    if mode not in ESCALATE_MODES:
+        raise ValueError(f"{ESCALATE_ENV} must be one of {', '.join(ESCALATE_MODES)}")
+    return mode
+
+
+def rule_trigger(default: PlanScore) -> str | None:
+    """The exception-only gate on the rule default's twin score.
+
+    Returns the trigger (``avoidable_qtime`` or ``hot_late``) when the rule
+    default is projected to cause at least one avoidable Q-time violation or
+    one late hot/VIP lot (means over the futures); None means the rule plan
+    handles the exception (``rule_ok``).
+    """
+    if default.mean("qavoid") >= GATE_QAVOID_MIN - 1e-9:
+        return "avoidable_qtime"
+    if default.mean("hot_late") >= GATE_HOT_LATE_MIN - 1e-9:
+        return "hot_late"
+    return None
+
+
 def escalate(exc: FabException) -> bool:
-    """Pre-registered: which exceptions get the twin (and the model)."""
+    """Legacy kind filter, only with ``SHIFT_LEAD_ESCALATE=always``."""
     if exc.kind in ALWAYS_ESCALATE:
         return True
     if exc.kind == "qtime_competition":
@@ -464,6 +506,7 @@ class SimShiftLead(ShiftLead):
         budget: int | None = None,
         progress: Any = None,
         max_per_tick: int = 8,
+        escalation: str | None = None,
     ) -> None:
         super().__init__(
             RuleDefault("en"), max_per_tick=max_per_tick, budget=budget, progress=progress
@@ -482,7 +525,12 @@ class SimShiftLead(ShiftLead):
         self.llm_calls = 0
         self.llm_ms: list[float] = []
         self.llm_fail: dict[str, int] = {}
+        self.escalation = escalation_mode(escalation)
         self.escalations = 0
+        self.rule_handled = 0
+        self.triggers: dict[str, int] = {}
+        self.gate_ms: list[float] = []
+        self.gate_forks = 0
         self.twin_skips = 0
         self.models: dict[str, int] = {}
 
@@ -540,18 +588,57 @@ class SimShiftLead(ShiftLead):
             raise
 
     # decision -----------------------------------------------------------------
+    def _gate(self, sim: Any, exc: FabException, moment: float) -> tuple[PlanScore, float]:
+        """Twin score of the rule default alone (no model), and its wall ms."""
+        started = time.perf_counter()
+        default = next(p for p in engine_plans(exc) if p.id == exc.default.id)
+        forks = self.twin.forks
+        score = self.twin.evaluate(sim, {default.id: default.levers}, moment)[default.id]
+        self.gate_forks += self.twin.forks - forks
+        ms = (time.perf_counter() - started) * 1000.0
+        self.gate_ms.append(ms)
+        return score, ms
+
+    def _rule_entry(
+        self, sim: Any, exc: FabException, moment: float, reason: str, gate: Any
+    ) -> dict[str, Any]:
+        """The rule default runs; logged as handled by rule (not escalated)."""
+        calls = self.calls
+        entry = super().handle(sim, exc, moment)
+        self.calls = calls  # the budget counts escalations only
+        self.rule_handled += 1
+        entry["escalated"] = False
+        entry["escalation_reason"] = reason
+        entry["gate"] = gate
+        return entry
+
     def handle(self, sim: Any, exc: FabException, moment: float) -> dict[str, Any]:
-        if not escalate(exc):
-            entry = super().handle(sim, exc, moment)
-            entry["escalated"] = False
-            return entry
+        default_id = exc.default.id
+        gate_score: PlanScore | None = None
+        gate: dict[str, Any] | None = None
+        trigger = "always"
+        if self.escalation == "always":
+            if not escalate(exc):
+                return self._rule_entry(sim, exc, moment, "filter", None)
+        else:
+            gate_score, ms = self._gate(sim, exc, moment)
+            found = rule_trigger(gate_score)
+            gate = {
+                "default": gate_score.summary(),
+                "futures": len(gate_score.runs),
+                "ms": round(ms, 1),
+                "trigger": found,
+            }
+            if found is None:
+                return self._rule_entry(sim, exc, moment, "rule_ok", gate)
+            trigger = found
+        self.triggers[trigger] = self.triggers.get(trigger, 0) + 1
         self.sim = sim
         started = time.perf_counter()
         self.escalations += 1
         view = situation(sim, exc, moment)
         cases = self.memory.recall(view) if self.memory is not None else []
         plans = {plan.id: plan for plan in engine_plans(exc)}
-        default_id = exc.default.id
         cause: str | None = None
         propose_cause: str | None = None
         reason = ""
@@ -579,7 +666,15 @@ class SimShiftLead(ShiftLead):
         if cause is None:
             self.calls += 1
             runnable = {pid: p.levers for pid, p in plans.items() if p.error is None}
-            scores = self.twin.evaluate(sim, runnable, moment)
+            if gate_score is not None:
+                # The gate already scored the default on the same futures
+                # (same snapshot, same seeds): reuse it, fork only the rest.
+                rest = {pid: lv for pid, lv in runnable.items() if pid != default_id}
+                scores = {default_id: gate_score}
+                if rest:
+                    scores.update(self.twin.evaluate(sim, rest, moment))
+            else:
+                scores = self.twin.evaluate(sim, runnable, moment)
             order = list(runnable)
             if self.selector == "pareto":
                 chosen_id = pareto_pick(scores, default_id, order)
@@ -644,6 +739,8 @@ class SimShiftLead(ShiftLead):
             "fallback": cause is not None and cause != "memory_skip",
             "fallback_cause": cause,
             "escalated": True,
+            "escalation_reason": trigger,
+            "gate": gate,
             "selector": self.selector,
             "propose_fallback": propose_cause,
             "plans": [plan.view() for plan in plans.values()],
@@ -666,11 +763,24 @@ class SimShiftLead(ShiftLead):
         def pct(q: float) -> float | None:
             return round(ms[min(len(ms) - 1, int(q * len(ms)))], 1) if ms else None
 
+        gms = sorted(self.gate_ms)
+
+        def gate_pct(q: float) -> float | None:
+            return round(gms[min(len(gms) - 1, int(q * len(gms)))], 1) if gms else None
+
         out.update(
             {
                 "decider": "sim+"
                 + (getattr(self.completer, "name", "llm") if self.completer else "pareto"),
+                "escalation_mode": self.escalation,
                 "escalated": self.escalations,
+                "rule_handled": self.rule_handled,
+                "escalation_triggers": dict(self.triggers),
+                "gate_checks": len(self.gate_ms),
+                "gate_forks": self.gate_forks,
+                "gate_wall_s": round(sum(self.gate_ms) / 1000.0, 2),
+                "gate_ms_p50": gate_pct(0.5),
+                "gate_ms_p95": gate_pct(0.95),
                 "twin_forks": self.twin.forks,
                 "twin_wall_s": round(self.twin.wall_s, 1),
                 "twin_skips": self.twin_skips,

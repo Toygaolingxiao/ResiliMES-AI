@@ -39,6 +39,7 @@ TIMING = {
     # Q-time miss causes and the hard Q-time summary (tests/test_hard_qtime.py).
     "qtime_causes",
     "hard_qtime",
+    "qtime_miss_class",
 }
 # Planning-layer fields (planning-r1): constant zeros/empty when no plan is passed,
 # so they are left out of the off-path digest like the empty lot_log.

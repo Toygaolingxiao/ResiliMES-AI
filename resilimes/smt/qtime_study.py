@@ -134,6 +134,16 @@ def _setup(
         for tool in range(family.tool0, family.tool0 + family.tools):
             downs[tool].append((0.0, _STRESS_HOURS * 3600.0))
         pm = pm_windows(fab, horizon)
+    elif book.startswith(("stress_", "stress2_")):
+        # Pre-registered stress book (resilimes.smt.stress_book).
+        from resilimes.smt import stress_book
+
+        if not stress_book.is_stress(book):
+            raise KeyError(book)
+        downs = sample_downs(fab, seed, horizon)
+        pm = pm_windows(fab, horizon)
+        kwargs["horizon"] = horizon
+        stress_book.apply(fab, book, policy, downs, pm, kwargs)
     else:
         raise KeyError(book)
     if _releases() if releases is None else releases:
@@ -157,6 +167,14 @@ BOOK_SCENARIO = {
     "litho": "litho_down",
     "hot": "hot_lot",
     "litho_family_2h": "published",
+    "stress_furnace_down": "published",
+    "stress_hot_cqt": "published",
+    "stress_release_burst": "published",
+    "stress_pm_peak": "published",
+    "stress_batch_cap": "published",
+    "stress2_furnace_crisis": "published",
+    "stress2_rush_hot": "published",
+    "stress2_fe_furnace_crisis": "published",
 }
 _PLANS: dict[str, Any] = {}
 

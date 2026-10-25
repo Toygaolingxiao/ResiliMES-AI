@@ -16,11 +16,28 @@ Why plan is the default: strict Q-time meets more Q-time windows, but it finishe
 
 | Mode | Completed/run | On-time % | True Q-time % | W. tardiness min/run |
 |---|---|---|---|---|
-| ResiliMES default (plan) | 503.7 | 91.96 | 94.63 | 20,950 |
+| ResiliMES plan, hard Q-time off | 503.7 | 91.96 | 94.63 | 20,950 |
 | ResiliMES strict Q-time | 362.7 | 91.85 | 97.19 | 20,566 |
-| EDD | 520.0 | 91.96 | 89.24 | 21,046 |
+| EDD (industry reference, Q-time-blind) | 520.0 | 91.96 | 89.24 | 21,046 |
 
-On this book the default ties EDD on on-time. It meets 5.4 pp more Q-time windows than EDD and completes 16 fewer lots per run. Across the 9-book × 5-seed study in [docs/PLANNING_R1_STUDY.md](docs/PLANNING_R1_STUDY.md) (7 d closed), the plan arm averages 455.7 completed/run, 94.5% true Q-time and 90.2% on-time. **EDD is about 3 pp better on on-time there (93.6%)** and completes 464.7/run at 88.8% true Q-time. Most of that gap comes from the X-factor books. The study arm ran with fix 1 on; the default keeps it off. The numbers further down this README were recorded before this change, on the strict path, and were not rerun.
+These rows predate hard Q-time and are kept as the record of the plan-vs-strict choice; none of them is Q-time-feasible (see below). Across the 9-book × 5-seed study in [docs/PLANNING_R1_STUDY.md](docs/PLANNING_R1_STUDY.md) (7 d closed), the plan arm averages 455.7 completed/run, 94.5% true Q-time and 90.2% on-time; the EDD reference is 93.6% on-time and 464.7/run at 88.8% true Q-time, with the avoidable Q-time violations that make it infeasible. Most of that gap comes from the X-factor books. The study arm ran with fix 1 on; the default keeps it off. The numbers further down this README were recorded before this change, on the strict path, and were not rerun.
+
+## Hard Q-time first (default on)
+
+Q-time compliance comes first: a schedule with an avoidable Q-time violation is infeasible and is discarded, not compared. ResiliMES with the planning layer gates every CQT origin start on the whole CQT segment by default (`RESILIMES_HARD_QTIME=0` exists only for experiments). Misses are classified as unavoidable (a breakdown after admission, target down or PM, rework, transport) or avoidable; lots that miss are expedited as hot lots, never excluded. EDD and the other Q-time-blind rules appear only as an industry reference with their avoidable-violation count.
+
+Published book, seeds 1-3, 7 days (totals over 3 seeds):
+
+| | Avoidable violations | Unavoidable | Expedited / recovered | Recovery mean (min) | Completed/run | On-time % | W. tardiness min/run |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ResiliMES default (plan + hard Q-time), infeasible: 71 avoidable | 71 | 105 | 564 / 519 | 1,396 | 486.7 | 82.12 | 44,008 |
+| EDD: industry reference (infeasible: 1719 avoidable Q-time violations) | 1719 | 1426 | - | - | 520.0 | 91.96 | 21,046 |
+
+The default is not yet Q-time-feasible: 71 avoidable misses remain. Unavoidable now also counts 41 lots that were already inside a t=0 WIP window and reached the next (chained) CQT origin before any gate decision; the schedule is unchanged, only the classification. Gating those chained windows as one cut avoidable misses further but collapsed output to 130-280 lots per run, so it stays an off-by-default experiment. Details, the before/after (334 to 111 to 71 avoidable) and the rejected fixes are in [docs/HARD_QTIME.md](docs/HARD_QTIME.md).
+
+## AI shift lead: rules first, exceptions only
+
+Rule-based scheduling handles every event by itself; the AI shift lead is asked only for exceptions the rule plan can't handle. At each exception the rule default runs, and a no-AI check forks the digital twin for that rule plan alone (8 h × 3 resampled futures). The shift lead (and Nemotron) is asked only if the rule plan is projected to cause at least one avoidable Q-time violation (the hard Q-time notion above) or at least one late hot/VIP lot. Every other exception is logged as handled by rule (`rule_ok`) with no LLM call, and the study reports handled-by-rule vs escalated counts. `SHIFT_LEAD_ESCALATE=always` brings back the old escalate-by-kind filter for experiments only. Details: [docs/AI_SIM_SELECT.md](docs/AI_SIM_SELECT.md).
 
 ## Default console: public industry benchmark (SMT2020)
 

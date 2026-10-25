@@ -7,6 +7,12 @@ projects their impact. A decider (an LLM, or a deterministic stand-in) picks
 one option. The answer is validated, and anything wrong falls back to the
 rule default. Every decision is logged and replayable.
 
+With the twin (`SimShiftLead`, [AI_SIM_SELECT.md](AI_SIM_SELECT.md)) the
+rule is stricter: rules first, and the AI shift lead is asked only when a
+no-AI twin check projects the rule default to cause an avoidable Q-time
+violation or a late hot/VIP lot. Every other exception is handled by the
+rule default and counted as `rule_ok`.
+
 | Piece | File |
 |---|---|
 | Exception detection, options, impact projection | `resilimes/smt/exceptions.py` |

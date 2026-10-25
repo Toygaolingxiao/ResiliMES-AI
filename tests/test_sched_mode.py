@@ -1,4 +1,4 @@
-"""Default scheduling mode: the planning layer; strict Q-time is the switch."""
+"""Default scheduling mode: the planning layer with hard Q-time; strict Q-time is the switch."""
 
 from __future__ import annotations
 
@@ -51,13 +51,14 @@ def test_default_resilimes_run_uses_the_plan(monkeypatch: pytest.MonkeyPatch) ->
     assert sim.position_wait
     assert sim.fix2 and sim.fix3 and not sim.fix1
     assert sim.plan is auto_plan(fab)
+    assert sim.hq is not None  # hard Q-time comes with the plan
 
 
 def test_strict_qtime_and_baselines_run_without_a_plan(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("RESILIMES_SCHED_MODE", raising=False)
     fab = load_fab()
     strict = make_sim(fab, sched_mode="strict_qtime", **_kwargs("resilimes"))
-    assert strict.plan is None and strict.fix2
+    assert strict.plan is None and strict.fix2 and strict.hq is None
     assert make_sim(fab, **_kwargs("edd")).plan is None
     with pytest.raises(ValueError):
         make_sim(fab, sched_mode="nope", **_kwargs("resilimes"))
@@ -68,9 +69,14 @@ def test_default_equals_explicit_plan(monkeypatch: pytest.MonkeyPatch) -> None:
     fab = load_fab()
     default = run_policy(fab, **_kwargs("resilimes"))
     explicit = run_policy(
-        fab, plan=auto_plan(fab), sched_mode="strict_qtime", **_kwargs("resilimes")
+        fab,
+        plan=auto_plan(fab),
+        sched_mode="strict_qtime",
+        hard_qtime=True,
+        **_kwargs("resilimes"),
     )
     assert default.plan_used and explicit.plan_used
+    assert default.hard_qtime and default.hard_qtime == explicit.hard_qtime
     assert default.completed_routes == explicit.completed_routes
     assert default.on_time_pct == explicit.on_time_pct
     assert default.qtime_violations == explicit.qtime_violations

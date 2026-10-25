@@ -22,12 +22,24 @@ from resilimes.evidence.factcheck import FactRegistry, check
 from resilimes.evidence.sqlrun import run_guarded
 from resilimes.evidence.toolkit import HOUR, Toolkit
 from resilimes.insight.injector import CAUSE_TEXT, TAXONOMY, main_upstream
+from resilimes.insight.progress import redact
+from resilimes.llm import deadline
 from resilimes.llm.base import Completer, LlmResult
 
 MAX_CALLS = 6
 MAX_TURNS = 10
 RESULT_CHARS = 3500
 LANE = "investigator"
+BUDGET_NOTE = "Tool budget used. Give the final answer now."
+STOP_REASONS = (
+    "answered",
+    "budget_exhausted",
+    "repeat_call",
+    "fact_check_repaired",
+    "degraded_to_rule",
+    "error",
+)
+DEGRADE_REASONS = ("fact_check_failed", "no_answer", "provider_error", "timeout")
 
 TOOLS_DOC = """Tools (call one per turn):
 - compare_windows {"family": str, "start_h": num, "end_h": num}: for each of the six causes, its indicator in the 4 h before start_h and in the window, and the relative change (window - before) / before. Also waiting lots at the window start and end, and the main upstream family with its down+PM tool-hours and its feed (lots/h) into this family.
@@ -95,6 +107,17 @@ class Investigation:
     # The model each response actually came from (LlmResult.model), one per LLM call.
     response_models: list[str] = field(default_factory=list)
     error: str | None = None
+    # One entry per round (LLM turn): what was asked, what the loop did, what evidence came back.
+    trace: list[dict[str, Any]] = field(default_factory=list)
+    stop_reason: str = ""
+    # Degraded route: when the AI answer is unusable, what the operator sees is the rule
+    # baseline's answer. primary_cause / fact_misses above stay the AI's own, never hidden.
+    degraded: bool = False
+    degrade_reason: str | None = None
+    system: dict[str, Any] = field(default_factory=dict)
+    # Wall-clock seconds for the whole case (each trace round has its own elapsed_s).
+    elapsed_s: float = 0.0
+    timed_out: bool = False
 
     def to_json(self) -> dict[str, Any]:
         return dict(self.__dict__)
@@ -309,7 +332,7 @@ class ScriptedCompleter:
         results = [m["content"] for m in messages if m["content"].startswith("RESULT ")]
         plan = self.plan()
         if len(results) < len(plan) and not any(
-            "budget used" in m["content"] for m in messages if m["role"] == "user"
+            "final answer now" in m["content"] for m in messages if m["role"] == "user"
         ):
             content = json.dumps(plan[len(results)])
         else:
@@ -380,6 +403,50 @@ class ScriptedCompleter:
         }
 
 
+# ---- loop controls ------------------------------------------------------------------------
+def _norm(value: Any) -> Any:
+    """Args in a canonical form, so 6 / 6.0 / "6" and extra whitespace compare equal."""
+    if isinstance(value, dict):
+        return {str(k): _norm(v) for k, v in sorted(value.items(), key=lambda kv: str(kv[0]))}
+    if isinstance(value, (list, tuple)):
+        return [_norm(v) for v in value]
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, (int, float)):
+        return round(float(value), 4)
+    text = " ".join(str(value).split())
+    try:
+        return round(float(text), 4)
+    except ValueError:
+        return text
+
+
+def call_key(name: str, args: dict[str, Any]) -> str:
+    return json.dumps([name, _norm(args)], sort_keys=True, default=str)
+
+
+def evidence_summary(result: dict[str, Any]) -> dict[str, Any]:
+    """Short description of a tool result for the trace: no payloads."""
+    if "error" in result:
+        return {"error": str(result["error"])[:120]}
+    body = result.get("result", result)
+    summary: dict[str, Any] = {
+        "chars": len(json.dumps(result, ensure_ascii=False, default=str)),
+    }
+    if isinstance(body, dict):
+        summary["keys"] = sorted(str(k) for k in body)[:12]
+        causes = body.get("causes")
+        if isinstance(causes, dict):
+            summary["causes"] = {
+                str(cause): row.get("rel_change") if isinstance(row, dict) else None
+                for cause, row in causes.items()
+            }
+        for key, value in body.items():
+            if isinstance(value, list):
+                summary.setdefault("sizes", {})[str(key)] = len(value)
+    return summary
+
+
 # ---- the loop -----------------------------------------------------------------------------
 def _intro(question: str, family: str, t1_h: float, t2_h: float) -> str:
     causes = "\n".join(f"- {key}: {text}" for key, text in CAUSE_TEXT.items())
@@ -415,6 +482,15 @@ def _validate(final: Any, ncalls: int) -> list[str]:
     return errors
 
 
+def task_budget_s(deadline_s: float | None, settings: Settings | None) -> float:
+    """The per-task wall-clock budget: explicit, else Settings, else AI_TASK_DEADLINE_S."""
+    if deadline_s is not None:
+        return deadline_s
+    if settings is not None:
+        return settings.ai_task_deadline_s
+    return deadline.default_task_s()
+
+
 def investigate(
     kit: Toolkit,
     question: str,
@@ -426,8 +502,46 @@ def investigate(
     *,
     max_calls: int = MAX_CALLS,
     temperature: float = 0.2,
+    deadline_s: float | None = None,
 ) -> Investigation:
-    """Bounded tool loop. ``provider`` None or mocked -> the scripted stand-in."""
+    """Bounded tool loop under a wall-clock budget (``deadline_s``, default 180 s).
+
+    ``provider`` None or mocked -> the scripted stand-in. When the budget runs out the loop
+    stops and the case degrades to the rule answer with ``degrade_reason='timeout'``.
+    """
+    with deadline.task_deadline(task_budget_s(deadline_s, settings)):
+        return _investigate(
+            kit,
+            question,
+            family,
+            t1_h,
+            t2_h,
+            provider,
+            settings,
+            max_calls=max_calls,
+            temperature=temperature,
+        )
+
+
+def _timeout(out: Investigation, step: dict[str, Any], detail: str) -> None:
+    out.timed_out = True
+    out.error = redact(f"timeout: {detail}", 300)
+    step["status"] = "timeout"
+    step.setdefault("action", "deadline")
+
+
+def _investigate(
+    kit: Toolkit,
+    question: str,
+    family: str,
+    t1_h: float,
+    t2_h: float,
+    provider: Completer | None,
+    settings: Settings | None,
+    *,
+    max_calls: int,
+    temperature: float,
+) -> Investigation:
     if provider is None or provider.mocked:
         provider = ScriptedCompleter(kit, family, t1_h, t2_h)
     kit.registry = kit.registry or FactRegistry()
@@ -448,14 +562,30 @@ def investigate(
     ]
     ncalls = 0
     repairs = 0
+    seen: dict[str, int] = {}  # normalized (tool, args) -> result number
+    closed_by = ""  # "repeat_call" / "budget_exhausted" once the tool phase is closed
     started = time.perf_counter()
+    t_start = round_start = deadline.now()
     final: dict[str, Any] | None = None
     while out.turns < MAX_TURNS:
+        if out.trace:
+            out.trace[-1]["elapsed_s"] = round(deadline.now() - round_start, 3)
+        round_start = deadline.now()
         out.turns += 1
+        step: dict[str, Any] = {"round": out.turns}
+        out.trace.append(step)
+        if deadline.expired():
+            _timeout(out, step, "task deadline reached before the model call")
+            break
         try:
             reply = provider.complete(messages, lane=LANE, temperature=temperature)
+        except deadline.DeadlineExceeded as exc:
+            _timeout(out, step, str(exc))
+            step["action"] = "provider"
+            break
         except Exception as exc:
-            out.error = f"provider: {type(exc).__name__}"
+            out.error = redact(f"provider: {type(exc).__name__}: {exc}", 300)
+            step.update(action="provider", status="error", detail=out.error)
             break
         out.llm_calls += 1
         out.response_models.append(reply.provider_model or f"unreported:{reply.model}")
@@ -463,26 +593,31 @@ def investigate(
         try:
             payload = extract_json_object(reply.content)
         except (ValueError, json.JSONDecodeError):
+            step.update(action="unparsed", status="format_retry")
             messages.append(
                 {"role": "user", "content": "Reply with one JSON object only (tool or final)."}
             )
             continue
         if "final" in payload:
+            step["action"] = "answer"
             errors = _validate(payload["final"], ncalls)
             if errors and repairs < 2:
                 repairs += 1
+                step["status"] = "schema_repair"
                 messages.append(
                     {"role": "user", "content": "Fix the final answer: " + "; ".join(errors)}
                 )
                 continue
             final = payload["final"] if not errors else None
             if errors:
+                step["status"] = "invalid"
                 out.error = "invalid final: " + "; ".join(errors)
             if final is not None:
                 text = " ".join([*final.get("causal_chain", []), str(final.get("lever", ""))])
                 misses = check(text, kit.registry)
                 if misses and not out.repaired:
                     out.repaired = True
+                    step["status"] = "fact_check_repair"
                     messages.append(
                         {
                             "role": "user",
@@ -494,20 +629,48 @@ def investigate(
                     final = None
                     continue
                 out.fact_misses = misses
+                step["status"] = "accepted"
             break
         name = str(payload.get("tool", ""))
+        args = payload.get("args") or {}
+        args = args if isinstance(args, dict) else {}
+        step.update(action=name, args=args)
+        if closed_by == "repeat_call":
+            # The model was told to answer after a repeat and asked for a tool again: stop.
+            step["status"] = "tool_phase_closed"
+            out.error = "no final answer after the repeat stop"
+            break
         if ncalls >= max_calls:
+            step["status"] = "over_budget"
+            closed_by = closed_by or "budget_exhausted"
+            messages.append({"role": "user", "content": BUDGET_NOTE})
+            continue
+        key = call_key(name, args)
+        if key in seen:
+            step.update(status="repeat", repeat_of=seen[key])
+            closed_by = "repeat_call"
             messages.append(
-                {"role": "user", "content": "Tool budget used. Give the final answer now."}
+                {
+                    "role": "user",
+                    "content": f"You already have that evidence in RESULT {seen[key]}. "
+                    "The tool phase is over. Give the final answer now.",
+                }
             )
             continue
-        args = payload.get("args") or {}
-        result = execute(kit, name, args if isinstance(args, dict) else {}, settings)
+        if deadline.expired():
+            _timeout(out, step, "task deadline reached before the tool round")
+            break
+        result = execute(kit, name, args, settings)
         ncalls += 1
+        seen[key] = ncalls
         out.calls.append({"n": ncalls, "tool": name, "args": args})
+        step.update(status="executed", result=ncalls, evidence=evidence_summary(result))
         text = json.dumps(result, ensure_ascii=False, default=str)[:RESULT_CHARS]
-        note = "" if ncalls < max_calls else " Tool budget used. Give the final answer now."
+        note = "" if ncalls < max_calls else " " + BUDGET_NOTE
         messages.append({"role": "user", "content": f"RESULT {ncalls}: {text}{note}"})
+    if out.trace:
+        out.trace[-1]["elapsed_s"] = round(deadline.now() - round_start, 3)
+    out.elapsed_s = round(deadline.now() - t_start, 3)
     out.latency_ms = round((time.perf_counter() - started) * 1000, 1)
     if final is not None:
         out.primary_cause = final.get("primary_cause")
@@ -519,7 +682,59 @@ def investigate(
         out.fact_ok = not out.fact_misses
     elif out.error is None:
         out.error = "no final answer within the turn limit"
+    out.stop_reason = _stop_reason(out, final is not None, closed_by)
+    _system_answer(out, kit)
     return out
+
+
+def _system_answer(out: Investigation, kit: Toolkit) -> None:
+    """Fill ``out.system``: the AI answer, or the rule baseline's when the AI one is unusable."""
+    if out.stop_reason != "degraded_to_rule":
+        out.system = {
+            "source": "ai",
+            "primary_cause": out.primary_cause,
+            "secondary_cause": out.secondary_cause,
+        }
+        return
+    out.degraded = True
+    if out.timed_out:
+        out.degrade_reason = "timeout"
+    elif out.error and out.error.startswith("provider:"):
+        out.degrade_reason = "provider_error"
+    elif out.primary_cause is None:
+        out.degrade_reason = "no_answer"
+    else:
+        out.degrade_reason = "fact_check_failed"
+    try:
+        rank = baseline_rank(kit, out.family, out.t1_h, out.t2_h)
+    except (KeyError, TypeError, ValueError) as exc:
+        out.stop_reason = "error"
+        out.system = {"source": "none", "error": f"{type(exc).__name__}: {exc}"[:200]}
+        return
+    out.system = {
+        "source": "rule",
+        "primary_cause": rank[0],
+        "secondary_cause": rank[1],
+        "causal_chain": [f"Rule baseline (biggest relative change): {CAUSE_TEXT[rank[0]]}."],
+        "lever": "",
+    }
+
+
+def _stop_reason(out: Investigation, answered: bool, closed_by: str) -> str:
+    """Why the loop ended (one of ``STOP_REASONS``).
+
+    ``degraded_to_rule``: the AI answer still fails the fact check after the one rewrite,
+    there is no valid answer, or the provider failed; the system output is then the rule
+    baseline's answer (``_system_answer``).
+    A timeout always degrades: the loop stopped before a usable answer.
+    """
+    if out.timed_out:
+        return "degraded_to_rule"
+    if answered and not (out.repaired and out.fact_misses):
+        if out.repaired:
+            return "fact_check_repaired"
+        return closed_by or "answered"
+    return "degraded_to_rule"
 
 
 def score(truth: str, primary: str | None, secondary: str | None) -> dict[str, bool]:
