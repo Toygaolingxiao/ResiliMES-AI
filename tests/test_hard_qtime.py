@@ -192,9 +192,12 @@ def test_report_edd_is_infeasible_reference() -> None:
     assert "Among Q-time-feasible configurations, planning + hard" in text
 
 
-def test_chained_windows_gated_as_one(fab: Fab) -> None:
-    """A CQT target that is the next origin: the gate at the first origin
-    also carries the chained window's load, with a later latest start."""
+def test_chained_windows_gated_as_one(fab: Fab, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Experiment switch: a CQT target that is the next origin, the gate at the
+    first origin also carries the chained window's load, later latest start."""
+    from resilimes.smt import hard_qtime
+
+    monkeypatch.setattr(hard_qtime, "_CHAIN_LINKS", 4)
     horizon = 3600.0
     sim = make_sim(
         fab,

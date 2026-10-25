@@ -34,6 +34,10 @@ calendar. No weights, due dates or seeds were tuned. Code:
    * `unavoidable_breakdown`: a breakdown started on the lot's current family
      or its target family after the origin start (the admission) and before
      the deadline. The gate cannot see a future breakdown.
+   * `unavoidable_pre_gate`: the lot was inside a window before any gate
+     decision (t=0 WIP, admitted before t=0) or reached a chained CQT origin
+     (a target that is also the next origin) while still in a t=0 WIP window
+     or such a chain, so its next window was never gated.
    * `avoidable`: any other miss (queueing, upstream, batch fill).
    Windows already open in the t=0 WIP are counted separately as inherited.
 3. **Expedite, not exclude.** A lot that misses its window (any class,
@@ -55,29 +59,37 @@ Published book, seeds 1-3, 7 days, closed fab. Totals over 3 seeds unless
 "Before" is the earlier gate (fluid check only, recipe-blind batch sharing,
 missed / re-cleaned lots not re-gated). "After" is this code.
 
-| Miss class (3 seeds) | Before | After |
-|---|---:|---:|
-| avoidable: admitted, queueing at target | 302 | 92 |
-| avoidable: admitted, still upstream | 17 | 19 |
-| avoidable: re-cleaned lot restarted ungated | 15 | 0 |
-| **avoidable total** | **334** | **111** |
-| unavoidable: breakdown after admission | 217 | 46 |
-| unavoidable: target down / PM, transport, rework | 96 | 19 |
-| completed / run | 459.3 | 486.7 |
-| expedited lots | 905 | 564 |
+| Miss class (3 seeds) | Before | Gate fix | + chain-origin class (this code) |
+|---|---:|---:|---:|
+| avoidable: admitted, queueing at target | 302 | 92 | - |
+| avoidable: admitted, still upstream | 17 | 19 | - |
+| avoidable: re-cleaned lot restarted ungated | 15 | 0 | - |
+| **avoidable total** | **334** | **111** (43/43/25) | **71** (29/29/13) |
+| unavoidable: breakdown after admission | 217 | 46 | 45 |
+| unavoidable: target down / PM, transport, rework | 96 | 19 | 19 |
+| unavoidable: in a window before any gate (t=0 WIP chain) | - | - | 41 |
+| completed / run | 459.3 | 486.7 | 486.7 |
+| expedited lots | 905 | 564 | 564 |
 
 (The "before" split comes from the diagnostic classifier of the gate-fix
-work; "after" equals `qtime_miss_class` of the study.)
+work; the other columns equal `qtime_miss_class` of the study.) The last
+column is the same schedule as "gate fix" (identical completions, on-time and
+tardiness per seed); 40 of the 111 were lots of the t=0 WIP that reached a
+chained CQT origin (for example into `Diffusion_BE_123`) while still inside their
+inherited window, so the gate never decided on the next window. They are
+reclassified as `unavoidable_pre_gate` (plus one breakdown miss of seed 2
+that had the same origin).
 
 ### Current default vs references
 
 | KPI (3 seeds) | planning + hard (default) | planning + off (experiment switch) | EDD (off): industry reference |
 |---|---:|---:|---:|
-| status | infeasible: 111 avoidable | infeasible: 855 avoidable | **infeasible: 1737 avoidable** |
-| avoidable violations | 111 (43 / 43 / 25) | 855 | 1737 |
-| unavoidable exceptions | 65 | 873 | 1408 |
-|   breakdown after admission | 46 | 796 | 1125 |
+| status | infeasible: 71 avoidable | infeasible: 849 avoidable | **infeasible: 1719 avoidable** |
+| avoidable violations | 71 (29 / 29 / 13) | 849 | 1719 |
+| unavoidable exceptions | 105 | 879 | 1426 |
+|   breakdown after admission | 45 | 796 | 1121 |
 |   down / PM, rework, transport | 19 | 77 | 283 |
+|   in a window before any gate (t=0 WIP chain) | 41 | 6 | 22 |
 | inherited windows missed (t=0 WIP) | 426 | 446 | 565 |
 | expedited (hot) lots | 564 | - | - |
 |   recovered by 7 d | 519 | - | - |
@@ -90,8 +102,8 @@ work; "after" equals `qtime_miss_class` of the study.)
 ## Honest reading
 
 * No configuration is Q-time-feasible yet. The default has the fewest
-  avoidable violations (111 over 3 seeds, about 37 per 7-day run against
-  1737 for EDD); it is the candidate being worked on, not a finished one.
+  avoidable violations (71 over 3 seeds, about 24 per 7-day run against
+  1719 for EDD); it is the candidate being worked on, not a finished one.
 * The remaining avoidable misses sit almost all at the batch diffusion
   furnaces (`Diffusion_BE_123`, `Diffusion_FE_94`). At the miss every furnace
   is running lots that were never gated (no open window at that step). The
@@ -102,6 +114,12 @@ work; "after" equals `qtime_miss_class` of the study.)
   the fab (about 80 lots completed per run); adding arrival (release) times
   to the check cut output to 267-336 lots per run without reducing misses.
   Neither is in this code.
+* Gating chained CQT windows as one was tried (experiment switches
+  `_CHAIN_LINKS`, `_GATE_IN_WINDOW` in `hard_qtime.py`, off by default).
+  Chain reservation plus holding in-window lots at a chained origin cut
+  avoidable misses to 61 but completed only 130-154 lots per run (on-time
+  37%); in-window holding alone gave 98 avoidable at 183-278 lots per run.
+  Both rejected.
 * Q-time-first costs delivery today: 17 fewer lots per run than the gate-off
   experiment, 9.8 pp on-time and about 2x weighted tardiness. These are the
   price of the current gate, not a comparison target.

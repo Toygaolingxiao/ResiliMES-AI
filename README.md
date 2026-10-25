@@ -30,10 +30,10 @@ Published book, seeds 1-3, 7 days (totals over 3 seeds):
 
 | | Avoidable violations | Unavoidable | Expedited / recovered | Recovery mean (min) | Completed/run | On-time % | W. tardiness min/run |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ResiliMES default (plan + hard Q-time) | 111 | 65 | 564 / 519 | 1,396 | 486.7 | 82.12 | 44,008 |
-| EDD: industry reference (infeasible: 1737 avoidable Q-time violations) | 1737 | 1408 | - | - | 520.0 | 91.96 | 21,046 |
+| ResiliMES default (plan + hard Q-time), infeasible: 71 avoidable | 71 | 105 | 564 / 519 | 1,396 | 486.7 | 82.12 | 44,008 |
+| EDD: industry reference (infeasible: 1719 avoidable Q-time violations) | 1719 | 1426 | - | - | 520.0 | 91.96 | 21,046 |
 
-The default is not yet Q-time-feasible: 111 avoidable misses remain, nearly all at the batch diffusion furnaces where ungated starts take the capacity an admitted window counted on. Details, the before/after of the gate fix (334 to 111 avoidable) and the rejected fixes are in [docs/HARD_QTIME.md](docs/HARD_QTIME.md).
+The default is not yet Q-time-feasible: 71 avoidable misses remain. Unavoidable now also counts 41 lots that were already inside a t=0 WIP window and reached the next (chained) CQT origin before any gate decision; the schedule is unchanged, only the classification. Gating those chained windows as one cut avoidable misses further but collapsed output to 130-280 lots per run, so it stays an off-by-default experiment. Details, the before/after (334 to 111 to 71 avoidable) and the rejected fixes are in [docs/HARD_QTIME.md](docs/HARD_QTIME.md).
 
 ## Default console: public industry benchmark (SMT2020)
 

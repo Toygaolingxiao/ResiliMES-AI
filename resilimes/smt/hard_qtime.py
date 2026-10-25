@@ -65,8 +65,13 @@ MISS_CLASSES = (
     "unavoidable_pre_gate",
 )
 _WAFERS = 25
-# Chained CQT windows (a target that is the next origin) gated as one, up to this many.
-_CHAIN_LINKS = 4
+# Experiment switches, off by default (docs/HARD_QTIME.md, "rejected fixes").
+# _CHAIN_LINKS > 1 gates chained CQT windows (a target that is the next
+# origin) as one, up to that many links; _GATE_IN_WINDOW holds a lot already
+# in a window at a chained origin until it is urgent. Both cut avoidable
+# misses but collapsed throughput (130-280 lots per 7-day run), so they stay off.
+_CHAIN_LINKS = 1
+_GATE_IN_WINDOW = False
 
 
 def _overlap(spans: list[tuple[float, float]], left: float, right: float) -> float:
@@ -411,7 +416,7 @@ class HardQtime:
         # A missed or re-cleaned lot back at an origin is gated like any
         # other: it stays expedited, so it goes first once its segment fits.
         if sim.in_window(lot):
-            if self.x_target[lot] >= 0 or self.expedited(lot, moment):
+            if not _GATE_IN_WINDOW or self.x_target[lot] >= 0 or self.expedited(lot, moment):
                 self.forced.add(lot)
                 return True
             when = sim.deadline[lot] - sim.qtime_need(lot) - QTIME_URGENT_MARGIN_SEC
