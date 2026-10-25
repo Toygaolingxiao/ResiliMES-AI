@@ -61,6 +61,10 @@ class ForkKpis:
     hot_late: int  # hot/VIP lots due inside the window that missed
     moves: int  # steps completed inside the window
     sim_s: float = 0.0
+    # Avoidable Q-time misses inside the window (``hard_qtime.miss_class``:
+    # not a disruption, not after a breakdown of the fork's sampled future,
+    # not pre-gate). The escalation gate of the shift lead reads this.
+    qavoid: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -78,7 +82,7 @@ class PlanScore:
         return sum(values) / len(values) if values else math.inf
 
     def summary(self) -> dict[str, float]:
-        keys = ("wt_min", "late_lots", "on_time", "qviol", "qmissed", "hot_late", "moves")
+        keys = ("wt_min", "late_lots", "on_time", "qviol", "qmissed", "qavoid", "hot_late", "moves")
         return {key: round(self.mean(key), 2) for key in keys}
 
 
@@ -193,6 +197,7 @@ def fork_kpis(sim: Any, start: dict[str, Any], t0: float, end: float) -> ForkKpi
         qmissed=missed - start["missed"],
         hot_late=hot_late,
         moves=sim.steps_done - start["moves"],
+        qavoid=sim.miss_classes.get("avoidable", 0) - start.get("avoidable", 0),
     )
 
 
@@ -216,6 +221,7 @@ def run_fork(
         "violations": sim.violations,
         "missed": sum(sim.qout[key] for key in _MISSED),
         "moves": sim.steps_done,
+        "avoidable": sim.miss_classes.get("avoidable", 0),
     }
     sim.tick_rest(moment, time.perf_counter())
     end = min(moment + horizon_sec, float(sim.horizon))
