@@ -114,7 +114,7 @@ table.d tr.hl td{background:var(--accent-wash)}
 .who.m{background:var(--good);color:#fff}.who.p{background:var(--accent);color:#fff}
 .al{position:absolute;font-family:var(--mono);font-size:12.5px;color:var(--muted);background:var(--ground);padding:0 4px;white-space:nowrap}
 .new{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;color:#fff;background:var(--violet);border-radius:3px;padding:0 5px;margin-left:6px;vertical-align:2px}
-.bounds li{margin:6px 0;font-size:15.5px;line-height:1.35}
+.bounds li{margin:5px 0;font-size:14.5px;line-height:1.32}
 /* ---- sizing pass: fill the 1280x720 frame, readable from the back of a room ---- */
 .body{padding:28px 44px 40px}
 h2{font-size:35px;margin-bottom:20px}
@@ -157,7 +157,7 @@ table.d th{font-size:13px;padding:11px 16px}
       <div>
         <p class="kicker">Semiconductor fab scheduling · full SMT2020 fab</p>
         <h1>A fab scheduler a shift engineer can defend, with AI that explains and advises but never writes the schedule.</h1>
-        <p class="lead" style="margin-top:18px">Planning layer → scheduling tick → event dispatch on the public SMT2020 benchmark, with Q-time, a frozen dispatch window and lot transport. Nemotron on Meterless Nightshift; fab data through Zetaris.</p>
+        <p class="lead" style="margin-top:18px">Planning layer → scheduling tick → event dispatch on the public SMT2020 benchmark, with Q-time as a hard constraint, a frozen dispatch window and lot transport. Nemotron on Meterless Nightshift; fab data through Zetaris.</p>
       </div>
       <div class="card acc" style="padding:18px 20px">
         <div class="label">Run card</div>
@@ -169,7 +169,7 @@ table.d th{font-size:13px;padding:11px 16px}
           <div><div class="kpi">264</div><div class="small muted">Q-time (CQT) limits</div></div>
         </div>
         <div class="stamp" style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
-          Team: <span class="tbd">[TBD: team names]</span><br>
+          Team: <b style="color:var(--ink)">Takae</b> · LINGXIAO GAO (leader), DELIN JIANG<br>
           Repo: github.com/Toygaolingxiao/ResiliMES-AI<br>
           Video: <span class="tbd">[TBD: video link]</span>
         </div>
@@ -213,14 +213,14 @@ table.d th{font-size:13px;padding:11px 16px}
         <div class="grid" style="gap:8px">
           <div class="node"><b>1 · Planning (daily)</b>Backward pass over SMT2020 standard times + forward litho capacity → step dues and baseline priority. <span class="chip acc">default</span></div>
           <div class="node"><b>2 · Scheduling tick (5 min)</b>Short-term state: queues, up/down/PM, open Q-time windows, batches, setups, transport.</div>
-          <div class="node"><b>3 · Dispatch (event)</b>Start the scheduled lot or deviate and log the reason. Q-time-urgent override; optional hard Q-time gate and frozen window.</div>
+          <div class="node"><b>3 · Dispatch (event)</b>Start the scheduled lot or deviate and log the reason. Hard Q-time gate on the whole CQT segment, <b>on by default</b>; optional frozen window.</div>
         </div>
       </div>
       <div class="lane" style="border-color:var(--good)">
         <div class="lt" style="color:var(--good)">Advises · Nemotron via Nightshift</div>
         <div class="grid" style="gap:8px">
           <div class="node"><b>Investigator</b>"Why did WIP of family F rise?" ≤ 6 evidence tool calls → one cause from a fixed taxonomy.</div>
-          <div class="node"><b>AI shift lead</b>Propose plans → fork the simulator over resampled futures → select. Falls back to the rule default.</div>
+          <div class="node"><b>AI shift lead</b>Exceptions only: rules first, no-AI twin preview; called only when it projects an avoidable Q-time violation or a late hot lot.</div>
           <div class="node"><b>Handover · Late-lot explainer · H-MEM</b>12 h shift report, exact lateness split + one verified counterfactual, decision memory.</div>
         </div>
       </div>
@@ -250,7 +250,7 @@ table.d th{font-size:13px;padding:11px 16px}
       <div class="flow" style="flex:1">
         <div class="node" style="flex:1"><b>Evidence toolkit</b>Typed tools + guarded SQL on <span class="mono small">fab_ops</span>: one SELECT, allowlisted tables, enforced LIMIT.</div>
         <div class="node" style="flex:1"><b>Agents</b>Investigator · shift lead · handover (Markovian chunks) · explainer.</div>
-        <div class="node" style="flex:1"><b>Guardrails</b>Legal options only · fact check of every number and id · schema repair · fallback to rule default.</div>
+        <div class="node" style="flex:1"><b>Guardrails</b>Legal options only · fact check of every number and id · schema repair · degraded route to the rule result, labelled with a reason.</div>
         <div class="node" style="flex:1"><b>Memory</b>H-MEM port: recall top-5 past cases with receipts; playbooks are proposals only.</div>
       </div>
     </div>
@@ -270,7 +270,7 @@ table.d th{font-size:13px;padding:11px 16px}
         <p>106 families, 102 litho tools, 10 products, 2,156 WIP lots, 10 routes of 242–583 steps. Published MTTF/MTTR and PM calendars.</p></div>
       <!-- source: docs/QTIME_URGENT.md, docs/HARD_QTIME.md -->
       <div class="card alarm"><div class="label">Q-time</div><div class="kpi" style="margin:6px 0">264 <small>CQT limits</small></div>
-        <p>Windows of 1–24 h. Q-time-urgent override with a fixed 15 min margin. Optional whole-segment hard gate (off by default).</p></div>
+        <p>Windows of 1–24 h. Q-time-urgent override with a fixed 15 min margin. Whole-segment hard gate with the planning layer, <b>on by default</b>.</p></div>
       <!-- source: docs/SCHED_FREEZE.md -->
       <div class="card cyan"><div class="label">Frozen dispatch window</div><div class="kpi" style="margin:6px 0">2 <small>loads / 30 min</small></div>
         <p>Each tool keeps its running lot plus its next loads fixed at every 300 s tick. Leaves only by a logged exception (down, PM, Q-time, hot lot…).</p></div>
@@ -307,66 +307,65 @@ table.d th{font-size:13px;padding:11px 16px}
 
 <!-- ===================== 7. RESULTS: PLANNING DEFAULT ===================== -->
 <section class="slide" data-title="Results: planning default">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">06 · Results · scheduling</span><span class="sp"></span><span>published book · 7 d · seeds 1–3 · closed fab</span></div>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">06 · Results · scheduling</span><span class="sp"></span><span>published book · 7 d · seeds 1–3 · 3-seed totals</span></div>
   <div class="body">
-    <p class="kicker">Result 1 · the default mode</p>
-    <h2>The planning layer is the default: EDD-level on-time, +5.4 pp Q-time.</h2>
-    <!-- source: README.md "Default scheduling mode" table; same values in docs/PLANNING_R1_STUDY.md header note -->
-    <table class="d">
-      <tr><th>Mode</th><th>Completed / run</th><th>On-time %</th><th>True Q-time %</th><th>W. tardiness min / run</th></tr>
-      <tr class="hl"><td><b>ResiliMES default (plan)</b></td><td>503.7</td><td>91.96</td><td><b>94.63</b></td><td>20,950</td></tr>
-      <tr><td>ResiliMES strict Q-time</td><td class="down">362.7</td><td>91.85</td><td>97.19</td><td>20,566</td></tr>
-      <tr><td>EDD (earliest due date)</td><td>520.0</td><td>91.96</td><td>89.24</td><td>21,046</td></tr>
+    <p class="kicker">Result 1 · Q-time first</p>
+    <h2>Q-time compliance comes first. A schedule with an avoidable Q-time violation is infeasible: discarded, not compared.</h2>
+    <!-- source: PR #46 (hard Q-time gating, whole CQT segment, with the planning layer, on by default); docs/HARD_QTIME.md -->
+    <table class="d" style="font-size:17px">
+      <tr><th>Seeds 1–3 · 7 d</th><th>New default · hard Q-time gate ON</th><th>Gating off (experiment)</th><th>EDD · industry reference</th></tr>
+      <tr class="hl"><td>True Q-time compliance</td><td><b>99.26%</b></td><td>—</td><td>—</td></tr>
+      <tr class="hl"><td>Avoidable Q-time misses (3 seeds)</td><td><b>71</b> <span class="small muted">(334 at the earliest gate)</span></td><td class="down">849</td><td class="down">1,719 · infeasible</td></tr>
+      <tr><td>Unavoidable Q-time misses (3 seeds)</td><td>105</td><td>—</td><td>1,426</td></tr>
+      <tr><td>Completed lots / run</td><td>486.7</td><td>503.7</td><td>520.0</td></tr>
+      <tr><td>On-time</td><td>82.1%</td><td>92.0%</td><td>92.0%</td></tr>
+      <tr><td>Weighted tardiness / run</td><td>44,008 min</td><td>—</td><td>21,046 min</td></tr>
     </table>
-    <div class="grid g2 fill" style="margin-top:16px;gap:18px">
-      <div class="card">
-        <div class="legend"><span style="--c:var(--accent)">plan (default)</span><span style="--c:var(--violet)">strict Q-time</span><span style="--c:#8b95a1">EDD</span></div>
-        <div class="label" style="margin:4px 0 8px">Completed lots / run · axis 0–550</div>
-        <div class="bars-chart"><div class="brow"><span>plan</span><span class="bt"><i style="width:91.6%;background:var(--accent)"></i></span><span class="v">503.7</span></div><div class="brow"><span>strict Q-time</span><span class="bt"><i style="width:65.9%;background:var(--violet)"></i></span><span class="v">362.7</span></div><div class="brow"><span>EDD</span><span class="bt"><i style="width:94.5%;background:#8b95a1"></i></span><span class="v">520.0</span></div></div>
-        <div class="label" style="margin:14px 0 8px">True Q-time % · axis 80–100</div>
-        <div class="bars-chart"><div class="brow"><span>plan</span><span class="bt"><i style="width:73.1%;background:var(--accent)"></i></span><span class="v">94.63</span></div><div class="brow"><span>strict Q-time</span><span class="bt"><i style="width:85.9%;background:var(--violet)"></i></span><span class="v">97.19</span></div><div class="brow"><span>EDD</span><span class="bt"><i style="width:46.2%;background:#8b95a1"></i></span><span class="v">89.24</span></div></div>
-      </div>
-      <div class="grid" style="gap:14px;align-content:start">
-        <div class="note"><b>Why plan, not strict Q-time:</b> strict meets more windows but finishes far fewer lots, 362.7 vs 503.7 per run.</div>
-        <!-- source: README.md + docs/PLANNING_R1_STUDY.md (9 books x 5 seeds, 7 d closed): plan 90.2 / 455.7 / 94.5; EDD 93.6 / 464.7 / 88.8 -->
-        <div class="note amber"><b>Where EDD wins:</b> across the 9-book × 5-seed study EDD is about 3 pp better on on-time (93.6 vs 90.2%) and completes 464.7 vs 455.7 per run. Plan meets 94.5 vs 88.8% of Q-time windows. The gap sits in the X-factor books.</div>
-      </div>
+    <div class="grid g2" style="margin-top:16px;gap:18px">
+      <div class="note"><b>The price of feasibility, stated plainly:</b> versus gating off, Q-time first costs about 17 completed lots per run and about 10 on-time points.</div>
+      <div class="note amber"><b>EDD is a reference, not a competitor:</b> industry reference, infeasible with 1,719 avoidable Q-time violations. Its throughput and on-time are not comparable.</div>
     </div>
-    <p class="src">README.md "Default scheduling mode" · docs/PLANNING_R1_STUDY.md (result table, 7 d closed). No weight, due or seed was tuned.</p>
+    <p class="src">PR #46 (hard Q-time gating on by default) · docs/HARD_QTIME.md · README.md "Default scheduling mode". No weight, due or seed was tuned.</p>
   </div>
 </section>
 
 <!-- ===================== 8. RESULTS: HARD Q-TIME + FREEZE ===================== -->
 <section class="slide" data-title="Results: switches">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">07 · Results · fab switches</span><span class="sp"></span><span>both off by default · measured, not assumed</span></div>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">07 · Results · Q-time misses</span><span class="sp"></span><span>published book · 7 d · seeds 1–3 · 3-seed totals</span></div>
   <div class="body">
-    <p class="kicker">Result 2 · what a zero-tolerance fab would pay</p>
-    <h2>Two switches a fab asks for, with their price tags.</h2>
+    <p class="kicker">Result 2 · every remaining miss, by cause</p>
+    <h2>What is left after the gate, and what we still have to fix.</h2>
     <div class="grid g2 fill" style="gap:18px">
       <div class="card alarm" style="display:flex;flex-direction:column">
-        <div class="label">Hard Q-time gate · plan + hard · published · 7 d · seeds 1–3</div>
-        <!-- source: docs/HARD_QTIME.md "Hard mode (whole-segment gate)" table and "Honest reading" -->
+        <div class="label">Q-time misses · new default · 3 seeds</div>
+        <!-- source: PR #46; docs/HARD_QTIME.md -->
         <div class="grid g2" style="margin-top:8px;gap:10px">
-          <div><div class="small muted">True Q-time</div><div class="delta"><span class="from">94.62%</span><span class="to up">97.15%</span></div><div class="small muted">99.03% after the first 24 h</div></div>
-          <div><div class="small muted">Upstream misses (3 seeds)</div><div class="delta"><span class="from">1467</span><span class="to up">225</span></div></div>
+          <div><div class="small muted">Avoidable misses</div><div class="delta"><span class="from">334</span><span class="to up">71</span></div><div class="small muted">earliest gate → new default</div></div>
+          <div><div class="small muted">Unavoidable misses</div><div class="delta"><span class="to">105</span></div><div class="small muted">no gate decision could save them</div></div>
         </div>
-        <div class="legend" style="margin-top:12px"><span style="--c:#8b95a1">plan (off)</span><span style="--c:var(--alarm)">plan + hard</span><span>missed windows by cause, 3 seeds</span></div>
-        <div class="bars-chart" style="gap:7px"><div class="brow" style="grid-template-columns:130px 1fr 120px"><span>avoidable</span><span class="bt" style="height:22px"><i style="width:97.1%;background:#8b95a1;bottom:50%"></i><i style="width:32.4%;background:var(--alarm);top:50%"></i></span><span class="v">1,651 → 551</span></div><div class="brow" style="grid-template-columns:130px 1fr 120px"><span>of it upstream</span><span class="bt" style="height:22px"><i style="width:86.3%;background:#8b95a1;bottom:50%"></i><i style="width:13.2%;background:var(--alarm);top:50%"></i></span><span class="v">1,467 → 225</span></div><div class="brow" style="grid-template-columns:130px 1fr 120px"><span>inherited (t=0)</span><span class="bt" style="height:22px"><i style="width:26.2%;background:#8b95a1;bottom:50%"></i><i style="width:25.1%;background:var(--alarm);top:50%"></i></span><span class="v">446 → 426</span></div><div class="brow" style="grid-template-columns:130px 1fr 120px"><span>disruption</span><span class="bt" style="height:22px"><i style="width:4.5%;background:#8b95a1;bottom:50%"></i><i style="width:5.6%;background:var(--alarm);top:50%"></i></span><span class="v">77 → 96</span></div></div>
-        <p style="margin-top:auto;padding-top:10px"><b>Cost:</b> completed/run <span class="down">503.7 → 459.3</span> (−9%), on-time <span class="down">91.96 → 89.74%</span>, weighted tardiness <span class="down">+55%</span>. <span class="muted">Off by default.</span></p>
+        <div class="label" style="margin:14px 0 8px">Unavoidable, by cause · axis 0–50</div>
+        <div class="bars-chart" style="gap:7px"><div class="brow" style="grid-template-columns:250px 1fr 50px"><span>breakdown after admission</span><span class="bt"><i style="width:90%;background:var(--alarm)"></i></span><span class="v">45</span></div><div class="brow" style="grid-template-columns:250px 1fr 50px"><span>in a window before any gate</span><span class="bt"><i style="width:82%;background:var(--alarm)"></i></span><span class="v">41</span></div><div class="brow" style="grid-template-columns:250px 1fr 50px"><span>tool down/PM, rework, transport</span><span class="bt"><i style="width:38%;background:var(--alarm)"></i></span><span class="v">19</span></div></div>
+        <p style="margin-top:auto;padding-top:10px"><b>After an unavoidable miss:</b> 564 lots expedited as hot lots; <b>519</b> recovered within 7 d. Mean recovery 1,396 min (p90 3,143).</p>
       </div>
-      <div class="card cyan" style="display:flex;flex-direction:column">
-        <div class="label">Frozen dispatch window · 2 loads / 30 min · ResiliMES · 7 d · 9 books</div>
-        <!-- source: docs/SCHED_FREEZE.md "7-day study", table "all books, all seeds", resilimes off vs on -->
-        <div class="grid g2" style="margin-top:8px;gap:10px">
-          <div><div class="small muted">Second transports</div><div class="delta"><span class="from" style="font-size:22px">5,131,958</span><span class="to up">9,088</span></div></div>
-          <div><div class="small muted">Staged tool-change rate</div><div class="delta"><span class="from">0.4278</span><span class="to up">0.0345</span></div></div>
+      <div class="grid" style="gap:14px;grid-template-rows:auto 1fr">
+        <div class="card amber">
+          <div class="label">Remaining work · 71 avoidable misses</div>
+          <p style="margin-top:6px">Mostly chained Q-time windows at the batch diffusion furnaces.</p>
+          <ul class="t" style="margin-top:4px"><li>Two fixes tried and <b>rejected</b>: throughput collapsed to 130–278 lots / run.</li>
+          <li><b>Next step:</b> reserve capacity in the next window only for lots that will actually arrive in it.</li></ul>
         </div>
-        <div class="legend" style="margin-top:12px"><span style="--c:var(--cyan)">freeze on</span><span>why a lot left the zone (logged), all runs</span></div>
-        <div class="bars-chart" style="gap:5px"><div class="brow"><span>pm</span><span class="bt"><i style="width:95.2%;background:var(--cyan)"></i></span><span class="v">8,571</span></div><div class="brow"><span>tool_down</span><span class="bt"><i style="width:73.3%;background:var(--cyan)"></i></span><span class="v">6,597</span></div><div class="brow"><span>hold</span><span class="bt"><i style="width:66.1%;background:var(--cyan)"></i></span><span class="v">5,946</span></div><div class="brow"><span>hot_lot</span><span class="bt"><i style="width:13.0%;background:var(--cyan)"></i></span><span class="v">1,167</span></div><div class="brow"><span>qtime_emergency</span><span class="bt"><i style="width:5.8%;background:var(--cyan)"></i></span><span class="v">526</span></div><div class="brow"><span>eligibility</span><span class="bt"><i style="width:0.9%;background:var(--cyan)"></i></span><span class="v">84</span></div><div class="brow"><span>other</span><span class="bt"><i style="width:0.0%;background:var(--cyan)"></i></span><span class="v">0</span></div></div>
-        <p style="margin-top:auto;padding-top:10px"><b>Cost:</b> on-time <span class="down">92.5 → 90.84%</span>, true Q-time <span class="down">97.15 → 95.88%</span>, weighted tardiness <span class="down">679,656 → 895,339 min</span>. <span class="muted">Off by default.</span></p>
+        <div class="card cyan" style="display:flex;flex-direction:column">
+          <div class="label">Frozen dispatch window · 2 loads / 30 min · 7 d · 9 books · off by default</div>
+          <!-- source: docs/SCHED_FREEZE.md "7-day study", table "all books, all seeds", resilimes off vs on -->
+          <div class="grid g2" style="margin-top:8px;gap:10px">
+            <div><div class="small muted">Second transports</div><div class="delta"><span class="from" style="font-size:20px">5,131,958</span><span class="to up" style="font-size:32px">9,088</span></div></div>
+            <div><div class="small muted">Staged tool-change rate</div><div class="delta"><span class="from" style="font-size:20px">0.4278</span><span class="to up" style="font-size:32px">0.0345</span></div></div>
+          </div>
+          <p class="small" style="margin-top:auto;padding-top:8px"><b>Cost:</b> on-time <span class="down">92.5 → 90.84%</span>, true Q-time <span class="down">97.15 → 95.88%</span>, weighted tardiness <span class="down">679,656 → 895,339 min</span>.</p>
+        </div>
       </div>
     </div>
-    <p class="src">docs/HARD_QTIME.md (Study, Honest reading: with hard mode on, EDD is the better pairing) · docs/SCHED_FREEZE.md (7-day study, all books, all seeds; 180 runs; limits fixed before any run).</p>
+    <p class="src">PR #46 · docs/HARD_QTIME.md · docs/SCHED_FREEZE.md (7-day study, all books, all seeds; 180 runs; limits fixed before any run).</p>
   </div>
 </section>
 
@@ -379,9 +378,9 @@ table.d th{font-size:13px;padding:11px 16px}
     <div class="fill" style="display:flex"><table class="d" style="font-size:16.5px;height:100%">
       <tr><th style="width:18%">Agent</th><th style="text-align:left;width:44%">What it does</th><th style="text-align:left">Guardrail</th></tr>
       <tr><td><b>Investigator</b></td><td style="text-align:left">"Why did WIP of family F rise between t1 and t2?" ≤ 6 tool calls, incl. <span class="mono">compare_windows</span>; names one cause of 6 + one lever.</td><td style="text-align:left">Taxonomy schema, citations to real calls, fact check of every number and id.</td></tr>
-      <tr><td><b>AI shift lead</b></td><td style="text-align:left">At exceptions only: Nemotron proposes ≤ 4 typed plans; the sim is forked 8 h over 3 resampled futures; Pareto or LLM select.</td><td style="text-align:left">Closed lever set, frozen lots untouchable, number checker, "do no harm", rule default on any failure.</td></tr>
+      <tr><td><b>AI shift lead</b></td><td style="text-align:left">Rules first. A no-AI twin preview of the rule plan (8 h × 3 futures, ~1.4 s median) gates it: Nemotron is called only if the preview projects ≥ 1 avoidable Q-time violation or a late hot lot.</td><td style="text-align:left">Closed lever set, frozen lots untouchable, number checker, "do no harm", rule default on any failure.</td></tr>
       <tr><td><b>Shift handover</b></td><td style="text-align:left">12 h shift as six 2 h Markovian chunks + compose: issues, WIP bubbles, at-risk lots, downs, next PM.</td><td style="text-align:left">Fact check + must-mention recall; misses reported, never hidden.</td></tr>
-      <tr><td><b>Late-lot explainer</b></td><td style="text-align:left">Exact lateness split (adds up exactly) + one counterfactual lever.</td><td style="text-align:left">Counterfactual is verified by re-running the simulation.</td></tr>
+      <tr><td><b>Late-lot explainer</b></td><td style="text-align:left">Exact lateness split (adds up exactly) + one counterfactual lever.</td><td style="text-align:left">Every suggested lever is re-simulated before use; unverified claims are not shown as savings.</td></tr>
       <tr><td><b>H-MEM memory</b></td><td style="text-align:left">Recall top-5 past decisions with twin receipts; human overrides kept long-term.</td><td style="text-align:left">Playbooks are proposals; a human approves. 13/13 spec vectors pass.</td></tr>
     </table></div>
     <p class="src">docs/AI_INVESTIGATOR.md · docs/AI_SHIFT_LEAD.md · docs/AI_SIM_SELECT.md · docs/AI_HANDOVER.md · docs/AI_EXPLAINER.md · docs/H_MEM.md</p>
@@ -390,7 +389,7 @@ table.d th{font-size:13px;padding:11px 16px}
 
 <!-- ===================== 9b. INVESTIGATOR LOOP (design) ===================== -->
 <section class="slide" data-title="Investigator loop">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">09 · Investigator loop</span><span class="sp"></span><span>design · model decides · program bounds</span></div>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">09 · Investigator loop</span><span class="sp"></span><span>merged · PRs #43, #45</span></div>
   <div class="body" style="padding-top:22px">
     <h2 style="margin-bottom:16px">Investigator loop: the model decides, the program bounds it.</h2>
     <div style="display:grid;grid-template-columns:874px 300px;gap:18px">
@@ -417,7 +416,7 @@ table.d th{font-size:13px;padding:11px 16px}
         <div class="lb p" style="left:262px;top:140px;width:262px;height:108px"><span class="who p">program</span><b>Validates and executes</b>Known tool, valid arguments, inside the budget</div>
         <div class="lb p" style="left:592px;top:300px;width:282px;height:96px"><span class="who p">program</span><b>Final evidence check</b>Fact-check every cited number</div>
         <div class="lb ok" style="left:262px;top:304px;width:262px;height:64px"><b style="color:var(--good)">Passes → answer</b>One cause, causal chain, one lever</div>
-        <div class="lb bad" style="left:130px;top:384px;width:394px;height:64px"><b style="color:var(--amber)">Fails → one repair</b>Still failing: fall back to the rule answer <span class="new">NEW</span></div>
+        <div class="lb bad" style="left:130px;top:384px;width:394px;height:64px"><b style="color:var(--amber)">Fails → one repair → degraded</b>Still failing: rule result, labelled degraded + reason</div>
         <span class="al" style="left:526px;top:160px;">next call</span>
         <span class="al" style="left:500px;top:98px;">result + source</span>
         <span class="al" style="left:742px;top:262px;">answer / stop</span>
@@ -427,41 +426,42 @@ table.d th{font-size:13px;padding:11px 16px}
       <div class="card acc" style="display:flex;flex-direction:column;padding:14px 16px">
         <div class="label">Program-enforced bounds</div>
         <ul class="t bounds" style="margin-top:6px">
-          <li><b>Max 6 tool calls</b> (10 turns), then the answer is requested</li>
-          <li><b>Repeat call → stop</b> <span class="new">NEW</span></li>
+          <li><b>Call budget 6</b>; repeat call → stop</li>
           <li><b>Fact-check + one repair</b> on every cited number and id</li>
-          <li><b>Fallback to the rule answer</b> <span class="new">NEW</span></li>
-          <li><b>Advice only:</b> never moves a lot</li>
+          <li><b>Degraded route (縮退)</b>: fact-check fail, empty answer, provider error or timeout → rule result, labelled with the reason</li>
+          <li><b>Time budgets</b>: 90 s per call (TTFB header), 180 s per task; timeout → "timeout"</li>
+          <li><b>Reasoning tokens</b> count in max_tokens: 502 empty → 4k → 8k → 16k</li>
+          <li><b>Advice only</b>: never moves a lot</li>
         </ul>
-        <p class="muted" style="margin-top:auto;font-size:14px;line-height:1.4">Same check in the late-lot explainer and the handover: every number fact-checked, one repair, then misses are flagged, never hidden.</p>
       </div>
     </div>
-    <div class="note" style="margin-top:14px;padding:9px 16px">Every round's decision, new evidence and stop reason are recorded and shown. <span class="new">NEW</span></div>
-    <p class="src" style="padding-top:6px">docs/AI_INVESTIGATOR.md (6 calls / 10 turns, compare_windows, fact check + one rewrite, advice only) · docs/AI_EXPLAINER.md · docs/AI_HANDOVER.md · NEW = in a PR being merged, not yet on main</p>
+    <div class="note" style="margin-top:12px;padding:7px 16px;font-size:14.5px">Per-round trace: decision · evidence · <span class="mono">stop_reason</span> = answered | budget_exhausted | repeat_call | fact_check_repaired | degraded_to_rule | error<br><b>Design principles:</b> rules first, AI for exceptions and explanation · every AI claim fact-checked or simulator-verified · Q-time is a hard constraint.</div>
+    <p class="src" style="padding-top:6px">docs/AI_INVESTIGATOR.md (PRs #43, #45: bounds, trace, degraded route, time budgets) · docs/AI_EXPLAINER.md · docs/AI_HANDOVER.md</p>
   </div>
 </section>
 
 <!-- ===================== 10. AI RESULTS ===================== -->
 <section class="slide" data-title="AI results">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">10 · Results · AI</span><span class="sp"></span><span>live Nemotron evaluation running</span></div>
-  <div class="body">
-    <p class="kicker">Result 3 · AI vs rule baselines</p>
-    <h2>We report the AI against a rule baseline, including when it loses.</h2>
-    <div class="fill" style="display:flex"><table class="d" style="font-size:15.5px;height:100%">
-      <tr><th style="text-align:left">Agent · metric</th><th>Rule / no-LLM baseline</th><th>Nemotron (live)</th><th style="text-align:left">Note</th></tr>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">10 · Results · AI</span><span class="sp"></span><span>live Nemotron · every reply verified Nemotron · 0 non-Nemotron</span></div>
+  <div class="body" style="padding-top:22px">
+    <p class="kicker">Result 3 · AI vs rule baselines, live</p>
+    <h2 style="margin-bottom:12px">The AI explains reliably. Its improvement claims must be verified.</h2>
+    <table class="d" style="font-size:14.5px">
+      <tr><th style="text-align:left">Agent · metric</th><th>Rule baseline</th><th>Nemotron (live)</th><th style="text-align:left">Note</th></tr>
       <!-- source: docs/AI_INVESTIGATOR.md "First live run" -->
-      <tr><td>Investigator · top-1 of 24 cases (first live run)</td><td>20/24</td><td class="down">11/24</td><td style="text-align:left">v1: no decision protocol in the prompt. Fixed in PR #40.</td></tr>
-      <!-- source: live PC run 2026-10-25, results_pc/investigator_nightshift_v2.json (main 27acea8: PR #40 protocol + compare_windows); docs/AI_INVESTIGATOR.md not yet updated -->
-      <tr><td>Investigator · top-1 after the protocol fix (v2)</td><td>20/24</td><td><b>20/24</b> <span class="chip">ties</span></td><td style="text-align:left">Top-2 21 vs 21 · fact check 24/24 · 0 no-answers · 1.54 calls.</td></tr>
-      <!-- source: docs/AI_EXPLAINER.md (mock floor 8/48 is not a model result) -->
-      <tr><td>Late-lot explainer · counterfactual hit, 48 lots</td><td>8/48 <span class="small muted">(scripted floor)</span></td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">Hit = re-run saving &gt; 0 and ≥ 50% of claim. <span class="small muted">Re-run pending: Nightshift empty-response fix (PR #42).</span></td></tr>
-      <!-- source: docs/AI_HANDOVER.md (mock 12/12, recall 1.0) -->
-      <tr><td>Shift handover · fact check, 12 reports</td><td>12/12 <span class="small muted">(scripted)</span></td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">Must-mention recall 1.0 scripted. <span class="small muted">Re-run pending: Nightshift empty-response fix (PR #42).</span></td></tr>
-      <!-- source: docs/AI_SIM_SELECT.md held-out seeds 9-13, 24 h -->
-      <tr><td>Shift lead · twin + Pareto, Q-time violations / run</td><td>38.2</td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">No-LLM twin: 36.0 (better on 4 of 5 seeds), wait +0.4%.</td></tr>
-    </table></div>
-    <div class="note amber" style="margin-top:16px"><b>Read this honestly:</b> scripted stand-ins check the plumbing and are not model results. The first live investigator run lost to the rule baseline. After the protocol and tool fix (no tuning of cases, seeds or scoring) it ties the baseline at 20/24; it does not beat it.</div>
-    <p class="src">Investigator v2: live PC run 2026-10-25, results_pc/investigator_nightshift_v2.json · docs/AI_INVESTIGATOR.md · docs/AI_EXPLAINER.md · docs/AI_HANDOVER.md · docs/AI_SIM_SELECT.md</p>
+      <tr><td>Investigator v1 · top-1, 24 cases</td><td>20/24</td><td class="down">11/24</td><td style="text-align:left">No decision protocol in the prompt. Fixed in PR #40.</td></tr>
+      <!-- source: live v2, results_pc/investigator_nightshift_v2.json -->
+      <tr><td>Investigator v2 · top-1, 24 fault cases</td><td>20/24</td><td><b>20/24</b> <span class="chip">equal</span></td><td style="text-align:left">Top-2 21/24 · fact-check 24/24 (4 auto-repaired) · 0 no-answers · 1.54 calls</td></tr>
+      <tr><td>Shift handover · 12 items</td><td>—</td><td><b>12/12</b></td><td style="text-align:left">Fact-check 12/12 (2 auto-repaired) · recall 1.0 · 0 provider errors · 0 fallbacks · 8.2 min mean, 12.1 max</td></tr>
+      <tr><td>Late-lot explainer · cause, 12 lots</td><td>exact split</td><td><b>11/12</b></td><td style="text-align:left">12/12 answered, fact-check 12/12; 12th: formatting slip, right cause · 77 s / lot</td></tr>
+      <tr><td>Late-lot explainer · lever, re-simulated</td><td>—</td><td class="down">1/12 hit</td><td style="text-align:left">4/12 helped at all · mean actual saving −9.1 min · worst: 69 min claimed, 301 min worse</td></tr>
+      <tr><td>AI shift lead · rules first (PRs #47, #48)</td><td>rule plan</td><td><b>0</b> escalations</td><td style="text-align:left">Seed 9, 8 h: 51/91 escalated (102 calls) → 0/93, same outcome · live seeds 9–13: 479 exceptions, 0 LLM calls · stress book (8 scenarios, seeds 9–11): 0 avoidable, 0 late hot lots</td></tr>
+    </table>
+    <div class="grid g2" style="margin-top:12px;gap:14px">
+      <div class="note amber" style="font-size:15px;padding:10px 14px;border-left-width:5px;background:var(--amber-wash)"><b>Lesson:</b> the AI names causes reliably (11/12), but only 1/12 of its improvement levers held up in the simulator. That is why every AI claim is verified in the simulator before use.</div>
+      <div class="note" style="font-size:15px;padding:10px 14px"><b>Shift lead, honestly:</b> with hard Q-time gating the rule plan already holds Q-time. It is a safety net that costs nothing on normal days; not yet shown to improve a schedule (no live escalated case).</div>
+    </div>
+    <p class="src">Live Nemotron via Nightshift · docs/AI_INVESTIGATOR.md · docs/AI_HANDOVER.md · docs/AI_EXPLAINER.md · docs/AI_SHIFT_LEAD.md · docs/AI_SHIFT_LEAD_STRESS.md</p>
   </div>
 </section>
 
@@ -475,7 +475,7 @@ table.d th{font-size:13px;padding:11px 16px}
       <div class="card good"><h3>Nightshift + Nemotron</h3>
         <p class="mono small" style="margin-bottom:6px">nvidia/nemotron-3.5-lightning-30b-a3b<br>http://127.0.0.1:8088/v1</p>
         <ul class="t"><li>Only model provider on the live path; lanes: investigator, explainer, handover, shift_lead_plan / _select.</li>
-        <li>Each reply records the model it reports; the eval ends with a model check.</li>
+        <li>Each reply records the model it reports; live evals: every reply verified Nemotron, 0 non-Nemotron.</li>
         <li>Token from the env, never logged.</li></ul></div>
       <div class="card cyan"><h3>Zetaris</h3>
         <ul class="t"><li>Full SMT2020 master data: 11 tables, 6,935 rows in <span class="mono">resilimes</span>, <span class="mono">fab_cmms</span>, <span class="mono">fab_erp</span>.</li>
@@ -505,9 +505,9 @@ table.d th{font-size:13px;padding:11px 16px}
       <div class="grid" style="gap:8px">
         <div class="node"><b>0:00 · Problem + Overview</b>The public SMT2020 fab: bottlenecks, WIP pile-ups, lots at risk.</div>
         <div class="node"><b>0:40 · Tools + Plan</b>Next-up queues with setup and slack; reschedule the lithography breakdown.</div>
-        <div class="node"><b>1:25 · Honest numbers</b>Planning default vs EDD; hard Q-time and frozen window with their cost.</div>
-        <div class="node" style="border-color:var(--good)"><b>1:50 · Live AI</b>Investigator on Nemotron through Nightshift; chip reads "Nemotron"; reply names the model.</div>
-        <div class="node"><b>2:35 · Zetaris parity · close</b><span class="mono">PARITY OK</span>, then the AI scoreboard and what is still TBD.</div>
+        <div class="node"><b>1:15 · Q-time first</b>Hard gate on by default: 99.26% Q-time, 71 avoidable misses left, and the price in lots and on-time.</div>
+        <div class="node" style="border-color:var(--good)"><b>1:45 · Live AI</b>Investigator on Nemotron through Nightshift; chip reads "Nemotron"; reply names the model.</div>
+        <div class="node"><b>2:30 · Zetaris parity · close</b><span class="mono">PARITY OK</span>, then the live AI scoreboard and its lesson.</div>
       </div>
       <div class="card" style="background:#0f1722;border-color:#0f1722;color:#e6edf3;font-family:var(--mono);font-size:15px;line-height:1.65">
         <div style="color:#9fb3c8">## one live request (shape, values masked)</div>
@@ -515,7 +515,7 @@ table.d th{font-size:13px;padding:11px 16px}
         <div>Authorization: Bearer <span style="background:#2a3442;color:#2a3442;border-radius:3px">rt-xxxxxxxxxxxxxxxx</span> <span style="color:#fdba74">[masked]</span></div>
         <div>meterless-app: resilimes</div>
         <div>model: nvidia/nemotron-3.5-lightning-30b-a3b</div>
-        <div style="margin-top:8px;color:#9fb3c8">## reply, as shown in the film</div>
+        <div style="margin-top:8px;color:#9fb3c8">## reply, as shown in the film (live evals: 0 non-Nemotron)</div>
         <div>response_models: [<span class="tbd" style="font-size:12px">[TBD: from live film]</span>]</div>
         <div>meterless_request_id: <span class="tbd" style="font-size:12px">[TBD: from live film]</span></div>
         <div style="margin-top:8px;color:#9fb3c8">.env never on screen · token never read aloud</div>
@@ -532,17 +532,17 @@ table.d th{font-size:13px;padding:11px 16px}
     <p class="kicker">What's next</p>
     <h2>Close the gaps the numbers show.</h2>
     <div class="grid g2 fill" style="gap:18px">
-      <div class="card acc"><h3>Scheduling</h3><ul class="t">
-        <li>Make the Q-time and step-due terms commensurable below risk 1. Needs an explicit cost of a missed window vs a minute late; a modelling decision, not a fit.</li>
-        <li>Integrate the planned PM module with the shift lead's PM deferral.</li>
+      <div class="card acc"><h3>Scheduling · remaining work</h3><ul class="t">
+        <li>71 avoidable Q-time misses remain, mostly chained windows at batch diffusion furnaces. Next: reserve next-window capacity only for lots that will actually arrive in it (two earlier fixes rejected: 130–278 lots / run).</li>
+        <li>Win back the price of feasibility (~17 lots and ~10 on-time points per run vs gating off) without giving up Q-time.</li>
         <li>Re-plan during the run and read MES actuals; today the plan is built once at t = 0.</li></ul></div>
       <div class="card good"><h3>AI and data</h3><ul class="t">
-        <li>Finish the live Nemotron evals: explainer and handover re-runs (after PR #42), shift lead with and without H-MEM. Then try to beat, not tie, the rule baseline.</li>
-        <li>More seeds before any claim; 5 seeds are not significant.</li>
-        <li>Read routes and WIP live from Zetaris, not only master-data parity.</li></ul></div>
+        <li>Better explainer levers: only 1/12 held up in the simulator. Keep verifying every claim before use.</li>
+        <li>Show the AI shift lead on a live escalated case; until then it is a safety net, not a proven improvement.</li>
+        <li>More seeds before any claim; read routes and WIP live from Zetaris, not only master-data parity.</li></ul></div>
     </div>
-    <div class="note" style="margin-top:16px"><b>Our ask:</b> judge the decision path. A shift lead gets a schedule with known trade-offs, and AI answers that cite their evidence and fall back to the rules when they cannot.</div>
-    <p class="src">docs/PLANNING_R1_STUDY.md ("Why it is not enough", Caveats) · docs/AI_SHIFT_LEAD.md (Caveats) · docs/AI_SIM_SELECT.md · docs/PITCH_DECK.md §11</p>
+    <div class="note" style="margin-top:16px"><b>Our ask:</b> judge the decision path. Q-time is a hard constraint, rules decide, and the AI handles exceptions and explanations, with every claim fact-checked or simulator-verified.</div>
+    <p class="src">PR #46 · docs/HARD_QTIME.md · docs/AI_EXPLAINER.md · docs/AI_SHIFT_LEAD.md · docs/PLANNING_R1_STUDY.md (Caveats)</p>
   </div>
 </section>
 
