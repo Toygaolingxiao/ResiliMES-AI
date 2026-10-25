@@ -122,3 +122,24 @@ Both live arms count (`sim_llm` + `sim_llm_hmem`). If the total exceeds 2 h,
 the live run uses the longest prefix of the fixed order above whose
 cumulative estimate for both arms is at most 2 h (`--first N`), and the
 report says so.
+
+## Second pre-registration (P2, book `stress2`)
+
+**Clearly labelled post-hoc set.** Written after seeing the first set's
+seed-9 results (rules and `sim` arms: 0 avoidable Q-time violations, 0 late
+hot lots, **0 escalations** in all five scenarios; seeds 10-11 were still
+running). The first set stays in the results unchanged. P2 is committed
+before any P2 run; same seeds (9, 10, 11), horizon, fork, futures, arms,
+metric, decision rule and runtime rule as above, and the threshold, weights,
+published dues and seeds are still untouched. P2 is harsher on purpose: it
+asks whether *any* realistic, if severe, incident makes the rule default
+project an avoidable miss or a late hot lot.
+
+| # | id (book) | incident | exact injection |
+|---|---|---|---|
+| P2-1 | `stress2_furnace_crisis` | furnace-bay crisis: tube failures, load limit and a lifted hold at the same time | S1 + S3 + S5 together (`Diffusion_BE_123-1..5` down 0-4 h; the 80 S3 lots held until 1 h; `Diffusion_BE_123` batch cap 25 wafers 0-6 h) |
+| P2-2 | `stress2_rush_hot` | rush expedite with minimal slack | S2 lot `Init_Lot_2_1` promoted hot, due = 1.25 x remaining raw process time = 4.223 h |
+| P2-3 | `stress2_fe_furnace_crisis` | front-end furnace crisis | `Diffusion_FE_94-1..7` (7 of 13) down 0-4 h and `Diffusion_FE_94` batch cap 25 wafers 0-6 h |
+
+Order for any subset: seed-major, then P2-1..P2-3, after the first set
+(`--book stress2` runs P2 only).
