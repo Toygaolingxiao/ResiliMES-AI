@@ -40,6 +40,24 @@ def _token_budget(settings: Settings) -> int:
     return raw if raw > 0 else 4096
 
 
+_MAX_BUDGET = 16384
+
+
+def _budget_ladder(budget: int) -> tuple[int, ...]:
+    """Budgets to try when the reply comes back empty: x1, x2, x4, capped at 16k."""
+    ladder: list[int] = []
+    for factor in (1, 2, 4):
+        value = min(budget * factor, max(budget, _MAX_BUDGET))
+        if value not in ladder:
+            ladder.append(value)
+    return tuple(ladder)
+
+
+def _is_empty_response(exc: Exception) -> bool:
+    """Nightshift returns 502 *_empty_response when reasoning used the whole budget."""
+    return isinstance(exc, APIStatusError) and "empty_response" in str(exc)
+
+
 def build_openai_client(
     *,
     base_url: str,
@@ -88,7 +106,8 @@ class NightshiftProvider:
         started = time.perf_counter()
         response: Any = None
         content = ""
-        for index, max_tokens in enumerate((budget, budget * 2)):
+        budgets = _budget_ladder(budget)
+        for index, max_tokens in enumerate(budgets):
             response = self._create(
                 messages,
                 model=model,
@@ -96,9 +115,13 @@ class NightshiftProvider:
                 max_tokens=max_tokens,
                 lane=lane,
             )
-            content = strip_reasoning(_message_text(response))
-            if content or index == 1:
+            content = strip_reasoning(_message_text(response)) if response is not None else ""
+            if content or index == len(budgets) - 1:
                 break
+            logger.info(
+                "nightshift empty reply, raising budget",
+                extra={"fields": {"lane": lane, "max_tokens": max_tokens}},
+            )
         elapsed = (time.perf_counter() - started) * 1000
         completion_id, meterless_request_id, provider_model = _response_ids(response)
         logger.info(
@@ -136,7 +159,7 @@ class NightshiftProvider:
         temperature: float,
         max_tokens: int,
         lane: str,
-    ) -> Any:
+    ) -> Any | None:
         delay = 0.5
         attempts = max(1, self._settings.llm_max_retries)
         last_error: Exception | None = None
@@ -149,6 +172,10 @@ class NightshiftProvider:
                     max_tokens=max_tokens,
                 )
             except (RateLimitError, APIConnectionError, APIStatusError) as exc:
+                if _is_empty_response(exc):
+                    # Nemotron spent the whole budget reasoning. Retrying at the
+                    # same budget only fails again; the caller raises the budget.
+                    return None
                 if isinstance(exc, APIStatusError) and exc.status_code not in {429, 500, 502, 503}:
                     raise
                 last_error = exc
@@ -156,7 +183,10 @@ class NightshiftProvider:
                     break
                 time.sleep(delay)
                 delay *= 2
-        raise RuntimeError(f"Nightshift {lane} failed after {attempts} attempts") from last_error
+        detail = f"{type(last_error).__name__}: {str(last_error)[:200]}" if last_error else ""
+        raise RuntimeError(
+            f"Nightshift {lane} failed after {attempts} attempts ({detail})"
+        ) from last_error
 
 
 def probe_nightshift(settings: Settings, timeout_s: float = 3.0) -> dict[str, Any]:
@@ -201,6 +231,8 @@ def call_summary(result: LlmResult) -> str:
 
 
 def _response_ids(response: Any) -> tuple[str, str, str]:
+    if response is None:
+        return "", "", ""
     completion_id = str(getattr(response, "id", "") or "")
     meterless = getattr(response, "meterless", None)
     dumped: dict[str, Any] = {}
