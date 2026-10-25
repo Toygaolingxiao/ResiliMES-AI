@@ -1,5 +1,7 @@
 # Pitch deck outline
 
+> **Built deck:** [deck/index.html](deck/index.html) is the submission deck (13 slides, one offline HTML file, arrow keys or click). It follows the rubric below but uses the current numbers (planning-layer default, hard Q-time study, AI evals), and each number cites its doc in an HTML comment. Some sections below quote older figures; the HTML deck is the one to present.
+
 Build this in Google Slides or PowerPoint. Twelve slides, plus one labeled backup. The demo video carries the product; the deck carries the judging rubric. Use console screenshots from `make demo` (KPI row, both Gantts, trace). Do not paste tokens.
 
 Suggested file name: `ResiliMES-Track03.pdf`.
