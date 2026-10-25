@@ -35,6 +35,10 @@ Published book, seeds 1-3, 7 days (totals over 3 seeds):
 
 The default is not yet Q-time-feasible: 71 avoidable misses remain. Unavoidable now also counts 41 lots that were already inside a t=0 WIP window and reached the next (chained) CQT origin before any gate decision; the schedule is unchanged, only the classification. Gating those chained windows as one cut avoidable misses further but collapsed output to 130-280 lots per run, so it stays an off-by-default experiment. Details, the before/after (334 to 111 to 71 avoidable) and the rejected fixes are in [docs/HARD_QTIME.md](docs/HARD_QTIME.md).
 
+## AI shift lead: rules first, exceptions only
+
+Rule-based scheduling handles every event by itself; the AI shift lead is asked only for exceptions the rule plan can't handle. At each exception the rule default runs, and a no-AI check forks the digital twin for that rule plan alone (8 h × 3 resampled futures). The shift lead (and Nemotron) is asked only if the rule plan is projected to cause at least one avoidable Q-time violation (the hard Q-time notion above) or at least one late hot/VIP lot. Every other exception is logged as handled by rule (`rule_ok`) with no LLM call, and the study reports handled-by-rule vs escalated counts. `SHIFT_LEAD_ESCALATE=always` brings back the old escalate-by-kind filter for experiments only. Details: [docs/AI_SIM_SELECT.md](docs/AI_SIM_SELECT.md).
+
 ## Default console: public industry benchmark (SMT2020)
 
 `make demo` opens the public industry benchmark (SMT2020), not the six-lot bay. The extract is 106 station families, 1,313 tools, 102 `Litho_*` tools (82 expose scanners and 20 `Litho_REG`), 10 products, and 2,156 initial WIP lots. The banner reads `public industry benchmark (SMT2020)`. The lithography scenario holds `Litho_FE_92-1` for the published 705.59-minute lithography repair. Tool state is aggregated by station group; the Gantt is virtualized to the selected group and time window.
