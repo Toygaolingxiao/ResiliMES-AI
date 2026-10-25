@@ -81,6 +81,14 @@ AI_SECTIONS.push({
     host.appendChild(list);
     host.appendChild(aiEl("p", "", `${copy.lever}: ${answer.lever || "—"} (${copy.adviceOnly})`));
     host.appendChild(aiEl("p", "muted", `${copy.calls}: ${(answer.calls || []).map((c) => c.tool).join(" → ")}`));
+    if ((answer.trace || []).length) {
+      const steps = aiEl("details", "muted");
+      steps.appendChild(aiEl("summary", "", `${copy.steps} · ${copy.stop}: ${answer.stop_reason || "—"}`));
+      const stepList = aiEl("ol", "");
+      for (const step of answer.trace) stepList.appendChild(aiEl("li", "", `${step.action || "—"} · ${step.status || "—"}`));
+      steps.appendChild(stepList);
+      host.appendChild(steps);
+    }
     host.appendChild(aiFact(copy, answer.fact_ok, answer.fact_misses));
     host.appendChild(
       aiEl("p", "muted", `${copy.truth}: ${aiCause(copy, result.truth)} · ${copy.baseline}: ${(result.baseline || []).map((x) => aiCause(copy, x)).join(", ")}`),

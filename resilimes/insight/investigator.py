@@ -22,12 +22,23 @@ from resilimes.evidence.factcheck import FactRegistry, check
 from resilimes.evidence.sqlrun import run_guarded
 from resilimes.evidence.toolkit import HOUR, Toolkit
 from resilimes.insight.injector import CAUSE_TEXT, TAXONOMY, main_upstream
+from resilimes.insight.progress import redact
 from resilimes.llm.base import Completer, LlmResult
 
 MAX_CALLS = 6
 MAX_TURNS = 10
 RESULT_CHARS = 3500
 LANE = "investigator"
+BUDGET_NOTE = "Tool budget used. Give the final answer now."
+STOP_REASONS = (
+    "answered",
+    "budget_exhausted",
+    "repeat_call",
+    "fact_check_repaired",
+    "fact_check_flagged",
+    "no_answer",
+    "error",
+)
 
 TOOLS_DOC = """Tools (call one per turn):
 - compare_windows {"family": str, "start_h": num, "end_h": num}: for each of the six causes, its indicator in the 4 h before start_h and in the window, and the relative change (window - before) / before. Also waiting lots at the window start and end, and the main upstream family with its down+PM tool-hours and its feed (lots/h) into this family.
@@ -95,6 +106,9 @@ class Investigation:
     # The model each response actually came from (LlmResult.model), one per LLM call.
     response_models: list[str] = field(default_factory=list)
     error: str | None = None
+    # One entry per round (LLM turn): what was asked, what the loop did, what evidence came back.
+    trace: list[dict[str, Any]] = field(default_factory=list)
+    stop_reason: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return dict(self.__dict__)
@@ -309,7 +323,7 @@ class ScriptedCompleter:
         results = [m["content"] for m in messages if m["content"].startswith("RESULT ")]
         plan = self.plan()
         if len(results) < len(plan) and not any(
-            "budget used" in m["content"] for m in messages if m["role"] == "user"
+            "final answer now" in m["content"] for m in messages if m["role"] == "user"
         ):
             content = json.dumps(plan[len(results)])
         else:
@@ -380,6 +394,50 @@ class ScriptedCompleter:
         }
 
 
+# ---- loop controls ------------------------------------------------------------------------
+def _norm(value: Any) -> Any:
+    """Args in a canonical form, so 6 / 6.0 / "6" and extra whitespace compare equal."""
+    if isinstance(value, dict):
+        return {str(k): _norm(v) for k, v in sorted(value.items(), key=lambda kv: str(kv[0]))}
+    if isinstance(value, (list, tuple)):
+        return [_norm(v) for v in value]
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, (int, float)):
+        return round(float(value), 4)
+    text = " ".join(str(value).split())
+    try:
+        return round(float(text), 4)
+    except ValueError:
+        return text
+
+
+def call_key(name: str, args: dict[str, Any]) -> str:
+    return json.dumps([name, _norm(args)], sort_keys=True, default=str)
+
+
+def evidence_summary(result: dict[str, Any]) -> dict[str, Any]:
+    """Short description of a tool result for the trace: no payloads."""
+    if "error" in result:
+        return {"error": str(result["error"])[:120]}
+    body = result.get("result", result)
+    summary: dict[str, Any] = {
+        "chars": len(json.dumps(result, ensure_ascii=False, default=str)),
+    }
+    if isinstance(body, dict):
+        summary["keys"] = sorted(str(k) for k in body)[:12]
+        causes = body.get("causes")
+        if isinstance(causes, dict):
+            summary["causes"] = {
+                str(cause): row.get("rel_change") if isinstance(row, dict) else None
+                for cause, row in causes.items()
+            }
+        for key, value in body.items():
+            if isinstance(value, list):
+                summary.setdefault("sizes", {})[str(key)] = len(value)
+    return summary
+
+
 # ---- the loop -----------------------------------------------------------------------------
 def _intro(question: str, family: str, t1_h: float, t2_h: float) -> str:
     causes = "\n".join(f"- {key}: {text}" for key, text in CAUSE_TEXT.items())
@@ -448,14 +506,19 @@ def investigate(
     ]
     ncalls = 0
     repairs = 0
+    seen: dict[str, int] = {}  # normalized (tool, args) -> result number
+    closed_by = ""  # "repeat_call" / "budget_exhausted" once the tool phase is closed
     started = time.perf_counter()
     final: dict[str, Any] | None = None
     while out.turns < MAX_TURNS:
         out.turns += 1
+        step: dict[str, Any] = {"round": out.turns}
+        out.trace.append(step)
         try:
             reply = provider.complete(messages, lane=LANE, temperature=temperature)
         except Exception as exc:
-            out.error = f"provider: {type(exc).__name__}"
+            out.error = redact(f"provider: {type(exc).__name__}: {exc}", 300)
+            step.update(action="provider", status="error", detail=out.error)
             break
         out.llm_calls += 1
         out.response_models.append(reply.provider_model or f"unreported:{reply.model}")
@@ -463,26 +526,31 @@ def investigate(
         try:
             payload = extract_json_object(reply.content)
         except (ValueError, json.JSONDecodeError):
+            step.update(action="unparsed", status="format_retry")
             messages.append(
                 {"role": "user", "content": "Reply with one JSON object only (tool or final)."}
             )
             continue
         if "final" in payload:
+            step["action"] = "answer"
             errors = _validate(payload["final"], ncalls)
             if errors and repairs < 2:
                 repairs += 1
+                step["status"] = "schema_repair"
                 messages.append(
                     {"role": "user", "content": "Fix the final answer: " + "; ".join(errors)}
                 )
                 continue
             final = payload["final"] if not errors else None
             if errors:
+                step["status"] = "invalid"
                 out.error = "invalid final: " + "; ".join(errors)
             if final is not None:
                 text = " ".join([*final.get("causal_chain", []), str(final.get("lever", ""))])
                 misses = check(text, kit.registry)
                 if misses and not out.repaired:
                     out.repaired = True
+                    step["status"] = "fact_check_repair"
                     messages.append(
                         {
                             "role": "user",
@@ -494,19 +562,41 @@ def investigate(
                     final = None
                     continue
                 out.fact_misses = misses
+                step["status"] = "accepted"
             break
         name = str(payload.get("tool", ""))
+        args = payload.get("args") or {}
+        args = args if isinstance(args, dict) else {}
+        step.update(action=name, args=args)
+        if closed_by == "repeat_call":
+            # The model was told to answer after a repeat and asked for a tool again: stop.
+            step["status"] = "tool_phase_closed"
+            out.error = "no final answer after the repeat stop"
+            break
         if ncalls >= max_calls:
+            step["status"] = "over_budget"
+            closed_by = closed_by or "budget_exhausted"
+            messages.append({"role": "user", "content": BUDGET_NOTE})
+            continue
+        key = call_key(name, args)
+        if key in seen:
+            step.update(status="repeat", repeat_of=seen[key])
+            closed_by = "repeat_call"
             messages.append(
-                {"role": "user", "content": "Tool budget used. Give the final answer now."}
+                {
+                    "role": "user",
+                    "content": f"You already have that evidence in RESULT {seen[key]}. "
+                    "The tool phase is over. Give the final answer now.",
+                }
             )
             continue
-        args = payload.get("args") or {}
-        result = execute(kit, name, args if isinstance(args, dict) else {}, settings)
+        result = execute(kit, name, args, settings)
         ncalls += 1
+        seen[key] = ncalls
         out.calls.append({"n": ncalls, "tool": name, "args": args})
+        step.update(status="executed", result=ncalls, evidence=evidence_summary(result))
         text = json.dumps(result, ensure_ascii=False, default=str)[:RESULT_CHARS]
-        note = "" if ncalls < max_calls else " Tool budget used. Give the final answer now."
+        note = "" if ncalls < max_calls else " " + BUDGET_NOTE
         messages.append({"role": "user", "content": f"RESULT {ncalls}: {text}{note}"})
     out.latency_ms = round((time.perf_counter() - started) * 1000, 1)
     if final is not None:
@@ -519,7 +609,25 @@ def investigate(
         out.fact_ok = not out.fact_misses
     elif out.error is None:
         out.error = "no final answer within the turn limit"
+    out.stop_reason = _stop_reason(out, final is not None, closed_by)
     return out
+
+
+def _stop_reason(out: Investigation, answered: bool, closed_by: str) -> str:
+    """Why the loop ended (one of ``STOP_REASONS``).
+
+    The loop never substitutes the rule answer. ``fact_check_flagged``: the answer still has
+    misses after the one rewrite (kept, flagged in ``fact_misses``). ``no_answer``: no valid
+    final answer (turn limit, invalid final, or a tool call after the repeat stop).
+    ``error``: provider failure.
+    """
+    if answered:
+        if out.repaired:
+            return "fact_check_flagged" if out.fact_misses else "fact_check_repaired"
+        return closed_by or "answered"
+    if out.error and out.error.startswith("provider:"):
+        return "error"
+    return "no_answer"
 
 
 def score(truth: str, primary: str | None, secondary: str | None) -> dict[str, bool]:

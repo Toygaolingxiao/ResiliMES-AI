@@ -72,16 +72,122 @@ def test_mock_investigation_is_bounded_and_fact_checked(starve):
     assert score(case.fault, *rank[:2])["top2"] in (True, False)
 
 
+def _window_call(family, start_h):
+    args = {"family": family, "start_h": start_h, "end_h": start_h + 1}
+    return json.dumps({"tool": "family_window", "args": args})
+
+
+PLAIN_FINAL = json.dumps(
+    {
+        "final": {
+            "primary_cause": "upstream_starvation",
+            "secondary_cause": None,
+            "causal_chain": ["The upstream family was down, so this family drained."],
+            "lever": "Recover the upstream family first.",
+            "citations": [1],
+        }
+    }
+)
+
+
 def test_loop_stops_at_the_tool_budget(starve):
     case, run = starve
-    call = json.dumps(
-        {"tool": "family_window", "args": {"family": case.family, "start_h": 6, "end_h": 8}}
-    )
+    calls = [_window_call(case.family, h) for h in range(1, 12)]
     answer = investigate(
-        Toolkit(run), case.question, case.family, case.t1_h, case.t2_h, Scripted([call])
+        Toolkit(run), case.question, case.family, case.t1_h, case.t2_h, Scripted(calls)
     )
     assert len(answer.calls) == MAX_CALLS
     assert answer.primary_cause is None and answer.error
+    assert answer.stop_reason == "no_answer"
+
+
+def test_repeat_call_is_blocked_and_ends_the_tool_phase(starve):
+    case, run = starve
+    first = json.dumps(
+        {"tool": "family_window", "args": {"family": case.family, "start_h": 6, "end_h": 8}}
+    )
+    # Same call, args written differently (float, string, key order): still a repeat.
+    again = json.dumps(
+        {"tool": "family_window", "args": {"end_h": "8", "start_h": 6.0, "family": case.family}}
+    )
+    provider = Scripted([first, again, PLAIN_FINAL])
+    answer = investigate(Toolkit(run), case.question, case.family, case.t1_h, case.t2_h, provider)
+    assert len(answer.calls) == 1
+    assert answer.primary_cause == "upstream_starvation"
+    assert answer.stop_reason == "repeat_call"
+    assert [s["status"] for s in answer.trace] == ["executed", "repeat", "accepted"]
+    assert answer.trace[1]["repeat_of"] == 1
+
+
+def test_repeat_then_another_tool_call_stops_without_answer(starve):
+    case, run = starve
+    call = _window_call(case.family, 6)
+    answer = investigate(
+        Toolkit(run), case.question, case.family, case.t1_h, case.t2_h, Scripted([call])
+    )
+    assert len(answer.calls) == 1
+    assert answer.primary_cause is None
+    assert [s["status"] for s in answer.trace] == ["executed", "repeat", "tool_phase_closed"]
+    assert answer.stop_reason == "no_answer"
+
+
+def test_budget_exhausted_then_answer(starve):
+    case, run = starve
+    replies = [_window_call(case.family, h) for h in (1, 2, 3)] + [PLAIN_FINAL]
+    answer = investigate(
+        Toolkit(run),
+        case.question,
+        case.family,
+        case.t1_h,
+        case.t2_h,
+        Scripted(replies),
+        max_calls=2,
+    )
+    assert len(answer.calls) == 2
+    assert answer.primary_cause == "upstream_starvation"
+    assert answer.stop_reason == "budget_exhausted"
+    assert [s["status"] for s in answer.trace] == [
+        "executed",
+        "executed",
+        "over_budget",
+        "accepted",
+    ]
+
+
+def test_normal_case_is_answered_with_one_trace_entry_per_round(starve):
+    case, run = starve
+    replies = [_window_call(case.family, 6), PLAIN_FINAL]
+    answer = investigate(
+        Toolkit(run), case.question, case.family, case.t1_h, case.t2_h, Scripted(replies)
+    )
+    assert answer.stop_reason == "answered"
+    assert len(answer.trace) == answer.turns == 2
+    assert [s["round"] for s in answer.trace] == [1, 2]
+    executed = answer.trace[0]
+    assert executed["action"] == "family_window" and executed["result"] == 1
+    assert executed["evidence"]["chars"] > 0 and executed["evidence"]["keys"]
+    assert answer.trace[1]["action"] == "answer"
+    # The mock stand-in gives one trace entry per round too, and compare_windows lists causes.
+    mock = investigate(Toolkit(run), case.question, case.family, case.t1_h, case.t2_h)
+    assert len(mock.trace) == mock.turns
+    assert set(mock.trace[0]["evidence"]["causes"]) == set(TAXONOMY)
+    assert mock.stop_reason in ("answered", "fact_check_repaired")
+
+
+def test_provider_error_message_is_kept_and_redacted(starve):
+    case, run = starve
+
+    class Broken(Scripted):
+        def complete(self, messages, *, lane, temperature=0.2):
+            raise RuntimeError("upstream 502 empty_response token=sk-abcdef1234567890abcdef")
+
+    answer = investigate(Toolkit(run), case.question, case.family, case.t1_h, case.t2_h, Broken([]))
+    assert answer.stop_reason == "error"
+    assert "RuntimeError" in answer.error and "502 empty_response" in answer.error
+    assert "sk-abcdef1234567890abcdef" not in answer.error
+    assert answer.trace == [
+        {"round": 1, "action": "provider", "status": "error", "detail": answer.error}
+    ]
 
 
 def test_invented_numbers_are_flagged_after_one_repair(starve):
@@ -103,6 +209,8 @@ def test_invented_numbers_are_flagged_after_one_repair(starve):
     assert answer.repaired
     assert not answer.fact_ok
     assert any("987654" in miss for miss in answer.fact_misses)
+    assert answer.stop_reason == "fact_check_flagged"
+    assert [s["status"] for s in answer.trace] == ["fact_check_repair", "accepted"]
 
 
 def test_sql_tool_goes_through_the_guard(starve):

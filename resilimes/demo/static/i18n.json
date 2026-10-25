@@ -753,6 +753,8 @@
       "lever": "Suggested lever",
       "adviceOnly": "advice only, not applied",
       "calls": "Evidence calls",
+      "steps": "Loop steps",
+      "stop": "stop",
       "truth": "Injected fault",
       "baseline": "Biggest-anomaly baseline",
       "causes": {
@@ -1556,6 +1558,8 @@
       "lever": "建议措施",
       "adviceOnly": "仅为建议，未执行",
       "calls": "证据调用",
+      "steps": "循环步骤",
+      "stop": "停止",
       "truth": "注入的故障",
       "baseline": "最大异常基线",
       "causes": {
@@ -2359,6 +2363,8 @@
       "lever": "推奨アクション",
       "adviceOnly": "助言のみ・未適用",
       "calls": "証拠の呼び出し",
+      "steps": "ループの手順",
+      "stop": "停止",
       "truth": "注入した故障",
       "baseline": "最大異常ベースライン",
       "causes": {
