@@ -1046,6 +1046,7 @@ class _Sim:
             self.causes[cause] += 1
             self.miss_classes[miss_class(self, lot, cause)] += 1
         if self.hq is not None:
+            self.hq.on_close(lot, self.inherited[lot])
             if outcome in _MISSED:
                 if not self.inherited[lot]:
                     kind = "admitted" if self.hq.admitted[lot] else "exempt"
@@ -1272,6 +1273,8 @@ class _Sim:
             if pm_start is not None and moment + proc > pm_start:
                 skipped = True
                 continue
+            if self.hq is not None:
+                self.hq.urgent_wake = None
             if self.hq is not None and not self.hq.admit(lot, moment, proc):
                 # Woken when the blocking family finishes a step or a tool comes
                 # up (``_hq_wake``); the late fallback covers time-only changes.
@@ -1283,6 +1286,13 @@ class _Sim:
                     self.hq.fallback_at[tool] = when
                     if gate_wake is None or when < gate_wake:
                         gate_wake = when
+                urgent_at = self.hq.urgent_wake
+                if urgent_at is not None:
+                    # An in-window lot refused while its open window has slack:
+                    # look again when that window turns urgent.
+                    urgent_at = max(moment + 1.0, urgent_at)
+                    if gate_wake is None or urgent_at < gate_wake:
+                        gate_wake = urgent_at
                 continue
             if self.policy == "resilimes" and not (
                 self.hq is not None and self.hq.expedited(lot, moment)

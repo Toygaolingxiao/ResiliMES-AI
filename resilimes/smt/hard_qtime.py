@@ -58,8 +58,15 @@ DISRUPTION = ("transport", "breakdown_rework", "tool_down_pm")
 # Missed windows split by what the scheduler could still have done about them
 # (``miss_class``): ``avoidable`` misses are Q-time violations the scheduler
 # caused; the other two are exceptions it can only expedite.
-MISS_CLASSES = ("avoidable", "unavoidable_breakdown", "unavoidable_disruption")
+MISS_CLASSES = (
+    "avoidable",
+    "unavoidable_breakdown",
+    "unavoidable_disruption",
+    "unavoidable_pre_gate",
+)
 _WAFERS = 25
+# Chained CQT windows (a target that is the next origin) gated as one, up to this many.
+_CHAIN_LINKS = 4
 
 
 def _overlap(spans: list[tuple[float, float]], left: float, right: float) -> float:
@@ -140,6 +147,10 @@ def miss_class(sim: _Sim, lot: int, cause: str) -> str:
         return "avoidable"
     deadline = sim.deadline[lot]
     admitted = deadline - sim.cqt_limit[lot] - route.cycle[origin]
+    if admitted < 0 or (sim.hq is not None and lot in sim.hq.pre_gate):
+        # In a window (or at its origin) before any gate decision: the t=0
+        # WIP, or chained from such a window through an origin it had to take.
+        return "unavoidable_pre_gate"
     here = min(max(sim.step[lot], origin + 1), target)
     for fam in {route.family[here], route.family[target]}:
         family = sim.fab.families[fam]
@@ -175,6 +186,15 @@ class HardQtime:
         self.fallback_at: dict[int, float] = {}
         self.base: dict[int, tuple[float, int, bool]] = {}
         self.exempt_starts = 0
+        # In-window lots let through an origin only because their open window
+        # turned urgent, and the earliest such moment of a refused one.
+        self.forced: set[int] = set()
+        # Lots whose open window was never gated (open in the t=0 WIP, or
+        # chained from one through a forced origin) and the lots just closing
+        # such a window (``on_close``, read by the next ``on_start``).
+        self.pre_gate: set[int] = set()
+        self.closing: set[int] = set()
+        self.urgent_wake: float | None = None
         self.expedited_lots = 0
         self.recover_sec: list[float] = []
         # Misses of windows opened by an admitted origin start, by cause.
@@ -211,6 +231,32 @@ class HardQtime:
                 out.append((route.family[step], step, self._work(route, step), need))
         return out
 
+    def chain(
+        self, lot: int, origin: int, target: int, latest: float
+    ) -> list[tuple[int, int, float, float, int, float]]:
+        """Segment load of the window from ``origin`` and of chained windows.
+
+        (family, step, work, need to its target, target, target latest start).
+        When the target is itself a CQT origin (a chained window), the next
+        window's steps are added: its deadline is taken from the latest start
+        of the current target (its end plus the next limit), so the load the
+        lot must find there is reserved from the first origin on.
+        """
+        sim = self.sim
+        route = sim.fab.routes[sim.fab.lot_route[lot]]
+        number = sim.lot_no[lot]
+        out = []
+        for _link in range(_CHAIN_LINKS):
+            for fam, step, work, need in self.segment(lot, origin, target):
+                out.append((fam, step, work, need, target, latest))
+            nxt = route.cqt_target[target]
+            limit = route.cqt_limit[target]
+            if limit <= 0 or nxt < 0 or not measured(route, nxt, number):
+                break
+            origin, latest = target, latest + float(route.cycle[target]) + limit
+            target = nxt
+        return out
+
     def commit(self, lot: int, origin: int, target: int, latest: float) -> None:
         sim = self.sim
         route = sim.fab.routes[sim.fab.lot_route[lot]]
@@ -219,8 +265,8 @@ class HardQtime:
         self.drop(lot)
         self.version += 1
         keys = []
-        for fam, step, work, need in self.segment(lot, origin, target):
-            self.committed[fam][(lot, step)] = (work, target, latest, need)
+        for fam, step, work, need, goal, goal_latest in self.chain(lot, origin, target, latest):
+            self.committed[fam][(lot, step)] = (work, goal, goal_latest, need)
             keys.append((fam, step))
         self.where[lot] = keys
 
@@ -358,11 +404,19 @@ class HardQtime:
         target = route.cqt_target[index]
         if limit <= 0 or target < 0:
             return True
-        # Never gate a lot already inside a window (a nested origin). A missed
-        # or re-cleaned lot back at an origin is gated like any other: it stays
-        # expedited, so it goes first as soon as its segment is feasible.
+        # A lot already inside a window (a chained or nested origin: often
+        # this step is the target of the open window) is gated on the next
+        # segment too while the open window still has slack; it is forced
+        # through only once the open window is urgent (a start now or never).
+        # A missed or re-cleaned lot back at an origin is gated like any
+        # other: it stays expedited, so it goes first once its segment fits.
         if sim.in_window(lot):
-            return True
+            if self.x_target[lot] >= 0 or self.expedited(lot, moment):
+                self.forced.add(lot)
+                return True
+            when = sim.deadline[lot] - sim.qtime_need(lot) - QTIME_URGENT_MARGIN_SEC
+            if self.urgent_wake is None or when < self.urgent_wake:
+                self.urgent_wake = when
         if not measured(route, target, sim.lot_no[lot]):
             return True
         self.gate_checks += 1
@@ -374,8 +428,8 @@ class HardQtime:
             return False
         # Every family of the segment (intermediate steps and the target).
         extra: dict[int, list[tuple[float, float, int, int]]] = {}
-        for fam, step, work, need in self.segment(lot, index, target):
-            extra.setdefault(fam, []).append((work, latest - need, *self._run(route, step)))
+        for fam, step, work, need, _goal, goal_latest in self.chain(lot, index, target, latest):
+            extra.setdefault(fam, []).append((work, goal_latest - need, *self._run(route, step)))
         for fam, pairs in extra.items():
             joint = pairs + (pending or {}).get(fam, [])
             if not (self.base_ok(fam, moment) and self.feasible(fam, moment, extra=joint)):
@@ -415,12 +469,24 @@ class HardQtime:
             self.recover_sec.append(moment - self.x_since[lot])
             self.x_target[lot] = -1
         if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
-            exempt = sim.in_window(lot)
+            exempt = lot in self.forced
+            self.forced.discard(lot)
+            if exempt and lot in self.closing:
+                self.pre_gate.add(lot)
+            else:
+                self.pre_gate.discard(lot)
             if exempt:
                 self.exempt_starts += 1
             self.admitted[lot] = not exempt
             latest = moment + route.cycle[index] + route.cqt_limit[index]
             self.commit(lot, index, route.cqt_target[index], latest)
+
+    def on_close(self, lot: int, inherited: bool) -> None:
+        """A window of ``lot`` closes; remember if it was never gated."""
+        if inherited or lot in self.pre_gate:
+            self.closing.add(lot)
+        else:
+            self.closing.discard(lot)
 
     def on_miss(self, lot: int, target: int, moment: float, outcome: str) -> None:
         if self.x_target[lot] < 0:
