@@ -101,6 +101,20 @@ table.d tr.hl td{background:var(--accent-wash)}
 .grid.fill{grid-auto-rows:1fr}
 .lane{display:flex;flex-direction:column}.lane>.grid{flex:1;grid-auto-rows:1fr}
 .card h3+p,.card h3+ul{margin-top:2px}
+
+/* ---- investigator loop diagram ---- */
+.loop{position:relative;width:100%;height:100%}
+.loop svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.lb{position:absolute;background:var(--card);border:1px solid var(--line-strong);border-radius:8px;padding:8px 12px;font-size:14.5px;line-height:1.35;color:var(--ink2);overflow:hidden}
+.lb b{display:block;font-size:16.5px;color:var(--ink);margin-bottom:2px}
+.lb.m{border:2px solid var(--good);background:var(--good-wash)}
+.lb.p{border:2px solid var(--accent);background:var(--accent-wash)}
+.lb.ok{border-color:var(--good)} .lb.bad{border-color:var(--amber);background:var(--amber-wash)}
+.who{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:inline-block;padding:0 6px;border-radius:3px;margin-bottom:3px}
+.who.m{background:var(--good);color:#fff}.who.p{background:var(--accent);color:#fff}
+.al{position:absolute;font-family:var(--mono);font-size:12.5px;color:var(--muted);background:var(--ground);padding:0 4px;white-space:nowrap}
+.new{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;color:#fff;background:var(--violet);border-radius:3px;padding:0 5px;margin-left:6px;vertical-align:2px}
+.bounds li{margin:6px 0;font-size:15.5px;line-height:1.35}
 /* ---- sizing pass: fill the 1280x720 frame, readable from the back of a room ---- */
 .body{padding:28px 44px 40px}
 h2{font-size:35px;margin-bottom:20px}
@@ -374,32 +388,86 @@ table.d th{font-size:13px;padding:11px 16px}
   </div>
 </section>
 
+<!-- ===================== 9b. INVESTIGATOR LOOP (design) ===================== -->
+<section class="slide" data-title="Investigator loop">
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">09 · Investigator loop</span><span class="sp"></span><span>design · model decides · program bounds</span></div>
+  <div class="body" style="padding-top:22px">
+    <h2 style="margin-bottom:16px">Investigator loop: the model decides, the program bounds it.</h2>
+    <div style="display:grid;grid-template-columns:874px 300px;gap:18px">
+      <div class="loop" style="width:874px;height:450px">
+        <svg viewBox="0 0 874 450" aria-hidden="true">
+          <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5c6773"/></marker>
+          <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#157347"/></marker>
+          <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9a3412"/></marker></defs>
+          <g fill="none" stroke="#5c6773" stroke-width="1.8">
+            <path d="M212 42 H256" marker-end="url(#ah)"/>
+            <path d="M524 42 H586" marker-end="url(#ah)"/>
+            <path d="M733 86 V136" marker-end="url(#ah)"/>
+            <path d="M590 190 H530" marker-end="url(#ah)"/>
+            <path d="M470 140 C 470 108, 600 112, 650 90" marker-end="url(#ah)"/>
+            <path d="M733 248 V298" marker-end="url(#ah)"/>
+          </g>
+          <path d="M590 336 H530" fill="none" stroke="#157347" stroke-width="1.8" marker-end="url(#ahg)"/>
+          <path d="M650 396 C 650 416, 610 414, 530 414" fill="none" stroke="#9a3412" stroke-width="1.8" marker-end="url(#aha)"/>
+        </svg>
+        <div class="lb " style="left:0px;top:0px;width:212px;height:86px"><b>Incident question</b>Why did family F's WIP rise between t1 and t2?</div>
+        <div class="lb p" style="left:262px;top:0px;width:262px;height:86px"><span class="who p">program · first call</span><b>compare_windows</b>Before vs window, six causes</div>
+        <div class="lb " style="left:592px;top:0px;width:282px;height:86px"><b>Evidence log</b>Each call recorded with its source</div>
+        <div class="lb m" style="left:592px;top:140px;width:282px;height:108px"><span class="who m">model · Nemotron</span><b>Picks the next step</b>Call another tool, or give the answer</div>
+        <div class="lb p" style="left:262px;top:140px;width:262px;height:108px"><span class="who p">program</span><b>Validates and executes</b>Known tool, valid arguments, inside the budget</div>
+        <div class="lb p" style="left:592px;top:300px;width:282px;height:96px"><span class="who p">program</span><b>Final evidence check</b>Fact-check every cited number</div>
+        <div class="lb ok" style="left:262px;top:304px;width:262px;height:64px"><b style="color:var(--good)">Passes → answer</b>One cause, causal chain, one lever</div>
+        <div class="lb bad" style="left:130px;top:384px;width:394px;height:64px"><b style="color:var(--amber)">Fails → one repair</b>Still failing: fall back to the rule answer <span class="new">NEW</span></div>
+        <span class="al" style="left:526px;top:160px;">next call</span>
+        <span class="al" style="left:500px;top:98px;">result + source</span>
+        <span class="al" style="left:742px;top:262px;">answer / stop</span>
+        <span class="al" style="left:540px;top:314px;color:var(--good)">pass</span>
+        <span class="al" style="left:570px;top:418px;color:var(--amber)">fail</span>
+      </div>
+      <div class="card acc" style="display:flex;flex-direction:column;padding:14px 16px">
+        <div class="label">Program-enforced bounds</div>
+        <ul class="t bounds" style="margin-top:6px">
+          <li><b>Max 6 tool calls</b> (10 turns), then the answer is requested</li>
+          <li><b>Repeat call → stop</b> <span class="new">NEW</span></li>
+          <li><b>Fact-check + one repair</b> on every cited number and id</li>
+          <li><b>Fallback to the rule answer</b> <span class="new">NEW</span></li>
+          <li><b>Advice only:</b> never moves a lot</li>
+        </ul>
+        <p class="muted" style="margin-top:auto;font-size:14px;line-height:1.4">Same check in the late-lot explainer and the handover: every number fact-checked, one repair, then misses are flagged, never hidden.</p>
+      </div>
+    </div>
+    <div class="note" style="margin-top:14px;padding:9px 16px">Every round's decision, new evidence and stop reason are recorded and shown. <span class="new">NEW</span></div>
+    <p class="src" style="padding-top:6px">docs/AI_INVESTIGATOR.md (6 calls / 10 turns, compare_windows, fact check + one rewrite, advice only) · docs/AI_EXPLAINER.md · docs/AI_HANDOVER.md · NEW = in a PR being merged, not yet on main</p>
+  </div>
+</section>
+
 <!-- ===================== 10. AI RESULTS ===================== -->
 <section class="slide" data-title="AI results">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">09 · Results · AI</span><span class="sp"></span><span>live Nemotron evaluation running</span></div>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">10 · Results · AI</span><span class="sp"></span><span>live Nemotron evaluation running</span></div>
   <div class="body">
     <p class="kicker">Result 3 · AI vs rule baselines</p>
     <h2>We report the AI against a rule baseline, including when it loses.</h2>
-    <div class="fill" style="display:flex"><table class="d" style="font-size:16.5px;height:100%">
+    <div class="fill" style="display:flex"><table class="d" style="font-size:15.5px;height:100%">
       <tr><th style="text-align:left">Agent · metric</th><th>Rule / no-LLM baseline</th><th>Nemotron (live)</th><th style="text-align:left">Note</th></tr>
       <!-- source: docs/AI_INVESTIGATOR.md "First live run" -->
-      <tr><td>Investigator · top-1 of 24 cases (first live run)</td><td>20/24</td><td class="down">11/24</td><td style="text-align:left">No decision protocol in the prompt. Fixed in PR #40.</td></tr>
-      <tr><td>Investigator · top-1 after the protocol fix</td><td>20/24*</td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">Re-run on PR #40; same cases, seeds, scoring.</td></tr>
+      <tr><td>Investigator · top-1 of 24 cases (first live run)</td><td>20/24</td><td class="down">11/24</td><td style="text-align:left">v1: no decision protocol in the prompt. Fixed in PR #40.</td></tr>
+      <!-- source: live PC run 2026-10-25, results_pc/investigator_nightshift_v2.json (main 27acea8: PR #40 protocol + compare_windows); docs/AI_INVESTIGATOR.md not yet updated -->
+      <tr><td>Investigator · top-1 after the protocol fix (v2)</td><td>20/24</td><td><b>20/24</b> <span class="chip">ties</span></td><td style="text-align:left">Top-2 21 vs 21 · fact check 24/24 · 0 no-answers · 1.54 calls.</td></tr>
       <!-- source: docs/AI_EXPLAINER.md (mock floor 8/48 is not a model result) -->
-      <tr><td>Late-lot explainer · counterfactual hit, 48 lots</td><td>8/48 <span class="small muted">(scripted floor)</span></td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">Hit = re-run saving &gt; 0 and ≥ 50% of claim.</td></tr>
+      <tr><td>Late-lot explainer · counterfactual hit, 48 lots</td><td>8/48 <span class="small muted">(scripted floor)</span></td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">Hit = re-run saving &gt; 0 and ≥ 50% of claim. <span class="small muted">Re-run pending: Nightshift empty-response fix (PR #42).</span></td></tr>
       <!-- source: docs/AI_HANDOVER.md (mock 12/12, recall 1.0) -->
-      <tr><td>Shift handover · fact check, 12 reports</td><td>12/12 <span class="small muted">(scripted)</span></td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">Must-mention recall 1.0 scripted.</td></tr>
+      <tr><td>Shift handover · fact check, 12 reports</td><td>12/12 <span class="small muted">(scripted)</span></td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">Must-mention recall 1.0 scripted. <span class="small muted">Re-run pending: Nightshift empty-response fix (PR #42).</span></td></tr>
       <!-- source: docs/AI_SIM_SELECT.md held-out seeds 9-13, 24 h -->
       <tr><td>Shift lead · twin + Pareto, Q-time violations / run</td><td>38.2</td><td><span class="tbd">[TBD: live Nemotron result]</span></td><td style="text-align:left">No-LLM twin: 36.0 (better on 4 of 5 seeds), wait +0.4%.</td></tr>
     </table></div>
-    <div class="note amber" style="margin-top:12px"><b>Read this honestly:</b> scripted stand-ins check the plumbing and are not model results. The first live investigator run lost to the rule baseline; the prompt and tool fix (no tuning of cases, seeds or scoring) is being re-run now.</div>
-    <p class="src">* first-run baseline; the CI mock run scores the same baseline 21/24 · docs/AI_INVESTIGATOR.md · docs/AI_EXPLAINER.md · docs/AI_HANDOVER.md · docs/AI_SIM_SELECT.md</p>
+    <div class="note amber" style="margin-top:16px"><b>Read this honestly:</b> scripted stand-ins check the plumbing and are not model results. The first live investigator run lost to the rule baseline. After the protocol and tool fix (no tuning of cases, seeds or scoring) it ties the baseline at 20/24; it does not beat it.</div>
+    <p class="src">Investigator v2: live PC run 2026-10-25, results_pc/investigator_nightshift_v2.json · docs/AI_INVESTIGATOR.md · docs/AI_EXPLAINER.md · docs/AI_HANDOVER.md · docs/AI_SIM_SELECT.md</p>
   </div>
 </section>
 
 <!-- ===================== 11. SPONSOR TECH ===================== -->
 <section class="slide" data-title="Sponsor tech">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">10 · Sponsor tech</span><span class="sp"></span><span>Nightshift · Nemotron · Zetaris · Meterless engines · Cursor</span></div>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">11 · Sponsor tech</span><span class="sp"></span><span>Nightshift · Nemotron · Zetaris · Meterless engines · Cursor</span></div>
   <div class="body">
     <p class="kicker">Sponsor technology</p>
     <h2>The sponsor stack is the control plane, not three logos on a chat window.</h2>
@@ -429,7 +497,7 @@ table.d th{font-size:13px;padding:11px 16px}
 
 <!-- ===================== 12. DEMO ===================== -->
 <section class="slide" data-title="Demo">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">11 · Demo</span><span class="sp"></span><span>about 3 min · one real Nightshift request</span></div>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">12 · Demo</span><span class="sp"></span><span>about 3 min · one real Nightshift request</span></div>
   <div class="body">
     <p class="kicker">The demo video</p>
     <h2>Fab state → schedule → switches → one live Nemotron answer.</h2>
@@ -459,7 +527,7 @@ table.d th{font-size:13px;padding:11px 16px}
 
 <!-- ===================== 13. NEXT ===================== -->
 <section class="slide" data-title="What's next">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">12 · What's next</span><span class="sp"></span><span>scoped, not promised</span></div>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">13 · What's next</span><span class="sp"></span><span>scoped, not promised</span></div>
   <div class="body">
     <p class="kicker">What's next</p>
     <h2>Close the gaps the numbers show.</h2>
@@ -469,7 +537,7 @@ table.d th{font-size:13px;padding:11px 16px}
         <li>Integrate the planned PM module with the shift lead's PM deferral.</li>
         <li>Re-plan during the run and read MES actuals; today the plan is built once at t = 0.</li></ul></div>
       <div class="card good"><h3>AI and data</h3><ul class="t">
-        <li>Finish the live Nemotron evals: investigator re-run, explainer, handover, shift lead with and without H-MEM.</li>
+        <li>Finish the live Nemotron evals: explainer and handover re-runs (after PR #42), shift lead with and without H-MEM. Then try to beat, not tie, the rule baseline.</li>
         <li>More seeds before any claim; 5 seeds are not significant.</li>
         <li>Read routes and WIP live from Zetaris, not only master-data parity.</li></ul></div>
     </div>
