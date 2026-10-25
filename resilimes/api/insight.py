@@ -84,6 +84,9 @@ def investigate_case(body: InvestigateBody, request: Request) -> dict[str, Any]:
         "baseline": rank[:2],
         "truth": case.fault,
         "score": score(case.fault, answer.primary_cause, answer.secondary_cause),
+        "system_score": score(
+            case.fault, answer.system.get("primary_cause"), answer.system.get("secondary_cause")
+        ),
         "advice_only": True,
     }
 

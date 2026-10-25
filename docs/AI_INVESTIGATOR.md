@@ -44,6 +44,8 @@ in about 4 minutes.
 
 - **Tool budget.** The loop stops at 6 tool calls (10 turns in total) and then asks for the final
   answer.
+- **Repeat stop.** A tool call with the same tool and the same normalized args as an earlier
+  call is not run; see [Loop controls](#loop-controls).
 - **SQL.** The `sql` tool goes through the PR #30 guard: SELECT only, allowlisted tables, and an
   enforced LIMIT.
 - **Schema.** The final answer must be JSON with a cause from the taxonomy and citations that point
@@ -52,6 +54,42 @@ in about 4 minutes.
   question. A failing answer gets one rewrite. Anything still unknown is returned in
   `fact_misses`, and the UI flags it.
 - **Secrets.** Errors are redacted before they are printed or saved.
+
+### Loop controls
+
+Program-side controls, on top of the tool budget and the fact check. Prompts are unchanged.
+
+- **Repeat stop.** Args are normalized (key order, `6` / `6.0` / `"6"`, whitespace) and compared
+  with every earlier call in the case. A repeat is not executed: the model is told it already has
+  that evidence in `RESULT n` and must give the final answer now, and the tool phase ends. If it
+  asks for another tool instead of answering, the loop stops with no answer (degraded route).
+- **Per-round trace.** `Investigation.trace` has one entry per round (LLM turn): `round`,
+  `action` (tool name or `answer`), `args`, `status` (`executed`, `repeat`, `over_budget`,
+  `tool_phase_closed`, `accepted`, `schema_repair`, `fact_check_repair`, `invalid`,
+  `format_retry`, `error`), and for executed calls a short `evidence` summary (result size in
+  chars, top-level keys, list sizes, and for `compare_windows` each cause's relative change), never
+  the payload. `stop_reason` is one of `answered`, `budget_exhausted` (a call was refused over
+  budget, then answered), `repeat_call`, `fact_check_repaired` (the one rewrite passed the fact
+  check), `degraded_to_rule` (below) or `error` (the rule answer itself could not be computed).
+  Provider errors keep their redacted message in `error`, not just the exception type. The trace
+  and `stop_reason` are in the study rows (`stop_reasons` counts in the summary), in
+  `POST /api/ai/investigate` under `answer`, and in the console as a collapsed "Loop steps" list
+  under the Investigator card.
+- **Degraded route (縮退).** When the AI answer still fails the fact check after the one rewrite
+  (`fact_check_failed`), there is no valid answer (`no_answer`: turn limit, invalid final, or a
+  tool call after the repeat stop), or the provider fails (`provider_error`), the system output
+  becomes the rule baseline's answer: `degraded: true`, `degrade_reason`, and
+  `system = {"source": "rule", "primary_cause", "secondary_cause", ...}`. Otherwise
+  `system.source` is `ai`. The AI's own answer (`primary_cause`, `causal_chain`, ...) and its
+  `fact_misses` stay in the record; nothing is hidden. The console shows a "Degraded: rule answer
+  (reason)" line above the AI answer.
+- **Scoring stays separate.** The study summary reports `ai_top1` / `ai_top2` (the AI's own
+  answer, scored exactly as before: a no-answer or provider error is an AI miss, and a
+  `fact_check_failed` answer is still scored by its own flagged cause, as it was before) and
+  `system_top1` / `system_top2` (what the operator sees, after the degraded route), plus
+  `degraded_count` and `degraded_by_reason`. They are never merged into one number.
+- **Explainer and handover** are unchanged here. They keep their existing behaviour: a failing
+  answer is flagged (`fact_ok: false`, `fact_misses`, `error`), not replaced.
 
 ### Baseline
 
@@ -70,19 +108,20 @@ It makes six fixed calls, then answers with the baseline's top two causes. Its a
 **equals the baseline by construction**. These numbers check the plumbing; they are not a measure of
 the model.
 
-`python -m resilimes.insight.study investigator --provider mock` (24 cases, 65 s):
+`python -m resilimes.insight.study investigator --provider mock` (24 cases, about 100 s):
 
 | Arm | top-1 | top-2 | fact check passed | tool calls |
 | --- | --- | --- | --- | --- |
-| Biggest-anomaly baseline | 21/24 | 22/24 | n/a | n/a |
-| Mock stand-in | 21/24 | 22/24 | 24/24 (0 repairs) | 6.0 |
+| Biggest-anomaly baseline | 20/24 | 21/24 | n/a | n/a |
+| Mock stand-in | 20/24 | 21/24 | 24/24 (0 repairs) | 6.0 |
 
-By fault (top-1): tool down 4/4, PM in peak 4/4, release burst 4/4, setup thrash 3/4, batch cap
-2/4, upstream starvation 4/4.
+By fault (top-1): tool down 4/4, PM in peak 3/4, release burst 4/4, setup thrash 3/4, batch cap
+2/4, upstream starvation 4/4. All 24 mock cases stop with `answered`, none is degraded, so the
+system score equals the AI score (20/24 top-1, 21/24 top-2).
 
-The baseline misses `setup_thrash-s2`, `batch_cap-s2` and `batch_cap-s3`. In all three, arrivals
-rose more, relative to the 4 h before, than the faulted metric did, so "release burst" scored
-highest. These are the cases where
+The baseline misses `pm_in_peak-s1`, `setup_thrash-s2`, `batch_cap-s2` and `batch_cap-s3`. In all
+four, arrivals rose more, relative to the 4 h before, than the faulted metric did, so "release
+burst" scored highest. These are the cases where
 reading the evidence (setup minutes per start, lots per batch start) has to beat a single metric.
 
 ### Real (Nemotron via Nightshift)
@@ -117,7 +156,24 @@ minutes per start, 130 changeovers) as secondary because one tool was down.
   still has to reason.
 - **Mock stand-in.** It now calls `compare_windows` first. Its answers still equal the baseline's.
 
-Cases, seeds, weights and scoring are unchanged. The re-run result will be added here.
+Cases, seeds, weights and scoring are unchanged.
+
+**Second live run (v2, with the protocol and `compare_windows`):** AI top-1 **20/24** against the
+rule baseline's **20/24**; top-2 **21 vs 21**. The fact check passed **24/24** (4 answers needed the
+one rewrite), **0** no-answers, and the model made **1.54** tool calls on average.
+
+| Fault (top-1, of 4) | v1 | v2 | rule |
+| --- | --- | --- | --- |
+| tool down | 2 | 4 | 4 |
+| PM in peak | 3 | 3 | 3 |
+| release burst | 4 | 4 | 4 |
+| setup thrash | 2 | 3 | 3 |
+| batch cap | 0 | 2 | 2 |
+| upstream starvation | 0 | 4 | 4 |
+
+The v2 run predates the loop controls and the degraded route, so it has no `system_top1`. Because
+v2 had 0 no-answers and all 24 answers passed the fact check, no case would have been degraded,
+and the system top-1 would also be 20/24. That is an inference, not a measured value.
 
 ## PC commands
 

@@ -112,12 +112,27 @@ def run_investigator(
                 "truth": case.fault,
                 "baseline": rank[:2],
                 "baseline_score": score(case.fault, rank[0], rank[1]),
+                "stop_reason": answer.stop_reason,
+                "degraded": answer.degraded,
+                "degrade_reason": answer.degrade_reason,
                 "ai": answer.to_json(),
+                # The AI's own answer, scored as before (degraded cases are not rescued).
                 "ai_score": score(case.fault, answer.primary_cause, answer.secondary_cause),
+                # What the operator sees: the AI answer, or the rule answer when degraded.
+                "system_score": score(
+                    case.fault,
+                    answer.system.get("primary_cause"),
+                    answer.system.get("secondary_cause"),
+                ),
                 "seconds": round(time.perf_counter() - started, 1),
             }
         except Exception as exc:
-            row = {"case_id": case.case_id, "truth": case.fault, "error": redact(repr(exc))}
+            row = {
+                "case_id": case.case_id,
+                "truth": case.fault,
+                "stop_reason": "error",
+                "error": redact(repr(exc)),
+            }
         rows.append(row)
         summary = summarize_investigator(rows, label)
         _write(out, {"summary": summary, "rows": rows})
@@ -145,6 +160,14 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         cell["n"] += 1
         cell["ai_top1"] += int(row["ai_score"]["top1"])
         cell["base_top1"] += int(row["baseline_score"]["top1"])
+    stop_reasons: dict[str, int] = {}
+    degraded: dict[str, int] = {}
+    for row in rows:
+        reason = str(row.get("stop_reason") or "")
+        stop_reasons[reason] = stop_reasons.get(reason, 0) + 1
+        if row.get("degraded"):
+            why = str(row.get("degrade_reason"))
+            degraded[why] = degraded.get(why, 0) + 1
     return {
         "label": label,
         "model_audit": model_audit(rows),
@@ -152,6 +175,12 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         "errors": len(rows) - len(ok),
         "ai_top1": sum(int(r["ai_score"]["top1"]) for r in ok),
         "ai_top2": sum(int(r["ai_score"]["top2"]) for r in ok),
+        # Kept separate on purpose: ai_* is the AI's own answer, system_* is after the
+        # degraded route to the rule answer. Never merge them.
+        "system_top1": sum(int(r["system_score"]["top1"]) for r in ok if "system_score" in r),
+        "system_top2": sum(int(r["system_score"]["top2"]) for r in ok if "system_score" in r),
+        "degraded_count": sum(degraded.values()),
+        "degraded_by_reason": degraded,
         "baseline_top1": sum(int(r["baseline_score"]["top1"]) for r in ok),
         "baseline_top2": sum(int(r["baseline_score"]["top2"]) for r in ok),
         "fact_ok": sum(int(r["ai"]["fact_ok"]) for r in ok),
@@ -159,6 +188,7 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         "no_answer": sum(1 for r in ok if r["ai"]["primary_cause"] is None),
         "mean_tool_calls": round(sum(len(r["ai"]["calls"]) for r in ok) / max(1, len(ok)), 2),
         "by_fault": by_fault,
+        "stop_reasons": stop_reasons,
     }
 
 

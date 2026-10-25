@@ -72,6 +72,12 @@ AI_SECTIONS.push({
       return;
     }
     const answer = result.answer || {};
+    if (answer.degraded) {
+      const rule = answer.system || {};
+      host.appendChild(
+        aiEl("p", "ai-warn", `${copy.degraded} (${answer.degrade_reason || "—"}): ${aiCause(copy, rule.primary_cause)}`),
+      );
+    }
     const head = aiEl("p", "");
     head.append(aiBadge(copy, result), aiEl("strong", "", ` ${copy.cause}: ${aiCause(copy, answer.primary_cause)}`));
     if (answer.secondary_cause) head.append(aiEl("span", "muted", ` (${copy.second}: ${aiCause(copy, answer.secondary_cause)})`));
@@ -81,6 +87,14 @@ AI_SECTIONS.push({
     host.appendChild(list);
     host.appendChild(aiEl("p", "", `${copy.lever}: ${answer.lever || "—"} (${copy.adviceOnly})`));
     host.appendChild(aiEl("p", "muted", `${copy.calls}: ${(answer.calls || []).map((c) => c.tool).join(" → ")}`));
+    if ((answer.trace || []).length) {
+      const steps = aiEl("details", "muted");
+      steps.appendChild(aiEl("summary", "", `${copy.steps} · ${copy.stop}: ${answer.stop_reason || "—"}`));
+      const stepList = aiEl("ol", "");
+      for (const step of answer.trace) stepList.appendChild(aiEl("li", "", `${step.action || "—"} · ${step.status || "—"}`));
+      steps.appendChild(stepList);
+      host.appendChild(steps);
+    }
     host.appendChild(aiFact(copy, answer.fact_ok, answer.fact_misses));
     host.appendChild(
       aiEl("p", "muted", `${copy.truth}: ${aiCause(copy, result.truth)} · ${copy.baseline}: ${(result.baseline || []).map((x) => aiCause(copy, x)).join(", ")}`),
