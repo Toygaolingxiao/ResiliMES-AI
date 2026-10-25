@@ -162,3 +162,41 @@ def test_api_lists_cases_and_investigates():
     assert body["advice_only"] and body["answer"]["mocked"]
     assert body["answer"]["primary_cause"] in TAXONOMY
     assert client.post("/api/ai/investigate", json={"case_id": "nope"}).status_code == 404
+
+
+def test_compare_windows_gives_before_window_change_for_every_cause(starve):
+    from resilimes.insight.investigator import compare_windows, execute
+
+    case, run = starve
+    kit = Toolkit(run)
+    out = compare_windows(kit, case.family, case.t1_h, case.t2_h)
+    assert set(out["causes"]) == set(TAXONOMY)
+    for row in out["causes"].values():
+        assert {"indicator", "before", "window", "rel_change"} <= set(row)
+    assert not {"winner", "rank", "ranking", "score"} & set(out)  # the model still decides
+    starve_row = out["causes"]["upstream_starvation"]
+    assert starve_row["upstream_family"] and len(starve_row["feed_from_upstream_per_h"]) == 2
+    assert (
+        starve_row["rel_change"] > 0
+        and out["waiting_lots"]["at_window_end"] < (out["waiting_lots"]["at_window_start"])
+    )
+    # Its numbers are fact-registered like every other tool result.
+    from resilimes.evidence.factcheck import check
+
+    text = f"{starve_row['upstream_family']} went from {starve_row['before']} to " + (
+        f"{starve_row['window']}, feed {starve_row['feed_from_upstream_per_h'][0]}"
+    )
+    assert check(text, kit.registry) == []
+    assert kit.calls[-1]["tool"] == "compare_windows"
+    # And it is reachable through the loop's tool dispatcher.
+    via = execute(kit, "compare_windows", {"family": case.family, "start_h": 6, "end_h": 10}, None)
+    assert set(via["causes"]) == set(TAXONOMY)
+
+
+def test_prompt_carries_the_investigation_protocol():
+    from resilimes.insight.investigator import SYSTEM, TOOLS_DOC
+
+    assert "4 h before" in SYSTEM and "relative" in SYSTEM and "turn 6" in SYSTEM
+    for indicator in ("down tool-hours", "PM tool-hours", "arrivals per hour", "setup minutes"):
+        assert indicator in SYSTEM
+    assert "compare_windows" in TOOLS_DOC
