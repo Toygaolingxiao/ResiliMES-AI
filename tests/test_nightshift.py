@@ -6,7 +6,9 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import httpx
 from fastapi.testclient import TestClient
+from openai import APIStatusError
 
 from resilimes.agents.orchestrator import _narrative_from_model
 from resilimes.api.app import create_app
@@ -79,13 +81,47 @@ def test_think_only_body_is_empty_and_retries() -> None:
 
 def test_empty_reply_after_retry_keeps_the_deterministic_narrative() -> None:
     provider = _provider()
-    provider._client.chat.completions.create = MagicMock(side_effect=[_reply(None), _reply("   ")])
+    provider._client.chat.completions.create = MagicMock(
+        side_effect=[_reply(None), _reply("   "), _reply("<think>x</think>")]
+    )
     result = provider.complete([{"role": "user", "content": "explain"}], lane="explainer")
     assert result.content == ""
     assert result.mocked is False
     spoken = _narrative_from_model(result.content, "LOT-1001 leaves LITHO-02.")
     assert spoken == "LOT-1001 leaves LITHO-02."
-    assert provider._client.chat.completions.create.call_count == 2
+    calls = provider._client.chat.completions.create.call_args_list
+    assert [call.kwargs["max_tokens"] for call in calls] == [4096, 8192, 16384]
+
+
+def _empty_response_error() -> APIStatusError:
+    request = httpx.Request("POST", "http://127.0.0.1:8088/v1/chat/completions")
+    response = httpx.Response(502, request=request)
+    return APIStatusError(
+        "Error code: 502 - nvidia/nemotron-3.5-lightning-30b-a3b_empty_response",
+        response=response,
+        body=None,
+    )
+
+
+def test_502_empty_response_raises_the_budget_instead_of_retrying_the_same() -> None:
+    provider = _provider(_settings(llm_max_retries=3))
+    provider._client.chat.completions.create = MagicMock(
+        side_effect=[_empty_response_error(), _reply("The lot moves.")]
+    )
+    result = provider.complete([{"role": "user", "content": "explain"}], lane="explainer")
+    assert result.content == "The lot moves."
+    calls = provider._client.chat.completions.create.call_args_list
+    assert [call.kwargs["max_tokens"] for call in calls] == [4096, 8192]
+
+
+def test_502_empty_response_at_every_budget_falls_back_to_empty() -> None:
+    provider = _provider(_settings(llm_max_retries=3))
+    provider._client.chat.completions.create = MagicMock(
+        side_effect=[_empty_response_error() for _ in range(3)]
+    )
+    result = provider.complete([{"role": "user", "content": "explain"}], lane="explainer")
+    assert result.content == ""
+    assert provider._client.chat.completions.create.call_count == 3
 
 
 def test_response_ids_are_kept_and_shown_on_the_explain_line() -> None:
