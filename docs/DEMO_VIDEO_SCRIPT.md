@@ -9,8 +9,8 @@ This file replaces the shot list in [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for the sub
 - **Secrets.** Never open `.env`, PowerShell history, the Nightshift token file or the Zetaris login files on camera. Start the server from a terminal that was opened and scrolled clear before recording. If a terminal must be on screen, run `cls` / `clear` first. Blur any frame that shows a header value. Do not read a token aloud.
 - **One real request.** Shot 6 is a live Nemotron call through Nightshift (`http://127.0.0.1:8088/v1`, model `nvidia/nemotron-3.5-lightning-30b-a3b`). The chip next to the answer must read `Nemotron`, not `offline stand-in`. If it reads `offline stand-in`, stop: the token is not set and that take is not this film.
 - **Numbers.** Speak only numbers that are on screen in that frame, or that are on the deck slide being shown. Every deck number cites its repo doc. Do not tune a seed, due or weight to get a nicer take.
-- **Q-time first.** Q-time compliance comes first: a schedule with an avoidable Q-time violation is infeasible and is discarded, not compared. Never say we "lose to" or "beat" EDD; EDD is only the industry reference (infeasible: 1,719 avoidable Q-time violations).
-- **TBD.** The live Nemotron evals are done and on deck slide 11. Still TBD: the video link (slide 1) and the `response_models` / `meterless_request_id` values from the live take (slide 13).
+- **Q-time first.** Q-time first: the gate admits a lot only if the whole Q-time segment can finish in time. Never say we "lose to" or "beat" EDD; EDD is only the industry reference (infeasible: 1,719 avoidable Q-time violations).
+- **Done.** Live Nemotron evals, video link and the live reply values (`response_models`, `mocked: false`, `advice_only: true`) are filled in the deck and the film.
 
 ## Shot list
 

@@ -1,6 +1,6 @@
-# ResiliMES
+# ResiliMES-AI
 
-Autonomous multi-agent rescheduling and fault recovery for smart manufacturing. Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026).
+Semiconductor fab dispatching on the full SMT2020 fab: rule-based scheduling with a hard Q-time gate decides; Nemotron agents explain and advise only, every claim fact-checked, with a labelled rule fallback. Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026).
 
 A production supervisor gets a line-down, a rush order, a material shortage, a lithography rework, or a queue-time miss. ResiliMES reads the plant, classifies the disruption, builds a constraint-safe schedule, and shows the before/after Gantt with the KPI delta and the reason each move was allowed or refused.
 
@@ -24,13 +24,13 @@ These rows predate hard Q-time and are kept as the record of the plan-vs-strict 
 
 ## Hard Q-time first (default on)
 
-Q-time compliance comes first: a schedule with an avoidable Q-time violation is infeasible and is discarded, not compared. ResiliMES with the planning layer gates every CQT origin start on the whole CQT segment by default (`RESILIMES_HARD_QTIME=0` exists only for experiments). Misses are classified as unavoidable (a breakdown after admission, target down or PM, rework, transport) or avoidable; lots that miss are expedited as hot lots, never excluded. EDD and the other Q-time-blind rules appear only as an industry reference with their avoidable-violation count.
+Q-time first: the gate admits a lot only if the whole Q-time segment can finish in time. ResiliMES with the planning layer gates every CQT origin start on the whole CQT segment by default (`RESILIMES_HARD_QTIME=0` exists only for experiments). Misses are classified as unavoidable (a breakdown after admission, target down or PM, rework, transport) or avoidable; lots that miss are expedited as hot lots, never excluded. EDD and the other Q-time-blind rules appear only as an industry reference with their avoidable-violation count.
 
 Published book, seeds 1-3, 7 days (totals over 3 seeds):
 
 | | Avoidable violations | Unavoidable | Expedited / recovered | Recovery mean (min) | Completed/run | On-time % | W. tardiness min/run |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ResiliMES default (plan + hard Q-time), infeasible: 71 avoidable | 71 | 105 | 564 / 519 | 1,396 | 486.7 | 82.12 | 44,008 |
+| ResiliMES default (plan + hard Q-time): 71 avoidable | 71 | 105 | 564 / 519 | 1,396 | 486.7 | 82.12 | 44,008 |
 | EDD: industry reference (infeasible: 1719 avoidable Q-time violations) | 1719 | 1426 | - | - | 520.0 | 91.96 | 21,046 |
 
 The default is not yet Q-time-feasible: 71 avoidable misses remain. Unavoidable now also counts 41 lots that were already inside a t=0 WIP window and reached the next (chained) CQT origin before any gate decision; the schedule is unchanged, only the classification. Gating those chained windows as one cut avoidable misses further but collapsed output to 130-280 lots per run, so it stays an off-by-default experiment. Details, the before/after (334 to 111 to 71 avoidable) and the rejected fixes are in [docs/HARD_QTIME.md](docs/HARD_QTIME.md).

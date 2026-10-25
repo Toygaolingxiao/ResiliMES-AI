@@ -309,7 +309,7 @@ table.d th{font-size:13px;padding:11px 16px}
   <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">06 · Results · scheduling</span><span class="sp"></span><span>published book · 7 d · seeds 1–3 · 3-seed totals</span></div>
   <div class="body">
     <p class="kicker">Result 1 · Q-time first</p>
-    <h2>Q-time compliance comes first. A schedule with an avoidable Q-time violation is infeasible: discarded, not compared.</h2>
+    <h2>Q-time first: the gate admits a lot only if the whole Q-time segment can finish in time.</h2>
     <!-- source: PR #46 (hard Q-time gating, whole CQT segment, with the planning layer, on by default); docs/HARD_QTIME.md -->
     <table class="d" style="font-size:17px">
       <tr><th>Seeds 1–3 · 7 d</th><th>New default · hard Q-time gate ON</th><th>Gating off (experiment)</th><th>EDD · industry reference</th></tr>
@@ -321,7 +321,7 @@ table.d th{font-size:13px;padding:11px 16px}
       <tr><td>Weighted tardiness / run</td><td>44,008 min</td><td>—</td><td>21,046 min</td></tr>
     </table>
     <div class="grid g2" style="margin-top:16px;gap:18px">
-      <div class="note"><b>The price of feasibility, stated plainly:</b> versus gating off, Q-time first costs about 17 completed lots per run and about 10 on-time points.</div>
+      <div class="note"><b>The price of Q-time first, stated plainly:</b> versus gating off, Q-time first costs about 17 completed lots per run and about 10 on-time points.</div>
       <div class="note amber"><b>EDD is a reference, not a competitor:</b> industry reference, infeasible with 1,719 avoidable Q-time violations. Its throughput and on-time are not comparable.</div>
     </div>
     <p class="src">PR #46 (hard Q-time gating on by default) · docs/HARD_QTIME.md · README.md "Default scheduling mode". No weight, due or seed was tuned.</p>
@@ -344,7 +344,7 @@ table.d th{font-size:13px;padding:11px 16px}
         </div>
         <div class="label" style="margin:14px 0 8px">Unavoidable, by cause · axis 0–50</div>
         <div class="bars-chart" style="gap:7px"><div class="brow" style="grid-template-columns:250px 1fr 50px"><span>breakdown after admission</span><span class="bt"><i style="width:90%;background:var(--alarm)"></i></span><span class="v">45</span></div><div class="brow" style="grid-template-columns:250px 1fr 50px"><span>in a window before any gate</span><span class="bt"><i style="width:82%;background:var(--alarm)"></i></span><span class="v">41</span></div><div class="brow" style="grid-template-columns:250px 1fr 50px"><span>tool down/PM, rework, transport</span><span class="bt"><i style="width:38%;background:var(--alarm)"></i></span><span class="v">19</span></div></div>
-        <p style="margin-top:auto;padding-top:10px"><b>After an unavoidable miss:</b> 564 lots expedited as hot lots; <b>519</b> recovered within 7 d. Mean recovery 1,396 min (p90 3,143).</p>
+        <p style="margin-top:auto;padding-top:10px"><b>Expedited:</b> 564 lots made hot at their first Q-time miss of any kind (incl. missed t=0 WIP windows), each lot counted once, 3 seeds; <b>519</b> recovered within 7 d. Mean recovery 1,396 min (p90 3,143).</p>
       </div>
       <div class="grid" style="gap:14px;grid-template-rows:auto 1fr">
         <div class="card amber">
@@ -428,7 +428,7 @@ table.d th{font-size:13px;padding:11px 16px}
           <li><b>Call budget 6</b>; repeat call → stop</li>
           <li><b>Fact-check + one repair</b> on every cited number and id</li>
           <li><b>Degraded route (縮退)</b>: fact-check fail, empty answer, provider error or timeout → rule result, labelled with the reason</li>
-          <li><b>Time budgets</b>: 90 s per call (TTFB header), 180 s per task; timeout → "timeout"</li>
+          <li><b>Time budgets</b>: investigator 90 s/call (60 s first token, TTFB header), 180 s/task; shift lead 30 s (plan), 300 s (select); timeout → "timeout"</li>
           <li><b>Reasoning tokens</b> count in max_tokens: 502 empty → 4k → 8k → 16k</li>
           <li><b>Advice only</b>: never moves a lot</li>
         </ul>
@@ -496,20 +496,21 @@ table.d th{font-size:13px;padding:11px 16px}
 
 <!-- ===================== 12. DEMO ===================== -->
 <section class="slide" data-title="Demo">
-  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">12 · Demo</span><span class="sp"></span><span>about 3 min · one real Nightshift request</span></div>
+  <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">12 · Demo</span><span class="sp"></span><span>3:51 · one real Nightshift request</span></div>
   <div class="body">
     <p class="kicker">The demo video</p>
     <h2>Fab state → schedule → Q-time first → one live Nemotron answer.</h2>
     <div class="grid fill" style="grid-template-columns:1.15fr 1fr;gap:18px">
       <div class="grid" style="gap:8px">
-        <div class="node"><b>0:00 · Problem + Overview</b>The public SMT2020 fab: bottlenecks, WIP pile-ups, lots at risk.</div>
-        <div class="node"><b>0:40 · Tools + Plan</b>Next-up queues with setup and slack; reschedule the lithography breakdown.</div>
-        <div class="node"><b>1:15 · Q-time first</b>Hard gate on by default: 99.26% Q-time, 71 avoidable misses left, and the price in lots and on-time.</div>
-        <div class="node" style="border-color:var(--good)"><b>1:45 · Live AI</b>Investigator on Nemotron through Nightshift; chip reads "Nemotron"; reply names the model.</div>
-        <div class="node"><b>2:30 · Zetaris parity · close</b><span class="mono">PARITY OK</span>, then the live AI scoreboard and its lesson.</div>
+        <div class="node" style="padding:7px 12px;font-size:14.5px"><b>0:00 · Problem + Overview</b>The public SMT2020 fab: bottlenecks, WIP pile-ups, lots at risk.</div>
+        <div class="node" style="padding:7px 12px;font-size:14.5px"><b>0:45 · Tools + Plan · 1:00 · Litho down</b>Next-up queues with setup and slack; a litho tool goes down, one click reschedules the shift.</div>
+        <div class="node" style="padding:7px 12px;font-size:14.5px"><b>1:46 · Q-time first</b>Hard gate on by default: 99.26% Q-time, 71 avoidable misses left, and the price in lots and on-time.</div>
+        <div class="node" style="border-color:var(--good);padding:7px 12px;font-size:14.5px"><b>2:30 · Live AI: Investigator (UI)</b>Nemotron via Nightshift: "Why did Diffusion_FE_94 WIP rise?" → one cause, fact check passed.</div>
+        <div class="node" style="padding:7px 12px;font-size:14.5px"><b>2:44 · Explainer live request</b><span class="mono">POST /api/ai/explain</span> → Nightshift; reply shown at right.</div>
+        <div class="node" style="padding:7px 12px;font-size:14.5px"><b>2:55 · Zetaris parity · close</b><span class="mono">PARITY OK</span>, then the live AI scoreboard and its lesson.</div>
       </div>
       <div class="card" style="background:#0f1722;border-color:#0f1722;color:#e6edf3;font-family:var(--mono);font-size:15px;line-height:1.65">
-        <div style="color:#9fb3c8">## one live request (shape, values masked)</div>
+        <div style="color:#9fb3c8">## 2:44 · explainer live request (shape, values masked)</div>
         <div>POST http://127.0.0.1:8088/v1/chat/completions</div>
         <div>Authorization: Bearer <span style="background:#2a3442;color:#2a3442;border-radius:3px">rt-xxxxxxxxxxxxxxxx</span> <span style="color:#fdba74">[masked]</span></div>
         <div>meterless-app: resilimes</div>
@@ -517,7 +518,7 @@ table.d th{font-size:13px;padding:11px 16px}
         <div style="margin-top:8px;color:#9fb3c8">## reply, as shown in the film (live evals: 0 non-Nemotron)</div>
         <div>response_models: ["nvidia/nemotron-3.5-lightning-30b-a3b"]</div>
         <div>mocked: false · advice_only: true</div>
-        <div style="margin-top:8px;color:#9fb3c8">.env never on screen · token never read aloud</div>
+        <div style="margin-top:8px;color:#9fb3c8">.env never on screen · token never shown</div>
       </div>
     </div>
     <p class="src">docs/DEMO_VIDEO_SCRIPT.md · docs/SPONSOR_TECH.md (headers, base URL, model id) · docs/AI_EXPLAINER.md (response_models)</p>
@@ -533,7 +534,7 @@ table.d th{font-size:13px;padding:11px 16px}
     <div class="grid g2 fill" style="gap:18px">
       <div class="card acc"><h3>Scheduling · remaining work</h3><ul class="t">
         <li>71 avoidable Q-time misses remain, mostly chained windows at batch diffusion furnaces. Next: reserve next-window capacity only for lots that will actually arrive in it (two earlier fixes rejected: 130–278 lots / run).</li>
-        <li>Win back the price of feasibility (~17 lots and ~10 on-time points per run vs gating off) without giving up Q-time.</li>
+        <li>Win back the price of Q-time first (~17 lots and ~10 on-time points per run vs gating off) without giving up Q-time.</li>
         <li>Re-plan during the run and read MES actuals; today the plan is built once at t = 0.</li></ul></div>
       <div class="card good"><h3>AI and data</h3><ul class="t">
         <li>Better explainer levers: only 1/12 held up in the simulator. Keep verifying every claim before use.</li>
