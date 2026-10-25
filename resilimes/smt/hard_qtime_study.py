@@ -137,9 +137,11 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "weighted_tardiness_min": round(sum(row["weighted_tardiness_min"] for row in rows), 1),
         "missed_avoidable": _cls(rows, "avoidable"),
         "missed_unavoidable": _cls(rows, "unavoidable_breakdown")
-        + _cls(rows, "unavoidable_disruption"),
+        + _cls(rows, "unavoidable_disruption")
+        + _cls(rows, "unavoidable_pre_gate"),
         "unavoidable_breakdown": _cls(rows, "unavoidable_breakdown"),
         "unavoidable_disruption": _cls(rows, "unavoidable_disruption"),
+        "unavoidable_pre_gate": _cls(rows, "unavoidable_pre_gate"),
         "cause_avoidable": sum(causes[key] for key in AVOIDABLE),
         "cause_disruption": sum(causes[key] for key in DISRUPTION),
         "missed_inherited": sum(row["q_inherited_missed"] for row in rows),
@@ -163,6 +165,7 @@ KEYS = (
     ("missed_unavoidable", "unavoidable exceptions (3 seeds)"),
     ("unavoidable_breakdown", "  breakdown after the origin start"),
     ("unavoidable_disruption", "  target down / PM, rework, transport"),
+    ("unavoidable_pre_gate", "  in a window before any gate decision (t=0 WIP chain)"),
     ("missed_inherited", "inherited windows missed (t=0 WIP)"),
     ("expedited_lots", "expedited exception lots"),
     ("recovered", "  recovered (target started)"),

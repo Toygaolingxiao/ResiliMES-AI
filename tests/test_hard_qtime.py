@@ -8,7 +8,7 @@ from dataclasses import asdict
 
 import pytest
 
-from resilimes.smt.fab import Fab, load_fab
+from resilimes.smt.fab import Fab, load_fab, measured
 from resilimes.smt.hard_qtime import CAUSES, MISS_CLASSES
 from resilimes.smt.simulate import (
     RunResult,
@@ -190,3 +190,43 @@ def test_report_edd_is_infeasible_reference() -> None:
     assert "edd (off): industry reference (infeasible: 7 avoidable Q-time violations)" in head
     assert head.index("planning + hard") < head.index("edd")
     assert "Among Q-time-feasible configurations, planning + hard" in text
+
+
+def test_chained_windows_gated_as_one(fab: Fab) -> None:
+    """A CQT target that is the next origin: the gate at the first origin
+    also carries the chained window's load, with a later latest start."""
+    horizon = 3600.0
+    sim = make_sim(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=horizon,
+        downs=sample_downs(fab, 1, horizon),
+        pm=pm_windows(fab, horizon),
+        hard_qtime=True,
+    )
+    hq = sim.hq
+    assert hq is not None
+    found = False
+    for lot in range(sim.n):
+        route = fab.routes[fab.lot_route[lot]]
+        for origin in range(len(route.cqt_limit)):
+            first = route.cqt_target[origin]
+            if route.cqt_limit[origin] <= 0 or first < 0 or route.cqt_limit[first] <= 0:
+                continue
+            second = route.cqt_target[first]
+            if second < 0:
+                continue
+            number = sim.lot_no[lot]
+            if not (measured(route, first, number) and measured(route, second, number)):
+                continue
+            load = hq.chain(lot, origin, first, 1000.0)
+            goals = {goal: latest for _f, _s, _w, _n, goal, latest in load}
+            assert first in goals and second in goals
+            assert goals[second] == 1000.0 + route.cycle[first] + route.cqt_limit[first]
+            assert [step for _f, step, *_ in load] == sorted(step for _f, step, *_ in load)
+            found = True
+            break
+        if found:
+            break
+    assert found
