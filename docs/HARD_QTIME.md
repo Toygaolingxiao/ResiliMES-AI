@@ -1,140 +1,111 @@
-# Hard Q-time mode (default off)
+# Hard Q-time (default on)
 
-Leading fabs do not accept Q-time violations, so the schedule should treat the
-dataset CQT window as a hard constraint: a lot starts the CQT origin step only
-if its target step can start within the limit. Real disruptions still break
-some windows after the origin started. Such a lot is never parked or excluded.
-It is expedited.
+Q-time compliance comes first. A schedule with an **avoidable** Q-time
+violation is infeasible: it is discarded, not compared on on-time or
+throughput. A configuration is a candidate only with zero avoidable
+violations. Q-time-blind rules (EDD, FIFO, CR, `smt_rule`) are shown only as
+an industry reference row with their avoidable-violation count, never as a
+target to beat.
 
-Switch: `make_sim(..., hard_qtime=True)` or `RESILIMES_HARD_QTIME=1`. Default
-off. With it off, a run is event-for-event main: the golden-digest tests
-(`tests/test_sched_freeze.py`, `tests/test_fab_layout.py`) pass unchanged with
-the two new result fields (`qtime_causes`, `hard_qtime`) left out, and
-`tests/test_hard_qtime.py` checks that default, `hard_qtime=False` and
-`RESILIMES_HARD_QTIME=0` give the same digest. A 12 h plan-mode and EDD run
-against main f359e63 matched in every field except wall-clock timings. Only dataset values are
-used: CQT limits, process times, batch sizes, transport and the PM calendar. No
-weights, due dates or seeds were tuned. Code: `resilimes/smt/hard_qtime.py`,
-hooks in `resilimes/smt/simulate.py`.
+Hard Q-time gating is **on by default** for ResiliMES with the planning layer
+(`default_hard_qtime` in `resilimes/smt/simulate.py`). `RESILIMES_HARD_QTIME=0`
+or `make_sim(..., hard_qtime=False)` turns it off for experiments only;
+`RESILIMES_HARD_QTIME=1` forces it on for any policy. Only dataset values are
+used: CQT limits, process times, batch sizes and recipes, transport and the PM
+calendar. No weights, due dates or seeds were tuned. Code:
+`resilimes/smt/hard_qtime.py`, hooks in `resilimes/smt/simulate.py`, study in
+`resilimes/smt/hard_qtime_study.py`.
 
 ## Mechanism
 
-1. **Miss causes (always on, read-only).** At each window deadline the sim
-   records why the window was missed: `upstream` (lot still at an intermediate
-   step of a multi-step span), `queueing` (at the target, every up tool busy),
-   `batch_fill` (at a batch target with an idle tool, waiting to fill),
-   `tool_down_pm` (target family lost at least one tool-equivalent of up time
-   while the lot waited), `breakdown_rework` (a breakdown aborted the lot's
-   step), `transport`. Windows already open in the t=0 WIP are counted as
-   `inherited`. `RunResult.qtime_causes` holds the counts.
-2. **Origin gate (whole-segment Q-time kanban).** A lot may start a CQT
-   origin only if every family of the CQT segment can still be cleared in
-   time: each measured intermediate step and the target. For each such step
-   the lot's latest start is the target's latest start (origin start +
-   process time + limit) minus what the lot still needs from that step to
-   the target (dataset cycle times and transport). Per family, the work
-   already committed there plus the candidate's must fit the family's up
-   tools before each item's latest start (fluid earliest deadline first:
-   free time from `busy_until`, PM overlap subtracted, batch steps as
-   cycle / batch-min lots, missed lots counted first). Committed work is the
-   remaining segment steps of every lot inside an open window or running at
-   a CQT origin; a step's entry is released when the lot starts it. Only the
-   current down state is used, never future breakdowns. The check is re-run
-   on every origin start attempt, so a family going down blocks new origins
-   at once. Gated tools are woken when the blocking family finishes a step or
-   a tool comes back up (30 min fallback). A segment whose minimum
-   remaining time already exceeds the limit is blocked outright.
-3. **Never gate a lot that is inside or past a window**, being expedited, or
-   in re-clean/rework (`exempt_origin_starts`).
-4. **Expedite.** A lot that missed its window (including inherited windows)
-   is flagged until its target step starts, also through Q-time hold,
-   re-clean and the re-opened window. Inside its SMT2020 class tier (strict
-   tiers unchanged) it ranks right behind lots whose open window is lost
-   unless they start now and ahead of everyone else, the same place main
-   gives a hot lot (a Q-time-urgent lot outranks a non-late hot lot). At a
-   batch tool an expedited lot waits at most the hot-lot batch wait. ResiliMES'
-   downstream-ready gate is skipped for it. A lot at an intermediate step of an
-   open window gets the same rank as at the target: "inside a window" means
-   any step up to and including the target, with slack measured to the
-   target's latest start (`tests/test_hard_qtime.py` checks both the segment
-   entries and this rank). Nothing in main excluded violated
-   lots before (fix-3 holds and the planning layer only reorder); this keeps
-   that and moves them up.
-
-Putting missed lots above every lot still inside its window was tried first.
-That makes savable lots miss in turn (24 h, plan mode: 78% true Q-time vs 95%
-off), so missed lots sit one level below the "start now or lose it" lots.
+1. **Whole-segment gate.** A lot may start a CQT origin only if every family
+   of its CQT segment (each measured intermediate step and the target) can
+   still start it in time. Per family, the committed load plus the
+   candidate's is checked earliest-deadline-first twice: a fluid check, then a
+   whole-run check where a tool is held for a full run, a batch run is shared
+   only by `batch_min` lots of the **same recipe**, and a run never starts
+   inside a PM. Only the current down state is used, never future breakdowns.
+   Members of one batch start are admitted jointly (`admit_batch`). Missed
+   and re-cleaned lots back at an origin are gated like any other lot (they
+   stay expedited, so they go first once feasible).
+2. **Miss classification** (`miss_class`, `RunResult.qtime_miss_class`):
+   * `unavoidable_disruption`: target down or in PM while the lot waited,
+     breakdown rework, transport.
+   * `unavoidable_breakdown`: a breakdown started on the lot's current family
+     or its target family after the origin start (the admission) and before
+     the deadline. The gate cannot see a future breakdown.
+   * `avoidable`: any other miss (queueing, upstream, batch fill).
+   Windows already open in the t=0 WIP are counted separately as inherited.
+3. **Expedite, not exclude.** A lot that misses its window (any class,
+   inherited included) is flagged as a hot lot until its target step starts.
+   Inside its class tier the order is: in-window lots that lose the window
+   unless they start now, other in-window lots by slack, missed lots (oldest
+   miss first), then everyone else. A missed lot never takes the capacity a
+   still-feasible window was admitted against. Count and recovery time
+   (miss to target start) are reported.
 
 ## Study
 
-`python -m resilimes.smt.hard_qtime_study OUT.json` (report: `--report`).
-Published book, seeds 1-3, 7 days, closed fab, main's default settings
-(planning layer default from #36, r2 fixes 2+3). True Q-time is the event
-replay of `qtime_study`. Totals are over 3 seeds unless "/run".
+`python -m resilimes.smt.hard_qtime_study OUT.json`, report with `--report`.
+Published book, seeds 1-3, 7 days, closed fab. Totals over 3 seeds unless
+"/run".
 
-### Why windows are missed today (main default, hard mode off)
+### Gate fix: misses before and after (planning + hard, seeds 1-3, 7 d)
 
-| Cause (3 seeds) | Planning (default) | EDD |
+"Before" is the earlier gate (fluid check only, recipe-blind batch sharing,
+missed / re-cleaned lots not re-gated). "After" is this code.
+
+| Miss class (3 seeds) | Before | After |
 |---|---:|---:|
-| inherited (t=0 WIP) | 446 | 565 |
-| upstream (still before target) | 1467 | 977 |
-| queueing at target | 184 | 1885 |
-| batch fill at target | 0 | 0 |
-| target tool down / PM | 46 | 268 |
-| breakdown / rework after start | 2 | 0 |
-| transport | 29 | 15 |
-| true Q-time % | 94.62 | 89.23 |
+| avoidable: admitted, queueing at target | 302 | 92 |
+| avoidable: admitted, still upstream | 17 | 19 |
+| avoidable: re-cleaned lot restarted ungated | 15 | 0 |
+| **avoidable total** | **334** | **111** |
+| unavoidable: breakdown after admission | 217 | 46 |
+| unavoidable: target down / PM, transport, rework | 96 | 19 |
+| completed / run | 459.3 | 486.7 |
+| expedited lots | 905 | 564 |
 
-In the default mode most misses are not at the target at all: the lot is still
-working through the intermediate steps of a multi-step span. EDD's misses are
-mostly queueing at the target.
+(The "before" split comes from the diagnostic classifier of the gate-fix
+work; "after" equals `qtime_miss_class` of the study.)
 
-### Hard mode (whole-segment gate)
+### Current default vs references
 
-| KPI | Planning | Planning + hard | EDD | EDD + hard |
-|---|---:|---:|---:|---:|
-| on-time % | 91.96 | 89.74 | 91.96 | 88.89 |
-| completed / run | 503.7 | 459.3 | 520.0 | 513.0 |
-| true Q-time % | 94.62 | 97.15 | 89.23 | 97.39 |
-| true Q-time % after first 24 h | 95.00 | 99.03 | 91.53 | 99.14 |
-| weighted tardiness (min/run) | 20,950 | 32,432 | 21,046 | 36,218 |
-| missed, avoidable (upstream + batch + queue) | 1651 | 551 | 2862 | 585 |
-|   of which upstream | 1467 | 225 | 977 | 267 |
-| missed, disruption (down/PM, rework, transport) | 77 | 96 | 283 | 97 |
-| missed, inherited | 446 | 426 | 565 | 415 |
-| expedited exception lots | - | 905 | - | 914 |
-| recovered (target started) by 7 d | - | 862 | - | 914 |
-| time to recover, mean / p90 (min) | - | 652 / 2670 | - | 620 / 2558 |
-
-The off columns are identical to the first study (off == main). For
-reference, the first, target-only kanban gave planning + hard 92.86% true
-Q-time with 454.3 completed/run, and EDD + hard 93.59% with 444.0.
-
-Per seed, completions for planning + hard are 510 / 419 / 449 vs 508 / 513 /
-490 off. Seed 2 (long downs) is still the worst case. EDD + hard stays within
-2% of EDD's output on every seed (521 / 517 / 501 vs 529 / 519 / 512).
-
-Time to recover runs from the miss to the start of the target step. It
-includes the Q-time hold and, for multi-step spans, the remaining intermediate
-steps, so it is long even for a top-priority lot.
+| KPI (3 seeds) | planning + hard (default) | planning + off (experiment switch) | EDD (off): industry reference |
+|---|---:|---:|---:|
+| status | infeasible: 111 avoidable | infeasible: 855 avoidable | **infeasible: 1737 avoidable** |
+| avoidable violations | 111 (43 / 43 / 25) | 855 | 1737 |
+| unavoidable exceptions | 65 | 873 | 1408 |
+|   breakdown after admission | 46 | 796 | 1125 |
+|   down / PM, rework, transport | 19 | 77 | 283 |
+| inherited windows missed (t=0 WIP) | 426 | 446 | 565 |
+| expedited (hot) lots | 564 | - | - |
+|   recovered by 7 d | 519 | - | - |
+|   time to recover, mean / p90 max (min) | 1396 / 3143 | - | - |
+| completed / run | 486.7 | 503.7 | 520.0 |
+| on-time % | 82.12 | 91.96 | 91.96 |
+| weighted tardiness (min/run) | 44,008 | 20,950 | 21,046 |
+| true Q-time % | 99.26 | 94.62 | 89.23 |
 
 ## Honest reading
 
-* Checking the whole segment fixes what the target-only kanban could not
-  see. Upstream misses fall from 1467 to 225 (planning) and avoidable misses
-  fall about 3x to 5x. After the first 24 h (mostly t=0 WIP that had already
-  missed) true Q-time is about 99% in both modes.
-* It does not beat the default overall. Planning + hard costs 44 completed
-  lots per run (-9%), 2.2 pp on-time and +55% weighted tardiness. EDD + hard
-  keeps throughput (-1%) but still loses 3.1 pp on-time and adds +72%
-  tardiness. Of the four, EDD + hard has the best Q-time and the
-  best Q-time/throughput trade-off.
-* The remaining misses are mostly inherited windows and disruptions after
-  the start, which a start gate cannot prevent. Those lots are expedited, and
-  all but 43 (planning) recover within the 7 days.
-
-Recommendation: keep hard mode off and the planning default as the demo
-default, because hard mode trades delivery and output for Q-time. Hard mode
-is now a credible "zero-tolerance" switch (about 97% overall and 99% after
-the first day). Use it where Q-time compliance outranks output. With hard mode
-on, EDD dispatch is the better pairing than the planning layer.
+* No configuration is Q-time-feasible yet. The default has the fewest
+  avoidable violations (111 over 3 seeds, about 37 per 7-day run against
+  1737 for EDD); it is the candidate being worked on, not a finished one.
+* The remaining avoidable misses sit almost all at the batch diffusion
+  furnaces (`Diffusion_BE_123`, `Diffusion_FE_94`). At the miss every furnace
+  is running lots that were never gated (no open window at that step). The
+  gate counts only committed load against free tool time; ungated starts
+  can take that time before the admitted lot arrives.
+* Two fixes for that were tried and rejected (seeds 1-3, 7 d): holding tools
+  from ungated starts when they would break the committed plan gridlocked
+  the fab (about 80 lots completed per run); adding arrival (release) times
+  to the check cut output to 267-336 lots per run without reducing misses.
+  Neither is in this code.
+* Q-time-first costs delivery today: 17 fewer lots per run than the gate-off
+  experiment, 9.8 pp on-time and about 2x weighted tardiness. These are the
+  price of the current gate, not a comparison target.
+* Seed 3 scored about half as many windows in the true-Q-time replay as
+  seeds 1-2 (5,041 vs about 9,600); the per-seed miss counts above are from
+  the sim and not affected, but the true Q-time % for seed 3 should be read
+  with care.

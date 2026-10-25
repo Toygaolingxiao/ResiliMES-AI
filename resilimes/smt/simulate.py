@@ -56,7 +56,7 @@ from resilimes.smt.fab import (
 )
 from resilimes.smt.faults import FaultPlan
 from resilimes.smt.freeze import FreezeConfig, Freezer
-from resilimes.smt.hard_qtime import CAUSES, HardQtime, classify
+from resilimes.smt.hard_qtime import CAUSES, MISS_CLASSES, HardQtime, classify, miss_class
 from resilimes.smt.layout import FabLayout, family_buildings, resolve
 
 _DONE = 0
@@ -249,6 +249,8 @@ class RunResult:
     # and the hard Q-time gate / expedite summary (empty when off).
     qtime_causes: dict[str, int] = field(default_factory=dict)
     hard_qtime: dict[str, Any] = field(default_factory=dict)
+    # The same misses split avoidable / unavoidable (``hard_qtime.miss_class``).
+    qtime_miss_class: dict[str, int] = field(default_factory=dict)
 
 
 def rework_ready(moment: float) -> float:
@@ -431,6 +433,19 @@ def default_sched_mode() -> str:
     return mode
 
 
+def default_hard_qtime(policy: str, mode: str) -> bool:
+    """Hard Q-time gating unless the caller set ``hard_qtime``.
+
+    On with the planning layer (ResiliMES in ``plan`` mode); a Q-time-blind
+    run (other policies, ``strict_qtime``) stays as main. RESILIMES_HARD_QTIME
+    ``0`` turns it off (experiments only), ``1`` turns it on for any policy.
+    """
+    env = os.environ.get("RESILIMES_HARD_QTIME", "").strip()
+    if env in {"0", "1"}:
+        return env == "1"
+    return policy == "resilimes" and mode == "plan"
+
+
 def auto_plan(
     fab: Fab,
     *,
@@ -528,7 +543,9 @@ def make_sim(
     main), True the example two-building layout, or a ``FabLayout``; unset
     reads RESILIMES_FAB_LAYOUT, default off. ``hard_qtime`` gates CQT origin
     starts by a whole-segment Q-time kanban and expedites missed lots
-    (``resilimes.smt.hard_qtime``); unset reads RESILIMES_HARD_QTIME, default off.
+    (``resilimes.smt.hard_qtime``); unset means ``default_hard_qtime``: on for
+    ResiliMES in the default ``plan`` mode, off otherwise, and
+    RESILIMES_HARD_QTIME=0/1 overrides it (``0`` is for experiments only).
     ``plan`` (the planning layer's output, computed once before the run) turns
     on the step-due risk for ResiliMES fix 2, the plan band/rank tie-break, the
     per-tool schedule at each tick and the deviation log; None is the
@@ -546,8 +563,6 @@ def make_sim(
     plan (the qtime-r2 fix-2 order alone)."""
     if plan_wait not in {"position", "family"}:
         raise ValueError(f"Unknown plan_wait {plan_wait}")
-    if hard_qtime is None:
-        hard_qtime = os.environ.get("RESILIMES_HARD_QTIME", "").strip() == "1"
     if policy not in {"resilimes", "edd", "fifo", "cr", "smt_rule"}:
         raise ValueError(f"Unknown policy {policy}")
     if shift_lead is not None and policy != "resilimes":
@@ -555,6 +570,8 @@ def make_sim(
     mode = default_sched_mode() if sched_mode is None else sched_mode
     if mode not in SCHED_MODES:
         raise ValueError(f"Unknown sched_mode {mode}")
+    if hard_qtime is None:
+        hard_qtime = default_hard_qtime(policy, mode)
     if plan is None and policy == "resilimes" and mode == "plan":
         plan = auto_plan(
             fab,
@@ -678,6 +695,7 @@ class _Sim:
         # Read-only miss causes; the hard Q-time gate only when switched on.
         self.qcause: dict[int, str] = {}
         self.causes: dict[str, int] = dict.fromkeys(CAUSES, 0)
+        self.miss_classes: dict[str, int] = dict.fromkeys(MISS_CLASSES, 0)
         self.hq_causes: dict[str, int] = {}
         self.hq: HardQtime | None = None
         self.layout = layout
@@ -1026,6 +1044,7 @@ class _Sim:
         cause = self.qcause.pop(lot, "unclassified")
         if outcome in _MISSED and not self.inherited[lot]:
             self.causes[cause] += 1
+            self.miss_classes[miss_class(self, lot, cause)] += 1
         if self.hq is not None:
             if outcome in _MISSED:
                 if not self.inherited[lot]:
@@ -1245,8 +1264,11 @@ class _Sim:
         skipped = False
         gated = False
         gate_wake: float | None = None
+        procs: dict[int, float] = {}
         for lot in candidates:
             proc = self.piece_seconds(lot, tool)
+            if self.hq is not None:
+                procs[lot] = proc
             if pm_start is not None and moment + proc > pm_start:
                 skipped = True
                 continue
@@ -1294,6 +1316,9 @@ class _Sim:
         batch_wake: float | None = None
         if batches:
             chosen, reason, batch_wake = self.pick_batch(batches, tool, moment)
+            if self.hq is not None and len(chosen) > 1:
+                # One run starts every member at once: admit them together.
+                chosen = self.hq.admit_batch(chosen, moment, procs)
         if singles:
             single = min(singles, key=lambda lot: self.rank(lot, tool, moment))
             if not chosen or self.rank(single, tool, moment) < self.rank(chosen[0], tool, moment):
@@ -1500,18 +1525,20 @@ class _Sim:
     def expedite_key(self, lot: int, moment: float) -> tuple[float, float, float]:
         """Hard Q-time order, inside the class tier where the policy has one.
 
-        Like a hot lot under the existing rules (a Q-time-urgent lot outranks a
-        hot one): lots inside an open window that is lost unless they start
-        now, then missed lots (expedite, oldest miss first), then the other
-        lots inside an open window by least slack, then everyone else.
+        Hard Q-time first: lots inside an open window that is lost unless they
+        start now (the hot-lot rule of main: a Q-time-urgent lot outranks a hot
+        one), then the other lots inside an open window by least slack, then
+        missed lots (expedited, oldest miss first; ahead of every lot outside
+        a window), then everyone else. A missed lot never takes the capacity
+        that a still-feasible window was admitted against.
         """
         assert self.hq is not None
         tier = float(self.tier(lot)) if self.policy in ("resilimes", "smt_rule") else 0.0
-        if self.hq.x_target[lot] >= 0:
-            return (tier, 1.0, self.hq.x_since[lot])
         if self.in_window(lot):
             slack = self.deadline[lot] - moment - self.qtime_need(lot)
             return (tier, 0.0 if slack <= QTIME_URGENT_MARGIN_SEC else 2.0, slack)
+        if self.hq.x_target[lot] >= 0:
+            return (tier, 2.5, self.hq.x_since[lot])
         return (tier, 3.0, 0.0)
 
     def cheap(self, lot: int, moment: float) -> tuple[float, ...]:
@@ -2824,6 +2851,7 @@ class _Sim:
             sched_freeze=self.fz.summary() if self.fz is not None else {},
             layout=self._layout_kpis(),
             qtime_causes=dict(self.causes),
+            qtime_miss_class=dict(self.miss_classes),
             hard_qtime=(
                 {**self.hq.summary(), "miss_causes": dict(sorted(self.hq_causes.items()))}
                 if self.hq is not None

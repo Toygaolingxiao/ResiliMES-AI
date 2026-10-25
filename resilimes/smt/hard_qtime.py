@@ -10,21 +10,31 @@ Two parts, both read by ``simulate._Sim`` (see ``docs/HARD_QTIME.md``):
   tool-equivalent of up time to breakdown or PM while the lot waited),
   ``batch_fill`` (at a batch target with an up, idle tool: waiting to fill),
   ``queueing`` (at the target, every up tool busy). It changes no decision.
-* ``HardQtime`` (``hard_qtime=True``, default off): a lot may start a CQT
-  origin step only if, for every family of the CQT segment (each measured
-  intermediate step and the target), the work already committed there (the
-  remaining segment steps of lots inside an open window or at a CQT origin)
-  plus its own fits the up tools before each step's latest start. Dataset process time, batch
-  size, transport and the PM calendar only; future breakdowns are not used.
-  A lot that missed (or is about to miss) its window is never gated and is
-  expedited: inside its class tier it ranks right behind lots whose open
-  window is lost unless they start now (the hot-lot rule of main) and ahead
-  of everyone else, at intermediate steps and its target, through re-clean and the re-opened
-  window, until its target step starts.
+* ``HardQtime`` (on by default with the planning layer, ResiliMES in ``plan``
+  mode; ``RESILIMES_HARD_QTIME=0`` turns it off for experiments): a lot may
+  start a CQT origin step only if, for every family of the CQT segment (each
+  measured intermediate step and the target), the work already committed
+  there (the remaining segment steps of lots inside an open window or at a
+  CQT origin) plus its own fits the up tools before each step's latest start,
+  both as fluid work and as whole runs (a batch run shared only by
+  same-recipe lots). The members of one batch start are admitted jointly.
+  Dataset process time, batch size, transport and the PM calendar only;
+  future breakdowns are not used. Only a lot already inside a window is
+  never gated; a missed or re-cleaned lot back at an origin is gated like
+  any other. Missed lots are expedited until their target step starts:
+  inside the class tier they rank behind every lot inside an open window
+  (urgent first, then by slack) and ahead of everyone else, so they never
+  take capacity an admitted window was counted against.
+* ``miss_class`` (read-only): each missed window is ``avoidable`` (a Q-time
+  violation the scheduler caused), ``unavoidable_breakdown`` (a breakdown
+  started on the current or target family after the origin start) or
+  ``unavoidable_disruption`` (transport, breakdown rework or PM loss).
 """
 
 from __future__ import annotations
 
+import heapq
+import math
 from typing import TYPE_CHECKING, Any
 
 from resilimes.smt.fab import QTIME_URGENT_MARGIN_SEC, measured
@@ -45,6 +55,10 @@ CAUSES = (
 # versus disruptions after the start.
 AVOIDABLE = ("upstream", "batch_fill", "queueing")
 DISRUPTION = ("transport", "breakdown_rework", "tool_down_pm")
+# Missed windows split by what the scheduler could still have done about them
+# (``miss_class``): ``avoidable`` misses are Q-time violations the scheduler
+# caused; the other two are exceptions it can only expedite.
+MISS_CLASSES = ("avoidable", "unavoidable_breakdown", "unavoidable_disruption")
 _WAFERS = 25
 
 
@@ -56,6 +70,18 @@ def _overlap(spans: list[tuple[float, float]], left: float, right: float) -> flo
         if hi > lo:
             total += hi - lo
     return total
+
+
+def _after_pm(spans: list[tuple[float, float]], moment: float) -> float:
+    """``moment``, or the end of the PM it falls in (repeated for back-to-back PMs)."""
+    moved = True
+    while moved:
+        moved = False
+        for start_at, end_at in spans:
+            if start_at <= moment < end_at:
+                moment = end_at
+                moved = True
+    return moment
 
 
 def _off_now(sim: _Sim, tool: int, moment: float) -> bool:
@@ -96,6 +122,33 @@ def classify(sim: _Sim, lot: int, moment: float) -> str:
     return "queueing"
 
 
+def miss_class(sim: _Sim, lot: int, cause: str) -> str:
+    """Avoidable or unavoidable, for a window missed with ``cause``.
+
+    Unavoidable: a disruption cause (transport, breakdown rework, target down
+    or in PM), or a breakdown that began on the family the lot waited at or on
+    the target family after the origin step started (the origin start is the
+    admission; a tool already down then is known to the gate). Avoidable: a
+    plannable miss (queueing, upstream, batch fill) with no such breakdown.
+    """
+    if cause in DISRUPTION:
+        return "unavoidable_disruption"
+    route = sim.fab.routes[sim.fab.lot_route[lot]]
+    target = sim.cqt_at[lot]
+    origin = sim.cqt_from[lot]
+    if target < 0 or origin < 0:
+        return "avoidable"
+    deadline = sim.deadline[lot]
+    admitted = deadline - sim.cqt_limit[lot] - route.cycle[origin]
+    here = min(max(sim.step[lot], origin + 1), target)
+    for fam in {route.family[here], route.family[target]}:
+        family = sim.fab.families[fam]
+        for tool in range(family.tool0, family.tool0 + family.tools):
+            if any(admitted <= start_at < deadline for start_at, _end in sim.downs[tool]):
+                return "unavoidable_breakdown"
+    return "avoidable"
+
+
 class HardQtime:
     """Q-time kanban gate and expedite bookkeeping for one run."""
 
@@ -128,10 +181,20 @@ class HardQtime:
         self.admitted = [False] * sim.n
 
     # -- kanban -----------------------------------------------------------
+    @staticmethod
+    def _lots(route: Any, step: int) -> int:
+        # A batch tool shares its run over batch_min lots (BATCHMN; it may start
+        # with fewer, never waits for more once the minimum is met).
+        return max(1, route.batch_min[step] // _WAFERS) if route.batch_max[step] > 0 else 1
+
+    @staticmethod
+    def _run(route: Any, step: int) -> tuple[int, int]:
+        """(lots per run, recipe): only same-recipe lots share a batch run."""
+        lots = HardQtime._lots(route, step)
+        return lots, (int(route.recipe[step]) if lots > 1 else -1)
+
     def _work(self, route: Any, target: int) -> float:
-        # A batch tool shares its run over at least batch_min lots (conservative).
-        lots = max(1, route.batch_min[target] // _WAFERS) if route.batch_max[target] > 0 else 1
-        return float(route.cycle[target]) / lots
+        return float(route.cycle[target]) / self._lots(route, target)
 
     def segment(self, lot: int, origin: int, target: int) -> list[tuple[int, int, float, float]]:
         """(family, step, work, need to target) for each step after the origin.
@@ -192,46 +255,78 @@ class HardQtime:
         self,
         fam: int,
         moment: float,
-        extra: list[tuple[float, float]] | None = None,
+        extra: list[tuple[float, float, int, int]] | None = None,
     ) -> bool:
-        """Fluid EDF test: can every committed lot start its step here in time?
+        """EDF test: can every committed lot start its step here in time?
 
         Up tools (current state and the PM calendar only, never future
-        breakdowns) are free from their current job's end; committed lots, by
-        latest start, must fit in the cumulative free tool time. Missed lots
-        (expedited) take capacity first with no deadline of their own.
-        A committed step's latest start is the target's latest start minus
-        what the lot still needs from that step. ``extra`` adds a candidate's
-        (work, latest start) pairs.
+        breakdowns) are free from their current job's end. Missed lots
+        (expedited) go first with no deadline of their own, then committed
+        lots by latest start. Two checks, both must pass: the fluid one (the
+        cumulative work up to each lot fits the free tool time before its
+        latest start) and the whole-run one (each lot takes the earliest free
+        tool for a full run, a batch run shared by ``batch_min`` consecutive
+        same-recipe lots, no run starting inside a PM, and must start by its latest start;
+        the fluid check alone lets a 7 h batch run "share" tool time that is
+        never free before the deadline). A committed step's
+        latest start is the target's latest start minus what the lot still
+        needs from that step. ``extra`` adds a candidate's (work, latest
+        start, lots per run, recipe) tuples.
         """
         sim = self.sim
         family = sim.fab.families[fam]
-        free: list[tuple[int, float]] = []
+        free: list[tuple[float, int]] = []
         for tool in range(family.tool0, family.tool0 + family.tools):
             if _off_now(sim, tool, moment):
                 continue
             start = sim.busy_until[tool] if sim.running[tool] >= 0 else moment
-            free.append((tool, max(moment, start)))
-        missed = 0.0
-        items: list[tuple[float, float]] = []
-        for (lot, _step), (work, target, latest, need) in self.committed[fam].items():
+            free.append((max(moment, start), tool))
+        items: list[tuple[float, float, int, int]] = []
+        for (lot, step), (work, target, latest, need) in self.committed[fam].items():
+            lots, recipe = self._run(sim.fab.routes[sim.fab.lot_route[lot]], step)
             if self.x_target[lot] >= 0:
-                missed += work
+                items.append((-math.inf, work, lots, recipe))
                 continue
             if sim.cqt_at[lot] == target and sim.deadline[lot] > 0:
                 latest = sim.deadline[lot]
-            items.append((latest - need, work))
-        for work, latest in extra or ():
-            items.append((latest, work))
+            items.append((latest - need, work, lots, recipe))
+        for work, latest, lots, recipe in extra or ():
+            items.append((latest, work, lots, recipe))
+        if not items:
+            return True
+        if not free:
+            return False
         items.sort()
-        cum = missed
-        for latest, work in items:
+        # Fluid: the work of every lot up to and including each one fits the
+        # free tool time before its latest start (missed lots first).
+        cum = 0.0
+        for latest, work, _lots, _recipe in items:
             cum += work
+            if latest == -math.inf:
+                continue
             cap = 0.0
-            for tool, start in free:
+            for start, tool in free:
                 if latest > start:
                     cap += latest - start - _overlap(sim.pm[tool], start, latest)
             if cum > cap + 1e-6:
+                return False
+        # Whole runs: a tool is held for a full run (a batch run is shared by
+        # batch_min consecutive lots), and each run starts by its latest start.
+        heapq.heapify(free)
+        # Recipe -> (start, places left) of its last open batch run.
+        runs: dict[int, tuple[float, int]] = {}
+        for latest, work, lots, recipe in items:
+            start, left = runs.get(recipe, (0.0, 0))
+            if lots > 1 and left > 0:
+                begin = start
+                runs[recipe] = (start, left - 1)
+            else:
+                begin, tool = heapq.heappop(free)
+                begin = _after_pm(sim.pm[tool], begin)
+                heapq.heappush(free, (begin + work * lots, tool))
+                if lots > 1:
+                    runs[recipe] = (begin, lots - 1)
+            if latest > -math.inf and begin > latest + 1e-6:
                 return False
         return True
 
@@ -243,8 +338,19 @@ class HardQtime:
         self.base[fam] = (moment, self.version, ok)
         return ok
 
-    def admit(self, lot: int, moment: float, proc: float) -> bool:
-        """May ``lot`` start its current step now (only CQT origins are gated)."""
+    def admit(
+        self,
+        lot: int,
+        moment: float,
+        proc: float,
+        pending: dict[int, list[tuple[float, float, int, int]]] | None = None,
+    ) -> bool:
+        """May ``lot`` start its current step now (only CQT origins are gated).
+
+        ``pending`` holds the segment load of lots admitted into the same
+        start (a batch): it is tested together with this lot's, and this lot's
+        is added to it when admitted.
+        """
         sim = self.sim
         route = sim.fab.routes[sim.fab.lot_route[lot]]
         index = sim.step[lot]
@@ -252,8 +358,10 @@ class HardQtime:
         target = route.cqt_target[index]
         if limit <= 0 or target < 0:
             return True
-        # Never gate a lot already inside or past a window, or one being expedited.
-        if sim.in_window(lot) or self.x_target[lot] >= 0 or sim.rework[lot] > 0:
+        # Never gate a lot already inside a window (a nested origin). A missed
+        # or re-cleaned lot back at an origin is gated like any other: it stays
+        # expedited, so it goes first as soon as its segment is feasible.
+        if sim.in_window(lot):
             return True
         if not measured(route, target, sim.lot_no[lot]):
             return True
@@ -265,15 +373,28 @@ class HardQtime:
             self.blocked_fam = route.family[target]
             return False
         # Every family of the segment (intermediate steps and the target).
-        extra: dict[int, list[tuple[float, float]]] = {}
-        for fam, _step, work, need in self.segment(lot, index, target):
-            extra.setdefault(fam, []).append((work, latest - need))
+        extra: dict[int, list[tuple[float, float, int, int]]] = {}
+        for fam, step, work, need in self.segment(lot, index, target):
+            extra.setdefault(fam, []).append((work, latest - need, *self._run(route, step)))
         for fam, pairs in extra.items():
-            if not (self.base_ok(fam, moment) and self.feasible(fam, moment, extra=pairs)):
+            joint = pairs + (pending or {}).get(fam, [])
+            if not (self.base_ok(fam, moment) and self.feasible(fam, moment, extra=joint)):
                 self.gate_blocks += 1
                 self.blocked_fam = fam
                 return False
+        if pending is not None:
+            for fam, pairs in extra.items():
+                pending.setdefault(fam, []).extend(pairs)
         return True
+
+    def admit_batch(self, lots: list[int], moment: float, procs: dict[int, float]) -> list[int]:
+        """The members of one batch start that are admissible together.
+
+        Each member passed ``admit`` alone; a batch origin starts them at
+        once, so their segment loads are tested jointly, in rank order.
+        """
+        pending: dict[int, list[tuple[float, float, int, int]]] = {}
+        return [lot for lot in lots if self.admit(lot, moment, procs[lot], pending)]
 
     def wait_on(self, tool: int) -> None:
         """``tool`` was just gated on ``blocked_fam``; wake it when that family frees up."""
@@ -294,7 +415,7 @@ class HardQtime:
             self.recover_sec.append(moment - self.x_since[lot])
             self.x_target[lot] = -1
         if route.cqt_limit[index] > 0 and route.cqt_target[index] >= 0:
-            exempt = sim.in_window(lot) or self.x_target[lot] >= 0 or sim.rework[lot] > 0
+            exempt = sim.in_window(lot)
             if exempt:
                 self.exempt_starts += 1
             self.admitted[lot] = not exempt

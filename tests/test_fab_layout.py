@@ -41,6 +41,7 @@ SKIP = {
     # Q-time miss causes and the hard Q-time summary (tests/test_hard_qtime.py).
     "qtime_causes",
     "hard_qtime",
+    "qtime_miss_class",
 }
 # Planning-layer fields (planning-r1): constant zeros/empty when no plan is passed.
 PLAN_FIELDS = {
