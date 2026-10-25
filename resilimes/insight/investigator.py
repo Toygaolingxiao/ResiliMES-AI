@@ -23,6 +23,7 @@ from resilimes.evidence.sqlrun import run_guarded
 from resilimes.evidence.toolkit import HOUR, Toolkit
 from resilimes.insight.injector import CAUSE_TEXT, TAXONOMY, main_upstream
 from resilimes.insight.progress import redact
+from resilimes.llm import deadline
 from resilimes.llm.base import Completer, LlmResult
 
 MAX_CALLS = 6
@@ -38,7 +39,7 @@ STOP_REASONS = (
     "degraded_to_rule",
     "error",
 )
-DEGRADE_REASONS = ("fact_check_failed", "no_answer", "provider_error")
+DEGRADE_REASONS = ("fact_check_failed", "no_answer", "provider_error", "timeout")
 
 TOOLS_DOC = """Tools (call one per turn):
 - compare_windows {"family": str, "start_h": num, "end_h": num}: for each of the six causes, its indicator in the 4 h before start_h and in the window, and the relative change (window - before) / before. Also waiting lots at the window start and end, and the main upstream family with its down+PM tool-hours and its feed (lots/h) into this family.
@@ -114,6 +115,9 @@ class Investigation:
     degraded: bool = False
     degrade_reason: str | None = None
     system: dict[str, Any] = field(default_factory=dict)
+    # Wall-clock seconds for the whole case (each trace round has its own elapsed_s).
+    elapsed_s: float = 0.0
+    timed_out: bool = False
 
     def to_json(self) -> dict[str, Any]:
         return dict(self.__dict__)
@@ -478,6 +482,15 @@ def _validate(final: Any, ncalls: int) -> list[str]:
     return errors
 
 
+def task_budget_s(deadline_s: float | None, settings: Settings | None) -> float:
+    """The per-task wall-clock budget: explicit, else Settings, else AI_TASK_DEADLINE_S."""
+    if deadline_s is not None:
+        return deadline_s
+    if settings is not None:
+        return settings.ai_task_deadline_s
+    return deadline.default_task_s()
+
+
 def investigate(
     kit: Toolkit,
     question: str,
@@ -489,8 +502,46 @@ def investigate(
     *,
     max_calls: int = MAX_CALLS,
     temperature: float = 0.2,
+    deadline_s: float | None = None,
 ) -> Investigation:
-    """Bounded tool loop. ``provider`` None or mocked -> the scripted stand-in."""
+    """Bounded tool loop under a wall-clock budget (``deadline_s``, default 180 s).
+
+    ``provider`` None or mocked -> the scripted stand-in. When the budget runs out the loop
+    stops and the case degrades to the rule answer with ``degrade_reason='timeout'``.
+    """
+    with deadline.task_deadline(task_budget_s(deadline_s, settings)):
+        return _investigate(
+            kit,
+            question,
+            family,
+            t1_h,
+            t2_h,
+            provider,
+            settings,
+            max_calls=max_calls,
+            temperature=temperature,
+        )
+
+
+def _timeout(out: Investigation, step: dict[str, Any], detail: str) -> None:
+    out.timed_out = True
+    out.error = redact(f"timeout: {detail}", 300)
+    step["status"] = "timeout"
+    step.setdefault("action", "deadline")
+
+
+def _investigate(
+    kit: Toolkit,
+    question: str,
+    family: str,
+    t1_h: float,
+    t2_h: float,
+    provider: Completer | None,
+    settings: Settings | None,
+    *,
+    max_calls: int,
+    temperature: float,
+) -> Investigation:
     if provider is None or provider.mocked:
         provider = ScriptedCompleter(kit, family, t1_h, t2_h)
     kit.registry = kit.registry or FactRegistry()
@@ -514,13 +565,24 @@ def investigate(
     seen: dict[str, int] = {}  # normalized (tool, args) -> result number
     closed_by = ""  # "repeat_call" / "budget_exhausted" once the tool phase is closed
     started = time.perf_counter()
+    t_start = round_start = deadline.now()
     final: dict[str, Any] | None = None
     while out.turns < MAX_TURNS:
+        if out.trace:
+            out.trace[-1]["elapsed_s"] = round(deadline.now() - round_start, 3)
+        round_start = deadline.now()
         out.turns += 1
         step: dict[str, Any] = {"round": out.turns}
         out.trace.append(step)
+        if deadline.expired():
+            _timeout(out, step, "task deadline reached before the model call")
+            break
         try:
             reply = provider.complete(messages, lane=LANE, temperature=temperature)
+        except deadline.DeadlineExceeded as exc:
+            _timeout(out, step, str(exc))
+            step["action"] = "provider"
+            break
         except Exception as exc:
             out.error = redact(f"provider: {type(exc).__name__}: {exc}", 300)
             step.update(action="provider", status="error", detail=out.error)
@@ -595,6 +657,9 @@ def investigate(
                 }
             )
             continue
+        if deadline.expired():
+            _timeout(out, step, "task deadline reached before the tool round")
+            break
         result = execute(kit, name, args, settings)
         ncalls += 1
         seen[key] = ncalls
@@ -603,6 +668,9 @@ def investigate(
         text = json.dumps(result, ensure_ascii=False, default=str)[:RESULT_CHARS]
         note = "" if ncalls < max_calls else " " + BUDGET_NOTE
         messages.append({"role": "user", "content": f"RESULT {ncalls}: {text}{note}"})
+    if out.trace:
+        out.trace[-1]["elapsed_s"] = round(deadline.now() - round_start, 3)
+    out.elapsed_s = round(deadline.now() - t_start, 3)
     out.latency_ms = round((time.perf_counter() - started) * 1000, 1)
     if final is not None:
         out.primary_cause = final.get("primary_cause")
@@ -629,7 +697,9 @@ def _system_answer(out: Investigation, kit: Toolkit) -> None:
         }
         return
     out.degraded = True
-    if out.error and out.error.startswith("provider:"):
+    if out.timed_out:
+        out.degrade_reason = "timeout"
+    elif out.error and out.error.startswith("provider:"):
         out.degrade_reason = "provider_error"
     elif out.primary_cause is None:
         out.degrade_reason = "no_answer"
@@ -656,7 +726,10 @@ def _stop_reason(out: Investigation, answered: bool, closed_by: str) -> str:
     ``degraded_to_rule``: the AI answer still fails the fact check after the one rewrite,
     there is no valid answer, or the provider failed; the system output is then the rule
     baseline's answer (``_system_answer``).
+    A timeout always degrades: the loop stopped before a usable answer.
     """
+    if out.timed_out:
+        return "degraded_to_rule"
     if answered and not (out.repaired and out.fact_misses):
         if out.repaired:
             return "fact_check_repaired"

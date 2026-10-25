@@ -21,6 +21,7 @@ from resilimes.agents.jsonutil import extract_json_object
 from resilimes.evidence.factcheck import FactRegistry, check
 from resilimes.evidence.lateness import decompose
 from resilimes.evidence.toolkit import HOUR, RecordedRun, Toolkit, record_run
+from resilimes.llm import deadline
 from resilimes.llm.base import Completer, LlmResult
 
 LANE = "explainer"
@@ -72,6 +73,9 @@ class Explanation:
     response_models: list[str] = field(default_factory=list)
     language: str = "en"
     error: str | None = None
+    # Time budget (docs/AI_EXPLAINER.md): wall-clock seconds and whether the deadline hit.
+    elapsed_s: float = 0.0
+    timeout: bool = False
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
@@ -184,6 +188,25 @@ def explain(
     *,
     language: str = "en",
     temperature: float = 0.2,
+    deadline_s: float | None = None,
+) -> Explanation:
+    """Explain one late lot under a wall-clock budget (``deadline_s``, default 180 s).
+
+    On timeout the answer is marked ``timeout`` and has no lever; the exact wait split and
+    evidence (deterministic) are unaffected.
+    """
+    budget = deadline_s if deadline_s is not None else deadline.default_task_s()
+    with deadline.task_deadline(budget):
+        return _explain(kit, lot_id, provider, language=language, temperature=temperature)
+
+
+def _explain(
+    kit: Toolkit,
+    lot_id: str,
+    provider: Completer | None,
+    *,
+    language: str,
+    temperature: float,
 ) -> Explanation:
     kit.registry = kit.registry or FactRegistry()
     ev = evidence(kit, lot_id)
@@ -208,11 +231,20 @@ def explain(
         },
     ]
     started = time.perf_counter()
+    t_start = deadline.now()
     payload: dict[str, Any] | None = None
     schema_repairs = 0
     for _turn in range(MAX_TURNS):
+        if deadline.expired():
+            out.timeout = True
+            out.error = "timeout: task deadline reached before the model call"
+            break
         try:
             reply = provider.complete(messages, lane=LANE, temperature=temperature)
+        except deadline.DeadlineExceeded:
+            out.timeout = True
+            out.error = "timeout: model call over its time budget"
+            break
         except Exception as exc:
             out.error = f"provider: {type(exc).__name__}"
             break
@@ -253,6 +285,7 @@ def explain(
         payload = candidate
         break
     out.latency_ms = round((time.perf_counter() - started) * 1000, 1)
+    out.elapsed_s = round(deadline.now() - t_start, 3)
     if payload is None:
         out.error = out.error or "no valid answer"
         return out

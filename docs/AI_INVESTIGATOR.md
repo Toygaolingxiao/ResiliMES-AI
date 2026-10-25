@@ -77,7 +77,8 @@ Program-side controls, on top of the tool budget and the fact check. Prompts are
   under the Investigator card.
 - **Degraded route (縮退).** When the AI answer still fails the fact check after the one rewrite
   (`fact_check_failed`), there is no valid answer (`no_answer`: turn limit, invalid final, or a
-  tool call after the repeat stop), or the provider fails (`provider_error`), the system output
+  tool call after the repeat stop), the provider fails (`provider_error`), or the time budget runs out (`timeout`, see Time
+  budgets), the system output
   becomes the rule baseline's answer: `degraded: true`, `degrade_reason`, and
   `system = {"source": "rule", "primary_cause", "secondary_cause", ...}`. Otherwise
   `system.source` is `ai`. The AI's own answer (`primary_cause`, `causal_chain`, ...) and its
@@ -90,6 +91,31 @@ Program-side controls, on top of the tool budget and the fact check. Prompts are
   `degraded_count` and `degraded_by_reason`. They are never merged into one number.
 - **Explainer and handover** are unchanged here. They keep their existing behaviour: a failing
   answer is flagged (`fact_ok: false`, `fact_misses`, `error`), not replaced.
+
+### Time budgets
+
+Line-side use: the AI is advice next to a running line, so it must never block the operator.
+Two wall-clock budgets bound every answer (`resilimes/llm/deadline.py`, monotonic clock):
+
+- **Per model call: `AI_CALL_DEADLINE_S` (default 90 s).** Each Nightshift request gets
+  `timeout = min(call time left, task time left)` (never above `METERLESS_TIMEOUT_S`, 180 s) and
+  the header `meterless-ttfb-ms` = min(timeout, `AI_TTFB_S` = 60 s) in ms, at most 300000, so
+  Nightshift stops a lane that has not produced a first token. The empty-reply ladder
+  (4k → 8k → 16k tokens) does not start another rung with less than 30 s left in the call or the
+  task; retries do not sleep past the deadline. A client timeout raises `DeadlineExceeded`.
+  These limits apply only to calls made inside an AI task deadline (investigator, explainer,
+  handover); the sim-select / shift-lead studies keep their own long `METERLESS_TIMEOUT_S`.
+- **Per task: `AI_TASK_DEADLINE_S` (default 180 s)** per investigator case (`investigate(...,
+  deadline_s=)`). The deadline is checked before every model call and every tool round; when it
+  is gone the loop stops, the round's trace status is `timeout`, and the case takes the degraded
+  route: `degrade_reason: "timeout"`, `stop_reason: "degraded_to_rule"`, system answer = rule
+  answer. A provider `DeadlineExceeded` is the same timeout.
+- **Recorded.** Every trace round has `elapsed_s`; each case has `elapsed_s` and `timed_out`. The
+  study rows carry `elapsed_s` / `timeout`; the summary adds `elapsed_s_p50`, `elapsed_s_p95` and
+  `timeouts`. A timeout is an AI miss in `ai_top1` (even if a half-finished answer named the
+  right cause) and counts as degraded in `system_top1` and `degraded_by_reason`.
+- The mock stand-in finishes in well under a second, so mock/CI numbers are unchanged. Note that
+  real 16k-token answers have taken 34–63 s; a 60 s first-token limit can cut the slowest ones.
 
 ### Baseline
 

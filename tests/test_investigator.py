@@ -197,9 +197,10 @@ def test_provider_error_message_is_kept_and_redacted(starve):
     assert answer.system["primary_cause"] == rank[0]
     assert "RuntimeError" in answer.error and "502 empty_response" in answer.error
     assert "sk-abcdef1234567890abcdef" not in answer.error
-    assert answer.trace == [
+    assert [{k: v for k, v in step.items() if k != "elapsed_s"} for step in answer.trace] == [
         {"round": 1, "action": "provider", "status": "error", "detail": answer.error}
     ]
+    assert answer.trace[0]["elapsed_s"] >= 0
 
 
 def test_invented_numbers_are_flagged_after_one_repair(starve):

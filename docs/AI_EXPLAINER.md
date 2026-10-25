@@ -37,6 +37,16 @@ For one late lot of a 48 h run (seeds 1 and 2):
 | cf_helped | re-run saving > 0 at all |
 | mean_saving_min | mean re-run saving |
 
+## Time budgets
+
+Line-side use: never block the operator. Each lot gets `AI_TASK_DEADLINE_S` (default 180 s;
+`explain(..., deadline_s=)`), and each model call `AI_CALL_DEADLINE_S` (90 s) with the
+`meterless-ttfb-ms` header, as in [AI_INVESTIGATOR.md](AI_INVESTIGATOR.md#time-budgets). The
+deadline is checked before every model call; on timeout the answer has `timeout: true`,
+`error: "timeout: ..."` and no lever, while the exact lateness split and evidence
+(deterministic) stay. `elapsed_s` is recorded per lot; the study summary adds
+`elapsed_s_p50`, `elapsed_s_p95` and `timeouts`.
+
 ## Results
 
 **MOCK (scripted stand-in, not a model), seeds 1+2, 48 late lots, 6 min 40 s on the box:**

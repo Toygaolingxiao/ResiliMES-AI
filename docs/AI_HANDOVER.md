@@ -33,6 +33,15 @@ In the mock eval all 12 reports ran on `markovian`.
 - "Overrides" on main are rule-based Q-time overrides (no AI shift lead runs on main); the report
   labels them as such.
 
+## Time budgets
+Line-side use: never block the operator. Each report gets `AI_TASK_DEADLINE_S` (default 180 s;
+`handover(..., deadline_s=)`), and each model call `AI_CALL_DEADLINE_S` (90 s), as in
+[AI_INVESTIGATOR.md](AI_INVESTIGATOR.md#time-budgets). Once the budget is gone no further model
+call is made: the remaining chunks fail, the result has `timeout: true` and
+`error: "timeout: ..."`, and the deterministic parts (end-of-shift facts, must-mention list) are
+still returned. `elapsed_s` is recorded per report; the summary adds `elapsed_s_p50`,
+`elapsed_s_p95` and `timeouts`.
+
 ## API
 - `GET /api/ai/handover/shifts` returns the four study shifts (seeds 1-2, start 12 h / 24 h).
 - `POST /api/ai/handover {seed, start_h 0-36, lang en|zh|ja}` returns report, markdown, engine,
