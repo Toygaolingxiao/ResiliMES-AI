@@ -213,7 +213,7 @@ table.d th{font-size:13px;padding:11px 16px}
         <div class="grid" style="gap:8px">
           <div class="node"><b>1 · Planning (daily)</b>Backward pass over SMT2020 standard times + forward litho capacity → step dues and baseline priority. <span class="chip acc">default</span></div>
           <div class="node"><b>2 · Scheduling tick (5 min)</b>Short-term state: queues, up/down/PM, open Q-time windows, batches, setups, transport.</div>
-          <div class="node"><b>3 · Dispatch (event)</b>Start the scheduled lot or deviate and log the reason. Hard Q-time gate on the whole CQT segment, <b>on by default</b>; optional frozen window.</div>
+          <div class="node"><b>3 · Dispatch (event)</b>Start the scheduled lot or deviate and log the reason. Hard Q-time gate on the whole CQT segment, <span style="font-weight:600">on by default</span>; optional frozen window.</div>
         </div>
       </div>
       <div class="lane" style="border-color:var(--good)">
@@ -500,7 +500,7 @@ table.d th{font-size:13px;padding:11px 16px}
   <div class="bar"><span class="brand"><span class="bars"><i></i><i></i><i></i></span>ResiliMES-AI</span><span class="sec">12 · Demo</span><span class="sp"></span><span>about 3 min · one real Nightshift request</span></div>
   <div class="body">
     <p class="kicker">The demo video</p>
-    <h2>Fab state → schedule → switches → one live Nemotron answer.</h2>
+    <h2>Fab state → schedule → Q-time first → one live Nemotron answer.</h2>
     <div class="grid fill" style="grid-template-columns:1.15fr 1fr;gap:18px">
       <div class="grid" style="gap:8px">
         <div class="node"><b>0:00 · Problem + Overview</b>The public SMT2020 fab: bottlenecks, WIP pile-ups, lots at risk.</div>
