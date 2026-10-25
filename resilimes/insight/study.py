@@ -113,8 +113,17 @@ def run_investigator(
                 "baseline": rank[:2],
                 "baseline_score": score(case.fault, rank[0], rank[1]),
                 "stop_reason": answer.stop_reason,
+                "degraded": answer.degraded,
+                "degrade_reason": answer.degrade_reason,
                 "ai": answer.to_json(),
+                # The AI's own answer, scored as before (degraded cases are not rescued).
                 "ai_score": score(case.fault, answer.primary_cause, answer.secondary_cause),
+                # What the operator sees: the AI answer, or the rule answer when degraded.
+                "system_score": score(
+                    case.fault,
+                    answer.system.get("primary_cause"),
+                    answer.system.get("secondary_cause"),
+                ),
                 "seconds": round(time.perf_counter() - started, 1),
             }
         except Exception as exc:
@@ -152,9 +161,13 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         cell["ai_top1"] += int(row["ai_score"]["top1"])
         cell["base_top1"] += int(row["baseline_score"]["top1"])
     stop_reasons: dict[str, int] = {}
+    degraded: dict[str, int] = {}
     for row in rows:
         reason = str(row.get("stop_reason") or "")
         stop_reasons[reason] = stop_reasons.get(reason, 0) + 1
+        if row.get("degraded"):
+            why = str(row.get("degrade_reason"))
+            degraded[why] = degraded.get(why, 0) + 1
     return {
         "label": label,
         "model_audit": model_audit(rows),
@@ -162,6 +175,12 @@ def summarize_investigator(rows: list[dict[str, Any]], label: str) -> dict[str, 
         "errors": len(rows) - len(ok),
         "ai_top1": sum(int(r["ai_score"]["top1"]) for r in ok),
         "ai_top2": sum(int(r["ai_score"]["top2"]) for r in ok),
+        # Kept separate on purpose: ai_* is the AI's own answer, system_* is after the
+        # degraded route to the rule answer. Never merge them.
+        "system_top1": sum(int(r["system_score"]["top1"]) for r in ok if "system_score" in r),
+        "system_top2": sum(int(r["system_score"]["top2"]) for r in ok if "system_score" in r),
+        "degraded_count": sum(degraded.values()),
+        "degraded_by_reason": degraded,
         "baseline_top1": sum(int(r["baseline_score"]["top1"]) for r in ok),
         "baseline_top2": sum(int(r["baseline_score"]["top2"]) for r in ok),
         "fact_ok": sum(int(r["ai"]["fact_ok"]) for r in ok),
@@ -258,10 +277,6 @@ def summarize_explainer(rows: list[dict[str, Any]], label: str) -> dict[str, Any
     for row in answered:
         levers[row["ai"]["lever"]] = levers.get(row["ai"]["lever"], 0) + 1
     savings = [row["cf"]["saving_min"] for row in verified]
-    stop_reasons: dict[str, int] = {}
-    for row in rows:
-        reason = str(row.get("stop_reason") or "")
-        stop_reasons[reason] = stop_reasons.get(reason, 0) + 1
     return {
         "label": label,
         "model_audit": model_audit(rows),
@@ -335,10 +350,6 @@ def summarize_handover(rows: list[dict[str, Any]], label: str) -> dict[str, Any]
     engines: dict[str, int] = {}
     for ai in ok:
         engines[ai["engine"]] = engines.get(ai["engine"], 0) + 1
-    stop_reasons: dict[str, int] = {}
-    for row in rows:
-        reason = str(row.get("stop_reason") or "")
-        stop_reasons[reason] = stop_reasons.get(reason, 0) + 1
     return {
         "label": label,
         "model_audit": model_audit(rows),

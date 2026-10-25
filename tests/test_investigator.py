@@ -98,7 +98,11 @@ def test_loop_stops_at_the_tool_budget(starve):
     )
     assert len(answer.calls) == MAX_CALLS
     assert answer.primary_cause is None and answer.error
-    assert answer.stop_reason == "no_answer"
+    assert answer.stop_reason == "degraded_to_rule"
+    assert answer.degraded and answer.degrade_reason == "no_answer"
+    rank = baseline_rank(Toolkit(run), case.family, case.t1_h, case.t2_h)
+    assert answer.system["source"] == "rule"
+    assert answer.system["primary_cause"] == rank[0]
 
 
 def test_repeat_call_is_blocked_and_ends_the_tool_phase(starve):
@@ -128,7 +132,11 @@ def test_repeat_then_another_tool_call_stops_without_answer(starve):
     assert len(answer.calls) == 1
     assert answer.primary_cause is None
     assert [s["status"] for s in answer.trace] == ["executed", "repeat", "tool_phase_closed"]
-    assert answer.stop_reason == "no_answer"
+    assert answer.stop_reason == "degraded_to_rule"
+    assert answer.degraded and answer.degrade_reason == "no_answer"
+    rank = baseline_rank(Toolkit(run), case.family, case.t1_h, case.t2_h)
+    assert answer.system["source"] == "rule"
+    assert answer.system["primary_cause"] == rank[0]
 
 
 def test_budget_exhausted_then_answer(starve):
@@ -182,7 +190,11 @@ def test_provider_error_message_is_kept_and_redacted(starve):
             raise RuntimeError("upstream 502 empty_response token=sk-abcdef1234567890abcdef")
 
     answer = investigate(Toolkit(run), case.question, case.family, case.t1_h, case.t2_h, Broken([]))
-    assert answer.stop_reason == "error"
+    assert answer.stop_reason == "degraded_to_rule"
+    assert answer.degraded and answer.degrade_reason == "provider_error"
+    rank = baseline_rank(Toolkit(run), case.family, case.t1_h, case.t2_h)
+    assert answer.system["source"] == "rule"
+    assert answer.system["primary_cause"] == rank[0]
     assert "RuntimeError" in answer.error and "502 empty_response" in answer.error
     assert "sk-abcdef1234567890abcdef" not in answer.error
     assert answer.trace == [
@@ -209,7 +221,12 @@ def test_invented_numbers_are_flagged_after_one_repair(starve):
     assert answer.repaired
     assert not answer.fact_ok
     assert any("987654" in miss for miss in answer.fact_misses)
-    assert answer.stop_reason == "fact_check_flagged"
+    assert answer.stop_reason == "degraded_to_rule"
+    assert answer.degraded and answer.degrade_reason == "fact_check_failed"
+    rank = baseline_rank(Toolkit(run), case.family, case.t1_h, case.t2_h)
+    assert answer.system["source"] == "rule"
+    assert answer.system["primary_cause"] == rank[0]
+    assert answer.primary_cause == "tool_down"  # the AI answer is kept, not hidden
     assert [s["status"] for s in answer.trace] == ["fact_check_repair", "accepted"]
 
 
@@ -308,3 +325,47 @@ def test_prompt_carries_the_investigation_protocol():
     for indicator in ("down tool-hours", "PM tool-hours", "arrivals per hour", "setup minutes"):
         assert indicator in SYSTEM
     assert "compare_windows" in TOOLS_DOC
+
+
+def test_answered_case_is_not_degraded(starve):
+    case, run = starve
+    replies = [_window_call(case.family, 6), PLAIN_FINAL]
+    answer = investigate(
+        Toolkit(run), case.question, case.family, case.t1_h, case.t2_h, Scripted(replies)
+    )
+    assert not answer.degraded and answer.degrade_reason is None
+    assert answer.system == {
+        "source": "ai",
+        "primary_cause": "upstream_starvation",
+        "secondary_cause": None,
+    }
+
+
+def test_study_summary_keeps_ai_and_system_scores_apart():
+    from resilimes.insight.study import summarize_investigator
+
+    def row(case_id, ai, system, degraded=None):
+        return {
+            "case_id": case_id,
+            "truth": "tool_down",
+            "stop_reason": "degraded_to_rule" if degraded else "answered",
+            "degraded": bool(degraded),
+            "degrade_reason": degraded,
+            "baseline_score": {"top1": True, "top2": True},
+            "ai_score": {"top1": ai, "top2": ai},
+            "system_score": {"top1": system, "top2": system},
+            "ai": {
+                "fact_ok": True,
+                "repaired": False,
+                "primary_cause": "tool_down" if ai else None,
+                "calls": [],
+                "response_models": [],
+            },
+        }
+
+    summary = summarize_investigator(
+        [row("a", True, True), row("b", False, True, "no_answer")], "test"
+    )
+    assert summary["ai_top1"] == 1 and summary["system_top1"] == 2
+    assert summary["degraded_count"] == 1
+    assert summary["degraded_by_reason"] == {"no_answer": 1}

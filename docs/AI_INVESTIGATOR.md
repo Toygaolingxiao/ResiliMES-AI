@@ -57,27 +57,39 @@ in about 4 minutes.
 
 ### Loop controls
 
-Two program-side controls, on top of the tool budget and the fact check. Prompts are unchanged.
+Program-side controls, on top of the tool budget and the fact check. Prompts are unchanged.
 
 - **Repeat stop.** Args are normalized (key order, `6` / `6.0` / `"6"`, whitespace) and compared
   with every earlier call in the case. A repeat is not executed: the model is told it already has
   that evidence in `RESULT n` and must give the final answer now, and the tool phase ends. If it
-  asks for another tool instead of answering, the loop stops with no answer.
+  asks for another tool instead of answering, the loop stops with no answer (degraded route).
 - **Per-round trace.** `Investigation.trace` has one entry per round (LLM turn): `round`,
   `action` (tool name or `answer`), `args`, `status` (`executed`, `repeat`, `over_budget`,
   `tool_phase_closed`, `accepted`, `schema_repair`, `fact_check_repair`, `invalid`,
   `format_retry`, `error`), and for executed calls a short `evidence` summary (result size in
   chars, top-level keys, list sizes, and for `compare_windows` each cause's relative change), never
   the payload. `stop_reason` is one of `answered`, `budget_exhausted` (a call was refused over
-  budget, then answered), `repeat_call`, `fact_check_repaired` (the one rewrite passed the
-  fact check), `fact_check_flagged` (misses remain after the rewrite; the answer is kept and its
-  misses are flagged in `fact_misses`), `no_answer` (no valid final answer: turn limit, invalid
-  final, or a tool call after the repeat stop; it scores as a no-answer) or `error` (provider
-  failure; its redacted message is kept in `error`, not just the exception type). There is no
-  fallback to the rule answer; the baseline is only shown beside the AI answer.
-  Both are in the study rows (`stop_reason` per row, `stop_reasons`
-  counts in the summary), in `POST /api/ai/investigate` under `answer`, and in the console as a
-  collapsed "Loop steps" list under the Investigator card.
+  budget, then answered), `repeat_call`, `fact_check_repaired` (the one rewrite passed the fact
+  check), `degraded_to_rule` (below) or `error` (the rule answer itself could not be computed).
+  Provider errors keep their redacted message in `error`, not just the exception type. The trace
+  and `stop_reason` are in the study rows (`stop_reasons` counts in the summary), in
+  `POST /api/ai/investigate` under `answer`, and in the console as a collapsed "Loop steps" list
+  under the Investigator card.
+- **Degraded route (縮退).** When the AI answer still fails the fact check after the one rewrite
+  (`fact_check_failed`), there is no valid answer (`no_answer`: turn limit, invalid final, or a
+  tool call after the repeat stop), or the provider fails (`provider_error`), the system output
+  becomes the rule baseline's answer: `degraded: true`, `degrade_reason`, and
+  `system = {"source": "rule", "primary_cause", "secondary_cause", ...}`. Otherwise
+  `system.source` is `ai`. The AI's own answer (`primary_cause`, `causal_chain`, ...) and its
+  `fact_misses` stay in the record; nothing is hidden. The console shows a "Degraded: rule answer
+  (reason)" line above the AI answer.
+- **Scoring stays separate.** The study summary reports `ai_top1` / `ai_top2` (the AI's own
+  answer, scored exactly as before: a no-answer or provider error is an AI miss, and a
+  `fact_check_failed` answer is still scored by its own flagged cause, as it was before) and
+  `system_top1` / `system_top2` (what the operator sees, after the degraded route), plus
+  `degraded_count` and `degraded_by_reason`. They are never merged into one number.
+- **Explainer and handover** are unchanged here. They keep their existing behaviour: a failing
+  answer is flagged (`fact_ok: false`, `fact_misses`, `error`), not replaced.
 
 ### Baseline
 
@@ -104,7 +116,8 @@ the model.
 | Mock stand-in | 20/24 | 21/24 | 24/24 (0 repairs) | 6.0 |
 
 By fault (top-1): tool down 4/4, PM in peak 3/4, release burst 4/4, setup thrash 3/4, batch cap
-2/4, upstream starvation 4/4. All 24 mock cases stop with `answered`.
+2/4, upstream starvation 4/4. All 24 mock cases stop with `answered`, none is degraded, so the
+system score equals the AI score (20/24 top-1, 21/24 top-2).
 
 The baseline misses `pm_in_peak-s1`, `setup_thrash-s2`, `batch_cap-s2` and `batch_cap-s3`. In all
 four, arrivals rose more, relative to the 4 h before, than the faulted metric did, so "release
@@ -157,6 +170,10 @@ one rewrite), **0** no-answers, and the model made **1.54** tool calls on averag
 | setup thrash | 2 | 3 | 3 |
 | batch cap | 0 | 2 | 2 |
 | upstream starvation | 0 | 4 | 4 |
+
+The v2 run predates the loop controls and the degraded route, so it has no `system_top1`. Because
+v2 had 0 no-answers and all 24 answers passed the fact check, no case would have been degraded,
+and the system top-1 would also be 20/24. That is an inference, not a measured value.
 
 ## PC commands
 

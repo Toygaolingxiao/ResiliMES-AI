@@ -658,6 +658,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `ai.adviceOnly` | advice only, not applied | 仅为建议，未执行 | 助言のみ・未適用 |
 | `ai.calls` | Evidence calls | 证据调用 | 証拠の呼び出し |
 | `ai.steps` | Loop steps | 循环步骤 | ループの手順 |
+| `ai.degraded` | Degraded: rule answer | 降级：采用规则答案 | 縮退：ルールの回答 |
 | `ai.stop` | stop | 停止 | 停止 |
 | `ai.truth` | Injected fault | 注入的故障 | 注入した故障 |
 | `ai.baseline` | Biggest-anomaly baseline | 最大异常基线 | 最大異常ベースライン |

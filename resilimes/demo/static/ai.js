@@ -72,6 +72,12 @@ AI_SECTIONS.push({
       return;
     }
     const answer = result.answer || {};
+    if (answer.degraded) {
+      const rule = answer.system || {};
+      host.appendChild(
+        aiEl("p", "ai-warn", `${copy.degraded} (${answer.degrade_reason || "—"}): ${aiCause(copy, rule.primary_cause)}`),
+      );
+    }
     const head = aiEl("p", "");
     head.append(aiBadge(copy, result), aiEl("strong", "", ` ${copy.cause}: ${aiCause(copy, answer.primary_cause)}`));
     if (answer.secondary_cause) head.append(aiEl("span", "muted", ` (${copy.second}: ${aiCause(copy, answer.secondary_cause)})`));

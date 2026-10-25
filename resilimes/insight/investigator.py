@@ -35,10 +35,10 @@ STOP_REASONS = (
     "budget_exhausted",
     "repeat_call",
     "fact_check_repaired",
-    "fact_check_flagged",
-    "no_answer",
+    "degraded_to_rule",
     "error",
 )
+DEGRADE_REASONS = ("fact_check_failed", "no_answer", "provider_error")
 
 TOOLS_DOC = """Tools (call one per turn):
 - compare_windows {"family": str, "start_h": num, "end_h": num}: for each of the six causes, its indicator in the 4 h before start_h and in the window, and the relative change (window - before) / before. Also waiting lots at the window start and end, and the main upstream family with its down+PM tool-hours and its feed (lots/h) into this family.
@@ -109,6 +109,11 @@ class Investigation:
     # One entry per round (LLM turn): what was asked, what the loop did, what evidence came back.
     trace: list[dict[str, Any]] = field(default_factory=list)
     stop_reason: str = ""
+    # Degraded route: when the AI answer is unusable, what the operator sees is the rule
+    # baseline's answer. primary_cause / fact_misses above stay the AI's own, never hidden.
+    degraded: bool = False
+    degrade_reason: str | None = None
+    system: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         return dict(self.__dict__)
@@ -610,24 +615,53 @@ def investigate(
     elif out.error is None:
         out.error = "no final answer within the turn limit"
     out.stop_reason = _stop_reason(out, final is not None, closed_by)
+    _system_answer(out, kit)
     return out
+
+
+def _system_answer(out: Investigation, kit: Toolkit) -> None:
+    """Fill ``out.system``: the AI answer, or the rule baseline's when the AI one is unusable."""
+    if out.stop_reason != "degraded_to_rule":
+        out.system = {
+            "source": "ai",
+            "primary_cause": out.primary_cause,
+            "secondary_cause": out.secondary_cause,
+        }
+        return
+    out.degraded = True
+    if out.error and out.error.startswith("provider:"):
+        out.degrade_reason = "provider_error"
+    elif out.primary_cause is None:
+        out.degrade_reason = "no_answer"
+    else:
+        out.degrade_reason = "fact_check_failed"
+    try:
+        rank = baseline_rank(kit, out.family, out.t1_h, out.t2_h)
+    except (KeyError, TypeError, ValueError) as exc:
+        out.stop_reason = "error"
+        out.system = {"source": "none", "error": f"{type(exc).__name__}: {exc}"[:200]}
+        return
+    out.system = {
+        "source": "rule",
+        "primary_cause": rank[0],
+        "secondary_cause": rank[1],
+        "causal_chain": [f"Rule baseline (biggest relative change): {CAUSE_TEXT[rank[0]]}."],
+        "lever": "",
+    }
 
 
 def _stop_reason(out: Investigation, answered: bool, closed_by: str) -> str:
     """Why the loop ended (one of ``STOP_REASONS``).
 
-    The loop never substitutes the rule answer. ``fact_check_flagged``: the answer still has
-    misses after the one rewrite (kept, flagged in ``fact_misses``). ``no_answer``: no valid
-    final answer (turn limit, invalid final, or a tool call after the repeat stop).
-    ``error``: provider failure.
+    ``degraded_to_rule``: the AI answer still fails the fact check after the one rewrite,
+    there is no valid answer, or the provider failed; the system output is then the rule
+    baseline's answer (``_system_answer``).
     """
-    if answered:
+    if answered and not (out.repaired and out.fact_misses):
         if out.repaired:
-            return "fact_check_flagged" if out.fact_misses else "fact_check_repaired"
+            return "fact_check_repaired"
         return closed_by or "answered"
-    if out.error and out.error.startswith("provider:"):
-        return "error"
-    return "no_answer"
+    return "degraded_to_rule"
 
 
 def score(truth: str, primary: str | None, secondary: str | None) -> dict[str, bool]:
