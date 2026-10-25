@@ -1,4 +1,4 @@
-"""Hard Q-time (default off): off is main, on gates origin starts and expedites misses."""
+"""Hard Q-time: on by default with the planning layer; off is main, on gates and expedites."""
 
 from __future__ import annotations
 
@@ -8,9 +8,16 @@ from dataclasses import asdict
 
 import pytest
 
-from resilimes.smt.fab import Fab, load_fab
-from resilimes.smt.hard_qtime import CAUSES
-from resilimes.smt.simulate import RunResult, make_sim, pm_windows, run_policy, sample_downs
+from resilimes.smt.fab import Fab, load_fab, measured
+from resilimes.smt.hard_qtime import CAUSES, MISS_CLASSES
+from resilimes.smt.simulate import (
+    RunResult,
+    default_hard_qtime,
+    make_sim,
+    pm_windows,
+    run_policy,
+    sample_downs,
+)
 
 HOURS = 12.0
 SKIP = {
@@ -67,6 +74,8 @@ def test_off_is_main(fab: Fab, policy: str, monkeypatch: pytest.MonkeyPatch) -> 
     missed = sum(default.qtime_windows[key] for key in ("late", "held", "recleaned", "expired"))
     assert set(default.qtime_causes) == set(CAUSES)
     assert sum(default.qtime_causes.values()) == missed
+    assert set(default.qtime_miss_class) == set(MISS_CLASSES)
+    assert sum(default.qtime_miss_class.values()) == missed
 
 
 @pytest.mark.parametrize("policy", ["resilimes", "edd"])
@@ -115,3 +124,112 @@ def test_segment_gate_and_intermediate_expedite(fab: Fab) -> None:
     assert middle
     for lot in middle:
         assert sim.expedite_key(lot, horizon)[1] in (0.0, 2.0)
+
+
+def test_default_on_with_planning_layer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hard Q-time is the default with the plan; RESILIMES_HARD_QTIME=0 turns it off."""
+    assert default_hard_qtime("resilimes", "plan") is True
+    assert default_hard_qtime("resilimes", "strict_qtime") is False
+    assert default_hard_qtime("edd", "plan") is False
+    monkeypatch.setenv("RESILIMES_HARD_QTIME", "0")
+    assert default_hard_qtime("resilimes", "plan") is False
+    monkeypatch.setenv("RESILIMES_HARD_QTIME", "1")
+    assert default_hard_qtime("edd", "strict_qtime") is True
+
+
+def test_plan_mode_sim_gates_by_default(fab: Fab, monkeypatch: pytest.MonkeyPatch) -> None:
+    horizon = 3_600.0
+    kwargs = dict(
+        policy="resilimes",
+        seed=1,
+        horizon=horizon,
+        downs=sample_downs(fab, 1, horizon),
+        pm=pm_windows(fab, horizon),
+        sched_mode="plan",
+    )
+    assert make_sim(fab, **kwargs).hq is not None  # type: ignore[arg-type]
+    assert make_sim(fab, hard_qtime=False, **kwargs).hq is None  # type: ignore[arg-type]
+    monkeypatch.setenv("RESILIMES_HARD_QTIME", "0")
+    assert make_sim(fab, **kwargs).hq is None  # type: ignore[arg-type]
+    edd = dict(kwargs, policy="edd")
+    monkeypatch.delenv("RESILIMES_HARD_QTIME")
+    assert make_sim(fab, **edd).hq is None  # type: ignore[arg-type]
+
+
+def test_report_edd_is_infeasible_reference() -> None:
+    """EDD shows only as an industry reference with its avoidable count."""
+    from resilimes.smt.hard_qtime_study import report
+
+    def row(policy: str, arm: str, avoid: int, hq: dict | None) -> dict:
+        return {
+            "policy": policy,
+            "arm": arm,
+            "due_in_horizon": 10,
+            "on_time": 9,
+            "completed_routes": 100,
+            "q_met": 90,
+            "q_scored": 100,
+            "q_steady_met": 90,
+            "q_steady_missed": 10,
+            "weighted_tardiness_min": 1.0,
+            "qtime_causes": {},
+            "q_inherited_missed": 0,
+            "hard_qtime": hq,
+            "qtime_miss_class": {"avoidable": avoid},
+        }
+
+    hq = {
+        "gate_blocks": 1,
+        "expedited_lots": 0,
+        "recovered": 0,
+        "recover_mean_min": None,
+        "recover_p90_min": None,
+    }
+    text = report([row("edd", "H0", 7, None), row("planning", "H1", 0, hq)])
+    head = text.splitlines()[0]
+    assert "edd (off): industry reference (infeasible: 7 avoidable Q-time violations)" in head
+    assert head.index("planning + hard") < head.index("edd")
+    assert "Among Q-time-feasible configurations, planning + hard" in text
+
+
+def test_chained_windows_gated_as_one(fab: Fab, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Experiment switch: a CQT target that is the next origin, the gate at the
+    first origin also carries the chained window's load, later latest start."""
+    from resilimes.smt import hard_qtime
+
+    monkeypatch.setattr(hard_qtime, "_CHAIN_LINKS", 4)
+    horizon = 3600.0
+    sim = make_sim(
+        fab,
+        policy="edd",
+        seed=1,
+        horizon=horizon,
+        downs=sample_downs(fab, 1, horizon),
+        pm=pm_windows(fab, horizon),
+        hard_qtime=True,
+    )
+    hq = sim.hq
+    assert hq is not None
+    found = False
+    for lot in range(sim.n):
+        route = fab.routes[fab.lot_route[lot]]
+        for origin in range(len(route.cqt_limit)):
+            first = route.cqt_target[origin]
+            if route.cqt_limit[origin] <= 0 or first < 0 or route.cqt_limit[first] <= 0:
+                continue
+            second = route.cqt_target[first]
+            if second < 0:
+                continue
+            number = sim.lot_no[lot]
+            if not (measured(route, first, number) and measured(route, second, number)):
+                continue
+            load = hq.chain(lot, origin, first, 1000.0)
+            goals = {goal: latest for _f, _s, _w, _n, goal, latest in load}
+            assert first in goals and second in goals
+            assert goals[second] == 1000.0 + route.cycle[first] + route.cqt_limit[first]
+            assert [step for _f, step, *_ in load] == sorted(step for _f, step, *_ in load)
+            found = True
+            break
+        if found:
+            break
+    assert found

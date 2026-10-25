@@ -4,11 +4,15 @@
 seeds 1-3, 168 h (``RESILIMES_STUDY_HORIZON_H``), for each policy in
 ``RESILIMES_HQ_POLICIES`` (default ``planning,edd``; ``planning`` is ResiliMES
 in main's default mode: the auto planning layer, r2 fixes 2+3, closed fab),
-arms ``H0`` (hard Q-time off, main) and ``H1`` (``hard_qtime=True``). Plant,
+arms ``H0`` (hard Q-time off) and ``H1`` (``hard_qtime=True``, the default with
+the planning layer). Plant,
 downs and PM as ``qtime_study._setup``. True Q-time is the event
 replay of ``qtime_study``; ``q_steady_pct`` scores only windows opened after
 the first 24 h (the snapshot WIP start-up wave is over by then). Miss causes
-come from ``resilimes.smt.hard_qtime.classify``. No weights, due dates or
+come from ``resilimes.smt.hard_qtime.classify`` and the avoidable /
+unavoidable split from ``miss_class``. The report keeps a configuration as a
+candidate only with zero avoidable Q-time violations; Q-time-blind rules
+(EDD) appear only as an industry reference row. No weights, due dates or
 seeds are tuned. ``RESILIMES_STUDY_WORKERS`` (default 2) sets the pool.
 ``python -m resilimes.smt.hard_qtime_study --report OUT.json`` prints the
 tables of docs/HARD_QTIME.md.
@@ -37,6 +41,17 @@ _FAB: list[Fab] = []
 def policies() -> tuple[str, ...]:
     raw = os.environ.get("RESILIMES_HQ_POLICIES", "planning,edd")
     return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
+def configs() -> list[tuple[str, str]]:
+    """(policy, arm) pairs: every arm of ``policies()``, or RESILIMES_HQ_CONFIGS.
+
+    ``RESILIMES_HQ_CONFIGS=planning:H0,planning:H1,edd:H0`` skips EDD + hard.
+    """
+    raw = os.environ.get("RESILIMES_HQ_CONFIGS", "").strip()
+    if raw:
+        return [tuple(part.strip().split(":", 1)) for part in raw.split(",")]  # type: ignore[misc]
+    return [(policy, arm) for policy in policies() for arm, _ in ARMS]
 
 
 def steady(fab: Fab, events: list[tuple[Any, ...]], horizon: float) -> dict[str, int]:
@@ -87,6 +102,7 @@ def _one(item: tuple[int, str, str]) -> dict[str, Any]:
         "weighted_tardiness_min",
         "qtime_violations",
         "qtime_causes",
+        "qtime_miss_class",
         "hard_qtime",
         "sim_s",
     ):
@@ -99,6 +115,10 @@ def _one(item: tuple[int, str, str]) -> dict[str, Any]:
 
 def _pct(num: float, den: float) -> float | None:
     return round(100.0 * num / den, 2) if den else None
+
+
+def _cls(rows: list[dict[str, Any]], key: str) -> int:
+    return sum(row.get("qtime_miss_class", {}).get(key, 0) for row in rows)
 
 
 def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -115,8 +135,15 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "q_true_pct": _pct(sum(row["q_met"] for row in rows), sum(row["q_scored"] for row in rows)),
         "q_steady_pct": _pct(st_met, st_all),
         "weighted_tardiness_min": round(sum(row["weighted_tardiness_min"] for row in rows), 1),
-        "missed_avoidable": sum(causes[key] for key in AVOIDABLE),
-        "missed_disruption": sum(causes[key] for key in DISRUPTION),
+        "missed_avoidable": _cls(rows, "avoidable"),
+        "missed_unavoidable": _cls(rows, "unavoidable_breakdown")
+        + _cls(rows, "unavoidable_disruption")
+        + _cls(rows, "unavoidable_pre_gate"),
+        "unavoidable_breakdown": _cls(rows, "unavoidable_breakdown"),
+        "unavoidable_disruption": _cls(rows, "unavoidable_disruption"),
+        "unavoidable_pre_gate": _cls(rows, "unavoidable_pre_gate"),
+        "cause_avoidable": sum(causes[key] for key in AVOIDABLE),
+        "cause_disruption": sum(causes[key] for key in DISRUPTION),
         "missed_inherited": sum(row["q_inherited_missed"] for row in rows),
         **{f"cause_{key}": causes[key] for key in CAUSES if key != "unclassified"},
     }
@@ -133,40 +160,89 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 KEYS = (
+    ("status", "Q-time feasibility"),
+    ("missed_avoidable", "avoidable Q-time violations (3 seeds)"),
+    ("missed_unavoidable", "unavoidable exceptions (3 seeds)"),
+    ("unavoidable_breakdown", "  breakdown after the origin start"),
+    ("unavoidable_disruption", "  target down / PM, rework, transport"),
+    ("unavoidable_pre_gate", "  in a window before any gate decision (t=0 WIP chain)"),
+    ("missed_inherited", "inherited windows missed (t=0 WIP)"),
+    ("expedited_lots", "expedited exception lots"),
+    ("recovered", "  recovered (target started)"),
+    ("recover_mean_min", "  time to recover, mean (min)"),
+    ("recover_p90_min", "  time to recover, p90 max (min)"),
     ("on_time_pct", "on-time %"),
     ("completed_per_run", "completed / run"),
+    ("weighted_tardiness_min", "weighted tardiness (min, 3 seeds)"),
     ("q_true_pct", "true Q-time %"),
     ("q_steady_pct", "true Q-time % after 24 h"),
-    ("weighted_tardiness_min", "weighted tardiness (min, 3 seeds)"),
-    ("missed_avoidable", "missed: avoidable (upstream+batch+queue)"),
-    ("missed_disruption", "missed: disruption (down/PM, rework, transport)"),
-    ("missed_inherited", "missed: inherited (t=0 WIP)"),
-    ("cause_upstream", "  upstream (still before target)"),
+    ("cause_upstream", "misses by cause: upstream (still before target)"),
     ("cause_queueing", "  queueing at target"),
     ("cause_batch_fill", "  batch fill at target"),
     ("cause_tool_down_pm", "  target down / PM"),
     ("cause_breakdown_rework", "  breakdown / rework after start"),
     ("cause_transport", "  transport"),
-    ("expedited_lots", "expedited exception lots"),
-    ("recovered", "  recovered (target started)"),
-    ("recover_mean_min", "  time to recover, mean (min)"),
-    ("recover_p90_min", "  time to recover, p90 max (min)"),
     ("gate_blocks", "origin gate blocks (dispatch checks)"),
 )
 
 
+def label(policy: str, arm: str) -> str:
+    gate = "hard" if dict(ARMS)[arm] else "off"
+    return f"{policy} + {gate}" if policy == "planning" else f"{policy} ({gate})"
+
+
+def feasibility(pooled: dict[str, Any]) -> str:
+    """Candidate only with zero avoidable violations; else an infeasible reference."""
+    n = pooled["missed_avoidable"]
+    if n == 0:
+        return "feasible"
+    return f"infeasible: {n} avoidable Q-time violations"
+
+
 def report(rows: list[dict[str, Any]]) -> str:
+    """KPI table; Q-time-feasible configurations first, the rest as references.
+
+    A configuration is a candidate only with zero avoidable Q-time
+    violations. Q-time-blind rules (EDD and the others) are shown only as an
+    industry reference with their avoidable-violation count, never as the
+    winner or the comparison target.
+    """
     pols = tuple(dict.fromkeys(row["policy"] for row in rows))
-    lines = ["| KPI | " + " | ".join(f"{p} {a}" for p in pols for a, _ in ARMS) + " |"]
-    lines.append("|---|" + "---:|" * (len(pols) * len(ARMS)))
-    pooled = {
-        (p, a): aggregate([r for r in rows if r["policy"] == p and r["arm"] == a])
-        for p in pols
-        for a, _ in ARMS
-    }
-    for key, label in KEYS:
-        cells = [str(pooled[(p, a)].get(key, "-")) for p in pols for a, _ in ARMS]
-        lines.append(f"| {label} | " + " | ".join(cells) + " |")
+    pooled: dict[tuple[str, str], dict[str, Any]] = {}
+    for p in pols:
+        for a, _ in ARMS:
+            chosen = [r for r in rows if r["policy"] == p and r["arm"] == a]
+            if chosen:
+                pooled[(p, a)] = aggregate(chosen)
+                pooled[(p, a)]["status"] = feasibility(pooled[(p, a)])
+    configs = sorted(pooled, key=lambda c: (pooled[c]["missed_avoidable"], c))
+    heads = []
+    for p, a in configs:
+        name = label(p, a)
+        if p != "planning":
+            n = pooled[(p, a)]["missed_avoidable"]
+            status = f"infeasible: {n} avoidable Q-time violations" if n else "feasible"
+            name = f"{name}: industry reference ({status})"
+        elif not dict(ARMS)[a]:
+            name = f"{name} (experiment switch)"
+        heads.append(name)
+    lines = ["| KPI | " + " | ".join(heads) + " |"]
+    lines.append("|---|" + "---:|" * len(configs))
+    for key, text in KEYS:
+        cells = [str(pooled[c].get(key, "-")) for c in configs]
+        lines.append(f"| {text} | " + " | ".join(cells) + " |")
+    best = [c for c in configs if pooled[c]["missed_avoidable"] == 0]
+    if best:
+        top = max(best, key=lambda c: pooled[c]["on_time_pct"] or 0.0)
+        lines.append(
+            f"\nAmong Q-time-feasible configurations, {label(*top)} gives the best on-time."
+        )
+    else:
+        top = configs[0]
+        lines.append(
+            f"\nNo configuration is Q-time-feasible yet; the fewest avoidable violations: "
+            f"{label(*top)} ({pooled[top]['missed_avoidable']})."
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -180,7 +256,7 @@ def main() -> None:
     hours = float(os.environ.get("RESILIMES_STUDY_HORIZON_H", "168"))
     qtime_study.STUDY_HORIZON_SEC = hours * 3600.0
     _FAB.append(load_fab())
-    items = [(seed, policy, arm) for seed in SEEDS for policy in policies() for arm, _ in ARMS]
+    items = [(seed, policy, arm) for seed in SEEDS for policy, arm in configs()]
     workers = max(1, int(os.environ.get("RESILIMES_STUDY_WORKERS", "2")))
     rows: list[dict[str, Any]] = []
     with (
