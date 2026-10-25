@@ -28,6 +28,14 @@ SCENARIOS = (
     "stress_pm_peak",
     "stress_batch_cap",
 )
+# Second, clearly labelled pre-registration (commit 99e85bc), harsher.
+SCENARIOS2 = (
+    "stress2_furnace_crisis",
+    "stress2_rush_hot",
+    "stress2_fe_furnace_crisis",
+)
+BOOKS = {"stress": SCENARIOS, "stress2": SCENARIOS2}
+RUSH_X_FACTOR = 1.25
 FURNACE_BE = "Diffusion_BE_123"
 FURNACE_FE = "Diffusion_FE_94"
 BURST_FAMILIES = ("DE_BE_69", "WE_BE_17", "Dielectric_BE_28")
@@ -41,17 +49,19 @@ HOT_REMAIN = (2 * HOUR, 4 * HOUR)
 
 
 def is_stress(book: str) -> bool:
-    return book in SCENARIOS
+    return book in SCENARIOS or book in SCENARIOS2
 
 
 def expand(book: str) -> list[str]:
-    """``stress`` -> every scenario in order; any other book -> itself."""
-    return list(SCENARIOS) if book == "stress" else [book]
+    """``stress`` / ``stress2`` -> its scenarios in order; else the book."""
+    return list(BOOKS[book]) if book in BOOKS else [book]
 
 
-def ordered_pairs(seeds: list[int] | tuple[int, ...] = STRESS_SEEDS) -> list[tuple[str, int]]:
-    """The pre-registered run order: seed-major, then S1..S5."""
-    return [(book, seed) for seed in seeds for book in SCENARIOS]
+def ordered_pairs(
+    seeds: list[int] | tuple[int, ...] = STRESS_SEEDS, book: str = "stress"
+) -> list[tuple[str, int]]:
+    """The pre-registered run order: seed-major, then the scenario order."""
+    return [(name, seed) for seed in seeds for name in BOOKS[book]]
 
 
 def half_tools(fab: Fab, name: str) -> list[int]:
@@ -113,7 +123,29 @@ def apply(
 ) -> None:
     """Add the incident of ``book`` to ``downs`` / ``pm`` / ``kwargs`` in place."""
     horizon = float(kwargs.get("horizon", 0.0) or math.inf)
-    if book == "stress_furnace_down":
+    if book == "stress2_furnace_crisis":
+        apply(fab, "stress_furnace_down", policy, downs, pm, kwargs)
+        kwargs["faults"] = FaultPlan(
+            hold_until={lot: BURST_RELEASE for lot in burst_lots(fab)},
+            batch_family=fab.family_index[FURNACE_BE],
+            batch_cap_wafers=BATCH_CAP_WAFERS,
+            batch_window=BATCH_SPAN,
+        )
+    elif book == "stress2_rush_hot":
+        lot, remain = hot_candidate(fab)
+        kwargs["hot_lot"] = lot
+        if policy == "resilimes":
+            kwargs["hot_due"] = RUSH_X_FACTOR * remain
+            kwargs["promote_hot"] = True
+    elif book == "stress2_fe_furnace_crisis":
+        for tool in half_tools(fab, FURNACE_FE):
+            downs[tool] = _merge([*downs[tool], (DOWN_SPAN[0], min(DOWN_SPAN[1], horizon))])
+        kwargs["faults"] = FaultPlan(
+            batch_family=fab.family_index[FURNACE_FE],
+            batch_cap_wafers=BATCH_CAP_WAFERS,
+            batch_window=BATCH_SPAN,
+        )
+    elif book == "stress_furnace_down":
         for tool in half_tools(fab, FURNACE_BE):
             downs[tool] = _merge([*downs[tool], (DOWN_SPAN[0], min(DOWN_SPAN[1], horizon))])
     elif book == "stress_hot_cqt":

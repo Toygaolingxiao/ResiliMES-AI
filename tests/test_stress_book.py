@@ -81,6 +81,22 @@ def test_stress_run_and_report(tmp_path: Path) -> None:
     assert (tmp_path / "report_stress_furnace_down.md").exists()
 
 
+def test_second_preregistration() -> None:
+    fab = load_fab()
+    assert stress_book.ordered_pairs((9,), "stress2") == [(b, 9) for b in stress_book.SCENARIOS2]
+    assert study.parse(["--book", "stress2"]).seeds == [9, 10, 11]
+    _, kw = _setup(fab, "stress2_furnace_crisis", 9, "resilimes")
+    plan = kw["faults"]
+    assert len(plan.hold_until) == 80 and plan.batch_cap_wafers == 25
+    assert all(kw["downs"][t][0][0] == 0.0 for t in stress_book.half_tools(fab, "Diffusion_BE_123"))
+    _, kw = _setup(fab, "stress2_rush_hot", 9, "resilimes")
+    assert round(kw["hot_due"] / 3600, 3) == 4.223
+    _, kw = _setup(fab, "stress2_fe_furnace_crisis", 9, "resilimes")
+    fe = fab.family_index["Diffusion_FE_94"]
+    assert kw["faults"].batch_family == fe
+    assert all(kw["downs"][t][0][0] == 0.0 for t in stress_book.half_tools(fab, "Diffusion_FE_94"))
+
+
 def test_lexicographic_metric() -> None:
     base = {"qtime_avoidable": 2, "hot_late": 0, "weighted_tardiness_min": 100.0}
     assert study.lexi_cmp({**base, "qtime_avoidable": 1, "weighted_tardiness_min": 900}, base) == -1

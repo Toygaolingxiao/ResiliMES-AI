@@ -134,7 +134,7 @@ def _setup(
         for tool in range(family.tool0, family.tool0 + family.tools):
             downs[tool].append((0.0, _STRESS_HOURS * 3600.0))
         pm = pm_windows(fab, horizon)
-    elif book.startswith("stress_"):
+    elif book.startswith(("stress_", "stress2_")):
         # Pre-registered stress book (resilimes.smt.stress_book).
         from resilimes.smt import stress_book
 
@@ -172,6 +172,9 @@ BOOK_SCENARIO = {
     "stress_release_burst": "published",
     "stress_pm_peak": "published",
     "stress_batch_cap": "published",
+    "stress2_furnace_crisis": "published",
+    "stress2_rush_hot": "published",
+    "stress2_fe_furnace_crisis": "published",
 }
 _PLANS: dict[str, Any] = {}
 

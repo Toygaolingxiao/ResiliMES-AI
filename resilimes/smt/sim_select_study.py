@@ -248,8 +248,8 @@ def pairs(args: argparse.Namespace) -> list[tuple[str, int]]:
     order (seed-major, then S1..S5), cut to the first ``--first`` pairs."""
     from resilimes.smt import stress_book
 
-    if args.book == "stress":
-        out = stress_book.ordered_pairs(args.seeds)
+    if args.book in stress_book.BOOKS:
+        out = stress_book.ordered_pairs(args.seeds, args.book)
     else:
         out = [(args.book, seed) for seed in args.seeds]
     return out[: args.first] if args.first else out
@@ -285,7 +285,7 @@ def _mean(values: list[float]) -> float | None:
 
 
 def report(args: argparse.Namespace) -> dict[str, Any]:
-    if args.book == "stress":
+    if args.book in ("stress", "stress2"):
         return stress_report(args)
     return report_book(args, args.book)
 
@@ -438,7 +438,7 @@ def stress_report(args: argparse.Namespace) -> dict[str, Any]:
     books = sorted({b for b, _ in order}, key=[b for b, _ in order].index)
     for book in books:
         report_book(args, book, name=f"report_{book}")
-    result = {"book": "stress", "order": order, "rows": table_rows, "summary": summary}
+    result = {"book": args.book, "order": order, "rows": table_rows, "summary": summary}
     (out / "report.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
     (out / "report.md").write_text(stress_table(result), encoding="utf-8")
     print(stress_table(result), flush=True)
@@ -460,7 +460,7 @@ def stress_table(result: dict[str, Any]) -> str:
         "wall_s",
     )
     lines = [
-        "stress book (pre-registered, docs/AI_SHIFT_LEAD_STRESS.md)",
+        f"{result['book']} book (pre-registered, docs/AI_SHIFT_LEAD_STRESS.md)",
         "",
         "| scenario | seed | arm | " + " | ".join(cols) + " |",
         "|---|---|---|" + "---|" * len(cols),
@@ -527,7 +527,7 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--book",
         default="heldout_published",
-        help="study book; 'stress' = the pre-registered stress book (all scenarios)",
+        help="study book; 'stress' / 'stress2' = the pre-registered stress books",
     )
     p.add_argument(
         "--seeds", default=None, help="default: 9-13 (stress: the pre-registered 9,10,11)"
@@ -555,7 +555,8 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
     if args.seeds is None:
         from resilimes.smt.stress_book import STRESS_SEEDS
 
-        args.seeds = ",".join(map(str, STRESS_SEEDS if args.book == "stress" else HELDOUT_SEEDS))
+        stress = args.book in ("stress", "stress2")
+        args.seeds = ",".join(map(str, STRESS_SEEDS if stress else HELDOUT_SEEDS))
     args.seeds = [int(s) for s in str(args.seeds).split(",") if s]
     args.warm_seeds = [int(s) for s in str(args.warm_seeds).split(",") if s]
     # The horizon is read from the env by qtime_study._setup.

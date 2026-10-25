@@ -8,7 +8,8 @@
 ``--book stress`` runs the pre-registered stress book
 (docs/AI_SHIFT_LEAD_STRESS.md): five incident scenarios, seeds 9-11, 8 h, in
 the fixed order seed-major then S1..S5; ``--first N`` keeps the first N
-(scenario, seed) pairs (the pre-declared runtime subset). H-MEM has no
+(scenario, seed) pairs (the pre-declared runtime subset). ``--book stress2``
+is the second, labelled pre-registration (three harsher scenarios). H-MEM has no
 warm-up on the stress book (empty memory per run).
 
 Runs sequentially, one run at a time, and prints a timestamped line per run
@@ -102,13 +103,13 @@ def main() -> int:
     p.add_argument("--out-dir", default="study_sim_select_live")
     p.add_argument("--seeds", default=None, help="default 9-13 (stress: 9,10,11)")
     p.add_argument("--horizon-h", default=None, help="simulated hours per run (24; stress 8)")
-    p.add_argument("--book", default="heldout_published", help="or 'stress'")
+    p.add_argument("--book", default="heldout_published", help="or 'stress' / 'stress2'")
     p.add_argument("--first", default="0", help="stress: first N (scenario, seed) pairs only")
     p.add_argument("--workers", default="3", help="twin fork processes")
     p.add_argument("--skip-baselines", action="store_true")
     p.add_argument("--skip-probe", action="store_true")
     args = p.parse_args()
-    stress = args.book == "stress"
+    stress = args.book in ("stress", "stress2")
     if args.seeds is None:
         args.seeds = "9,10,11" if stress else "9,10,11,12,13"
     if args.horizon_h is None:
@@ -152,7 +153,7 @@ def main() -> int:
     for number, arm in enumerate(arms, 1):
         print(f"=== arm {number}/{len(arms)}: {arm}", flush=True)
         study.main(["run", "--arms", arm, *common])
-        _check_models(out, arm, "stress_*" if stress else args.book)
+        _check_models(out, arm, "stress*" if stress else args.book)
     study.main(["report", *common])
     print(f"=== done {time.strftime('%Y-%m-%d %H:%M:%S')}; report: {out / 'report.md'}")
     return 0
