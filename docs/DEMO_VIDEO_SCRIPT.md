@@ -6,7 +6,7 @@ Target **≤ 4:00** (rules: demo video 1–4 minutes, show one real request thro
 
 v2 is the v1 film (3:51) re-cut with two new clips. Nothing in the kept v1 footage is re-shot.
 
-- **Clip A (~25 s):** deck slide 7, "Q-time first". It replaces the v1 segment 1:46–2:08, whose subtitle and slide described the old comparison.
+- **Clip A (~25 s):** deck slide 8, "Q-time first". It replaces the v1 segment 1:46–2:08, whose subtitle and slide described the old comparison.
 - **Clip B (~28 s):** the Gantt right-click investigation, inserted right after the litho reschedule. It continues from the Gantt that is already on screen.
 - The v1 cue at 2:30–2:44 described the explainer wrongly. In v2 its subtitle box is masked and a corrected line is burned in.
 
@@ -32,8 +32,8 @@ Nominal times, built by `build_v2.sh` from v1 + clip A + clip B. The final times
 | 3 | 0:46–1:10 | v1 1:14–1:38 (16 s reschedule wait cut) | litho reschedule cards → Gantt | v1 cue 5 |
 | 4 | **1:10–1:38** | **clip B** | Gantt: zoom → right-click a family-row gap → question → panel (answer, tier, evidence) → a tool-row gap | new, 3 cues (below) |
 | 5 | 1:38–1:46 | v1 1:38–1:46 | deck flash | "Rules schedule first. AI only explains and advises; it never writes the schedule." |
-| 6 | **1:46–2:11** | **clip A** | deck slide 7, Q-time first | new, 2 cues (below) |
-| 7 | 2:11–2:33 | v1 2:08–2:30 | deck slide 8, what's left after the gate | v1 cue 8 |
+| 6 | **1:46–2:11** | **clip A** | deck slide 8, Q-time first | new, 2 cues (below) |
+| 7 | 2:11–2:33 | v1 2:08–2:30 | deck slide 9, what's left after the gate | v1 cue 8 |
 | 8 | 2:33–2:47 | v1 2:30–2:44, old subtitle box masked | Investigator UI (live) | corrected cue (below) |
 | 9 | 2:47–3:54 | v1 2:44–3:51 | live explainer request, Zetaris parity, agents, AI results, close | v1 cues 10–14 |
 
@@ -54,7 +54,7 @@ The full retimed subtitle file (draft) and the build script are kept outside the
 
 ## Recording clips A and B
 
-- **Clip A.** Open `docs/deck/index.html#7` full screen (F11) at 1920×1080. Hold still about 25 s and move the mouse only to point at the 99.26% row, then at the EDD column. No slide changes.
+- **Clip A.** Open `docs/deck/index.html#8` full screen (F11) at 1920×1080. Hold still about 25 s and move the mouse only to point at the 99.26% row, then at the EDD column. No slide changes.
 - **Clip B.** `make demo` → http://localhost:8000 → SMT2020 → Gantt. Zoom into about 2 h on a busy family, then:
   1. click a gap;
   2. right-click a gap on a **family row** and pick the question;
