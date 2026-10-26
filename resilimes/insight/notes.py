@@ -34,7 +34,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard
 
 from resilimes.agents.jsonutil import extract_json_object
 from resilimes.llm.base import Completer, LlmResult
@@ -127,7 +127,7 @@ def build_fab_index(root: str | Path | None = None) -> FabIndex:
 # --------------------------------------------------------------------------
 # Validation / fact-check
 # --------------------------------------------------------------------------
-def _is_num(value: Any) -> bool:
+def _is_num(value: Any) -> TypeGuard[int | float]:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
