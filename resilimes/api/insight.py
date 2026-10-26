@@ -8,16 +8,46 @@ Nightshift every answer comes from the offline stand-in and says so
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
 class InvestigateBody(BaseModel):
-    case_id: str = Field(max_length=60)
+    # Case mode (original): re-run one committed investigator case.
+    case_id: str | None = Field(default=None, max_length=60)
+    # Context mode (Gantt right-click): one context query over the recorded
+    # explainer run of ``seed``. Contract: docs/CONTEXT_INVESTIGATION.md.
+    type: str | None = Field(default=None, pattern="^(bar|gap|window|free)$")
+    tool: str | None = Field(default=None, max_length=80)
+    family: str | None = Field(default=None, max_length=80)
+    lot: str | None = Field(default=None, max_length=60)
+    step: int | None = Field(default=None, ge=0)
+    t1_h: float | None = Field(default=None, ge=0.0)
+    t2_h: float | None = Field(default=None, ge=0.0)
+    question_preset: str | None = Field(default=None, max_length=40)
+    question: str | None = Field(default=None, max_length=300)
+    seed: int = Field(default=1, ge=1, le=4)
+    # Front-end (Gantt) payload alignment: minutes win over hours when both
+    # are sent; scenario_id is echoed and "seed-<n>" selects the run seed.
+    t1_min: float | None = Field(default=None, ge=0.0)
+    t2_min: float | None = Field(default=None, ge=0.0)
+    scenario_id: str | None = Field(default=None, max_length=64)
+    lang: Literal["en", "zh", "ja"] = "en"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _blank_is_none(cls, data: Any) -> Any:
+        """Blank strings mean "not given" (older front ends sent "" for absent ids)."""
+        if isinstance(data, dict):
+            return {
+                key: (None if isinstance(value, str) and not value.strip() else value)
+                for key, value in data.items()
+            }
+        return data
 
 
 def _provider(request: Request) -> Any:
@@ -31,6 +61,54 @@ def _fab() -> Any:
     from resilimes.smt.fab import load_fab
 
     return load_fab()
+
+
+def _context_run(body: InvestigateBody) -> dict[str, Any]:
+    """Which recorded run answered the query, and whether it is the on-screen one.
+
+    Only ``scenario_id="seed-<n>"`` names an explainer run directly; any other
+    scenario (an SMT book, the sample bay, ...) is answered from the cached
+    reference run ``seed-<seed>`` and is labelled ``reference: true``.
+    """
+    import re
+
+    from resilimes.insight.explainer import HORIZON_H
+
+    named = bool(body.scenario_id and re.fullmatch(r"seed-[1-4]", body.scenario_id))
+    return {
+        "id": f"seed-{body.seed}",
+        "seed": body.seed,
+        "horizon_h": HORIZON_H,
+        "reference": not named,
+        "requested_scenario": body.scenario_id,
+    }
+
+
+def _context_query(body: InvestigateBody) -> Any:
+    """Map the wire body to a ContextQuery (minutes win over hours)."""
+    import re
+
+    from resilimes.insight.context_investigation import ContextQuery
+
+    t1_h = body.t1_min / 60.0 if body.t1_min is not None else body.t1_h
+    t2_h = body.t2_min / 60.0 if body.t2_min is not None else body.t2_h
+    if body.scenario_id:
+        match = re.fullmatch(r"seed-(\d+)", body.scenario_id)
+        if match and 1 <= int(match.group(1)) <= 4:
+            body.seed = int(match.group(1))
+    return ContextQuery(
+        type=str(body.type),
+        tool=body.tool,
+        family=body.family,
+        lot=body.lot,
+        step=body.step,
+        t1_h=t1_h,
+        t2_h=t2_h,
+        question_preset=body.question_preset,
+        question=body.question,
+        scenario_id=body.scenario_id,
+        lang=body.lang,
+    )
 
 
 @router.get("/investigator/cases")
@@ -55,11 +133,40 @@ def investigator_cases() -> dict[str, Any]:
 
 @router.post("/investigate")
 def investigate_case(body: InvestigateBody, request: Request) -> dict[str, Any]:
-    """Re-run the case's faulted simulation and investigate it (advice only)."""
+    """Re-run the case's faulted simulation and investigate it (advice only).
+
+    With ``type`` instead of ``case_id`` this is the Gantt context
+    investigation over the explainer run (docs/CONTEXT_INVESTIGATION.md).
+    """
     from resilimes.evidence.toolkit import Toolkit
     from resilimes.insight.injector import rebuild
     from resilimes.insight.investigator import baseline_rank, investigate, score
     from resilimes.insight.study import load_cases
+
+    if body.type is not None:
+        from resilimes.insight.context_investigation import (
+            ContextError,
+            investigate_context,
+        )
+
+        query = _context_query(body)
+        try:
+            answer = investigate_context(
+                Toolkit(_explainer_base(body.seed)),
+                query,
+                _provider(request),
+                request.app.state.settings,
+            )
+        except ContextError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "context": answer.to_json(),
+            "scenario_id": body.scenario_id,
+            "run": _context_run(body),
+            "advice_only": True,
+        }
+    if body.case_id is None:
+        raise HTTPException(status_code=400, detail="case_id or type is required")
 
     cases = {c.case_id: c for c in load_cases()}
     case = cases.get(body.case_id)
@@ -67,7 +174,7 @@ def investigate_case(body: InvestigateBody, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="unknown case")
     fab = _fab()
     run = rebuild(fab, case)
-    answer = investigate(
+    inv = investigate(
         Toolkit(run),
         case.question,
         case.family,
@@ -80,12 +187,12 @@ def investigate_case(body: InvestigateBody, request: Request) -> dict[str, Any]:
     return {
         "case_id": case.case_id,
         "question": case.question,
-        "answer": answer.to_json(),
+        "answer": inv.to_json(),
         "baseline": rank[:2],
         "truth": case.fault,
-        "score": score(case.fault, answer.primary_cause, answer.secondary_cause),
+        "score": score(case.fault, inv.primary_cause, inv.secondary_cause),
         "system_score": score(
-            case.fault, answer.system.get("primary_cause"), answer.system.get("secondary_cause")
+            case.fault, inv.system.get("primary_cause"), inv.system.get("secondary_cause")
         ),
         "advice_only": True,
     }

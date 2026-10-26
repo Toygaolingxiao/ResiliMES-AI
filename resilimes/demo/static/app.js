@@ -82,6 +82,7 @@ const state = {
   smtStart: 0,
   smtEnd: 720,
   smtDrill: "",
+  smtZoomIdx: 0,
   smtPinned: "",
   shiftLead: null,
 };
@@ -608,93 +609,712 @@ function paintSmtCharts(report) {
   ensureSmtControls();
   renderVirtualGantt($("#gantt-before"), gantt.before || [], report);
   renderVirtualGantt($("#gantt-after"), gantt.after || [], report);
+  paintSmtLegend();
+}
+
+function paintSmtLegend() {
+  const host = $("#legend");
+  if (!host) return;
+  const g = t().gantt || {};
+  host.innerHTML = "";
+  host.appendChild(legendItem("var(--accent)", g.legendBusy || "Busy segment"));
+  const scale = legendItem("var(--accent)", g.legendBusyScale || "Darker = more tools busy at once");
+  const scaleSwatch = scale.querySelector(".swatch");
+  if (scaleSwatch) scaleSwatch.style.opacity = "0.45";
+  host.appendChild(scale);
+  host.appendChild(legendItem(null, g.legendGap || "Idle gap", null, "hatch-gap"));
+  const peak = document.createElement("li");
+  peak.appendChild(document.createTextNode(g.legendPeak || "×N = peak tools busy"));
+  host.appendChild(peak);
+}
+
+// ——— SMT virtual Gantt geometry ———
+// Rows are family aggregates of {s, e, n} (n = peak tools busy in the bin);
+// there is no lot / recipe / due / down / PM identity at this level, and the
+// drill-down focus_bars only add a tool id. Nothing below invents fields the
+// payload does not carry.
+const SMT_LABEL_W = 168;
+const SMT_ZOOMS = [1, 1.5, 2, 3, 4, 6, 8];
+const SMT_TICK_STEPS = [15, 30, 60, 120, 240, 360, 720, 1440];
+const SMT_ROW_H = 28;
+const SMT_AXIS_H = 22;
+
+function smtElapsed(min) {
+  const total = Math.max(0, Math.round(min));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function smtTickStep(ppm) {
+  for (const step of SMT_TICK_STEPS) if (step * ppm >= 64) return step;
+  return SMT_TICK_STEPS[SMT_TICK_STEPS.length - 1];
+}
+
+function smtViewOf(hostId) {
+  const hostEl = document.querySelector(hostId);
+  return hostEl ? hostEl.querySelector(".vg-scroll") : null;
+}
+
+// Zoom around an anchor minute shared by both charts: the wheel zooms around
+// the cursor, the buttons around the source chart's viewport centre. After
+// the repaint each chart is scrolled back so the anchor minute sits at the
+// same viewport offset it had before (the sibling chart centres it).
+function smtZoomStep(dir, event, sourceView) {
+  if (!state.report) return;
+  const next = Math.min(SMT_ZOOMS.length - 1, Math.max(0, state.smtZoomIdx + dir));
+  if (next === state.smtZoomIdx) return;
+  const view = sourceView || smtViewOf("#gantt-after") || smtViewOf("#gantt-before");
+  let anchor = null;
+  if (view && view._smt) {
+    const info = view._smt;
+    let xInView;
+    if (event && typeof event.clientX === "number") {
+      xInView = event.clientX - view.getBoundingClientRect().left;
+    } else {
+      xInView = view.clientWidth / 2;
+    }
+    anchor = {
+      t: info.startMin + (view.scrollLeft + xInView - SMT_LABEL_W) / info.ppm,
+      xInView,
+      sourceId: view._smtHost || "",
+    };
+  }
+  state.smtZoomIdx = next;
+  paintSmtCharts(state.report);
+  if (anchor) {
+    for (const hostId of ["#gantt-before", "#gantt-after"]) {
+      const v = smtViewOf(hostId);
+      if (!v || !v._smt) continue;
+      const offset = v._smtHost === anchor.sourceId ? anchor.xInView : v.clientWidth / 2;
+      v.scrollLeft = Math.max(0, SMT_LABEL_W + (anchor.t - v._smt.startMin) * v._smt.ppm - offset);
+    }
+  }
 }
 
 function ensureSmtControls() {
   const tools = document.querySelector(".chart-tools");
-  if (!tools || tools.querySelector(".smt-controls")) return;
-  const bar = document.createElement("div");
-  bar.className = "smt-controls";
-  bar.innerHTML = `<label>From <input id="smt-start" type="number" min="0" step="15" value="${state.smtStart}"> min</label><label>To <input id="smt-end" type="number" min="15" step="15" value="${state.smtEnd}"> min</label><button type="button" id="smt-window">Window</button><button type="button" id="smt-clear">All groups</button>`;
-  tools.appendChild(bar);
-  bar.querySelector("#smt-window").addEventListener("click", () => {
-    state.smtStart = Number(bar.querySelector("#smt-start").value) || 0;
-    state.smtEnd = Number(bar.querySelector("#smt-end").value) || 720;
-    if (state.report) paintSmtCharts(state.report);
-  });
-  bar.querySelector("#smt-clear").addEventListener("click", () => {
-    state.smtGroup = "all";
-    state.smtDrill = "";
-    if (state.report) paintSmtCharts(state.report);
-  });
+  if (!tools) return;
+  const g = t().gantt || {};
+  let bar = tools.querySelector(".smt-controls");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.className = "smt-controls";
+    bar.innerHTML = `<label><span class="smt-from"></span> <input id="smt-start" type="number" min="0" step="15"> <span class="smt-min"></span></label>`
+      + `<label><span class="smt-to"></span> <input id="smt-end" type="number" min="15" step="15"> <span class="smt-min"></span></label>`
+      + `<button type="button" id="smt-window"></button><button type="button" id="smt-clear"></button>`
+      + `<span class="smt-zoom"><span class="smt-zlabel"></span>`
+      + `<button type="button" id="smt-zout">−</button><button type="button" id="smt-zfit"></button><button type="button" id="smt-zin">+</button>`
+      + `<span class="smt-zlevel"></span></span>`;
+    tools.appendChild(bar);
+    bar.querySelector("#smt-window").addEventListener("click", () => {
+      state.smtStart = Number(bar.querySelector("#smt-start").value) || 0;
+      state.smtEnd = Number(bar.querySelector("#smt-end").value) || 720;
+      state.smtZoomIdx = 0;
+      if (state.report) paintSmtCharts(state.report);
+    });
+    bar.querySelector("#smt-clear").addEventListener("click", () => {
+      state.smtGroup = "all";
+      state.smtDrill = "";
+      if (state.report) paintSmtCharts(state.report);
+    });
+    bar.querySelector("#smt-zin").addEventListener("click", () => smtZoomStep(1, null, null));
+    bar.querySelector("#smt-zout").addEventListener("click", () => smtZoomStep(-1, null, null));
+    bar.querySelector("#smt-zfit").addEventListener("click", () => {
+      state.smtZoomIdx = 0;
+      if (state.report) paintSmtCharts(state.report);
+      for (const hostId of ["#gantt-before", "#gantt-after"]) {
+        const v = smtViewOf(hostId);
+        if (v) v.scrollLeft = 0;
+      }
+    });
+  }
+  bar.querySelector(".smt-from").textContent = g.fromLabel || "From";
+  bar.querySelector(".smt-to").textContent = g.toLabel || "To";
+  bar.querySelectorAll(".smt-min").forEach((node) => { node.textContent = g.minUnit || "min"; });
+  bar.querySelector("#smt-window").textContent = g.windowBtn || "Window";
+  bar.querySelector("#smt-clear").textContent = g.allGroups || "All groups";
+  bar.querySelector(".smt-zlabel").textContent = g.zoomLabel || "Zoom";
+  bar.querySelector("#smt-zfit").textContent = g.zoomFit || "Fit";
+  bar.querySelector("#smt-zout").title = g.zoomOut || "Zoom out";
+  bar.querySelector("#smt-zin").title = g.zoomIn || "Zoom in";
+  bar.querySelector(".smt-zlevel").textContent = `×${SMT_ZOOMS[state.smtZoomIdx]}`;
+  const startInput = bar.querySelector("#smt-start");
+  const endInput = bar.querySelector("#smt-end");
+  if (document.activeElement !== startInput) startInput.value = state.smtStart;
+  if (document.activeElement !== endInput) endInput.value = state.smtEnd;
+  bar.querySelector("#smt-zout").disabled = state.smtZoomIdx <= 0;
+  bar.querySelector("#smt-zin").disabled = state.smtZoomIdx >= SMT_ZOOMS.length - 1;
 }
 
 function renderVirtualGantt(host, rows, report) {
+  const copy = t();
+  const g = copy.gantt || {};
   const group = state.smtGroup;
   let visible = rows.filter((row) => group === "all" || row.group === group);
-  if (state.smtDrill) {
-    const focus = report.focus || {};
-    if (state.smtDrill === focus.family && report.gantt && host.id === "gantt-after") {
-      const byTool = {};
-      for (const bar of report.gantt.focus_bars || []) {
-        (byTool[bar.tool] || (byTool[bar.tool] = [])).push(bar);
-      }
-      visible = Object.keys(byTool).sort().map((tool) => ({
-        id: tool,
-        group: focus.group,
-        bars: byTool[tool].map((bar) => ({ s: bar.s, e: bar.e, n: 1 })),
-      }));
+  const focus = report.focus || {};
+  const drilled = Boolean(state.smtDrill) && state.smtDrill === focus.family
+    && Boolean(report.gantt) && host.id === "gantt-after";
+  if (drilled) {
+    const byTool = {};
+    for (const bar of report.gantt.focus_bars || []) {
+      (byTool[bar.tool] || (byTool[bar.tool] = [])).push(bar);
     }
+    visible = Object.keys(byTool).sort().map((tool) => ({
+      id: tool,
+      group: focus.group,
+      bars: byTool[tool].map((bar) => ({ s: bar.s, e: bar.e, n: 1 })),
+    }));
   }
-  host.innerHTML = "";
-  const view = document.createElement("div");
-  view.className = "vscroll";
-  const spacer = document.createElement("div");
-  const inner = document.createElement("div");
-  inner.className = "vrows";
-  view.appendChild(spacer);
-  view.appendChild(inner);
-  host.appendChild(view);
-  const rowHeight = 28;
   const startMin = state.smtStart;
   const endMin = Math.max(startMin + 15, state.smtEnd);
   const span = endMin - startMin;
-  function draw() {
-    const height = view.clientHeight || 440;
-    spacer.style.height = `${visible.length * rowHeight}px`;
-    const first = Math.max(0, Math.floor(view.scrollTop / rowHeight) - 2);
-    const count = Math.ceil(height / rowHeight) + 6;
-    inner.style.transform = `translateY(${first * rowHeight}px)`;
-    inner.replaceChildren();
-    for (const row of visible.slice(first, first + count)) {
-      const line = document.createElement("div");
-      line.className = "smt-row" + (row.scanner ? " scanner" : "");
-      const label = document.createElement("button");
-      label.type = "button";
-      label.className = "smt-label";
-      label.textContent = row.id;
-      label.addEventListener("click", () => {
-        state.smtDrill = state.smtDrill === row.id ? "" : row.id;
-        paintSmtCharts(report);
-      });
-      const track = document.createElement("div");
-      track.className = "smt-track";
-      for (const bar of row.bars || []) {
-        if (bar.e <= startMin || bar.s >= endMin) continue;
-        const left = Math.max(0, (Math.max(bar.s, startMin) - startMin) / span);
-        const right = Math.min(1, (Math.min(bar.e, endMin) - startMin) / span);
-        const mark = document.createElement("i");
-        mark.style.left = `${left * 100}%`;
-        mark.style.width = `${Math.max(0.4, (right - left) * 100)}%`;
-        mark.title = `${row.id} ${bar.s}–${bar.e} min · ${bar.n} tools`;
-        track.appendChild(mark);
-      }
-      line.append(label, track);
-      inner.appendChild(line);
+  const fitW = Math.max(240, (host.clientWidth || 720) - SMT_LABEL_W);
+  const trackW = Math.round(fitW * (SMT_ZOOMS[state.smtZoomIdx] || 1));
+  const ppm = trackW / span;
+  const step = smtTickStep(ppm);
+  const stepPx = step * ppm;
+  let maxN = 1;
+  for (const row of visible) {
+    for (const bar of row.bars || []) {
+      if (bar.e > startMin && bar.s < endMin) maxN = Math.max(maxN, bar.n || 1);
     }
   }
+  const rangeText = (s, e) => `${smtElapsed(s)}–${smtElapsed(e)}`;
+
+  function textTip(event, text) {
+    const tip = $("#tip");
+    tip.textContent = text;
+    tip.hidden = false;
+    moveTip(event);
+  }
+
+  function segEl(row, bar) {
+    const node = document.createElement("div");
+    node.className = "smt-seg";
+    node.style.left = `${(bar.s - startMin) * ppm}px`;
+    node.style.width = `${Math.max(2, (bar.e - bar.s) * ppm)}px`;
+    node.style.opacity = String(0.35 + 0.6 * ((bar.n || 1) / maxN));
+    if ((bar.e - bar.s) * ppm >= 30) {
+      const tag = document.createElement("span");
+      tag.className = "smt-seg-label";
+      tag.textContent = `×${bar.n || 1}`;
+      node.appendChild(tag);
+    }
+    const tipText = drilled
+      ? fill(g.toolSegTip || "{tool}\n{range}", { tool: row.id, range: rangeText(bar.rawS, bar.rawE) })
+      : fill(g.segTip || "{family} · {group}\n{range} · {n}", {
+        family: row.id, group: row.group || "", range: rangeText(bar.rawS, bar.rawE), n: bar.n || 1,
+      });
+    node.addEventListener("pointerenter", (event) => textTip(event, tipText));
+    node.addEventListener("pointermove", moveTip);
+    node.addEventListener("pointerleave", hideTip);
+    node.addEventListener("click", (event) => {
+      if (consumeCtxSuppress()) return;
+      event.stopPropagation();
+      hideTip();
+      const fields = drilled
+        ? [[g.factTool || "Tool", row.id], [g.factWindow || "Window", rangeText(bar.rawS, bar.rawE)]]
+        : [
+          [g.factFamily || "Family", row.id],
+          [g.factGroup || "Group", row.group || "—"],
+          [g.factWindow || "Window", rangeText(bar.rawS, bar.rawE)],
+          [g.factPeak || "Peak tools", String(bar.n || 1)],
+        ];
+      showCtxFacts(g.detailTitle || "Segment", fields, "");
+    });
+    const openMenu = (x, y) => openCtxMenu(x, y, {
+      type: "window",
+      tool: drilled ? row.id : "",
+      family: drilled ? (focus.family || "") : row.id,
+      t1_min: bar.rawS,
+      t2_min: bar.rawE,
+    });
+    node.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideTip();
+      openMenu(event.clientX, event.clientY);
+    });
+    bindLongPress(node, (x, y) => { hideTip(); openMenu(x, y); });
+    return node;
+  }
+
+  function gapEl(row, s, e) {
+    const node = document.createElement("div");
+    node.className = "smt-gap";
+    node.style.left = `${(s - startMin) * ppm}px`;
+    node.style.width = `${Math.max(2, (e - s) * ppm)}px`;
+    const info = {
+      family: drilled ? (focus.family || "") : row.id,
+      tool: drilled ? row.id : "",
+      t1_min: s,
+      t2_min: e,
+    };
+    node.addEventListener("pointerenter", (event) => textTip(event, fill(g.gapTip || "{dur}", { dur: formatDuration(e - s) })));
+    node.addEventListener("pointermove", moveTip);
+    node.addEventListener("pointerleave", hideTip);
+    node.addEventListener("click", (event) => {
+      if (consumeCtxSuppress()) return;
+      event.stopPropagation();
+      hideTip();
+      onGapClick(info);
+    });
+    // A family row has no single tool, and gap queries need one: ask the
+    // family-window question instead (the investigator answers it).
+    const openMenu = (x, y) => openCtxMenu(x, y, info.tool ? { type: "gap", ...info } : { type: "window", ...info });
+    node.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideTip();
+      openMenu(event.clientX, event.clientY);
+    });
+    bindLongPress(node, (x, y) => { hideTip(); openMenu(x, y); });
+    return node;
+  }
+
+  function rowEl(row) {
+    const line = document.createElement("div");
+    line.className = "smt-row" + (row.scanner ? " scanner" : "");
+    const label = document.createElement("button");
+    label.type = "button";
+    label.className = "smt-label";
+    label.textContent = row.id;
+    label.addEventListener("click", () => {
+      state.smtDrill = state.smtDrill === row.id ? "" : row.id;
+      paintSmtCharts(report);
+    });
+    const track = document.createElement("div");
+    track.className = "smt-track";
+    track.style.width = `${trackW}px`;
+    track.style.backgroundSize = `${stepPx}px 100%`;
+    const bars = (row.bars || [])
+      .filter((bar) => bar.e > startMin && bar.s < endMin)
+      .map((bar) => ({
+        s: Math.max(bar.s, startMin),
+        e: Math.min(bar.e, endMin),
+        rawS: bar.s,
+        rawE: bar.e,
+        n: bar.n || 1,
+      }))
+      .sort((a, b) => a.s - b.s);
+    let prevEnd = null;
+    for (const bar of bars) {
+      if (prevEnd !== null && bar.s - prevEnd >= 15) track.appendChild(gapEl(row, prevEnd, bar.s));
+      track.appendChild(segEl(row, bar));
+      prevEnd = prevEnd === null ? bar.e : Math.max(prevEnd, bar.e);
+    }
+    const openWindow = (x, y) => {
+      const rect = track.getBoundingClientRect();
+      const minute = startMin + (x - rect.left) / ppm;
+      openCtxMenu(x, y, {
+        type: "window",
+        tool: drilled ? row.id : "",
+        family: drilled ? (focus.family || "") : row.id,
+        t1_min: Math.max(0, Math.round(minute - 30)),
+        t2_min: Math.round(minute + 30),
+      });
+    };
+    track.addEventListener("contextmenu", (event) => {
+      if (event.target !== track) return;
+      event.preventDefault();
+      openWindow(event.clientX, event.clientY);
+    });
+    bindLongPress(track, (x, y) => openWindow(x, y));
+    line.append(label, track);
+    return line;
+  }
+
+  host.innerHTML = "";
+  const view = document.createElement("div");
+  view.className = "vscroll vg-scroll";
+  const content = document.createElement("div");
+  content.className = "vg-content";
+  content.style.width = `${SMT_LABEL_W + trackW}px`;
+  const axis = document.createElement("div");
+  axis.className = "vg-axis";
+  axis.style.height = `${SMT_AXIS_H}px`;
+  const corner = document.createElement("div");
+  corner.className = "vg-corner";
+  const axisTrack = document.createElement("div");
+  axisTrack.className = "vg-axis-track";
+  axisTrack.style.width = `${trackW}px`;
+  axisTrack.style.backgroundSize = `${stepPx}px 100%`;
+  for (let m = startMin; m <= endMin; m += step) {
+    const tick = document.createElement("span");
+    tick.className = "vg-tick" + (m === startMin ? " first" : "");
+    tick.style.left = `${(m - startMin) * ppm}px`;
+    tick.textContent = m === startMin ? (copy.now || "Now") : smtElapsed(m);
+    axisTrack.appendChild(tick);
+  }
+  axisTrack.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    const rect = axisTrack.getBoundingClientRect();
+    const minute = startMin + (event.clientX - rect.left) / ppm;
+    openCtxMenu(event.clientX, event.clientY, {
+      type: "window",
+      tool: "",
+      family: drilled ? (focus.family || "") : "",
+      t1_min: Math.max(0, Math.round(minute - 30)),
+      t2_min: Math.round(minute + 30),
+    });
+  });
+  axis.append(corner, axisTrack);
+  const body = document.createElement("div");
+  body.className = "vg-body";
+  body.style.height = `${visible.length * SMT_ROW_H}px`;
+  const inner = document.createElement("div");
+  inner.className = "vrows";
+  inner.style.width = `${SMT_LABEL_W + trackW}px`;
+  body.appendChild(inner);
+  content.append(axis, body);
+  view.appendChild(content);
+  host.appendChild(view);
+  view._smt = { ppm, startMin, endMin, span, trackW, step };
+  view._smtHost = `#${host.id}`;
+  function draw() {
+    const height = view.clientHeight || 462;
+    const first = Math.max(0, Math.floor(view.scrollTop / SMT_ROW_H) - 2);
+    const count = Math.ceil(height / SMT_ROW_H) + 6;
+    inner.style.transform = `translateY(${first * SMT_ROW_H}px)`;
+    inner.replaceChildren();
+    for (const row of visible.slice(first, first + count)) inner.appendChild(rowEl(row));
+  }
   view.addEventListener("scroll", draw);
+  view.addEventListener("wheel", (event) => {
+    if (!event.ctrlKey) return;
+    event.preventDefault();
+    smtZoomStep(event.deltaY < 0 ? 1 : -1, event, view);
+  }, { passive: false });
   requestAnimationFrame(draw);
+}
+
+// ——— Context investigation ("查排程") ———
+// Right-click (or long-press on touch) anywhere on a Gantt asks why the
+// schedule looks like that. The context endpoint's context branch is still
+// being built on the backend — the endpoint in this tree only accepts
+// {case_id} — so a rejection lands on an honest "not connected" panel that
+// shows the exact payload; nothing here ever fabricates an AI answer.
+let ctxSuppressUntil = 0;
+let ctxGlobalsBound = false;
+
+function consumeCtxSuppress() {
+  if (Date.now() < ctxSuppressUntil) {
+    ctxSuppressUntil = 0;
+    return true;
+  }
+  return false;
+}
+
+function bindLongPress(node, open) {
+  let timer = 0;
+  node.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+    const x = event.clientX;
+    const y = event.clientY;
+    timer = window.setTimeout(() => {
+      ctxSuppressUntil = Date.now() + 500;
+      open(x, y);
+    }, 550);
+  });
+  const cancel = () => window.clearTimeout(timer);
+  node.addEventListener("pointerup", cancel);
+  node.addEventListener("pointerleave", cancel);
+  node.addEventListener("pointercancel", cancel);
+}
+
+function ctxItemsFor(kind) {
+  const g = t().gantt || {};
+  if (kind === "bar") return [{ q: g.qHere }, { q: g.qTool }, { q: g.qStart }];
+  if (kind === "gap") return [{ q: g.qGap }];
+  return [{ q: g.qWindow }];
+}
+
+function mkEl(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined && text !== null) node.textContent = String(text);
+  return node;
+}
+
+function ensureCtxGlobals() {
+  if (ctxGlobalsBound) return;
+  ctxGlobalsBound = true;
+  document.addEventListener("pointerdown", (event) => {
+    const closest = event.target && event.target.closest;
+    if (!closest) return;
+    const menu = $("#ctx-menu");
+    if (menu && !menu.hidden && !closest.call(event.target, "#ctx-menu")) closeCtxMenu();
+    const panel = $("#ctx-panel");
+    if (panel && !panel.hidden && !closest.call(event.target, "#ctx-panel")) panel.hidden = true;
+  }, true);
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    closeCtxMenu();
+    const panel = $("#ctx-panel");
+    if (panel) panel.hidden = true;
+  });
+}
+
+function closeCtxMenu() {
+  const menu = $("#ctx-menu");
+  if (!menu) return;
+  menu.hidden = true;
+  menu.innerHTML = "";
+}
+
+function openCtxMenu(x, y, ctxBase) {
+  const menu = $("#ctx-menu");
+  if (!menu || !ctxBase) return;
+  ensureCtxGlobals();
+  const g = t().gantt || {};
+  menu.innerHTML = "";
+  const list = document.createElement("ul");
+  for (const item of ctxItemsFor(ctxBase.type)) {
+    const li = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = item.q || "";
+    button.addEventListener("click", () => {
+      closeCtxMenu();
+      investigateContext({ ...ctxBase, question: item.q || "" });
+    });
+    li.appendChild(button);
+    list.appendChild(li);
+  }
+  const freeLi = document.createElement("li");
+  freeLi.className = "ctx-free";
+  const freeButton = document.createElement("button");
+  freeButton.type = "button";
+  freeButton.textContent = g.qFree || "Ask something else…";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = g.qFreePlaceholder || "";
+  input.hidden = true;
+  freeButton.addEventListener("click", () => {
+    input.hidden = false;
+    input.focus();
+  });
+  input.addEventListener("click", (event) => event.stopPropagation());
+  input.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key !== "Enter") return;
+    const question = input.value.trim();
+    if (!question) return;
+    closeCtxMenu();
+    investigateContext({ ...ctxBase, question });
+  });
+  freeLi.append(freeButton, input);
+  list.appendChild(freeLi);
+  menu.appendChild(list);
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  menu.hidden = false;
+  const w = menu.offsetWidth || 240;
+  const h = menu.offsetHeight || 160;
+  menu.style.left = `${Math.max(4, Math.min(x, window.innerWidth - w - 8))}px`;
+  menu.style.top = `${Math.max(4, Math.min(y, window.innerHeight - h - 8))}px`;
+}
+
+function ctxPanelHead(panel, title, chipText) {
+  const head = mkEl("div", "ctx-head");
+  head.appendChild(mkEl("strong", "", title));
+  if (chipText) head.appendChild(mkEl("span", "chip", chipText));
+  const close = mkEl("button", "ctx-close", "×");
+  close.type = "button";
+  close.setAttribute("aria-label", (t().gantt || {}).ctxClose || "Close");
+  close.addEventListener("click", () => { panel.hidden = true; });
+  head.appendChild(close);
+  panel.appendChild(head);
+}
+
+function showCtxPanel(build) {
+  const panel = $("#ctx-panel");
+  if (!panel) return;
+  ensureCtxGlobals();
+  panel.innerHTML = "";
+  panel.hidden = false;
+  build(panel);
+}
+
+function showCtxFacts(title, fields, note) {
+  showCtxPanel((panel) => {
+    ctxPanelHead(panel, title, "");
+    const dl = mkEl("dl", "ctx-facts");
+    for (const [name, value] of fields) {
+      dl.append(mkEl("dt", "", name), mkEl("dd", "", value));
+    }
+    panel.appendChild(dl);
+    if (note) panel.appendChild(mkEl("p", "muted", note));
+  });
+}
+
+function ctxPayloadDetails(payload) {
+  const g = t().gantt || {};
+  const details = mkEl("details", "ctx-payload");
+  details.appendChild(mkEl("summary", "", g.ctxPayload || "Request payload"));
+  details.appendChild(mkEl("pre", "", JSON.stringify(payload, null, 2)));
+  return details;
+}
+
+// Idle-gap clicks route here. A gap-explainer (Plan 4) can replace
+// window.onGapClick; until then the default handler dispatches the
+// resilimes:gap-click event and shows the gap's facts with an explicit
+// "explainer not connected" note instead of an invented reason. The _busy
+// flag guards against a replacement hook calling back into this handler.
+function onGapClick(info) {
+  const hook = window.onGapClick;
+  if (hook && hook !== onGapClick) {
+    hook(info);
+    return;
+  }
+  if (onGapClick._busy) return;
+  onGapClick._busy = true;
+  try {
+    document.dispatchEvent(new CustomEvent("resilimes:gap-click", { detail: info }));
+    const g = t().gantt || {};
+    const fields = [[g.factFamily || "Family", info.family || "—"]];
+    if (info.tool) fields.push([g.factTool || "Tool", info.tool]);
+    fields.push([g.factWindow || "Window", `${smtElapsed(info.t1_min)}–${smtElapsed(info.t2_min)}`]);
+    fields.push([g.factIdle || "Idle for", formatDuration(info.t2_min - info.t1_min)]);
+    showCtxFacts(g.gapTitle || "Idle gap", fields, g.gapNoExplainer || "");
+  } finally {
+    onGapClick._busy = false;
+  }
+}
+
+async function investigateContext(ctx) {
+  const g = t().gantt || {};
+  // Wire contract (docs/CONTEXT_INVESTIGATION.md): absent values are null,
+  // numbers are numbers, never "" (the API rejects "" for numeric fields).
+  const str = (value) => (value === undefined || value === null || String(value).trim() === "" ? null : String(value));
+  const num = (value) => {
+    if (value === undefined || value === null || value === "") return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  const step = num(ctx.step);
+  const t1 = num(ctx.t1_min);
+  const t2 = num(ctx.t2_min);
+  const payload = {
+    type: ctx.type || "window",
+    tool: str(ctx.tool),
+    family: str(ctx.family),
+    lot: str(ctx.lot),
+    step: step !== null && Number.isInteger(step) && step >= 0 ? step : null,
+    t1_min: t1 !== null ? Math.max(0, Math.round(t1)) : null,
+    t2_min: t2 !== null ? Math.max(0, Math.round(t2)) : null,
+    scenario_id: str((state.report && state.report.scenario_id) || state.activeScenario),
+    lang: state.lang || "en",
+    question: str(ctx.question),
+  };
+  showCtxPanel((panel) => {
+    ctxPanelHead(panel, g.ctxTitle || "Scheduling investigation", "");
+    panel.appendChild(mkEl("p", "muted", g.ctxLoading || "Asking the investigation service…"));
+  });
+  let result = null;
+  let failure = "";
+  try {
+    const response = await fetch("/api/ai/investigate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      // Surface the API's own message (e.g. "unknown lot ...") instead of a bare status.
+      let detail = "";
+      try {
+        const body = await response.json();
+        detail = typeof body.detail === "string" ? body.detail : "";
+      } catch (_ignored) { detail = ""; }
+      throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
+    }
+    result = await response.json();
+    if (result && result.error && !result.answer) throw new Error(String(result.error));
+  } catch (error) {
+    failure = String((error && error.message) || error);
+  }
+  if (failure || !result) {
+    showCtxPanel((panel) => {
+      ctxPanelHead(panel, g.ctxTitle || "Scheduling investigation", "");
+      panel.appendChild(mkEl("p", "ai-warn", `${g.ctxOffline || "Investigation service not connected"}${failure ? ` (${failure})` : ""}`));
+      panel.appendChild(ctxPayloadDetails(payload));
+    });
+    return;
+  }
+  renderCtxAnswer(payload, result);
+}
+
+function renderCtxAnswer(payload, result) {
+  const g = t().gantt || {};
+  const ai = t().ai || {};
+  // Context mode answers live at result.context (ContextAnswer); the case
+  // mode's investigation object at result.answer is still accepted.
+  const isContext = Boolean(result && result.context && typeof result.context === "object");
+  const answer = isContext
+    ? result.context
+    : ((result && typeof result.answer === "object" && result.answer) || result || {});
+  showCtxPanel((panel) => {
+    const mocked = answer.mocked !== undefined && answer.mocked !== null ? answer.mocked : result.mocked;
+    const chip = mocked === undefined || mocked === null ? "" : (mocked ? (ai.mock || "Mock") : (ai.live || "Live"));
+    ctxPanelHead(panel, g.ctxTitle || "Scheduling investigation", chip);
+    const run = result && result.run;
+    if (run && run.reference) {
+      panel.appendChild(mkEl("p", "muted ctx-ref", fill(g.ctxRefRun || "Answered from reference run {run} ({h} h), not the scenario on screen.", { run: run.id, h: run.horizon_h })));
+    }
+    if (answer.tier) {
+      const tierName = (g.ctxTiers && g.ctxTiers[answer.tier]) || answer.tier;
+      panel.appendChild(mkEl("p", "chip ctx-tier", `${g.ctxTier || "Evidence tier"}: ${tierName}`));
+    }
+    if (answer.degraded) {
+      const reason = answer.degrade_reason === "timeout"
+        ? (g.ctxTimeout || "AI timed out: showing the rule-based answer")
+        : `${ai.degraded || "Degraded"}${answer.degrade_reason ? ` (${answer.degrade_reason})` : ""}`;
+      panel.appendChild(mkEl("p", "ai-warn", reason));
+    }
+    const causeName = (id) => (ai.causes && ai.causes[id]) || id;
+    if (answer.primary_cause) {
+      const head = mkEl("p", "");
+      head.appendChild(mkEl("strong", "", `${ai.cause || g.ctxCause || "Primary cause"}: ${causeName(answer.primary_cause)}`));
+      if (answer.secondary_cause) head.appendChild(mkEl("span", "muted", ` · ${causeName(answer.secondary_cause)}`));
+      panel.appendChild(head);
+    }
+    const text = (typeof answer.answer === "string" && answer.answer) || answer.text || answer.explanation || "";
+    if (text) panel.appendChild(mkEl("p", "", text));
+    const chain = answer.causal_chain || [];
+    if (chain.length) {
+      const ol = mkEl("ol", "ctx-chain");
+      for (const stepText of chain) ol.appendChild(mkEl("li", "", stepText));
+      panel.appendChild(ol);
+    }
+    panel.appendChild(mkEl("h4", "ctx-sub", g.ctxBasis || "Basis"));
+    const basis = answer.basis || result.basis || answer.citations || result.citations || [];
+    if (basis.length) {
+      const ul = mkEl("ul", "ctx-basis");
+      for (const item of basis) {
+        const label = typeof item === "string"
+          ? item
+          : (item && item.kind
+            ? `[${item.n}] ${item.kind} · ${item.source}: ${JSON.stringify(item.facts || {}).slice(0, 220)}`
+            : (item && item.tool ? `${item.tool}${item.detail ? ` · ${item.detail}` : ""}` : JSON.stringify(item)));
+        ul.appendChild(mkEl("li", "", label));
+      }
+      panel.appendChild(ul);
+    } else {
+      panel.appendChild(mkEl("p", "muted", g.ctxNoBasis || "The service returned no evidence items."));
+    }
+    if (answer.lever) {
+      panel.appendChild(mkEl("p", "", `${g.ctxLever || "Suggested lever (advice only)"}: ${(ai.levers && ai.levers[answer.lever]) || answer.lever}`));
+    }
+    if (answer.fact_ok !== undefined && answer.fact_ok !== null) {
+      panel.appendChild(mkEl(
+        "p",
+        answer.fact_ok ? "ai-ok" : "ai-warn",
+        answer.fact_ok
+          ? (ai.factOk || "Facts checked")
+          : `${ai.factFlag || "Unverified"}: ${(answer.fact_misses || []).join(", ")}`,
+      ));
+    }
+    panel.appendChild(ctxPayloadDetails(payload));
+  });
 }
 
 function paintRecover() {
@@ -1955,8 +2575,27 @@ function renderGantt(host, gantt, horizon, scale, draw) {
       node.addEventListener("pointerenter", (event) => showTip(event, bar, toolId, horizon));
       node.addEventListener("click", (event) => {
         event.stopPropagation();
+        if (consumeCtxSuppress()) return;
         hideTip();
         openRoute(event, bar, row, gantt, horizon);
+      });
+      const barCtx = {
+        type: "bar",
+        tool: toolId,
+        family: bar.area || row.area || "",
+        lot: bar.job_id,
+        step: bar.step || "",
+        t1_min: bar.start_min,
+        t2_min: bar.end_min,
+      };
+      node.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        hideTip();
+        openCtxMenu(event.clientX, event.clientY, barCtx);
+      });
+      bindLongPress(node, (x, y) => {
+        hideTip();
+        openCtxMenu(x, y, barCtx);
       });
       node.addEventListener("pointermove", moveTip);
       node.addEventListener("pointerleave", hideTip);

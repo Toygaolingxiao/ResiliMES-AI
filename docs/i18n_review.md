@@ -701,6 +701,53 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `ai.hoEngine` | Engine | 引擎 | エンジン |
 | `ai.hoChunks` | Chunks | 分段 | チャンク |
 | `ai.hoRecall` | Must-mention recall | 必提项召回率 | 必須項目の再現率 |
+| `gantt.fromLabel` | From | 起始 | 開始 |
+| `gantt.toLabel` | To | 结束 | 終了 |
+| `gantt.minUnit` | min | 分钟 | 分 |
+| `gantt.windowBtn` | Window | 应用窗口 | ウィンドウ適用 |
+| `gantt.allGroups` | All groups | 全部组 | 全グループ |
+| `gantt.zoomLabel` | Zoom | 缩放 | ズーム |
+| `gantt.zoomOut` | Zoom out | 缩小 | 縮小 |
+| `gantt.zoomIn` | Zoom in | 放大 | 拡大 |
+| `gantt.zoomFit` | Fit | 适宽 | フィット |
+| `gantt.legendBusy` | Busy segment | 忙碌时段 | 稼働区間 |
+| `gantt.legendBusyScale` | Darker = more tools busy at once | 颜色越深 = 同时忙碌的设备越多 | 濃いほど同時稼働の装置が多い |
+| `gantt.legendGap` | Idle gap (15 min or more) | 空闲间隙（15 分钟以上） | アイドル区間（15分以上） |
+| `gantt.legendPeak` | ×N = peak tools busy in the segment | ×N = 时段内峰值同时忙碌设备数 | ×N = 区間内の同時稼働ピーク台数 |
+| `gantt.segTip` | {family} · {group} {range} · peak {n} tools | {family} · {group} {range} · 峰值 {n} 台 | {family} · {group} {range} · ピーク {n} 台 |
+| `gantt.toolSegTip` | {tool} {range} | {tool} {range} | {tool} {range} |
+| `gantt.gapTip` | Idle {dur} | 空闲 {dur} | アイドル {dur} |
+| `gantt.detailTitle` | Segment details | 时段详情 | 区間の詳細 |
+| `gantt.factFamily` | Family | 设备族 | ファミリ |
+| `gantt.factGroup` | Group | 组 | グループ |
+| `gantt.factTool` | Tool | 设备 | 装置 |
+| `gantt.factWindow` | Window | 时间窗 | 時間枠 |
+| `gantt.factPeak` | Peak tools | 峰值设备数 | ピーク台数 |
+| `gantt.factIdle` | Idle for | 空闲时长 | アイドル時間 |
+| `gantt.gapTitle` | Idle gap | 空闲间隙 | アイドル区間 |
+| `gantt.gapNoExplainer` | The gap explainer is not connected, so no reason is given for this gap. | 空隙解释器尚未接入，因此不给出这段空隙的原因。 | ギャップ説明機能が接続されていないため、この区間の理由は示されません。 |
+| `gantt.qHere` | Why is it processed here? | 为什么在这里加工？ | なぜここで加工するのか？ |
+| `gantt.qTool` | Why this tool? | 为什么用这台设备？ | なぜこの装置なのか？ |
+| `gantt.qStart` | Why does it start at this time? | 为什么这个时间才开始？ | なぜこの時刻に始まるのか？ |
+| `gantt.qGap` | Why is this idle? | 为什么这里空着？ | なぜここが空いているのか？ |
+| `gantt.qWindow` | What happened at this station in this window? | 这段时间这个站发生了什么？ | この時間帯にこのステーションで何が起きたか？ |
+| `gantt.qFree` | Ask something else… | 自由提问… | 自由に質問… |
+| `gantt.qFreePlaceholder` | Type a question, Enter to send | 输入问题，回车发送 | 質問を入力し Enter で送信 |
+| `gantt.ctxTitle` | Scheduling investigation | 排程调查 | スケジュール調査 |
+| `gantt.ctxLoading` | Asking the investigation service… | 正在询问调查服务… | 調査サービスに問い合わせ中… |
+| `gantt.ctxOffline` | Investigation service not connected | 调查服务未连接 | 調査サービス未接続 |
+| `gantt.ctxNoBasis` | The service returned no evidence items. | 后端没有返回依据条目。 | バックエンドから根拠項目が返されませんでした。 |
+| `gantt.ctxBasis` | Basis | 依据 | 根拠 |
+| `gantt.ctxCause` | Primary cause | 主要原因 | 主因 |
+| `gantt.ctxPayload` | Request payload | 请求内容 | リクエスト内容 |
+| `gantt.ctxClose` | Close | 关闭 | 閉じる |
+| `gantt.ctxLever` | Suggested lever (advice only) | 建议杠杆（仅供参考） | 提案レバー（助言のみ） |
+| `gantt.ctxRefRun` | Answered from reference run {run} ({h} h), not the scenario on screen. | 基于参考运行 {run}（{h} 小时）回答，并非当前画面上的场景。 | 参照ラン {run}（{h} 時間）に基づく回答で、画面上のシナリオではありません。 |
+| `gantt.ctxTier` | Evidence tier | 证据等级 | 根拠レベル |
+| `gantt.ctxTiers.decision_record` | recorded decision | 有记录的决策 | 記録された判断 |
+| `gantt.ctxTiers.rule_emergent` | result of the dispatch rule | 派工规则的结果 | ディスパッチ規則の結果 |
+| `gantt.ctxTiers.unknown` | unknown (no evidence) | 未知（无证据） | 不明（根拠なし） |
+| `gantt.ctxTimeout` | AI timed out: showing the rule-based answer | AI 超时：显示规则结果 | AI タイムアウト：ルールの結果を表示 |
 
 ## AI shift lead study progress (new, needs zh/ja review)
 
