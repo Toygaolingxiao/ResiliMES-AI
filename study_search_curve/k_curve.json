@@ -26,7 +26,7 @@
   "futures": 2,
   "escalation": "always"
  },
- "runs_planned": 9,
+ "runs_planned": 15,
  "runs_done": 15,
  "by_k": {
   "1": {

@@ -29,6 +29,52 @@ def test_curve_aggregate_math() -> None:
     assert by_k["50"]["runs"] == 1
 
 
+def test_curve_flat_note_only_when_no_k_changes_an_outcome() -> None:
+    flat = curve.aggregate(
+        [
+            {"k": 1, "qtime_avoidable": 0, "hot_late": 0, "sim_calls": 10},
+            {"k": 5, "qtime_avoidable": 0, "hot_late": 0, "sim_calls": 50},
+        ]
+    )
+    assert "flat — no headroom" in "".join(curve._flat_note(flat))
+    moving = curve.aggregate(
+        [
+            {"k": 1, "qtime_avoidable": 2, "hot_late": 0},
+            {"k": 5, "qtime_avoidable": 1, "hot_late": 0},
+        ]
+    )
+    assert curve._flat_note(moving) == []
+
+
+def test_curve_runs_planned_counts_runs_already_on_disk(tmp_path) -> None:
+    import json
+
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    for k in (1, 3, 5):
+        (runs / f"k{k}_ss101_s9.json").write_text(
+            json.dumps({"k": k, "search_seed": 101, "book_seed": 9, "qtime_avoidable": 0})
+        )
+    args = curve.parse(
+        ["--ks", "1", "--d-ks", "", "--search-seeds", "101", "--out-dir", str(tmp_path)]
+    )
+    result = curve.write_report(
+        args, manifest={"note": "", "environment": "", "ran_at": "", "git_commit": ""}
+    )
+    assert result["runs_done"] == 3
+    assert result["runs_planned"] == 3  # done never exceeds planned
+
+
+def test_stress_validation_header_takes_the_mode_from_the_environment(monkeypatch) -> None:
+    from resilimes.smt import stress_gen_validate as sgv
+
+    monkeypatch.setenv("SHIFT_LEAD_ESCALATE", "always")
+    assert sgv._mode([]) == "always"
+    monkeypatch.delenv("SHIFT_LEAD_ESCALATE")
+    assert sgv._mode([]) == "exception"
+    assert sgv._mode([{"escalation_mode": "always"}]) == "always"  # recorded wins
+
+
 def test_zero_call_compare_identical_and_different() -> None:
     base = {
         "weighted_tardiness_min": 100.0,

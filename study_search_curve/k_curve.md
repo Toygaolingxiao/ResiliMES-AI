@@ -5,7 +5,9 @@
 - 代码版本 (git_commit): 9d7fc23
 - 注记 (note): 
 - book heldout_published, book seeds [9], search seeds [101, 202, 303], horizon 5.0 h, fork 1.0 h, futures 2, escalation always (always = legacy kind filter, experiment only; the shipped gate is exception)
-- runs in: 15/9 (means over search seeds x book seeds; min-max in brackets)
+- runs in: 15/15 (means over search seeds x book seeds; min-max in brackets)
+
+**Reading: flat — no headroom on this book.** Every K gives the same avoidable Q-time, hot late, completed and weighted tardiness; only the simulation cost grows, so a larger search budget buys nothing here.
 
 | K | runs | avoidable Q-time (mean) | hot late (mean) | completed (mean) | wt min (mean) | sim calls (mean) | propose calls (mean) | escalated (mean) |
 |---|---|---|---|---|---|---|---|---|

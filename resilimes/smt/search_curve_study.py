@@ -131,6 +131,26 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+OUTCOMES = ("qtime_avoidable", "hot_late", "completed_routes", "weighted_tardiness_min")
+
+
+def _flat_note(by_k: dict[str, Any]) -> list[str]:
+    """Say so plainly when no K changes any outcome (only the cost grows)."""
+    if len(by_k) < 2:
+        return []
+    means = {
+        tuple((entry.get(key) or {}).get("mean") for key in OUTCOMES) for entry in by_k.values()
+    }
+    if len(means) != 1:
+        return []
+    return [
+        "**Reading: flat — no headroom on this book.** Every K gives the same avoidable "
+        "Q-time, hot late, completed and weighted tardiness; only the simulation cost "
+        "grows, so a larger search budget buys nothing here.",
+        "",
+    ]
+
+
 def table(result: dict[str, Any]) -> str:
     cfg, man = result["config"], result["manifest"]
     lines = [
@@ -147,6 +167,7 @@ def table(result: dict[str, Any]) -> str:
         f"- runs in: {result['runs_done']}/{result['runs_planned']} "
         "(means over search seeds x book seeds; min-max in brackets)",
         "",
+        *_flat_note(result["by_k"]),
         "| K | runs | avoidable Q-time (mean) | hot late (mean) | completed (mean) "
         "| wt min (mean) | sim calls (mean) | propose calls (mean) | escalated (mean) |",
         "|---|---|---|---|---|---|---|---|---|",
@@ -213,7 +234,11 @@ def write_report(
             "futures": args.futures,
             "escalation": args.escalation,
         },
-        "runs_planned": len(_planned(args)),
+        # Planned = this invocation's grid plus any run already on disk (the
+        # table aggregates every file in runs/), so done never exceeds planned.
+        "runs_planned": len(
+            set(_planned(args)) | {(r["k"], r["search_seed"], r["book_seed"]) for r in rows}
+        ),
         "runs_done": len(rows),
         "by_k": aggregate(rows),
         "rows": rows,

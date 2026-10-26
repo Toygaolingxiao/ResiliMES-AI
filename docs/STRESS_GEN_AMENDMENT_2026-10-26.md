@@ -22,13 +22,14 @@ gate on this data.
 ## The amendment
 
 For the B-vs-C comparison only, the escalation mode is the study mode
-used by the K-curve (`SHIFT_LEAD_ESCALATE=always`, the legacy kind
+used by the K-curve (flat — no headroom on this book; `SHIFT_LEAD_ESCALATE=always`, the legacy kind
 filter). The shipped gate is not changed; nothing about the product
 default changes. Under this mode the same validator (same scenarios, same
 fork/futures/horizon/seed) reports **16/16 triggered**, with 35–49
 escalations per scenario (`study_stress_gen_always/validation.md` — its
-header text still says "exception mode" because that string is hardcoded
-in the validator; the run itself was made with
+header text says "exception mode" because that string was hardcoded in
+the validator at the time (the validator now records and prints the mode
+from `SHIFT_LEAD_ESCALATE`); the run itself was made with
 `SHIFT_LEAD_ESCALATE=always`, git_commit a52671c, and the zero gate-check
 counts in its table confirm no gate projection ran).
 

@@ -42,12 +42,20 @@ def verdict(lead_summary: dict[str, Any]) -> bool:
     return int(lead_summary.get("escalated", 0)) >= 1
 
 
+def _mode(rows: list[dict[str, Any]]) -> str:
+    """Escalation mode for the header: what the rows recorded, else the environment."""
+    from resilimes.agents.sim_select import escalation_mode
+
+    modes = sorted({str(row["escalation_mode"]) for row in rows if row.get("escalation_mode")})
+    return "/".join(modes) if modes else escalation_mode()
+
+
 def validate_one(book: str) -> dict[str, Any]:
     """One no-AI gate run, wired exactly like sim_select_study.run_one."""
     import os
 
     os.environ.setdefault("RESILIMES_STUDY_HORIZON_H", str(HORIZON_H))
-    from resilimes.agents.sim_select import SimShiftLead
+    from resilimes.agents.sim_select import SimShiftLead, escalation_mode
     from resilimes.smt.sim_select_study import hot_late
     from resilimes.smt.simulate import make_sim
     from resilimes.smt.twin import Twin, TwinConfig
@@ -68,6 +76,7 @@ def validate_one(book: str) -> dict[str, Any]:
     hot, _due = hot_late(sim, kwargs["horizon"])
     return {
         "book": book,
+        "escalation_mode": escalation_mode(),
         "archetype": stress_gen.spec_for(book)["archetype"],
         "seed": SEED,
         "horizon_h": HORIZON_H,
@@ -107,7 +116,7 @@ def aggregate(out_dir: Path) -> dict[str, Any]:
             ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True
         ).stdout.strip(),
         "rule": "triggered := escalations >= 1 in the no-AI gate run "
-        "(exception mode, fork 1 h, futures 2, horizon 6 h, seed 9)",
+        f"({_mode(rows)} mode, fork 1 h, futures 2, horizon {HORIZON_H:g} h, seed {SEED})",
         "generated": len(specs),
         "validated": len(rows),
         "triggered": triggered,
