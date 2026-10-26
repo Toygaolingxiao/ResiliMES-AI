@@ -248,6 +248,133 @@ def explain_lot(body: ExplainBody, request: Request) -> dict[str, Any]:
     }
 
 
+# ---- fab notes (Plan-2 demo panel) ---------------------------------------------------------
+# Read-only demo surface for the notes pipeline: dataset + per-note extraction
+# (scripted offline stand-in by default; the live Nightshift model when it is
+# configured and ``extractor=live`` is requested) + fact-check verdicts + the
+# A/B/C comparison summary when scripts/compare_notes_ab.py has written its
+# report. Controlled by RESILIMES_NOTES_PANEL (default on; "0" disables the
+# route entirely). It changes no existing path and never writes a schedule.
+#
+# GET /api/ai/notes?extractor=scripted|live|regex&limit=N ->
+# {
+#   "enabled": true,
+#   "extractor": "scripted" | "live" | "regex",
+#   "mocked": bool,               # true unless a live model produced the events
+#   "limit": int, "truncated": bool,
+#   "summary": {"notes": int, "accepted": int, "rejected": int, "gold_events": int},
+#   "notes": [{"note_id", "ts", "source", "lang", "hard_for_regex", "text",
+#              "events": [accepted event...],
+#              "rejected": [{"event": {...}, "reason": str}],
+#              "gold": [gold event...]}],
+#   "comparison": null | {"runner", "is_mock", "b_extractor", "arms",
+#                          "gap_closure", "collateral"}
+# }
+# ``comparison`` is the verbatim comparison block of outputs/notes_ab.json
+# (path override: RESILIMES_NOTES_AB_JSON); null means the A/B/C run has not
+# been executed yet -- the UI says so instead of inventing numbers.
+
+
+def _notes_enabled() -> bool:
+    import os
+
+    return os.environ.get("RESILIMES_NOTES_PANEL", "1") != "0"
+
+
+@lru_cache(maxsize=1)
+def _notes_fab_index() -> Any:
+    from resilimes.insight.notes import build_fab_index
+
+    return build_fab_index()
+
+
+def _notes_extraction(extractor: Any, kind: str, limit: int) -> dict[str, Any]:
+    """Run one extractor over the dataset and shape the panel payload."""
+    from resilimes.insight.notes import extract_validated, load_notes
+
+    notes = load_notes()
+    rows: list[dict[str, Any]] = []
+    accepted_total = rejected_total = gold_total = 0
+    for note in notes[:limit]:
+        _raw, accepted, rejected = extract_validated(extractor, note, _notes_fab_index())
+        accepted_total += len(accepted)
+        rejected_total += len(rejected)
+        gold_total += len(note["gold"])
+        rows.append(
+            {
+                "note_id": note["id"],
+                "ts": note["ts"],
+                "source": note["source"],
+                "lang": note["lang"],
+                "hard_for_regex": bool(note["hard_for_regex"]),
+                "text": note["text"],
+                "events": accepted,
+                "rejected": rejected,
+                "gold": note["gold"],
+            }
+        )
+    return {
+        "extractor": kind,
+        "mocked": kind != "live",
+        "limit": limit,
+        "truncated": len(notes) > limit,
+        "summary": {
+            "notes": len(rows),
+            "accepted": accepted_total,
+            "rejected": rejected_total,
+            "gold_events": gold_total,
+        },
+        "notes": rows,
+    }
+
+
+def _notes_comparison() -> dict[str, Any] | None:
+    import json
+    import os
+    from pathlib import Path
+
+    override = os.environ.get("RESILIMES_NOTES_AB_JSON", "")
+    path = (
+        Path(override)
+        if override
+        else Path(__file__).resolve().parents[2] / "outputs" / "notes_ab.json"
+    )
+    if not path.is_file():
+        return None
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        comparison = report["comparison"]
+    except (OSError, ValueError, KeyError):
+        return None
+    comparison = dict(comparison)
+    comparison["b_extractor"] = report.get("b_extractor")
+    return comparison
+
+
+@router.get("/notes")
+def fab_notes(
+    request: Request,
+    extractor: str = Query(default="scripted", pattern="^(scripted|live|regex)$"),
+    limit: int = Query(default=46, ge=1, le=46),
+) -> dict[str, Any]:
+    """Notes dataset with extraction + fact-check verdicts per note (read-only)."""
+    if not _notes_enabled():
+        raise HTTPException(status_code=404, detail="notes panel disabled")
+    from resilimes.insight.notes import LlmExtractor, RegexExtractor, ScriptedNotesCompleter
+
+    if extractor == "live":
+        provider = _provider(request)
+        if provider is None:
+            extractor = "scripted"  # honest fall-back: no live model configured
+    if extractor == "live":
+        payload = _notes_extraction(LlmExtractor(provider), "live", limit)
+    elif extractor == "regex":
+        payload = _notes_extraction(RegexExtractor(), "regex", limit)
+    else:
+        payload = _notes_extraction(LlmExtractor(ScriptedNotesCompleter()), "scripted", limit)
+    return {"enabled": True, **payload, "comparison": _notes_comparison()}
+
+
 # ---- shift handover ------------------------------------------------------------------------
 class HandoverBody(BaseModel):
     seed: int = Field(default=1, ge=1, le=4)
