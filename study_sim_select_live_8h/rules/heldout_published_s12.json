@@ -1,0 +1,39 @@
+{
+ "arm": "rules",
+ "book": "heldout_published",
+ "seed": 12,
+ "wall_s": 2.5,
+ "config": {
+  "horizon_h": 8.0,
+  "fork_h": 8.0,
+  "futures": 3,
+  "llm_timeout_s": 1200.0,
+  "budget": null,
+  "escalation_mode": null,
+  "provider": null,
+  "mocked": null
+ },
+ "weighted_tardiness_min": 5428.8,
+ "on_time_pct": 6.25,
+ "qtime_violations": 12,
+ "mean_x_factor": 1.406,
+ "due_in_horizon": 16,
+ "completed_routes": 9,
+ "q_late": 0,
+ "q_expired": 0,
+ "balance": {
+  "steps_per_day": 18192.0,
+  "completed_kpi": 9,
+  "util_mean": 0.7191,
+  "util_Litho_BE_110": 1.0,
+  "starve_h_Litho_BE_110": 0.0,
+  "starve_pct_Litho_BE_110": 0.0,
+  "blocked_h_Litho_BE_110": 0.0,
+  "util_Litho_FE_92": 0.812,
+  "starve_h_Litho_FE_92": 39.11,
+  "starve_pct_Litho_FE_92": 18.8,
+  "blocked_h_Litho_FE_92": 0.0,
+  "queue_cv_families": 3.3247,
+  "queue_var_mean": 59.72
+ }
+}

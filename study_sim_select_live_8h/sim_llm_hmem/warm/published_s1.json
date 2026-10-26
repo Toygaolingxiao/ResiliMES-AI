@@ -1,0 +1,7393 @@
+{
+ "arm": "sim_llm_hmem",
+ "book": "published",
+ "seed": 1,
+ "wall_s": 143.9,
+ "config": {
+  "horizon_h": 8.0,
+  "fork_h": 8.0,
+  "futures": 3,
+  "llm_timeout_s": 1200.0,
+  "budget": null,
+  "escalation_mode": "exception",
+  "provider": "nightshift",
+  "mocked": false
+ },
+ "weighted_tardiness_min": 5452.1,
+ "on_time_pct": 6.25,
+ "qtime_violations": 12,
+ "mean_x_factor": 1.426,
+ "due_in_horizon": 16,
+ "completed_routes": 9,
+ "q_late": 0,
+ "q_expired": 0,
+ "balance": {
+  "steps_per_day": 18171.0,
+  "completed_kpi": 9,
+  "util_mean": 0.7202,
+  "util_Litho_BE_110": 1.0,
+  "starve_h_Litho_BE_110": 0.0,
+  "starve_pct_Litho_BE_110": 0.0,
+  "blocked_h_Litho_BE_110": 0.0,
+  "util_Litho_FE_92": 0.839,
+  "starve_h_Litho_FE_92": 32.1,
+  "starve_pct_Litho_FE_92": 15.64,
+  "blocked_h_Litho_FE_92": 0.93,
+  "queue_cv_families": 3.3005,
+  "queue_var_mean": 59.7
+ },
+ "shift_lead": {
+  "decider": "sim+nightshift",
+  "exceptions": 99,
+  "by_type": {
+   "breakdown": 1,
+   "qtime_competition": 91,
+   "pm_conflict": 0,
+   "batch_underfill": 0,
+   "hot_insertion": 7
+  },
+  "differs": 0,
+  "differs_by_type": {
+   "breakdown": 0,
+   "qtime_competition": 0,
+   "pm_conflict": 0,
+   "batch_underfill": 0,
+   "hot_insertion": 0
+  },
+  "fallbacks": 0,
+  "fallback_causes": {},
+  "latency_ms_p50": 0.02,
+  "latency_ms_p95": 0.03,
+  "escalation_mode": "exception",
+  "escalated": 0,
+  "rule_handled": 99,
+  "escalation_triggers": {},
+  "gate_checks": 99,
+  "gate_forks": 297,
+  "gate_wall_s": 140.09,
+  "gate_ms_p50": 1398.4,
+  "gate_ms_p95": 2467.9,
+  "twin_forks": 297,
+  "twin_wall_s": 140.0,
+  "twin_skips": 0,
+  "llm_calls": 0,
+  "llm_ms_p50": null,
+  "llm_ms_p95": null,
+  "llm_failures": {},
+  "served_models": {},
+  "non_nemotron_replies": 0,
+  "llm_plans": 0,
+  "llm_plans_invalid": 0,
+  "chosen_llm_plan": 0
+ },
+ "decisions": [
+  {
+   "id": "X00001",
+   "t": 300.0,
+   "t_h": 0.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_25",
+    "Init_Lot_1_27",
+    "Init_Lot_1_31",
+    "Init_Lot_1_34",
+    "Init_Lot_1_35",
+    "Init_Lot_1_36",
+    "Init_Lot_1_43",
+    "Init_HotLot_2_1",
+    "Init_Lot_2_25",
+    "Init_Lot_2_32",
+    "Init_Lot_2_39",
+    "Init_Lot_2_46"
+   ],
+   "situation": "42 Q-time lots compete for Dielectric_BE_21 (6 tools, 35 queued); rule order projects 29 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 29,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 83.6,
+      "queue_growth": -6
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 19,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -11
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 5383.7,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 10.67,
+     "qmissed": 10.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5999.33
+    },
+    "futures": 3,
+    "ms": 2941.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00002",
+   "t": 300.0,
+   "t_h": 0.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_32",
+    "Init_Lot_10_7",
+    "Init_Lot_10_11",
+    "Init_Lot_10_28",
+    "Init_Lot_10_34",
+    "Init_Lot_10_36",
+    "Init_Lot_10_41",
+    "Init_Lot_10_42",
+    "Init_Lot_10_44",
+    "Init_Lot_2_4",
+    "Init_Lot_2_16",
+    "Init_Lot_2_28"
+   ],
+   "situation": "69 Q-time lots compete for Dielectric_BE_27 (12 tools, 74 queued); rule order projects 51 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 51,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 146.1,
+      "queue_growth": -8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 32,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -15
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 5383.7,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 10.67,
+     "qmissed": 10.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5999.33
+    },
+    "futures": 3,
+    "ms": 2363.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00003",
+   "t": 300.0,
+   "t_h": 0.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_28",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_2",
+    "Init_Lot_10_4",
+    "Init_Lot_10_9",
+    "Init_Lot_10_15",
+    "Init_Lot_10_16",
+    "Init_Lot_10_22",
+    "Init_Lot_10_26",
+    "Init_Lot_2_2",
+    "Init_Lot_2_9",
+    "Init_Lot_2_15",
+    "Init_Lot_2_20",
+    "Init_Lot_2_24"
+   ],
+   "situation": "33 Q-time lots compete for Dielectric_BE_28 (3 tools, 59 queued); rule order projects 28 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 28,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 6.6,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 24,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -3
+     }
+    },
+    {
+     "id": "C",
+     "action": "Q-time first, but due-critical lots keep their place (earliest latest-start first)",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 25,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 5383.7,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 10.67,
+     "qmissed": 10.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5999.33
+    },
+    "futures": 3,
+    "ms": 2320.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00004",
+   "t": 2100.0,
+   "t_h": 0.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_25",
+    "Init_Lot_1_27",
+    "Init_Lot_1_31",
+    "Init_Lot_1_34",
+    "Init_Lot_1_35",
+    "Init_Lot_1_36",
+    "Init_Lot_1_43",
+    "Init_HotLot_2_1",
+    "Init_Lot_2_25",
+    "Init_Lot_2_32",
+    "Init_Lot_2_39",
+    "Init_Lot_2_46"
+   ],
+   "situation": "42 Q-time lots compete for Dielectric_BE_21 (6 tools, 36 queued); rule order projects 29 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 29,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 83.6,
+      "queue_growth": -13
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 20,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -16
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 5083.73,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 13.0,
+     "qmissed": 13.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5876.33
+    },
+    "futures": 3,
+    "ms": 2481.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00005",
+   "t": 2100.0,
+   "t_h": 0.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_32",
+    "Init_Lot_10_7",
+    "Init_Lot_10_11",
+    "Init_Lot_10_28",
+    "Init_Lot_10_34",
+    "Init_Lot_10_36",
+    "Init_Lot_10_41",
+    "Init_Lot_10_42",
+    "Init_Lot_10_44",
+    "Init_Lot_2_4",
+    "Init_Lot_2_16",
+    "Init_Lot_2_28"
+   ],
+   "situation": "68 Q-time lots compete for Dielectric_BE_27 (12 tools, 73 queued); rule order projects 51 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 51,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 146.1,
+      "queue_growth": -8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 32,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -24
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 5083.73,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 13.0,
+     "qmissed": 13.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5876.33
+    },
+    "futures": 3,
+    "ms": 2414.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00006",
+   "t": 2100.0,
+   "t_h": 0.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_28",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_2",
+    "Init_Lot_10_4",
+    "Init_Lot_10_9",
+    "Init_Lot_10_15",
+    "Init_Lot_10_16",
+    "Init_Lot_10_22",
+    "Init_Lot_10_26",
+    "Init_Lot_2_2",
+    "Init_Lot_2_9",
+    "Init_Lot_2_15",
+    "Init_Lot_2_20",
+    "Init_Lot_2_24"
+   ],
+   "situation": "33 Q-time lots compete for Dielectric_BE_28 (3 tools, 59 queued); rule order projects 28 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 28,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 6.6,
+      "queue_growth": -6
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 24,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -6
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 5083.73,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 13.0,
+     "qmissed": 13.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5876.33
+    },
+    "futures": 3,
+    "ms": 2494.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00007",
+   "t": 3600.0,
+   "t_h": 1.0,
+   "type": "qtime_competition",
+   "family": "WE_FE_41",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_104",
+    "Init_Lot_3_125",
+    "Init_Lot_4_144",
+    "Init_Lot_4_147",
+    "Init_Lot_4_148",
+    "Init_Lot_4_151",
+    "Init_Lot_4_153",
+    "Init_Lot_4_154",
+    "Init_Lot_9_69"
+   ],
+   "situation": "9 Q-time lots compete for WE_FE_41 (5 tools, 1 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 464.7,
+      "queue_growth": 7
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 427.8,
+      "queue_growth": 5
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4823.03,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5700.67
+    },
+    "futures": 3,
+    "ms": 2496.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00008",
+   "t": 3900.0,
+   "t_h": 1.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_25",
+    "Init_Lot_1_27",
+    "Init_Lot_1_31",
+    "Init_Lot_1_34",
+    "Init_Lot_1_35",
+    "Init_Lot_1_36",
+    "Init_Lot_1_43",
+    "Init_HotLot_2_1",
+    "Init_Lot_2_25",
+    "Init_Lot_2_39",
+    "Init_Lot_2_40",
+    "Init_Lot_2_41"
+   ],
+   "situation": "44 Q-time lots compete for Dielectric_BE_21 (6 tools, 36 queued); rule order projects 30 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 30,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 25,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4768.83,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 11.0,
+     "qmissed": 11.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5603.67
+    },
+    "futures": 3,
+    "ms": 2300.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00009",
+   "t": 3900.0,
+   "t_h": 1.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_32",
+    "Init_Lot_10_7",
+    "Init_Lot_10_11",
+    "Init_Lot_10_28",
+    "Init_Lot_10_34",
+    "Init_Lot_10_36",
+    "Init_Lot_10_41",
+    "Init_Lot_10_42",
+    "Init_Lot_10_44",
+    "Init_Lot_2_16",
+    "Init_Lot_2_28",
+    "Init_Lot_2_34"
+   ],
+   "situation": "55 Q-time lots compete for Dielectric_BE_27 (12 tools, 66 queued); rule order projects 50 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 50,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 147.0,
+      "queue_growth": -12
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 38,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -22
+     }
+    },
+    {
+     "id": "C",
+     "action": "Q-time triage: boost only the windows that can still be met",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 36,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -21
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4768.83,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 11.0,
+     "qmissed": 11.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5603.67
+    },
+    "futures": 3,
+    "ms": 2336.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00010",
+   "t": 3900.0,
+   "t_h": 1.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_28",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_2",
+    "Init_Lot_10_4",
+    "Init_Lot_10_9",
+    "Init_Lot_10_15",
+    "Init_Lot_10_16",
+    "Init_Lot_10_22",
+    "Init_Lot_10_26",
+    "Init_Lot_2_2",
+    "Init_Lot_2_4",
+    "Init_Lot_2_9",
+    "Init_Lot_2_15",
+    "Init_Lot_2_20"
+   ],
+   "situation": "31 Q-time lots compete for Dielectric_BE_28 (3 tools, 60 queued); rule order projects 28 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 28,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -7
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 27,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -7
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4768.83,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 11.0,
+     "qmissed": 11.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5603.67
+    },
+    "futures": 3,
+    "ms": 2467.9,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00011",
+   "t": 5700.0,
+   "t_h": 1.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_25",
+    "Init_Lot_1_27",
+    "Init_Lot_1_31",
+    "Init_Lot_1_34",
+    "Init_Lot_1_35",
+    "Init_Lot_1_36",
+    "Init_Lot_1_43",
+    "Init_Lot_2_25",
+    "Init_Lot_2_39",
+    "Init_Lot_2_40",
+    "Init_Lot_2_45",
+    "Init_Lot_2_56"
+   ],
+   "situation": "39 Q-time lots compete for Dielectric_BE_21 (6 tools, 31 queued); rule order projects 25 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 25,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 28,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4555.23,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 10.67,
+     "qmissed": 10.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5262.67
+    },
+    "futures": 3,
+    "ms": 2058.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00012",
+   "t": 5700.0,
+   "t_h": 1.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_32",
+    "Init_Lot_1_42",
+    "Init_Lot_10_7",
+    "Init_Lot_10_11",
+    "Init_Lot_10_28",
+    "Init_Lot_10_30",
+    "Init_Lot_10_34",
+    "Init_Lot_10_36",
+    "Init_Lot_10_41",
+    "Init_Lot_10_42",
+    "Init_Lot_10_44",
+    "Init_Lot_10_46"
+   ],
+   "situation": "64 Q-time lots compete for Dielectric_BE_27 (12 tools, 70 queued); rule order projects 53 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 53,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 85.4,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 45,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -19
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4555.23,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 10.67,
+     "qmissed": 10.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5262.67
+    },
+    "futures": 3,
+    "ms": 2179.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00013",
+   "t": 5700.0,
+   "t_h": 1.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_28",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_4",
+    "Init_Lot_10_9",
+    "Init_Lot_10_15",
+    "Init_Lot_10_16",
+    "Init_Lot_10_22",
+    "Init_Lot_10_26",
+    "Init_Lot_2_4",
+    "Init_Lot_2_9",
+    "Init_Lot_2_15",
+    "Init_Lot_2_20",
+    "Init_Lot_2_24",
+    "Init_Lot_3_10"
+   ],
+   "situation": "29 Q-time lots compete for Dielectric_BE_28 (3 tools, 58 queued); rule order projects 25 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 25,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 27,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4555.23,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 10.67,
+     "qmissed": 10.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5262.67
+    },
+    "futures": 3,
+    "ms": 2101.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00014",
+   "t": 5700.0,
+   "t_h": 1.583,
+   "type": "hot_insertion",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_18",
+    "Init_Lot_3_31",
+    "Init_Lot_3_61",
+    "Init_Lot_3_70",
+    "Init_Lot_3_78",
+    "Init_Lot_4_42",
+    "Init_Lot_5_12",
+    "Init_Lot_6_30",
+    "Init_Lot_6_31",
+    "Init_Lot_6_52",
+    "Init_Lot_7_15",
+    "Init_HotLot_9_1"
+   ],
+   "situation": "14 Q-time lots compete for WE_BE_16 (8 tools, 3 queued); rule order projects 6 Q-time misses; 1 hot/VIP lots ahead of them by class",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order (hot/VIP first)",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 366.0,
+      "queue_growth": 3
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 205.3,
+      "queue_growth": -3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order (hot/VIP first)",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4555.23,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 10.67,
+     "qmissed": 10.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5262.67
+    },
+    "futures": 3,
+    "ms": 2167.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00015",
+   "t": 6000.0,
+   "t_h": 1.667,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_15",
+    "Init_Lot_1_38",
+    "Init_Lot_10_12",
+    "Init_Lot_3_7",
+    "Init_Lot_3_23",
+    "Init_Lot_8_23",
+    "Init_Lot_8_37",
+    "Init_Lot_8_43"
+   ],
+   "situation": "8 Q-time lots compete for WE_BE_9 (5 tools, 4 queued); rule order projects 7 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 7,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 233.8,
+      "queue_growth": 7
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 88.6,
+      "queue_growth": 1
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4459.47,
+     "late_lots": 5.0,
+     "on_time": 1.0,
+     "qviol": 10.33,
+     "qmissed": 10.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 5223.33
+    },
+    "futures": 3,
+    "ms": 2360.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00016",
+   "t": 7500.0,
+   "t_h": 2.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_7",
+    "Init_Lot_2_37",
+    "Init_Lot_2_40",
+    "Init_Lot_2_45",
+    "Init_Lot_2_56",
+    "Init_Lot_2_58",
+    "Init_Lot_3_20",
+    "Init_Lot_3_56",
+    "Init_Lot_3_57",
+    "Init_Lot_3_59",
+    "Init_Lot_3_62",
+    "Init_Lot_4_12"
+   ],
+   "situation": "16 Q-time lots compete for Dielectric_BE_21 (6 tools, 10 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 12.2,
+      "queue_growth": -10
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 11.1,
+      "queue_growth": -10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4183.2,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 10.33,
+     "qmissed": 10.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4933.67
+    },
+    "futures": 3,
+    "ms": 2010.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00017",
+   "t": 7500.0,
+   "t_h": 2.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_42",
+    "Init_Lot_10_30",
+    "Init_Lot_10_36",
+    "Init_Lot_10_46",
+    "Init_Lot_2_48",
+    "Init_Lot_2_55",
+    "Init_Lot_3_14",
+    "Init_Lot_3_38",
+    "Init_Lot_3_48",
+    "Init_Lot_5_9",
+    "Init_Lot_5_26",
+    "Init_Lot_6_20"
+   ],
+   "situation": "24 Q-time lots compete for Dielectric_BE_27 (12 tools, 32 queued); rule order projects 11 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 11,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 1.5,
+      "queue_growth": -7
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -11
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4183.2,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 10.33,
+     "qmissed": 10.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4933.67
+    },
+    "futures": 3,
+    "ms": 2152.9,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00018",
+   "t": 7500.0,
+   "t_h": 2.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_28",
+   "tool": null,
+   "lots": [
+    "Init_Lot_2_4",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_6",
+    "Init_Lot_4_8"
+   ],
+   "situation": "5 Q-time lots compete for Dielectric_BE_28 (3 tools, 35 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -9
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -8
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4183.2,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 10.33,
+     "qmissed": 10.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4933.67
+    },
+    "futures": 3,
+    "ms": 2057.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00019",
+   "t": 7500.0,
+   "t_h": 2.083,
+   "type": "qtime_competition",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_18",
+    "Init_Lot_2_21",
+    "Init_Lot_3_31",
+    "Init_Lot_3_33",
+    "Init_Lot_3_61",
+    "Init_Lot_3_70",
+    "Init_Lot_3_78",
+    "Init_Lot_5_12",
+    "Init_Lot_6_30",
+    "Init_Lot_6_31",
+    "Init_Lot_6_52",
+    "Init_Lot_7_15"
+   ],
+   "situation": "16 Q-time lots compete for WE_BE_16 (8 tools, 6 queued); rule order projects 6 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 271.5,
+      "queue_growth": -6
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 256.1,
+      "queue_growth": -6
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4183.2,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 10.33,
+     "qmissed": 10.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4933.67
+    },
+    "futures": 3,
+    "ms": 2153.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00020",
+   "t": 7800.0,
+   "t_h": 2.167,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_15",
+    "Init_Lot_1_23",
+    "Init_Lot_1_38",
+    "Init_Lot_10_12",
+    "Init_Lot_3_7",
+    "Init_Lot_3_23",
+    "Init_Lot_8_23",
+    "Init_Lot_8_32",
+    "Init_Lot_8_37",
+    "Init_Lot_8_43"
+   ],
+   "situation": "10 Q-time lots compete for WE_BE_9 (5 tools, 11 queued); rule order projects 7 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 7,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 235.6,
+      "queue_growth": 8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 180.6,
+      "queue_growth": 6
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 4148.43,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 12.33,
+     "qmissed": 12.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4889.67
+    },
+    "futures": 3,
+    "ms": 1934.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00021",
+   "t": 9300.0,
+   "t_h": 2.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_7",
+    "Init_Lot_2_37",
+    "Init_Lot_2_40",
+    "Init_Lot_2_45",
+    "Init_Lot_2_56",
+    "Init_Lot_2_58",
+    "Init_Lot_3_20",
+    "Init_Lot_3_38",
+    "Init_Lot_3_48",
+    "Init_Lot_3_56",
+    "Init_Lot_3_57",
+    "Init_Lot_3_59"
+   ],
+   "situation": "20 Q-time lots compete for Dielectric_BE_21 (6 tools, 33 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -11
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -11
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3860.17,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4550.0
+    },
+    "futures": 3,
+    "ms": 2041.5,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00022",
+   "t": 9300.0,
+   "t_h": 2.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_42",
+    "Init_Lot_10_30",
+    "Init_Lot_10_36",
+    "Init_Lot_10_46",
+    "Init_Lot_10_47",
+    "Init_Lot_2_29",
+    "Init_Lot_2_48",
+    "Init_Lot_2_55",
+    "Init_Lot_3_72",
+    "Init_Lot_4_26",
+    "Init_Lot_5_27",
+    "Init_Lot_6_27"
+   ],
+   "situation": "25 Q-time lots compete for Dielectric_BE_27 (12 tools, 69 queued); rule order projects 14 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 14,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 53.3,
+      "queue_growth": -9
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3860.17,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4550.0
+    },
+    "futures": 3,
+    "ms": 1959.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00023",
+   "t": 9300.0,
+   "t_h": 2.583,
+   "type": "qtime_competition",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_18",
+    "Init_Lot_2_21",
+    "Init_Lot_3_33",
+    "Init_Lot_3_78",
+    "Init_Lot_4_30",
+    "Init_Lot_5_20",
+    "Init_Lot_6_52",
+    "Init_Lot_8_27",
+    "Init_HotLot_9_1",
+    "Init_Lot_9_19",
+    "Init_Lot_9_35"
+   ],
+   "situation": "11 Q-time lots compete for WE_BE_16 (8 tools, 6 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 355.3,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 393.5,
+      "queue_growth": -3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3860.17,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4550.0
+    },
+    "futures": 3,
+    "ms": 1971.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00024",
+   "t": 9600.0,
+   "t_h": 2.667,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_15",
+    "Init_Lot_1_23",
+    "Init_Lot_10_12",
+    "Init_Lot_3_7",
+    "Init_Lot_8_32"
+   ],
+   "situation": "5 Q-time lots compete for WE_BE_9 (5 tools, 9 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 168.4,
+      "queue_growth": 4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 177.5,
+      "queue_growth": 4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3821.6,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4464.67
+    },
+    "futures": 3,
+    "ms": 2008.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00025",
+   "t": 9900.0,
+   "t_h": 2.75,
+   "type": "qtime_competition",
+   "family": "Planar_BE_75",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_48",
+    "Init_Lot_10_14",
+    "Init_Lot_10_33",
+    "Init_Lot_2_27",
+    "Init_Lot_2_30",
+    "Init_Lot_2_63",
+    "Init_Lot_2_65",
+    "Init_Lot_4_4",
+    "Init_Lot_4_25",
+    "Init_Lot_4_31",
+    "Init_Lot_4_36",
+    "Init_Lot_4_40"
+   ],
+   "situation": "18 Q-time lots compete for Planar_BE_75 (14 tools, 2 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 314.1,
+      "queue_growth": -2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 276.4,
+      "queue_growth": -2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3742.8,
+     "late_lots": 4.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4364.0
+    },
+    "futures": 3,
+    "ms": 1871.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00026",
+   "t": 10200.0,
+   "t_h": 2.833,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_1",
+    "Init_Lot_10_2",
+    "Init_Lot_10_51",
+    "Init_Lot_2_2",
+    "Init_Lot_3_5",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_5",
+    "Init_Lot_4_6",
+    "Init_Lot_4_7",
+    "Init_Lot_6_2",
+    "Init_Lot_6_6"
+   ],
+   "situation": "23 Q-time lots compete for Diffusion_BE_123 (9 tools, 20 queued); rule order projects 3 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 2,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 3
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 2,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3692.03,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.33,
+     "qmissed": 12.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4335.67
+    },
+    "futures": 3,
+    "ms": 1826.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00027",
+   "t": 10800.0,
+   "t_h": 3.0,
+   "type": "hot_insertion",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_23",
+    "Init_Lot_8_32"
+   ],
+   "situation": "2 Q-time lots compete for WE_BE_9 (5 tools, 9 queued); rule order projects 2 Q-time misses; 1 hot/VIP lots ahead of them by class",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order (hot/VIP first)",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 141.1,
+      "queue_growth": 4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 178.3,
+      "queue_growth": 5
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order (hot/VIP first)",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3562.67,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.67,
+     "qmissed": 12.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4145.67
+    },
+    "futures": 3,
+    "ms": 1957.5,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00028",
+   "t": 10800.0,
+   "t_h": 3.0,
+   "type": "qtime_competition",
+   "family": "WE_FE_41",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_104",
+    "Init_Lot_4_149",
+    "Init_Lot_4_150",
+    "Init_Lot_4_154",
+    "Init_Lot_6_82",
+    "Init_Lot_9_64"
+   ],
+   "situation": "6 Q-time lots compete for WE_FE_41 (5 tools, 2 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 270.7,
+      "queue_growth": -2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 270.7,
+      "queue_growth": -2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3562.67,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.67,
+     "qmissed": 12.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4145.67
+    },
+    "futures": 3,
+    "ms": 1758.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00029",
+   "t": 11100.0,
+   "t_h": 3.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_7",
+    "Init_Lot_10_36",
+    "Init_Lot_2_37",
+    "Init_Lot_2_48",
+    "Init_Lot_2_56",
+    "Init_Lot_2_58",
+    "Init_Lot_3_20",
+    "Init_Lot_3_38",
+    "Init_Lot_3_48",
+    "Init_Lot_3_62",
+    "Init_Lot_4_24",
+    "Init_Lot_5_9"
+   ],
+   "situation": "18 Q-time lots compete for Dielectric_BE_21 (6 tools, 33 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 25.4,
+      "queue_growth": -11
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -11
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3496.73,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4089.33
+    },
+    "futures": 3,
+    "ms": 1894.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00030",
+   "t": 11100.0,
+   "t_h": 3.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_46",
+    "Init_Lot_10_47",
+    "Init_Lot_2_29",
+    "Init_Lot_2_55",
+    "Init_Lot_3_72",
+    "Init_Lot_4_26",
+    "Init_Lot_5_27",
+    "Init_Lot_6_19",
+    "Init_Lot_6_27",
+    "Init_Lot_6_28",
+    "Init_Lot_6_32",
+    "Init_Lot_7_5"
+   ],
+   "situation": "20 Q-time lots compete for Dielectric_BE_27 (12 tools, 66 queued); rule order projects 9 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 9,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 14.1,
+      "queue_growth": -11
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -14
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3496.73,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4089.33
+    },
+    "futures": 3,
+    "ms": 1809.2,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00031",
+   "t": 11100.0,
+   "t_h": 3.083,
+   "type": "qtime_competition",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_HotLot_1_1",
+    "Init_Lot_2_21",
+    "Init_Lot_3_33",
+    "Init_Lot_4_30",
+    "Init_Lot_5_20",
+    "Init_Lot_7_21",
+    "Init_Lot_8_27",
+    "Init_Lot_9_19",
+    "Init_Lot_9_35"
+   ],
+   "situation": "9 Q-time lots compete for WE_BE_16 (8 tools, 8 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 359.8,
+      "queue_growth": -8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 346.6,
+      "queue_growth": -8
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3496.73,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4089.33
+    },
+    "futures": 3,
+    "ms": 1705.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00032",
+   "t": 11400.0,
+   "t_h": 3.167,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_23",
+    "Init_Lot_8_32"
+   ],
+   "situation": "2 Q-time lots compete for WE_BE_9 (5 tools, 9 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 224.1,
+      "queue_growth": 10
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 196.4,
+      "queue_growth": 9
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3427.37,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 4030.67
+    },
+    "futures": 3,
+    "ms": 1820.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00033",
+   "t": 12000.0,
+   "t_h": 3.333,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_1",
+    "Init_Lot_10_2",
+    "Init_Lot_10_51",
+    "Init_Lot_2_2",
+    "Init_Lot_2_4",
+    "Init_Lot_3_5",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_5",
+    "Init_Lot_4_6",
+    "Init_Lot_4_7",
+    "Init_Lot_4_8"
+   ],
+   "situation": "25 Q-time lots compete for Diffusion_BE_123 (9 tools, 23 queued); rule order projects 3 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3322.57,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3899.0
+    },
+    "futures": 3,
+    "ms": 1707.9,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00034",
+   "t": 12300.0,
+   "t_h": 3.417,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_28",
+   "tool": null,
+   "lots": [
+    "Init_Lot_3_14",
+    "Init_Lot_6_20",
+    "Init_Lot_8_3"
+   ],
+   "situation": "2 Q-time lots compete for Dielectric_BE_28 (3 tools, 56 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -9
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -9
+     }
+    },
+    {
+     "id": "C",
+     "action": "Q-time first, but due-critical lots keep their place (earliest latest-start first)",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -9
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3233.9,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3835.33
+    },
+    "futures": 3,
+    "ms": 1795.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00035",
+   "t": 12900.0,
+   "t_h": 3.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_7",
+    "Init_Lot_10_36",
+    "Init_Lot_2_48",
+    "Init_Lot_2_55",
+    "Init_Lot_2_58",
+    "Init_Lot_3_20",
+    "Init_Lot_3_38",
+    "Init_Lot_3_48",
+    "Init_Lot_4_24",
+    "Init_Lot_5_9",
+    "Init_Lot_5_26",
+    "Init_Lot_6_27"
+   ],
+   "situation": "18 Q-time lots compete for Dielectric_BE_21 (6 tools, 32 queued); rule order projects 4 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 4,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 27.7,
+      "queue_growth": -9
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3111.6,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.33,
+     "qmissed": 12.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3717.33
+    },
+    "futures": 3,
+    "ms": 1633.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00036",
+   "t": 12900.0,
+   "t_h": 3.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_47",
+    "Init_Lot_2_29",
+    "Init_Lot_3_72",
+    "Init_Lot_4_4",
+    "Init_Lot_4_26",
+    "Init_Lot_4_40",
+    "Init_Lot_5_27",
+    "Init_Lot_6_19",
+    "Init_Lot_6_28",
+    "Init_Lot_6_50",
+    "Init_Lot_7_1",
+    "Init_Lot_7_5"
+   ],
+   "situation": "22 Q-time lots compete for Dielectric_BE_27 (12 tools, 71 queued); rule order projects 12 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 12,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 111.8,
+      "queue_growth": -14
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -20
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3111.6,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.33,
+     "qmissed": 12.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3717.33
+    },
+    "futures": 3,
+    "ms": 1645.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00037",
+   "t": 12900.0,
+   "t_h": 3.583,
+   "type": "qtime_competition",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_HotLot_1_1",
+    "Init_Lot_10_13",
+    "Init_Lot_10_19",
+    "Init_Lot_2_21",
+    "Init_Lot_3_33",
+    "Init_Lot_3_61",
+    "Init_Lot_3_70",
+    "Init_Lot_3_78",
+    "Init_Lot_4_30",
+    "Init_Lot_5_20",
+    "Init_Lot_6_52",
+    "Init_Lot_7_21"
+   ],
+   "situation": "15 Q-time lots compete for WE_BE_16 (8 tools, 1 queued); rule order projects 4 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 4,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 483.8,
+      "queue_growth": 9
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 326.7,
+      "queue_growth": 2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3111.6,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.33,
+     "qmissed": 12.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3717.33
+    },
+    "futures": 3,
+    "ms": 1714.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00038",
+   "t": 13200.0,
+   "t_h": 3.667,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_23",
+    "Init_Lot_8_32"
+   ],
+   "situation": "2 Q-time lots compete for WE_BE_9 (5 tools, 4 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 183.5,
+      "queue_growth": 10
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 152.4,
+      "queue_growth": 9
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3050.2,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3658.0
+    },
+    "futures": 3,
+    "ms": 1649.2,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00039",
+   "t": 13200.0,
+   "t_h": 3.667,
+   "type": "qtime_competition",
+   "family": "WE_FE_41",
+   "tool": null,
+   "lots": [
+    "Init_Lot_4_149",
+    "Init_Lot_4_150",
+    "Init_Lot_6_94",
+    "Init_Lot_7_161",
+    "Init_Lot_7_164",
+    "Init_Lot_7_165",
+    "Init_Lot_7_166",
+    "Init_Lot_7_167",
+    "Init_Lot_9_63",
+    "Init_Lot_9_64"
+   ],
+   "situation": "10 Q-time lots compete for WE_FE_41 (5 tools, 6 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 486.0,
+      "queue_growth": 3
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 430.7,
+      "queue_growth": 0
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 3050.2,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3658.0
+    },
+    "futures": 3,
+    "ms": 1620.5,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00040",
+   "t": 13500.0,
+   "t_h": 3.75,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_152",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_160",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171"
+   ],
+   "situation": "60 Q-time lots compete for EPI_38 (1 tools, 60 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2987.8,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.33,
+     "qmissed": 12.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3579.67
+    },
+    "futures": 3,
+    "ms": 1679.9,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00041",
+   "t": 13500.0,
+   "t_h": 3.75,
+   "type": "qtime_competition",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_73",
+    "Init_Lot_10_76",
+    "Init_Lot_10_79",
+    "Init_Lot_10_82",
+    "Init_Lot_7_80"
+   ],
+   "situation": "5 Q-time lots compete for WE_FE_47 (5 tools, 1 queued); rule order projects 5 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 5,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 121.6,
+      "queue_growth": 3
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 198.0,
+      "queue_growth": 6
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2987.8,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.33,
+     "qmissed": 12.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3579.67
+    },
+    "futures": 3,
+    "ms": 1652.9,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00042",
+   "t": 13800.0,
+   "t_h": 3.833,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_1",
+    "Init_Lot_10_2",
+    "Init_Lot_10_51",
+    "Init_Lot_2_2",
+    "Init_Lot_3_5",
+    "Init_Lot_3_14",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_5",
+    "Init_Lot_4_6",
+    "Init_Lot_4_7",
+    "Init_Lot_6_2"
+   ],
+   "situation": "25 Q-time lots compete for Diffusion_BE_123 (9 tools, 23 queued); rule order projects 6 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2931.2,
+     "late_lots": 2.0,
+     "on_time": 1.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3508.33
+    },
+    "futures": 3,
+    "ms": 1592.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00043",
+   "t": 14700.0,
+   "t_h": 4.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_36",
+    "Init_Lot_2_29",
+    "Init_Lot_2_48",
+    "Init_Lot_2_55",
+    "Init_Lot_3_38",
+    "Init_Lot_5_9",
+    "Init_Lot_5_26",
+    "Init_Lot_6_27",
+    "Init_Lot_6_29",
+    "Init_Lot_6_32",
+    "Init_Lot_6_50",
+    "Init_Lot_7_13"
+   ],
+   "situation": "18 Q-time lots compete for Dielectric_BE_21 (6 tools, 30 queued); rule order projects 6 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 9.6,
+      "queue_growth": -8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -8
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2787.27,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3304.67
+    },
+    "futures": 3,
+    "ms": 1550.8,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00044",
+   "t": 14700.0,
+   "t_h": 4.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_33",
+    "Init_Lot_10_47",
+    "Init_Lot_2_30",
+    "Init_Lot_3_72",
+    "Init_Lot_4_4",
+    "Init_Lot_4_26",
+    "Init_Lot_4_36",
+    "Init_Lot_4_40",
+    "Init_Lot_5_27",
+    "Init_Lot_6_19",
+    "Init_Lot_7_1",
+    "Init_Lot_7_5"
+   ],
+   "situation": "18 Q-time lots compete for Dielectric_BE_27 (12 tools, 65 queued); rule order projects 6 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 39.5,
+      "queue_growth": -11
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -17
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2787.27,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3304.67
+    },
+    "futures": 3,
+    "ms": 1623.5,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00045",
+   "t": 15300.0,
+   "t_h": 4.25,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_152",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_160",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171"
+   ],
+   "situation": "59 Q-time lots compete for EPI_38 (1 tools, 59 queued); rule order projects 55 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 55,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 55,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2630.1,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3159.33
+    },
+    "futures": 3,
+    "ms": 1557.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00046",
+   "t": 15300.0,
+   "t_h": 4.25,
+   "type": "qtime_competition",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_73",
+    "Init_Lot_10_76",
+    "Init_Lot_10_79",
+    "Init_Lot_10_82",
+    "Init_Lot_7_80"
+   ],
+   "situation": "5 Q-time lots compete for WE_FE_47 (5 tools, 7 queued); rule order projects 5 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 5,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 186.2,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 154.5,
+      "queue_growth": -3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2630.1,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3159.33
+    },
+    "futures": 3,
+    "ms": 1549.5,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00047",
+   "t": 15600.0,
+   "t_h": 4.333,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_1",
+    "Init_Lot_10_2",
+    "Init_Lot_10_51",
+    "Init_Lot_2_2",
+    "Init_Lot_2_4",
+    "Init_Lot_3_5",
+    "Init_Lot_3_14",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_5",
+    "Init_Lot_4_6",
+    "Init_Lot_4_7"
+   ],
+   "situation": "27 Q-time lots compete for Diffusion_BE_123 (9 tools, 25 queued); rule order projects 9 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 9,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 9,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2573.23,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 3090.0
+    },
+    "futures": 3,
+    "ms": 1526.2,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00048",
+   "t": 16500.0,
+   "t_h": 4.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_36",
+    "Init_Lot_2_29",
+    "Init_Lot_2_48",
+    "Init_Lot_2_55",
+    "Init_Lot_4_26",
+    "Init_Lot_6_27",
+    "Init_Lot_6_32",
+    "Init_Lot_6_50",
+    "Init_Lot_7_5",
+    "Init_Lot_7_13",
+    "Init_Lot_8_48",
+    "Init_Lot_8_56"
+   ],
+   "situation": "17 Q-time lots compete for Dielectric_BE_21 (6 tools, 32 queued); rule order projects 4 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 4,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 6.0,
+      "queue_growth": -8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -8
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2413.87,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2903.67
+    },
+    "futures": 3,
+    "ms": 1542.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00049",
+   "t": 16500.0,
+   "t_h": 4.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_48",
+    "Init_Lot_10_14",
+    "Init_Lot_10_33",
+    "Init_Lot_2_27",
+    "Init_Lot_2_63",
+    "Init_Lot_2_65",
+    "Init_Lot_4_4",
+    "Init_Lot_4_25",
+    "Init_Lot_4_31",
+    "Init_Lot_4_36",
+    "Init_Lot_4_40",
+    "Init_Lot_4_47"
+   ],
+   "situation": "20 Q-time lots compete for Dielectric_BE_27 (12 tools, 67 queued); rule order projects 8 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 8,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 69.4,
+      "queue_growth": -13
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -18
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2413.87,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2903.67
+    },
+    "futures": 3,
+    "ms": 1392.9,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00050",
+   "t": 16500.0,
+   "t_h": 4.583,
+   "type": "qtime_competition",
+   "family": "TF_Met_FE_61",
+   "tool": null,
+   "lots": [
+    "Init_Lot_3_194",
+    "Init_Lot_9_126"
+   ],
+   "situation": "2 Q-time lots compete for TF_Met_FE_61 (2 tools, 1 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 233.2,
+      "queue_growth": 12
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 220.3,
+      "queue_growth": 10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2413.87,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2903.67
+    },
+    "futures": 3,
+    "ms": 1371.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00051",
+   "t": 17100.0,
+   "t_h": 4.75,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_152",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_160",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171"
+   ],
+   "situation": "58 Q-time lots compete for EPI_38 (1 tools, 58 queued); rule order projects 55 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 55,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 55,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2297.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2765.33
+    },
+    "futures": 3,
+    "ms": 1507.8,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00052",
+   "t": 17100.0,
+   "t_h": 4.75,
+   "type": "qtime_competition",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_82",
+    "Init_Lot_3_112"
+   ],
+   "situation": "2 Q-time lots compete for WE_FE_47 (5 tools, 7 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 119.3,
+      "queue_growth": -7
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 153.6,
+      "queue_growth": -7
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2297.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 12.0,
+     "qmissed": 12.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2765.33
+    },
+    "futures": 3,
+    "ms": 1275.5,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00053",
+   "t": 17400.0,
+   "t_h": 4.833,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_2",
+    "Init_Lot_10_51",
+    "Init_Lot_2_2",
+    "Init_Lot_2_4",
+    "Init_Lot_3_5",
+    "Init_Lot_3_14",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_5",
+    "Init_Lot_4_6",
+    "Init_Lot_4_7",
+    "Init_Lot_4_8"
+   ],
+   "situation": "25 Q-time lots compete for Diffusion_BE_123 (9 tools, 24 queued); rule order projects 6 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 1
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": 1
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2242.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 7.33,
+     "qmissed": 7.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2700.0
+    },
+    "futures": 3,
+    "ms": 1360.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00054",
+   "t": 17400.0,
+   "t_h": 4.833,
+   "type": "qtime_competition",
+   "family": "LithoTrack_BE_117",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_30",
+    "Init_Lot_1_33",
+    "Init_Lot_1_46",
+    "Init_Lot_3_76",
+    "Init_Lot_3_77",
+    "Init_Lot_3_86",
+    "Init_Lot_6_57",
+    "Init_Lot_6_72",
+    "Init_Lot_7_35"
+   ],
+   "situation": "9 Q-time lots compete for LithoTrack_BE_117 (5 tools, 6 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.2,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 15.3,
+      "queue_growth": -3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2242.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 7.33,
+     "qmissed": 7.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2700.0
+    },
+    "futures": 3,
+    "ms": 1355.9,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00055",
+   "t": 17400.0,
+   "t_h": 4.833,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_2_11",
+    "Init_Lot_3_11",
+    "Init_Lot_6_23",
+    "Init_Lot_8_18",
+    "Init_Lot_8_38"
+   ],
+   "situation": "5 Q-time lots compete for WE_BE_9 (5 tools, 14 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 207.2,
+      "queue_growth": 14
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 206.2,
+      "queue_growth": 14
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2242.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 7.33,
+     "qmissed": 7.33,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2700.0
+    },
+    "futures": 3,
+    "ms": 1353.2,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00056",
+   "t": 18300.0,
+   "t_h": 5.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_2_29",
+    "Init_Lot_2_55",
+    "Init_Lot_4_26",
+    "Init_Lot_4_40",
+    "Init_Lot_5_27",
+    "Init_Lot_6_27",
+    "Init_Lot_6_32",
+    "Init_Lot_6_50",
+    "Init_Lot_7_1",
+    "Init_Lot_7_5",
+    "Init_Lot_7_13",
+    "Init_Lot_8_48"
+   ],
+   "situation": "19 Q-time lots compete for Dielectric_BE_21 (6 tools, 35 queued); rule order projects 8 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 8,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 54.9,
+      "queue_growth": -8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2078.93,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.0,
+     "qmissed": 9.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2463.67
+    },
+    "futures": 3,
+    "ms": 1398.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00057",
+   "t": 18300.0,
+   "t_h": 5.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_29",
+    "Init_Lot_1_48",
+    "Init_Lot_10_14",
+    "Init_Lot_10_33",
+    "Init_Lot_2_27",
+    "Init_Lot_2_30",
+    "Init_Lot_2_63",
+    "Init_Lot_2_65",
+    "Init_Lot_4_4",
+    "Init_Lot_4_25",
+    "Init_Lot_4_31",
+    "Init_Lot_4_36"
+   ],
+   "situation": "14 Q-time lots compete for Dielectric_BE_27 (12 tools, 61 queued); rule order projects 3 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 1.9,
+      "queue_growth": -11
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 17.1,
+      "queue_growth": -12
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 2078.93,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.0,
+     "qmissed": 9.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2463.67
+    },
+    "futures": 3,
+    "ms": 1240.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00058",
+   "t": 18900.0,
+   "t_h": 5.25,
+   "type": "breakdown",
+   "family": "Litho_FE_92",
+   "tool": "Litho_FE_92-1",
+   "lots": [
+    "Init_Lot_1_106"
+   ],
+   "situation": "Litho_FE_92-1 is down until 32.2 h; 1 lots pinned to it (litho layer dedication), 0 of them Q-time or hot/VIP",
+   "options": [
+    {
+     "id": "A",
+     "action": "re-route every pinned lot to a sibling scanner now",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 1078.1,
+      "queue_growth": -1
+     }
+    },
+    {
+     "id": "B",
+     "action": "wait for the repair (ETA 32.2 h) for every pinned lot",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 1136.8,
+      "queue_growth": 0
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "re-route every pinned lot to a sibling scanner now",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1967.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.67,
+     "qmissed": 9.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2357.0
+    },
+    "futures": 3,
+    "ms": 1193.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00059",
+   "t": 18900.0,
+   "t_h": 5.25,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_152",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_160",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171"
+   ],
+   "situation": "57 Q-time lots compete for EPI_38 (1 tools, 57 queued); rule order projects 55 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 55,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 55,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1967.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.67,
+     "qmissed": 9.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2357.0
+    },
+    "futures": 3,
+    "ms": 1286.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00060",
+   "t": 18900.0,
+   "t_h": 5.25,
+   "type": "qtime_competition",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_19",
+    "Init_Lot_3_22",
+    "Init_Lot_4_22",
+    "Init_Lot_4_30",
+    "Init_Lot_5_10",
+    "Init_Lot_5_19",
+    "Init_Lot_6_35",
+    "Init_Lot_7_20",
+    "Init_Lot_7_22",
+    "Init_Lot_9_35"
+   ],
+   "situation": "10 Q-time lots compete for WE_BE_16 (8 tools, 2 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 255.7,
+      "queue_growth": -2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 280.9,
+      "queue_growth": -2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1967.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.67,
+     "qmissed": 9.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2357.0
+    },
+    "futures": 3,
+    "ms": 1201.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00061",
+   "t": 18900.0,
+   "t_h": 5.25,
+   "type": "qtime_competition",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_Lot_3_112",
+    "Init_Lot_3_126"
+   ],
+   "situation": "2 Q-time lots compete for WE_FE_47 (5 tools, 6 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 346.5,
+      "queue_growth": 5
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 295.2,
+      "queue_growth": 3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1967.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.67,
+     "qmissed": 9.67,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2357.0
+    },
+    "futures": 3,
+    "ms": 1230.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00062",
+   "t": 19200.0,
+   "t_h": 5.333,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_2",
+    "Init_Lot_10_51",
+    "Init_Lot_2_2",
+    "Init_Lot_2_4",
+    "Init_Lot_3_5",
+    "Init_Lot_3_14",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_5",
+    "Init_Lot_4_6",
+    "Init_Lot_4_7",
+    "Init_Lot_4_8"
+   ],
+   "situation": "25 Q-time lots compete for Diffusion_BE_123 (9 tools, 27 queued); rule order projects 9 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 9,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -14
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 9,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -14
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1912.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.0,
+     "qmissed": 9.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2296.33
+    },
+    "futures": 3,
+    "ms": 1278.8,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00063",
+   "t": 19200.0,
+   "t_h": 5.333,
+   "type": "qtime_competition",
+   "family": "LithoTrack_BE_117",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_30",
+    "Init_Lot_1_33",
+    "Init_Lot_1_46",
+    "Init_Lot_3_86",
+    "Init_Lot_6_57",
+    "Init_Lot_6_67",
+    "Init_Lot_6_72",
+    "Init_Lot_7_35"
+   ],
+   "situation": "8 Q-time lots compete for LithoTrack_BE_117 (5 tools, 7 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -7
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -6
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1912.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.0,
+     "qmissed": 9.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2296.33
+    },
+    "futures": 3,
+    "ms": 1180.8,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00064",
+   "t": 19200.0,
+   "t_h": 5.333,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_2_11",
+    "Init_HotLot_2_1",
+    "Init_Lot_3_11",
+    "Init_Lot_6_23",
+    "Init_Lot_8_18",
+    "Init_Lot_8_38"
+   ],
+   "situation": "6 Q-time lots compete for WE_BE_9 (5 tools, 18 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 175.1,
+      "queue_growth": 4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 146.8,
+      "queue_growth": 3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1912.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 9.0,
+     "qmissed": 9.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2296.33
+    },
+    "futures": 3,
+    "ms": 1220.8,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00065",
+   "t": 20100.0,
+   "t_h": 5.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_2_29",
+    "Init_Lot_2_30",
+    "Init_Lot_2_55",
+    "Init_Lot_4_4",
+    "Init_Lot_4_25",
+    "Init_Lot_4_26",
+    "Init_Lot_4_31",
+    "Init_Lot_4_36",
+    "Init_Lot_4_40",
+    "Init_Lot_5_27",
+    "Init_Lot_6_50",
+    "Init_Lot_7_1"
+   ],
+   "situation": "21 Q-time lots compete for Dielectric_BE_21 (6 tools, 38 queued); rule order projects 10 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 10,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 44.5,
+      "queue_growth": -10
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -12
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1751.13,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2103.33
+    },
+    "futures": 3,
+    "ms": 1226.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00066",
+   "t": 20100.0,
+   "t_h": 5.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_29",
+    "Init_HotLot_10_1",
+    "Init_Lot_2_19",
+    "Init_Lot_2_63",
+    "Init_Lot_2_65",
+    "Init_Lot_3_2",
+    "Init_Lot_3_32",
+    "Init_Lot_4_41",
+    "Init_Lot_4_47",
+    "Init_Lot_6_30",
+    "Init_Lot_7_47",
+    "Init_Lot_8_15"
+   ],
+   "situation": "14 Q-time lots compete for Dielectric_BE_27 (12 tools, 61 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 21.9,
+      "queue_growth": -10
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 59.9,
+      "queue_growth": -13
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1751.13,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 2103.33
+    },
+    "futures": 3,
+    "ms": 1146.9,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00067",
+   "t": 20700.0,
+   "t_h": 5.75,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_152",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_160",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171"
+   ],
+   "situation": "56 Q-time lots compete for EPI_38 (1 tools, 56 queued); rule order projects 55 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 55,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 55,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -5
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1637.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1963.67
+    },
+    "futures": 3,
+    "ms": 1072.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00068",
+   "t": 20700.0,
+   "t_h": 5.75,
+   "type": "qtime_competition",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_80",
+    "Init_Lot_3_104",
+    "Init_Lot_3_105",
+    "Init_Lot_3_112",
+    "Init_Lot_3_126"
+   ],
+   "situation": "5 Q-time lots compete for WE_FE_47 (5 tools, 6 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 270.3,
+      "queue_growth": 8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 296.3,
+      "queue_growth": 9
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1637.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1963.67
+    },
+    "futures": 3,
+    "ms": 1005.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00069",
+   "t": 21000.0,
+   "t_h": 5.833,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_2",
+    "Init_Lot_10_51",
+    "Init_Lot_2_2",
+    "Init_Lot_2_4",
+    "Init_Lot_3_14",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_5",
+    "Init_Lot_4_6",
+    "Init_Lot_4_8",
+    "Init_Lot_6_19",
+    "Init_Lot_6_20"
+   ],
+   "situation": "25 Q-time lots compete for Diffusion_BE_123 (9 tools, 25 queued); rule order projects 6 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 18.8,
+      "queue_growth": -25
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 1,
+      "hot_late": 0,
+      "idle_min": 18.8,
+      "queue_growth": -25
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1586.67,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1891.0
+    },
+    "futures": 3,
+    "ms": 1023.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00070",
+   "t": 21000.0,
+   "t_h": 5.833,
+   "type": "qtime_competition",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_HotLot_1_1",
+    "Init_Lot_1_24",
+    "Init_Lot_3_22",
+    "Init_Lot_4_22",
+    "Init_Lot_4_30",
+    "Init_Lot_5_19",
+    "Init_Lot_7_20",
+    "Init_Lot_7_21",
+    "Init_Lot_9_13"
+   ],
+   "situation": "9 Q-time lots compete for WE_BE_16 (8 tools, 6 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 277.1,
+      "queue_growth": -6
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 292.1,
+      "queue_growth": -6
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1586.67,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1891.0
+    },
+    "futures": 3,
+    "ms": 1106.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00071",
+   "t": 21300.0,
+   "t_h": 5.917,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_2_11",
+    "Init_HotLot_2_1",
+    "Init_Lot_3_6",
+    "Init_Lot_6_23"
+   ],
+   "situation": "4 Q-time lots compete for WE_BE_9 (5 tools, 22 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 126.5,
+      "queue_growth": -2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 86.6,
+      "queue_growth": -3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1527.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1804.33
+    },
+    "futures": 3,
+    "ms": 1066.4,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00072",
+   "t": 21300.0,
+   "t_h": 5.917,
+   "type": "hot_insertion",
+   "family": "WE_FE_41",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_98",
+    "Init_Lot_6_75",
+    "Init_Lot_6_80",
+    "Init_Lot_6_90",
+    "Init_Lot_6_100",
+    "Init_Lot_7_169",
+    "Init_Lot_7_170",
+    "Init_Lot_7_172",
+    "Init_Lot_9_81"
+   ],
+   "situation": "9 Q-time lots compete for WE_FE_41 (5 tools, 3 queued); rule order projects 3 Q-time misses; 1 hot/VIP lots ahead of them by class",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order (hot/VIP first)",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 250.4,
+      "queue_growth": -3
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 249.6,
+      "queue_growth": -3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order (hot/VIP first)",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1527.7,
+     "late_lots": 2.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1804.33
+    },
+    "futures": 3,
+    "ms": 1035.2,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00073",
+   "t": 21900.0,
+   "t_h": 6.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_14",
+    "Init_HotLot_10_1",
+    "Init_Lot_2_29",
+    "Init_Lot_2_30",
+    "Init_Lot_4_4",
+    "Init_Lot_4_25",
+    "Init_Lot_4_26",
+    "Init_Lot_4_31",
+    "Init_Lot_4_36",
+    "Init_Lot_4_40",
+    "Init_Lot_4_47",
+    "Init_Lot_5_27"
+   ],
+   "situation": "19 Q-time lots compete for Dielectric_BE_21 (6 tools, 36 queued); rule order projects 8 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 8,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 35.6,
+      "queue_growth": -9
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -9
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1417.3,
+     "late_lots": 1.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1666.0
+    },
+    "futures": 3,
+    "ms": 1010.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00074",
+   "t": 21900.0,
+   "t_h": 6.083,
+   "type": "qtime_competition",
+   "family": "WE_FE_41",
+   "tool": null,
+   "lots": [
+    "Init_Lot_3_128",
+    "Init_Lot_6_75",
+    "Init_Lot_6_80",
+    "Init_Lot_6_100",
+    "Init_Lot_7_169",
+    "Init_Lot_7_170",
+    "Init_Lot_7_172",
+    "Init_Lot_9_70",
+    "Init_Lot_9_81"
+   ],
+   "situation": "9 Q-time lots compete for WE_FE_41 (5 tools, 7 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 232.5,
+      "queue_growth": -7
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 225.7,
+      "queue_growth": -7
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1417.3,
+     "late_lots": 1.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1666.0
+    },
+    "futures": 3,
+    "ms": 952.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00075",
+   "t": 22500.0,
+   "t_h": 6.25,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171",
+    "Init_Lot_3_161",
+    "Init_Lot_3_171"
+   ],
+   "situation": "54 Q-time lots compete for EPI_38 (1 tools, 54 queued); rule order projects 54 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 54,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 54,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1301.27,
+     "late_lots": 1.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1543.0
+    },
+    "futures": 3,
+    "ms": 893.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00076",
+   "t": 22500.0,
+   "t_h": 6.25,
+   "type": "hot_insertion",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_80",
+    "Init_Lot_3_104",
+    "Init_Lot_3_105",
+    "Init_Lot_3_126",
+    "Init_Lot_4_68"
+   ],
+   "situation": "5 Q-time lots compete for WE_FE_47 (5 tools, 8 queued); rule order projects 3 Q-time misses; 1 hot/VIP lots ahead of them by class",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order (hot/VIP first)",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 172.8,
+      "queue_growth": 8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 161.0,
+      "queue_growth": 7
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order (hot/VIP first)",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1301.27,
+     "late_lots": 1.0,
+     "on_time": 0.0,
+     "qviol": 6.0,
+     "qmissed": 6.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1543.0
+    },
+    "futures": 3,
+    "ms": 1038.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00077",
+   "t": 22800.0,
+   "t_h": 6.333,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_51",
+    "Init_Lot_2_4",
+    "Init_Lot_3_14",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_6",
+    "Init_Lot_4_8",
+    "Init_Lot_6_19",
+    "Init_Lot_6_20",
+    "Init_Lot_6_28",
+    "Init_Lot_7_54",
+    "Init_Lot_7_58"
+   ],
+   "situation": "23 Q-time lots compete for Diffusion_BE_123 (9 tools, 27 queued); rule order projects 3 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 78.8,
+      "queue_growth": -27
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 78.8,
+      "queue_growth": -27
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1237.3,
+     "late_lots": 1.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1488.33
+    },
+    "futures": 3,
+    "ms": 813.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00078",
+   "t": 23100.0,
+   "t_h": 6.417,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_2_11",
+    "Init_HotLot_2_1",
+    "Init_Lot_3_6",
+    "Init_Lot_6_23"
+   ],
+   "situation": "4 Q-time lots compete for WE_BE_9 (5 tools, 18 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 134.8,
+      "queue_growth": -1
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 106.7,
+      "queue_growth": -2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1174.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1422.0
+    },
+    "futures": 3,
+    "ms": 849.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00079",
+   "t": 23400.0,
+   "t_h": 6.5,
+   "type": "qtime_competition",
+   "family": "Implant_119",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_152",
+    "Init_Lot_3_167",
+    "Init_Lot_3_175"
+   ],
+   "situation": "3 Q-time lots compete for Implant_119 (2 tools, 3 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 41.6,
+      "queue_growth": -3
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 41.6,
+      "queue_growth": -3
+     }
+    },
+    {
+     "id": "C",
+     "action": "Q-time triage: boost only the windows that can still be met",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 41.6,
+      "queue_growth": -3
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1109.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1351.0
+    },
+    "futures": 3,
+    "ms": 765.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00080",
+   "t": 23700.0,
+   "t_h": 6.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_29",
+    "Init_Lot_10_14",
+    "Init_HotLot_10_1",
+    "Init_Lot_2_30",
+    "Init_Lot_3_32",
+    "Init_Lot_4_4",
+    "Init_Lot_4_25",
+    "Init_Lot_4_26",
+    "Init_Lot_4_31",
+    "Init_Lot_4_36",
+    "Init_Lot_4_40",
+    "Init_Lot_4_47"
+   ],
+   "situation": "19 Q-time lots compete for Dielectric_BE_21 (6 tools, 35 queued); rule order projects 7 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 7,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -8
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 1044.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1277.0
+    },
+    "futures": 3,
+    "ms": 740.0,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00081",
+   "t": 24300.0,
+   "t_h": 6.75,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_27",
+   "tool": null,
+   "lots": [
+    "Init_Lot_2_19",
+    "Init_Lot_3_26",
+    "Init_Lot_3_27",
+    "Init_Lot_4_42",
+    "Init_Lot_4_51",
+    "Init_Lot_5_12",
+    "Init_Lot_6_31",
+    "Init_Lot_7_15",
+    "Init_Lot_7_43",
+    "Init_HotLot_9_1",
+    "Init_Lot_9_36"
+   ],
+   "situation": "11 Q-time lots compete for Dielectric_BE_27 (12 tools, 60 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 10.3,
+      "queue_growth": -12
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 50.3,
+      "queue_growth": -14
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 914.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1141.67
+    },
+    "futures": 3,
+    "ms": 756.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00082",
+   "t": 24300.0,
+   "t_h": 6.75,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171",
+    "Init_Lot_3_161",
+    "Init_Lot_3_171"
+   ],
+   "situation": "53 Q-time lots compete for EPI_38 (1 tools, 53 queued); rule order projects 53 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 53,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 53,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 914.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1141.67
+    },
+    "futures": 3,
+    "ms": 677.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00083",
+   "t": 24300.0,
+   "t_h": 6.75,
+   "type": "hot_insertion",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_80",
+    "Init_Lot_3_104",
+    "Init_Lot_3_105",
+    "Init_Lot_3_118",
+    "Init_Lot_4_68"
+   ],
+   "situation": "5 Q-time lots compete for WE_FE_47 (5 tools, 8 queued); rule order projects 3 Q-time misses; 1 hot/VIP lots ahead of them by class",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order (hot/VIP first)",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 91.2,
+      "queue_growth": 1
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 124.6,
+      "queue_growth": 1
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order (hot/VIP first)",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 914.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1141.67
+    },
+    "futures": 3,
+    "ms": 688.2,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00084",
+   "t": 24600.0,
+   "t_h": 6.833,
+   "type": "qtime_competition",
+   "family": "Diffusion_BE_123",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_2",
+    "Init_Lot_10_51",
+    "Init_Lot_2_4",
+    "Init_Lot_3_14",
+    "Init_Lot_4_2",
+    "Init_Lot_4_3",
+    "Init_Lot_4_6",
+    "Init_Lot_4_8",
+    "Init_Lot_6_19",
+    "Init_Lot_6_20",
+    "Init_Lot_6_28",
+    "Init_Lot_7_54"
+   ],
+   "situation": "23 Q-time lots compete for Diffusion_BE_123 (9 tools, 31 queued); rule order projects 3 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 69.4,
+      "queue_growth": -31
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 69.4,
+      "queue_growth": -31
+     }
+    },
+    {
+     "id": "C",
+     "action": "Q-time first, but due-critical lots keep their place (earliest latest-start first)",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 3,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 69.4,
+      "queue_growth": -31
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 849.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1083.0
+    },
+    "futures": 3,
+    "ms": 757.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00085",
+   "t": 24600.0,
+   "t_h": 6.833,
+   "type": "qtime_competition",
+   "family": "LithoTrack_FE_95",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_30",
+    "Init_Lot_1_37",
+    "Init_Lot_1_40",
+    "Init_Lot_1_41",
+    "Init_Lot_7_35"
+   ],
+   "situation": "5 Q-time lots compete for LithoTrack_FE_95 (40 tools, 90 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 185.8,
+      "queue_growth": -54
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 324.3,
+      "queue_growth": -51
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.03,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 849.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1083.0
+    },
+    "futures": 3,
+    "ms": 627.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00086",
+   "t": 24900.0,
+   "t_h": 6.917,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_HotLot_2_1",
+    "Init_Lot_3_6",
+    "Init_Lot_6_21",
+    "Init_Lot_6_23"
+   ],
+   "situation": "4 Q-time lots compete for WE_BE_9 (5 tools, 20 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 139.8,
+      "queue_growth": -1
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 140.6,
+      "queue_growth": 0
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 784.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 1013.33
+    },
+    "futures": 3,
+    "ms": 575.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00087",
+   "t": 25200.0,
+   "t_h": 7.0,
+   "type": "qtime_competition",
+   "family": "Implant_119",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_152",
+    "Init_Lot_1_160"
+   ],
+   "situation": "2 Q-time lots compete for Implant_119 (2 tools, 4 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 54.9,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 54.9,
+      "queue_growth": -4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 719.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 3.0,
+     "qmissed": 3.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 958.33
+    },
+    "futures": 3,
+    "ms": 683.2,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00088",
+   "t": 25500.0,
+   "t_h": 7.083,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_29",
+    "Init_Lot_10_14",
+    "Init_Lot_2_30",
+    "Init_Lot_3_26",
+    "Init_Lot_3_32",
+    "Init_Lot_4_4",
+    "Init_Lot_4_25",
+    "Init_Lot_4_31",
+    "Init_Lot_4_36",
+    "Init_Lot_4_42",
+    "Init_Lot_4_47",
+    "Init_Lot_5_27"
+   ],
+   "situation": "18 Q-time lots compete for Dielectric_BE_21 (6 tools, 35 queued); rule order projects 6 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 12.6,
+      "queue_growth": -9
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 654.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 900.67
+    },
+    "futures": 3,
+    "ms": 597.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00089",
+   "t": 26100.0,
+   "t_h": 7.25,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171",
+    "Init_Lot_3_161",
+    "Init_Lot_3_171"
+   ],
+   "situation": "52 Q-time lots compete for EPI_38 (1 tools, 52 queued); rule order projects 52 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 52,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 52,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 524.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 733.67
+    },
+    "futures": 3,
+    "ms": 507.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00090",
+   "t": 26100.0,
+   "t_h": 7.25,
+   "type": "qtime_competition",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_24",
+    "Init_Lot_1_26",
+    "Init_Lot_10_19",
+    "Init_Lot_10_25",
+    "Init_Lot_5_8",
+    "Init_Lot_5_22",
+    "Init_Lot_6_33",
+    "Init_Lot_7_8",
+    "Init_Lot_7_9",
+    "Init_Lot_7_16",
+    "Init_Lot_7_20",
+    "Init_Lot_7_22"
+   ],
+   "situation": "15 Q-time lots compete for WE_BE_16 (8 tools, 3 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 423.9,
+      "queue_growth": 6
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 374.4,
+      "queue_growth": 4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 524.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 733.67
+    },
+    "futures": 3,
+    "ms": 485.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00091",
+   "t": 26100.0,
+   "t_h": 7.25,
+   "type": "hot_insertion",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_80",
+    "Init_Lot_3_118",
+    "Init_Lot_4_68",
+    "Init_Lot_6_71",
+    "Init_Lot_6_74"
+   ],
+   "situation": "5 Q-time lots compete for WE_FE_47 (5 tools, 12 queued); rule order projects 2 Q-time misses; 1 hot/VIP lots ahead of them by class",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order (hot/VIP first)",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 27.7,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 112.5,
+      "queue_growth": 0
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order (hot/VIP first)",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 524.2,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 733.67
+    },
+    "futures": 3,
+    "ms": 439.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00092",
+   "t": 27000.0,
+   "t_h": 7.5,
+   "type": "qtime_competition",
+   "family": "Implant_119",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_160",
+    "Init_Lot_3_186"
+   ],
+   "situation": "2 Q-time lots compete for Implant_119 (2 tools, 4 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 71.0,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 71.0,
+      "queue_growth": -4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 337.7,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 458.67
+    },
+    "futures": 3,
+    "ms": 400.6,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00093",
+   "t": 27300.0,
+   "t_h": 7.583,
+   "type": "qtime_competition",
+   "family": "Dielectric_BE_21",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_29",
+    "Init_Lot_10_14",
+    "Init_Lot_2_30",
+    "Init_Lot_3_26",
+    "Init_Lot_3_27",
+    "Init_Lot_3_32",
+    "Init_Lot_4_4",
+    "Init_Lot_4_25",
+    "Init_Lot_4_31",
+    "Init_Lot_4_42",
+    "Init_Lot_4_47",
+    "Init_Lot_5_12"
+   ],
+   "situation": "18 Q-time lots compete for Dielectric_BE_21 (6 tools, 35 queued); rule order projects 6 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 6,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 7.6,
+      "queue_growth": -8
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -10
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 277.7,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 391.67
+    },
+    "futures": 3,
+    "ms": 310.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00094",
+   "t": 27600.0,
+   "t_h": 7.667,
+   "type": "qtime_competition",
+   "family": "WE_FE_108",
+   "tool": null,
+   "lots": [
+    "Init_Lot_3_175",
+    "Init_Lot_3_183"
+   ],
+   "situation": "2 Q-time lots compete for WE_FE_108 (29 tools, 5 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 1836.1,
+      "queue_growth": -5
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 1836.1,
+      "queue_growth": -5
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 220.0,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 348.0
+    },
+    "futures": 3,
+    "ms": 250.5,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00095",
+   "t": 27600.0,
+   "t_h": 7.667,
+   "type": "qtime_competition",
+   "family": "WE_FE_84",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_152",
+    "Init_Lot_1_160"
+   ],
+   "situation": "2 Q-time lots compete for WE_FE_84 (17 tools, 3 queued); rule order projects 2 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 510.2,
+      "queue_growth": 5
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 2,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 458.0,
+      "queue_growth": 1
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 220.0,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 348.0
+    },
+    "futures": 3,
+    "ms": 346.3,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00096",
+   "t": 27900.0,
+   "t_h": 7.75,
+   "type": "qtime_competition",
+   "family": "EPI_38",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_151",
+    "Init_Lot_1_153",
+    "Init_Lot_1_155",
+    "Init_Lot_1_158",
+    "Init_Lot_1_161",
+    "Init_Lot_1_163",
+    "Init_Lot_1_164",
+    "Init_Lot_1_167",
+    "Init_Lot_1_169",
+    "Init_Lot_1_171",
+    "Init_Lot_3_161",
+    "Init_Lot_3_171"
+   ],
+   "situation": "51 Q-time lots compete for EPI_38 (1 tools, 51 queued); rule order projects 51 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 51,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 51,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 0.0,
+      "queue_growth": -4
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.06,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 165.0,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 217.67
+    },
+    "futures": 3,
+    "ms": 251.7,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00097",
+   "t": 27900.0,
+   "t_h": 7.75,
+   "type": "hot_insertion",
+   "family": "WE_FE_47",
+   "tool": null,
+   "lots": [
+    "Init_HotLot_1_2",
+    "Init_Lot_3_118",
+    "Init_Lot_6_71",
+    "Init_Lot_6_74",
+    "Init_Lot_6_81"
+   ],
+   "situation": "5 Q-time lots compete for WE_FE_47 (5 tools, 11 queued); rule order projects 1 Q-time misses; 1 hot/VIP lots ahead of them by class",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order (hot/VIP first)",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 71.3,
+      "queue_growth": -2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 81.7,
+      "queue_growth": -2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order (hot/VIP first)",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 165.0,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 217.67
+    },
+    "futures": 3,
+    "ms": 248.1,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00098",
+   "t": 28500.0,
+   "t_h": 7.917,
+   "type": "qtime_competition",
+   "family": "WE_BE_9",
+   "tool": null,
+   "lots": [
+    "Init_Lot_10_7",
+    "Init_Lot_3_20",
+    "Init_Lot_6_21"
+   ],
+   "situation": "3 Q-time lots compete for WE_BE_9 (5 tools, 17 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 182.8,
+      "queue_growth": 7
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 191.6,
+      "queue_growth": 8
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 55.0,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 57.0
+    },
+    "futures": 3,
+    "ms": 270.8,
+    "trigger": null
+   }
+  },
+  {
+   "id": "X00099",
+   "t": 28800.0,
+   "t_h": 8.0,
+   "type": "qtime_competition",
+   "family": "WE_BE_16",
+   "tool": null,
+   "lots": [
+    "Init_Lot_1_26",
+    "Init_Lot_1_28",
+    "Init_Lot_10_25",
+    "Init_Lot_2_14",
+    "Init_Lot_5_22",
+    "Init_Lot_6_33",
+    "Init_Lot_6_34",
+    "Init_Lot_7_8",
+    "Init_Lot_7_9",
+    "Init_Lot_7_16",
+    "Init_Lot_7_20",
+    "Init_Lot_9_14"
+   ],
+   "situation": "12 Q-time lots compete for WE_BE_16 (8 tools, 3 queued); rule order projects 1 Q-time misses",
+   "options": [
+    {
+     "id": "A",
+     "action": "keep the rule order",
+     "rule_default": true,
+     "impact": {
+      "qtime_violations": 1,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 256.0,
+      "queue_growth": -2
+     }
+    },
+    {
+     "id": "B",
+     "action": "run Q-time lots first, tightest latest start first",
+     "rule_default": false,
+     "impact": {
+      "qtime_violations": 0,
+      "late_lots": 0,
+      "hot_late": 0,
+      "idle_min": 269.2,
+      "queue_growth": -2
+     }
+    }
+   ],
+   "default": "A",
+   "chosen": "A",
+   "action": "keep the rule order",
+   "differs": false,
+   "reason": "Projected impacts tie or the rule default is best; keep the rule.",
+   "provider": "rules",
+   "model": "",
+   "latency_ms": 0.02,
+   "fallback": false,
+   "fallback_cause": null,
+   "escalated": false,
+   "escalation_reason": "rule_ok",
+   "gate": {
+    "default": {
+     "wt_min": 0.0,
+     "late_lots": 0.0,
+     "on_time": 0.0,
+     "qviol": 0.0,
+     "qmissed": 0.0,
+     "qavoid": 0.0,
+     "hot_late": 0.0,
+     "moves": 0.0
+    },
+    "futures": 3,
+    "ms": 173.8,
+    "trigger": null
+   }
+  }
+ ],
+ "memory": {
+  "records": 0,
+  "receipts": 0,
+  "overrides": 0,
+  "recalls": 0,
+  "recalled_cases": 0,
+  "ledger": {}
+ },
+ "playbook_proposals": []
+}

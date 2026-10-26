@@ -1,0 +1,213 @@
+{
+ "base_url": "http://127.0.0.1:8088/v1",
+ "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+ "token": "set (32 chars)",
+ "liveness": {
+  "ok": true,
+  "health_status": 200,
+  "models_status": 200,
+  "base_url": "http://127.0.0.1:8088/v1"
+ },
+ "checks": {
+  "reasoning_on_flag": [
+   {
+    "ok": true,
+    "response_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "non_nemotron": false,
+    "ms": 13581,
+    "finish_reason": "stop",
+    "reasoning_returned": false,
+    "content": "67",
+    "tool_calls": [],
+    "completion_tokens": 1224
+   }
+  ],
+  "reasoning_off_flag": [
+   {
+    "ok": true,
+    "response_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "non_nemotron": false,
+    "ms": 12474,
+    "finish_reason": "stop",
+    "reasoning_returned": false,
+    "content": "66.67",
+    "tool_calls": [],
+    "completion_tokens": 1196
+   }
+  ],
+  "reasoning_on_kwargs": [
+   {
+    "ok": true,
+    "response_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "non_nemotron": false,
+    "ms": 15858,
+    "finish_reason": "stop",
+    "reasoning_returned": false,
+    "content": "67",
+    "tool_calls": [],
+    "completion_tokens": 2014
+   }
+  ],
+  "reasoning_off_kwargs": [
+   {
+    "ok": true,
+    "response_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "non_nemotron": false,
+    "ms": 496,
+    "finish_reason": "stop",
+    "reasoning_returned": false,
+    "content": "66.7",
+    "tool_calls": [],
+    "completion_tokens": 5
+   }
+  ],
+  "tools_auto": [
+   {
+    "ok": true,
+    "response_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "non_nemotron": false,
+    "ms": 799,
+    "finish_reason": "tool_calls",
+    "reasoning_returned": false,
+    "content": "",
+    "tool_calls": [
+     {
+      "name": "get_lot_status",
+      "arguments": "{\"lot_id\":\"L17\"}"
+     }
+    ],
+    "completion_tokens": 46,
+    "tool_args_json": true
+   }
+  ],
+  "tools_forced": [
+   {
+    "ok": true,
+    "response_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "non_nemotron": false,
+    "ms": 683,
+    "finish_reason": "tool_calls",
+    "reasoning_returned": false,
+    "content": "",
+    "tool_calls": [
+     {
+      "name": "get_lot_status",
+      "arguments": "{\n  \"lot_id\": \"L17\"\n}"
+     }
+    ],
+    "completion_tokens": 30,
+    "tool_args_json": true
+   }
+  ],
+  "lane_plan": [
+   {
+    "ok": true,
+    "response_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "non_nemotron": false,
+    "ms": 53903,
+    "finish_reason": "stop",
+    "reasoning_returned": false,
+    "content": "{\n  \"plans\": [\n    {\n      \"id\": \"P1\",\n      \"levers\": [{\"type\": \"reroute\", \"lots\": [\"L1\", \"L2\"]}],\n      \"why\": \"Avoids 3.5h downtime entirely; sibling tool Diffusion_FE_120_3 has capacity with PM at 9h, well after the downtime window; both lots start immediately, minimizing delay risk.\"\n    },\n    {\n      \"id\": \"P2\",\n      \"levers\": [{\"type\": \"keep_pin\", \"lots\": [\"L1\"], \"hours\": 3.5}, {\"type\": \"reroute\", \"lots\": [\"L2\"]}],\n      \"why\": \"L1 is hot with only 0.8h qtime slack and 2.0h due slack; keeping it pinned ensures processing within its critical window upon tool recovery at 3.5h. L2 has 30h due slack, so rerouting it to the sibling avoids unnecessary wait and balances load.\"\n    },\n    {\n      \"id\": \"P3\",\n      \"levers\": [{\"type\": \"boost\", \"lots\": [\"L1\"], \"ttl_min\": 60}],\n      \"why\": \"L1's hot class and tight slack make it the priority; boosting ensures it gets the earliest slot in the next scheduling cycle within a 60-minute window, reducing risk of missing its 2.0h due slack.\"\n    },\n    {\n      \"id\": \"P4\",\n      \"levers\": [{\"type\": \"defer_pm\", \"tool\": \"Diffusion_FE_120_3\", \"shift_min\": 60}],\n      \"why\": \"Reschedules the sibling tool's maintenance from 9h to 10h, creating a buffer that aligns with the 3.5h breakdown recovery and ensures no PM overlap with family tools, providing flexible capacity for lots if needed.\"\n    }\n  ]\n}",
+    "tool_calls": [],
+    "completion_tokens": 5508,
+    "json_ok": true
+   }
+  ],
+  "lane_select": [
+   {
+    "ok": true,
+    "response_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "provider_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "non_nemotron": false,
+    "ms": 9763,
+    "finish_reason": "stop",
+    "reasoning_returned": false,
+    "content": "{\n  \"plan_id\": \"P1\",\n  \"reason\": \"P1 achieves lower wt_min (98.1 vs 120.4) and lower qviol (1.0 vs 2.0) while maintaining the same hot_late (1.0) as the default plan A, satisfying the constraint of not exceeding the default hot_late.\",\n  \"cited\": {\n    \"P1.wt_min\": 98.1,\n    \"P1.qviol\": 1.0,\n    \"P1.hot_late\": 1.0\n  }\n}",
+    "tool_calls": [],
+    "completion_tokens": 1093,
+    "json_ok": true
+   }
+  ]
+ },
+ "summary": {
+  "reasoning_on_flag": {
+   "ok": 1,
+   "n": 1,
+   "ms_median": 13581,
+   "reasoning_returned": 0,
+   "tool_calls": 0,
+   "truncated": 0,
+   "non_nemotron": 0
+  },
+  "reasoning_off_flag": {
+   "ok": 1,
+   "n": 1,
+   "ms_median": 12474,
+   "reasoning_returned": 0,
+   "tool_calls": 0,
+   "truncated": 0,
+   "non_nemotron": 0
+  },
+  "reasoning_on_kwargs": {
+   "ok": 1,
+   "n": 1,
+   "ms_median": 15858,
+   "reasoning_returned": 0,
+   "tool_calls": 0,
+   "truncated": 0,
+   "non_nemotron": 0
+  },
+  "reasoning_off_kwargs": {
+   "ok": 1,
+   "n": 1,
+   "ms_median": 496,
+   "reasoning_returned": 0,
+   "tool_calls": 0,
+   "truncated": 0,
+   "non_nemotron": 0
+  },
+  "tools_auto": {
+   "ok": 1,
+   "n": 1,
+   "ms_median": 799,
+   "reasoning_returned": 0,
+   "tool_calls": 1,
+   "truncated": 0,
+   "non_nemotron": 0
+  },
+  "tools_forced": {
+   "ok": 1,
+   "n": 1,
+   "ms_median": 683,
+   "reasoning_returned": 0,
+   "tool_calls": 1,
+   "truncated": 0,
+   "non_nemotron": 0
+  },
+  "lane_plan": {
+   "ok": 1,
+   "n": 1,
+   "ms_median": 53903,
+   "reasoning_returned": 0,
+   "tool_calls": 0,
+   "truncated": 0,
+   "non_nemotron": 0
+  },
+  "lane_select": {
+   "ok": 1,
+   "n": 1,
+   "ms_median": 9763,
+   "reasoning_returned": 0,
+   "tool_calls": 0,
+   "truncated": 0,
+   "non_nemotron": 0
+  }
+ }
+}

@@ -1,0 +1,1631 @@
+{
+ "summary": {
+  "label": "real:nvidia/nemotron-3.5-lightning-30b-a3b",
+  "model_audit": {
+   "responses": 104,
+   "models": {
+    "nvidia/nemotron-3.5-lightning-30b-a3b": 104
+   },
+   "non_nemotron_responses": 0,
+   "non_nemotron_items": []
+  },
+  "n": 24,
+  "errors": 0,
+  "ai_top1": 20,
+  "ai_top2": 21,
+  "baseline_top1": 20,
+  "baseline_top2": 21,
+  "fact_ok": 24,
+  "repaired": 4,
+  "no_answer": 0,
+  "mean_tool_calls": 1.54,
+  "by_fault": {
+   "tool_down": {
+    "n": 4,
+    "ai_top1": 4,
+    "base_top1": 4
+   },
+   "pm_in_peak": {
+    "n": 4,
+    "ai_top1": 3,
+    "base_top1": 3
+   },
+   "release_burst": {
+    "n": 4,
+    "ai_top1": 4,
+    "base_top1": 4
+   },
+   "setup_thrash": {
+    "n": 4,
+    "ai_top1": 3,
+    "base_top1": 3
+   },
+   "batch_cap": {
+    "n": 4,
+    "ai_top1": 2,
+    "base_top1": 2
+   },
+   "upstream_starvation": {
+    "n": 4,
+    "ai_top1": 4,
+    "base_top1": 4
+   }
+  }
+ },
+ "rows": [
+  {
+   "case_id": "tool_down-s1",
+   "truth": "tool_down",
+   "baseline": [
+    "tool_down",
+    "release_burst"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Diffusion_FE_94 WIP rise between 6 h and 8 h (waiting lots 54 -> 90)?",
+    "family": "Diffusion_FE_94",
+    "t1_h": 6.0,
+    "t2_h": 8.0,
+    "primary_cause": "tool_down",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Down share of tool time rose from 0.0 to 0.538 (rel_change 5.38) in window 6-8h",
+     "Arrivals per hour increased from 5.0 to 21.5 (rel_change 3.3) in the same window",
+     "8 tools were down for 2.0h each, causing capacity loss and waiting lots to rise from 52 to 79"
+    ],
+    "lever": "Allocate backup tool capacity or reschedule preventive maintenance to prevent extended unplanned downtime during peak periods.",
+    "citations": [
+     1,
+     2
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Diffusion_FE_94",
+       "start_h": 6,
+       "end_h": 8
+      }
+     },
+     {
+      "n": 2,
+      "tool": "tool_states",
+      "args": {
+       "family": "Diffusion_FE_94",
+       "start_h": 6,
+       "end_h": 8
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": true,
+    "turns": 10,
+    "llm_calls": 10,
+    "latency_ms": 198657.3,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 206.1
+  },
+  {
+   "case_id": "pm_in_peak-s1",
+   "truth": "pm_in_peak",
+   "baseline": [
+    "release_burst",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": false,
+    "top2": false
+   },
+   "ai": {
+    "question": "Why did TF_BE_26 WIP rise between 7 h and 10 h (waiting lots 0 -> 19)?",
+    "family": "TF_BE_26",
+    "t1_h": 7.0,
+    "t2_h": 10.0,
+    "primary_cause": "release_burst",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Arrivals per hour rose from 8.75 before the window to 12.67 in the 7‑10 h window (rel_change +0.45).",
+     "Waiting lots increased from 20 at window start to 31 at window end.",
+     "Higher arrival rate directly raised WIP in the family."
+    ],
+    "lever": "Review the release schedule for the 7‑10 h period and consider smoothing releases or adjusting forecast to avoid future bursts.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "TF_BE_26",
+       "start_h": 7,
+       "end_h": 10
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 2,
+    "llm_calls": 2,
+    "latency_ms": 10844.0,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": false,
+    "top2": false
+   },
+   "seconds": 14.5
+  },
+  {
+   "case_id": "release_burst-s1",
+   "truth": "release_burst",
+   "baseline": [
+    "release_burst",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Dielectric_BE_27 WIP double between 6 h and 9 h (waiting lots 14 -> 85)?",
+    "family": "Dielectric_BE_27",
+    "t1_h": 6.0,
+    "t2_h": 9.0,
+    "primary_cause": "release_burst",
+    "secondary_cause": null,
+    "causal_chain": [
+     "arrivals per hour rose from 11.25 in the 4h before 6h to 43.33 in the 6-9h window, a relative increase of 2.85×",
+     "this surge of lots arriving simultaneously increased waiting WIP from 13 to 84",
+     "no other cause indicators (tool_down, pm_in_peak, setup_thrash, batch_cap) showed comparable relative change"
+    ],
+    "lever": "Review lot release schedule and release‑burst mechanisms to prevent future uncontrolled arrivals; consider gating releases or smoothing release rate",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Dielectric_BE_27",
+       "start_h": 6,
+       "end_h": 9
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 2,
+    "llm_calls": 2,
+    "latency_ms": 16952.8,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 20.4
+  },
+  {
+   "case_id": "setup_thrash-s1",
+   "truth": "setup_thrash",
+   "baseline": [
+    "setup_thrash",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did LithoTrack_FE_115 WIP rise between 6 h and 13 h (waiting lots 0 -> 21)?",
+    "family": "LithoTrack_FE_115",
+    "t1_h": 6.0,
+    "t2_h": 13.0,
+    "primary_cause": "setup_thrash",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Setup minutes per start rose from 6.25 to 36.61 (relative change 4.86), indicating many more changeovers per start.",
+     "Reduced effective start capacity caused waiting lots to accumulate from 0 to 21 between 6h and 13h.",
+     "Tool-down share also rose (0.011 to 0.043, rel_change 0.32) but was secondary to the much larger setup-thrash increase."
+    ],
+    "lever": "Investigate and reduce setup time per start; apply SMED or batch scheduling changes to lower changeover frequency and duration.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "LithoTrack_FE_115",
+       "start_h": 6,
+       "end_h": 13
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 3,
+    "llm_calls": 3,
+    "latency_ms": 26405.9,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 30.1
+  },
+  {
+   "case_id": "batch_cap-s1",
+   "truth": "batch_cap",
+   "baseline": [
+    "batch_cap",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Diffusion_FE_44 WIP double between 6 h and 13 h (waiting lots 12 -> 33)?",
+    "family": "Diffusion_FE_44",
+    "t1_h": 6.0,
+    "t2_h": 13.0,
+    "primary_cause": "batch_cap",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Batch size cap lowered reduced lots per batch start from 4.0 to 1.0 during the 6‑13 h window in Diffusion_FE_44",
+     "Fewer batch starts decreased the start rate while arrivals per hour only fell modestly (from 4.25 to 2.29 per hour)",
+     "The reduced start rate caused waiting lots to rise from 18 at window start to 30 at window end in Diffusion_FE_44"
+    ],
+    "lever": "Increase the batch size cap or revise batch scheduling to restore lots per batch start toward the pre‑window level of 4.0, thereby improving start rate and reducing WIP accumulation",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Diffusion_FE_44",
+       "start_h": 6,
+       "end_h": 13
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 3,
+    "llm_calls": 3,
+    "latency_ms": 37665.6,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 41.4
+  },
+  {
+   "case_id": "upstream_starvation-s1",
+   "truth": "upstream_starvation",
+   "baseline": [
+    "upstream_starvation",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did WE_BE_82 WIP fall between 6 h and 10 h (waiting lots 19 -> 0)?",
+    "family": "WE_BE_82",
+    "t1_h": 6.0,
+    "t2_h": 10.0,
+    "primary_cause": "upstream_starvation",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Upstream family WE_BE_81 stopped feeding (feed from 6.5 lots/h to 0) between 2-6h and 6-10h",
+     "WE_BE_82 waiting lots dropped from 15 to 5"
+    ],
+    "lever": "Investigate and restore upstream feed from WE_BE_81; consider rescheduling PM to avoid future starvation",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "WE_BE_82",
+       "start_h": 6,
+       "end_h": 10
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 2,
+    "llm_calls": 2,
+    "latency_ms": 22853.6,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 26.4
+  },
+  {
+   "case_id": "tool_down-s2",
+   "truth": "tool_down",
+   "baseline": [
+    "tool_down",
+    "upstream_starvation"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Litho_REG_FE_64 WIP rise between 6 h and 12 h (waiting lots 0 -> 58)?",
+    "family": "Litho_REG_FE_64",
+    "t1_h": 6.0,
+    "t2_h": 12.0,
+    "primary_cause": "tool_down",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Tool down share of tool time increased from 0.011 (before) to 0.507 (window), a relative rise of 4.97, causing severe capacity loss.",
+     "Waiting lots rose from 8 at window start to 65 by window end, matching the WIP increase.",
+     "Arrivals per hour decreased from 28.5 to 24.5 (rel_change –0.14), ruling out a release_burst as the driver."
+    ],
+    "lever": "Investigate and restore the down tool; apply a temporary capacity buffer or reroute lots to prevent further WIP accumulation.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Litho_REG_FE_64",
+       "start_h": 6,
+       "end_h": 12
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": true,
+    "turns": 4,
+    "llm_calls": 4,
+    "latency_ms": 47761.2,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 54.8
+  },
+  {
+   "case_id": "pm_in_peak-s2",
+   "truth": "pm_in_peak",
+   "baseline": [
+    "pm_in_peak",
+    "release_burst"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did WE_FE_8 WIP rise between 4 h and 9 h (waiting lots 0 -> 13)?",
+    "family": "WE_FE_8",
+    "t1_h": 4.0,
+    "t2_h": 9.0,
+    "primary_cause": "pm_in_peak",
+    "secondary_cause": null,
+    "causal_chain": [
+     "PM share of tool time from 0.0 to 0.4",
+     "Waiting lots from 1 to 9",
+     "Arrivals per hour to 5.0"
+    ],
+    "lever": "Reschedule planned PM to off-peak hours to restore tool capacity and reduce WIP accumulation.",
+    "citations": [],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "WE_FE_8",
+       "start_h": 4,
+       "end_h": 9
+      }
+     },
+     {
+      "n": 2,
+      "tool": "family_window",
+      "args": {
+       "family": "WE_FE_8",
+       "start_h": 4,
+       "end_h": 9
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": true,
+    "turns": 5,
+    "llm_calls": 5,
+    "latency_ms": 92134.7,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 95.8
+  },
+  {
+   "case_id": "release_burst-s2",
+   "truth": "release_burst",
+   "baseline": [
+    "release_burst",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Planar_BE_75 WIP double between 6 h and 8 h (waiting lots 7 -> 22)?",
+    "family": "Planar_BE_75",
+    "t1_h": 6.0,
+    "t2_h": 8.0,
+    "primary_cause": "release_burst",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Arrivals per hour in Planar_BE_75 rose from 12.5 before the 6‑8 h window to 25.5 in the window, rel_change 1.04 (compare_windows result 1).",
+     "Waiting lots at window start were 7 and rose to 19 by the window end, consistent with the surge (compare_windows result 1, family_window result 3).",
+     "All other cause indicators (tool_down, pm_in_peak, setup_thrash, batch_cap, upstream_starvation) either did not change or changed oppositely (compare_windows result 1)."
+    ],
+    "lever": "Review and tighten release scheduling to prevent future bursts; consider implementing a release cap or smoothing the arrival profile.",
+    "citations": [
+     1,
+     3
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Planar_BE_75",
+       "start_h": 6,
+       "end_h": 8
+      }
+     },
+     {
+      "n": 2,
+      "tool": "",
+      "args": {}
+     },
+     {
+      "n": 3,
+      "tool": "family_window",
+      "args": {
+       "family": "Planar_BE_75",
+       "start_h": 6,
+       "end_h": 8
+      }
+     },
+     {
+      "n": 4,
+      "tool": "",
+      "args": {}
+     },
+     {
+      "n": 5,
+      "tool": "",
+      "args": {}
+     },
+     {
+      "n": 6,
+      "tool": "",
+      "args": {}
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": true,
+    "turns": 8,
+    "llm_calls": 8,
+    "latency_ms": 57186.5,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 60.8
+  },
+  {
+   "case_id": "setup_thrash-s2",
+   "truth": "setup_thrash",
+   "baseline": [
+    "release_burst",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": false,
+    "top2": false
+   },
+   "ai": {
+    "question": "Why did Implant_132 WIP double between 6 h and 14 h (waiting lots 14 -> 33)?",
+    "family": "Implant_132",
+    "t1_h": 6.0,
+    "t2_h": 14.0,
+    "primary_cause": "release_burst",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Surge in arrivals per hour from 5.0 to 13.75 (rel_change 1.75) during 6‑14 h increased WIP",
+     "Waiting lots rose from 0 at window start to 34 at window end"
+    ],
+    "lever": "Review and smooth release scheduling to prevent future arrival spikes; consider gating releases or batching to moderate flow into Implant_132",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Implant_132",
+       "start_h": 6,
+       "end_h": 14
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 6,
+    "llm_calls": 6,
+    "latency_ms": 40817.0,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": false,
+    "top2": false
+   },
+   "seconds": 44.5
+  },
+  {
+   "case_id": "batch_cap-s2",
+   "truth": "batch_cap",
+   "baseline": [
+    "release_burst",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": false,
+    "top2": false
+   },
+   "ai": {
+    "question": "Why did Diffusion_FE_122 WIP double between 6 h and 14 h (waiting lots 13 -> 40)?",
+    "family": "Diffusion_FE_122",
+    "t1_h": 6.0,
+    "t2_h": 14.0,
+    "primary_cause": "release_burst",
+    "secondary_cause": null,
+    "causal_chain": [
+     "release burst of lots arriving at Diffusion_FE_122 between 6h and 14h increased WIP from 14 to 37",
+     "arrivals per hour rose from 0.25 to 3.62 (rel_change 3.38)",
+     "waiting lots increased from 14 to 37"
+    ],
+    "lever": "Review and possibly throttle the release schedule to avoid clustering of arrivals; validate release timing against capacity.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Diffusion_FE_122",
+       "start_h": 6,
+       "end_h": 14
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 5,
+    "llm_calls": 5,
+    "latency_ms": 74962.0,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": false,
+    "top2": false
+   },
+   "seconds": 78.7
+  },
+  {
+   "case_id": "upstream_starvation-s2",
+   "truth": "upstream_starvation",
+   "baseline": [
+    "upstream_starvation",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did DE_FE_71 WIP fall between 6 h and 13 h (waiting lots 55 -> 26)?",
+    "family": "DE_FE_71",
+    "t1_h": 6.0,
+    "t2_h": 13.0,
+    "primary_cause": "upstream_starvation",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Upstream family Litho_REG_FE_64 down+PM tool-hours rose from 0.5 to 72.0 hours.",
+     "Down+PM share of tool time for Litho_REG_FE_64 rose from 0.011 to 0.857 (rel_change +8.47).",
+     "Feed of lots from Litho_REG_FE_64 into DE_FE_71 fell from 2.25 to 0.14 lots per hour.",
+     "WIP in DE_FE_71 drained from 47 to 4 waiting lots."
+    ],
+    "lever": "Investigate and restore the Litho_REG_FE_64 tool(s) causing the downtime/PM; re‑balance upstream feed to DE_FE_71 to prevent further WIP loss.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "DE_FE_71",
+       "start_h": 6,
+       "end_h": 13
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 3,
+    "llm_calls": 3,
+    "latency_ms": 42541.0,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 46.1
+  },
+  {
+   "case_id": "tool_down-s3",
+   "truth": "tool_down",
+   "baseline": [
+    "tool_down",
+    "release_burst"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did WE_FE_47 WIP double between 6 h and 14 h (waiting lots 2 -> 102)?",
+    "family": "WE_FE_47",
+    "t1_h": 6.0,
+    "t2_h": 14.0,
+    "primary_cause": "tool_down",
+    "secondary_cause": null,
+    "causal_chain": [
+     "During the 6‑14 h window the three tools of WE_FE_47 (WE_FE_47‑1, ‑2, ‑3) were unplanned down for a total of 20 h (6 h, 8 h, 6 h respectively), causing the down‑share of tool time to rise from 0.0 to 0.5 (rel_change = 5.0, per compare_windows result 1).",
+     "This capacity loss reduced the family’s ability to process starts, so waiting lots accumulated from 0 at window start to 93 at window end, doubling the overall WIP (waiting_lots at_window_start = 0, at_window_end = 93, per compare_windows result 1).",
+     "The accumulated waiting lots caused the observed WIP increase (2 → 102) reported for the family."
+    ],
+    "lever": "Investigate and reduce unplanned tool downtime on WE_FE_47 (e.g., improve preventive maintenance, add spare capacity, or adjust shift schedules) to prevent future WIP spikes.",
+    "citations": [
+     1,
+     2
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "WE_FE_47",
+       "start_h": 6,
+       "end_h": 14
+      }
+     },
+     {
+      "n": 2,
+      "tool": "tool_states",
+      "args": {
+       "family": "WE_FE_47",
+       "start_h": 6,
+       "end_h": 14
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 5,
+    "llm_calls": 5,
+    "latency_ms": 55936.0,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 63.0
+  },
+  {
+   "case_id": "pm_in_peak-s3",
+   "truth": "pm_in_peak",
+   "baseline": [
+    "pm_in_peak",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did WE_BE_9 WIP double between 5 h and 10 h (waiting lots 23 -> 69)?",
+    "family": "WE_BE_9",
+    "t1_h": 5.0,
+    "t2_h": 10.0,
+    "primary_cause": "pm_in_peak",
+    "secondary_cause": null,
+    "causal_chain": [
+     "PM share of tool time rose from 0.10 before the window to 0.24 in the 5‑10 h window, a relative change of 1.4 (the largest relative increase among all causes)",
+     "tool_down share rose from 0.132 to 0.196 (rel_change 0.48), smaller than the PM rise",
+     "upstream_starvation share rose from 0.0 to 0.028 (rel_change 0.28) but its feed from DE_BE_66 fell from 7.0 to 6.0 lots/h, which would drain WIP rather than build it",
+     "waiting lots at window start were 26 and at end 59, confirming WIP doubled"
+    ],
+    "lever": "Reschedule planned PM to off‑peak periods or add temporary capacity during the peak window to prevent further WIP accumulation",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "WE_BE_9",
+       "start_h": 5,
+       "end_h": 10
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 5,
+    "llm_calls": 5,
+    "latency_ms": 41354.1,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 45.0
+  },
+  {
+   "case_id": "release_burst-s3",
+   "truth": "release_burst",
+   "baseline": [
+    "release_burst",
+    "upstream_starvation"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Litho_BE_99 WIP double between 6 h and 8 h (waiting lots 6 -> 15)?",
+    "family": "Litho_BE_99",
+    "t1_h": 6.0,
+    "t2_h": 8.0,
+    "primary_cause": "release_burst",
+    "secondary_cause": null,
+    "causal_chain": [
+     "arrivals per hour rose from 2.75 before the window to 7.0 in the 6‑8 h window (rel_change 1.55)",
+     "waiting lots increased from 6 at window start to 11 at window end",
+     "WIP grew accordingly, consistent with a burst of arrivals"
+    ],
+    "lever": "Review and moderate the release schedule to smooth arrivals over time; consider limiting concurrent releases or staggering releases to avoid future bursts.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Litho_BE_99",
+       "start_h": 6,
+       "end_h": 8
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 3,
+    "llm_calls": 3,
+    "latency_ms": 27792.3,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 31.4
+  },
+  {
+   "case_id": "setup_thrash-s3",
+   "truth": "setup_thrash",
+   "baseline": [
+    "setup_thrash",
+    "release_burst"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did LithoTrack_FE_115 WIP rise between 6 h and 13 h (waiting lots 0 -> 17)?",
+    "family": "LithoTrack_FE_115",
+    "t1_h": 6.0,
+    "t2_h": 13.0,
+    "primary_cause": "setup_thrash",
+    "secondary_cause": null,
+    "causal_chain": [
+     "setup minutes per start rose from 6.14 (4 h before 6 h) to 40.69 (6 h–13 h), a relative increase of 5.63×",
+     "the sharp rise in changeovers (56→133) delayed lot starts",
+     "delayed starts allowed WIP to accumulate, raising waiting lots from 0 to 12 by window end"
+    ],
+    "lever": "Apply SMED or level‑loading to reduce setup time per start; rebalance lot release schedule to avoid clustering changeovers",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "LithoTrack_FE_115",
+       "start_h": 6,
+       "end_h": 13
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 3,
+    "llm_calls": 3,
+    "latency_ms": 25425.3,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 29.0
+  },
+  {
+   "case_id": "batch_cap-s3",
+   "truth": "batch_cap",
+   "baseline": [
+    "release_burst",
+    "batch_cap"
+   ],
+   "baseline_score": {
+    "top1": false,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Diffusion_FE_127 WIP double between 6 h and 14 h (waiting lots 19 -> 47)?",
+    "family": "Diffusion_FE_127",
+    "t1_h": 6.0,
+    "t2_h": 14.0,
+    "primary_cause": "release_burst",
+    "secondary_cause": "batch_cap",
+    "causal_chain": [
+     "Arrivals per hour rose from 0.0 to 5.5 in the 6-14 h window (compare_windows release_burst rel_change 5.5), causing a surge of lots into Diffusion_FE_127.",
+     "Waiting lots increased from 19 at hour 6 to a peak of 45 at hour 12 (family_wip series), reflecting accumulation from the release burst.",
+     "Lots per batch start fell from 5.0 to 3.13 (compare_windows batch_cap rel_change -0.37), reducing effective throughput and further sustaining elevated WIP."
+    ],
+    "lever": "Stagger lot releases over time and adjust batch sizes to prevent future WIP spikes.",
+    "citations": [
+     1,
+     2,
+     3
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Diffusion_FE_127",
+       "start_h": 6,
+       "end_h": 14
+      }
+     },
+     {
+      "n": 2,
+      "tool": "family_wip",
+      "args": {
+       "family": "Diffusion_FE_127",
+       "start_h": 6,
+       "end_h": 14
+      }
+     },
+     {
+      "n": 3,
+      "tool": "",
+      "args": {}
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 6,
+    "llm_calls": 6,
+    "latency_ms": 121515.0,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": false,
+    "top2": true
+   },
+   "seconds": 125.1
+  },
+  {
+   "case_id": "upstream_starvation-s3",
+   "truth": "upstream_starvation",
+   "baseline": [
+    "upstream_starvation",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did LithoMet_FE_19 WIP fall between 6 h and 8 h (waiting lots 9 -> 0)?",
+    "family": "LithoMet_FE_19",
+    "t1_h": 6.0,
+    "t2_h": 8.0,
+    "primary_cause": "upstream_starvation",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Upstream family Litho_FE_111 down+PM tool-hours rose from 1.5 to 40.0 (rel_change +9.82).",
+     "Feed from Litho_FE_111 into LithoMet_FE_19 fell from 14.75 to 0.0 lots/hour.",
+     "Waiting lots in LithoMet_FE_19 drained from 9 at window start to 0 at window end."
+    ],
+    "lever": "Restore upstream feed from Litho_FE_111; diagnose tool downtime and PM calendar on Litho_FE_111 to resume supply to LithoMet_FE_19.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "LithoMet_FE_19",
+       "start_h": 6,
+       "end_h": 8
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 4,
+    "llm_calls": 4,
+    "latency_ms": 56596.9,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 60.1
+  },
+  {
+   "case_id": "tool_down-s4",
+   "truth": "tool_down",
+   "baseline": [
+    "tool_down",
+    "release_burst"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did TF_FE_5 WIP rise between 6 h and 13 h (waiting lots 0 -> 16)?",
+    "family": "TF_FE_5",
+    "t1_h": 6.0,
+    "t2_h": 13.0,
+    "primary_cause": "tool_down",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Tool down increased down share of tool time from 0.0 to 0.571 (relative change 5.71) during 6‑13 h, reducing effective capacity.",
+     "Reduced capacity caused waiting lots to rise from 0 to 17 by the end of the window.",
+     "Arrivals per hour also rose (from 1.0 to 3.71, relative change 2.71), but the relative rise in tool_down is larger."
+    ],
+    "lever": "Investigate the specific tool(s) that were down during 6‑13 h; restore tool availability or reroute work to other tools to prevent further WIP accumulation.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "TF_FE_5",
+       "start_h": 6,
+       "end_h": 13
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 5,
+    "llm_calls": 5,
+    "latency_ms": 38540.5,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 46.0
+  },
+  {
+   "case_id": "pm_in_peak-s4",
+   "truth": "pm_in_peak",
+   "baseline": [
+    "pm_in_peak",
+    "upstream_starvation"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did LithoMet_FE_19 WIP double between 5 h and 9 h (waiting lots 14 -> 68)?",
+    "family": "LithoMet_FE_19",
+    "t1_h": 5.0,
+    "t2_h": 9.0,
+    "primary_cause": "pm_in_peak",
+    "secondary_cause": null,
+    "causal_chain": [
+     "PM share of tool time rose from 0.125 to 0.375 (relative increase 2.0x).",
+     "Waiting lots increased from 31 to 67, doubling WIP.",
+     "Arrivals per hour remained stable at 32.5, ruling out release_burst."
+    ],
+    "lever": "Reschedule planned PM activities to off-peak hours or increase tool capacity during the peak window to restore effective capacity.",
+    "citations": [
+     1,
+     2
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "LithoMet_FE_19",
+       "start_h": 5,
+       "end_h": 9
+      }
+     },
+     {
+      "n": 2,
+      "tool": "family_window",
+      "args": {
+       "family": "LithoMet_FE_19",
+       "start_h": 5,
+       "end_h": 9
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 5,
+    "llm_calls": 5,
+    "latency_ms": 2349774.7,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 2353.4
+  },
+  {
+   "case_id": "release_burst-s4",
+   "truth": "release_burst",
+   "baseline": [
+    "release_burst",
+    "upstream_starvation"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Litho_BE_99 WIP double between 6 h and 8 h (waiting lots 4 -> 14)?",
+    "family": "Litho_BE_99",
+    "t1_h": 6.0,
+    "t2_h": 8.0,
+    "primary_cause": "release_burst",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Arrivals per hour rose from 2.5 (4‑h before 6 h) to 5.5 in the 6‑8 h window (rel_change = 1.2).",
+     "Total arrivals in the window were 11 lots versus 6 lot starts, producing a net inflow of 5 lots.",
+     "Waiting lots increased from 4 at window start to 6 at window end, while in‑process lots stayed at 3, consistent with the extra inflow."
+    ],
+    "lever": "Review the release schedule for Litho_BE_99 during 6‑8 h; consider smoothing releases or adding a short‑term WIP limit to prevent accumulation.",
+    "citations": [
+     1,
+     2,
+     3
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Litho_BE_99",
+       "start_h": 6,
+       "end_h": 8
+      }
+     },
+     {
+      "n": 2,
+      "tool": "family_wip",
+      "args": {
+       "family": "Litho_BE_99",
+       "start_h": 6,
+       "end_h": 8
+      }
+     },
+     {
+      "n": 3,
+      "tool": "family_window",
+      "args": {
+       "family": "Litho_BE_99",
+       "start_h": 6,
+       "end_h": 8
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 5,
+    "llm_calls": 5,
+    "latency_ms": 48757.8,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 52.7
+  },
+  {
+   "case_id": "setup_thrash-s4",
+   "truth": "setup_thrash",
+   "baseline": [
+    "setup_thrash",
+    "upstream_starvation"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did LithoTrack_FE_115 WIP rise between 6 h and 12 h (waiting lots 0 -> 23)?",
+    "family": "LithoTrack_FE_115",
+    "t1_h": 6.0,
+    "t2_h": 12.0,
+    "primary_cause": "setup_thrash",
+    "secondary_cause": null,
+    "causal_chain": [
+     "setup minutes per start rose from 6.25 (before 6 h) to 46.02 (window 6‑12 h), a relative change of 6.37×",
+     "changeovers increased from 57 to 110 per window, indicating much more frequent changeovers per start",
+     "waiting lots grew from 0 at window start to 9 at window end, consistent with WIP rise due to setup thrash"
+    ],
+    "lever": "Review and optimize changeover procedures (e.g., SMED, standardized setups, or batch grouping) to reduce setup minutes per start and thereby curb WIP accumulation",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "LithoTrack_FE_115",
+       "start_h": 6,
+       "end_h": 12
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 3,
+    "llm_calls": 3,
+    "latency_ms": 28232.7,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 32.2
+  },
+  {
+   "case_id": "batch_cap-s4",
+   "truth": "batch_cap",
+   "baseline": [
+    "batch_cap",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did Diffusion_FE_44 WIP double between 6 h and 13 h (waiting lots 20 -> 42)?",
+    "family": "Diffusion_FE_44",
+    "t1_h": 6.0,
+    "t2_h": 13.0,
+    "primary_cause": "batch_cap",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Batch size cap for Diffusion_FE_44 reduced lots per batch start from 4.0 to 1.0 (compare_windows result 1: batch_cap before 4.0, window 1.0, rel_change -0.75).",
+     "Waiting lots increased from 23 to 37 (compare_windows result 1: waiting_lots at_window_start 23, at_window_end 37) over the 6h–13h window.",
+     "tool_down indicator rose modestly (rel_change +0.16) but is secondary to the dominant batch_cap change; other indicators (pm_in_peak, setup_thrash, release_burst, upstream_starvation) showed no rise or fell."
+    ],
+    "lever": "Increase the batch size cap for Diffusion_FE_44 or adjust batch scheduling to move more lots per start, reducing WIP buildup.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "Diffusion_FE_44",
+       "start_h": 6,
+       "end_h": 13
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 3,
+    "llm_calls": 3,
+    "latency_ms": 77136.3,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 81.1
+  },
+  {
+   "case_id": "upstream_starvation-s4",
+   "truth": "upstream_starvation",
+   "baseline": [
+    "upstream_starvation",
+    "tool_down"
+   ],
+   "baseline_score": {
+    "top1": true,
+    "top2": true
+   },
+   "ai": {
+    "question": "Why did DE_BE_50 WIP fall between 6 h and 10 h (waiting lots 19 -> 0)?",
+    "family": "DE_BE_50",
+    "t1_h": 6.0,
+    "t2_h": 10.0,
+    "primary_cause": "upstream_starvation",
+    "secondary_cause": null,
+    "causal_chain": [
+     "Upstream family Litho_REG_BE_63 experienced a rise in down+PM tool time from 0 to 32 hours (rel_change 10.0) and its feed into DE_BE_50 dropped from 4.5 lots/h to 0 lots/h.",
+     "DE_BE_50 WIP fell from 19 to 0 between 6h and 10h."
+    ],
+    "lever": "Investigate the downtime of Litho_REG_BE_63 tools and restore upstream feed to DE_BE_50; consider rescheduling PM or tool maintenance to prevent future starvation.",
+    "citations": [
+     1
+    ],
+    "calls": [
+     {
+      "n": 1,
+      "tool": "compare_windows",
+      "args": {
+       "family": "DE_BE_50",
+       "start_h": 6,
+       "end_h": 10
+      }
+     }
+    ],
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "turns": 4,
+    "llm_calls": 4,
+    "latency_ms": 56811.8,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "error": null
+   },
+   "ai_score": {
+    "top1": true,
+    "top2": true
+   },
+   "seconds": 61.8
+  }
+ ]
+}

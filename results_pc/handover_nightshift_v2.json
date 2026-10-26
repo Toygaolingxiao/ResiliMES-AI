@@ -1,0 +1,5345 @@
+{
+ "summary": {
+  "label": "real:nvidia/nemotron-3.5-lightning-30b-a3b",
+  "model_audit": {
+   "responses": 86,
+   "models": {
+    "nvidia/nemotron-3.5-lightning-30b-a3b": 86
+   },
+   "non_nemotron_responses": 0,
+   "non_nemotron_items": []
+  },
+  "n": 12,
+  "errors": 0,
+  "reports": 12,
+  "fact_ok": 12,
+  "repaired": 2,
+  "mean_must_recall": 1.0,
+  "min_must_recall": 1.0,
+  "engines": {
+   "markovian": 12
+  },
+  "chunks_ok": 84,
+  "chunks": 84,
+  "llm_calls": 86
+ },
+ "rows": [
+  {
+   "id": "s1-12h-en",
+   "seed": 1,
+   "lang": "en",
+   "ai": {
+    "seed": 1,
+    "shift_h": [
+     12.0,
+     24.0
+    ],
+    "language": "en",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 192,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 245,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 318,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 364,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 381,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 483,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 2006,
+    "replayed_history_units": 8457,
+    "chunk_notes": [
+     {
+      "window_h": [
+       12.0,
+       14.0
+      ],
+      "notes": [
+       "Tools DE_BE_66-6, DE_FE_71-17, DE_FE_86-40, Dielectric_FE_31-1, Implant_128-5, Implant_74-2 each had 120min downtime in window 12-14h",
+       "WIP bubbles: Implant_128 6-26, Planar_FE_77 0-19, DefMet_FE_43 0-16",
+       "Init_HotLot_1_1 delayed 35.9min on Dielectric_BE_21-3 at 13.3h"
+      ]
+     },
+     {
+      "window_h": [
+       14.0,
+       16.0
+      ],
+      "notes": [
+       "DE_BE_66-6, DE_FE_71-17, DE_FE_86-40 still down past 16h after 12-14h 120min downtime",
+       "Init_HotLot_1_1 35.9min delay on Dielectric_BE_21-3 at 13.3h resolved by 14h",
+       "WIP bubbles Implant_128 6-26, Planar_FE_77 0-19, DefMet_FE_43 0-16 indicate active congestion"
+      ]
+     },
+     {
+      "window_h": [
+       16.0,
+       18.0
+      ],
+      "notes": [
+       "DE_FE_71-17 and DE_FE_86-40 each sustain 120min downtime past 16h (until 20.4h, 24.0h per FACTS)",
+       "Init_Lot_10_115 delayed 49.8min on Implant_90-1 at 16.9h via qtime_override (FACTS overrides)",
+       "WIP bubble DE_FE_70 spans 21-35 overlapping window end; WE_FE_84 congestion 27-47 (FACTS wip_bubbles)"
+      ]
+     },
+     {
+      "window_h": [
+       18.0,
+       20.0
+      ],
+      "notes": [
+       "DE_FE_71-17 and DE_FE_86-40 down 120min in 18-20h window",
+       "DE_BE_67-4, DE_FE_51-15, DE_FE_71-12 also down 120min per FACTS",
+       "WIP bubbles and lot delays persist across families"
+      ]
+     },
+     {
+      "window_h": [
+       20.0,
+       22.0
+      ],
+      "notes": [
+       "DE_FE_71-17 20.4",
+       "DE_BE_67-4 22.6",
+       "Init_HotLot_2_5 20.5"
+      ]
+     },
+     {
+      "window_h": [
+       22.0,
+       24.0
+      ],
+      "notes": [
+       "Six tools sustained 120min downtime in 22-24h window: DE_FE_71-6, DE_FE_86-22, DE_FE_86-104, Diffusion_FE_127-3, Litho_BE_110-4, Litho_BE_110-15 (FACTs tools_down).",
+       "Init_Lot_3_156: 80.4min qtime_override delay on TF_FE_3-2 at 22.3h, recurring at 22.4h and 23.7h (FACTs overrides).",
+       "DE_BE_67-4 recovered by 22.6h; DE_FE_86-40 resolving by 24.0h per FACTs (CHECKPOINT open_issues)."
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      12.0,
+      24.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_FE_71-6",
+       "family": "DE_FE_71",
+       "since_h": 18.2,
+       "eta_h": 27.6,
+       "hours_left": 3.6
+      },
+      {
+       "tool": "DE_FE_86-22",
+       "family": "DE_FE_86",
+       "since_h": 13.5,
+       "eta_h": 25.0,
+       "hours_left": 1.0
+      },
+      {
+       "tool": "DE_FE_86-104",
+       "family": "DE_FE_86",
+       "since_h": 21.3,
+       "eta_h": 24.9,
+       "hours_left": 0.9
+      },
+      {
+       "tool": "Diffusion_FE_127-3",
+       "family": "Diffusion_FE_127",
+       "since_h": 21.1,
+       "eta_h": 24.1,
+       "hours_left": 0.1
+      },
+      {
+       "tool": "Implant_88-1",
+       "family": "Implant_88",
+       "since_h": 23.0,
+       "eta_h": 28.1,
+       "hours_left": 4.1
+      },
+      {
+       "tool": "Implant_91-2",
+       "family": "Implant_91",
+       "since_h": 23.4,
+       "eta_h": 39.4,
+       "hours_left": 15.4
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_6_2",
+       "due_h": 0.0,
+       "slack_h": -33.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_7_2",
+       "due_h": 2.8,
+       "slack_h": -31.8,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.3,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_10_1",
+       "due_h": 2.8,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -22.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -16.6,
+       "late_now": false
+      },
+      {
+       "lot": "Init_Lot_6_6",
+       "due_h": 21.2,
+       "slack_h": -10.9,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_5",
+       "due_h": 21.7,
+       "slack_h": -3.7,
+       "late_now": true
+      }
+     ],
+     "at_risk_count": 9,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_41",
+       "wip_from": 15,
+       "wip_to": 69
+      },
+      {
+       "family": "WE_BE_82",
+       "wip_from": 38,
+       "wip_to": 89
+      },
+      {
+       "family": "Implant_128",
+       "wip_from": 6,
+       "wip_to": 56
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_HotLot_1_1",
+       "tool": "Dielectric_BE_21-3",
+       "at_h": 13.3,
+       "delay_min": 35.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_107",
+       "tool": "Implant_90-1",
+       "at_h": 15.0,
+       "delay_min": 28.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_175",
+       "tool": "Implant_90-2",
+       "at_h": 15.3,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_10_115",
+       "tool": "Implant_90-1",
+       "at_h": 16.9,
+       "delay_min": 49.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_2_5",
+       "tool": "WE_FE_108-1",
+       "at_h": 20.5,
+       "delay_min": 16.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_10_4",
+       "tool": "WE_FE_108-26",
+       "at_h": 21.4,
+       "delay_min": 17.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 15,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_FE_71-6",
+       "DE_FE_86-104",
+       "DE_FE_86-22",
+       "Diffusion_FE_127-3",
+       "Implant_88-1",
+       "Implant_91-2"
+      ],
+      "lots": [
+       "Init_Lot_6_2",
+       "Init_Lot_7_2",
+       "Init_Lot_4_4"
+      ],
+      "families": [
+       "WE_FE_41",
+       "WE_BE_82",
+       "Implant_128"
+      ]
+     }
+    },
+    "report": {
+     "summary": "Six tools remained down across DE, Diffusion, and Implant families during the 12–24h shift, with Implant_91-2 facing the longest outage at 15.4h remaining. WIP bubbles and qtime overrides persisted, and nine lots are currently late with significant slack deficits.",
+     "top_issues": [
+      "DE_FE_71-6 sustained downtime with 3.6h ETA",
+      "DE_FE_86-22 critical at 1.0h remaining ETA",
+      "Diffusion_FE_127-3 nearly recovered at 0.1h ETA",
+      "Implant_88-1 outage 4.1h remaining",
+      "Implant_91-2 long outage 15.4h remaining",
+      "WIP bubbles WE_FE_41/WE_BE_82/Implant_128 show severe congestion"
+     ],
+     "wip_bubbles": [
+      "WE_FE_41: 15-69",
+      "WE_BE_82: 38-89",
+      "Implant_128: 6-56"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_6_2",
+      "Init_Lot_7_2",
+      "Init_Lot_4_4",
+      "Init_Lot_10_1",
+      "Init_Lot_1_4",
+      "Init_Lot_6_6"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_FE_71-6",
+       "eta_h": 27.6,
+       "note": "ETA 27.6h, 3.6h left"
+      },
+      {
+       "tool": "DE_FE_86-22",
+       "eta_h": 25.0,
+       "note": "ETA 25.0h, 1.0h left"
+      },
+      {
+       "tool": "DE_FE_86-104",
+       "eta_h": 24.9,
+       "note": "ETA 24.9h, 0.9h left"
+      },
+      {
+       "tool": "Diffusion_FE_127-3",
+       "eta_h": 24.1,
+       "note": "ETA 24.1h, 0.1h left"
+      },
+      {
+       "tool": "Implant_88-1",
+       "eta_h": 28.1,
+       "note": "ETA 28.1h, 4.1h left"
+      },
+      {
+       "tool": "Implant_91-2",
+       "eta_h": 39.4,
+       "note": "ETA 39.4h, 15.4h left"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_HotLot_1_1 on Dielectric_BE_21-3 at 13.3h, 35.9min qtime_override",
+      "Init_Lot_9_107 on Implant_90-1 at 15.0h, 28.8min qtime_override",
+      "Init_Lot_3_175 on Implant_90-2 at 15.3h, 34.8min qtime_override",
+      "Init_Lot_10_115 on Implant_90-1 at 16.9h, 49.8min qtime_override",
+      "Init_HotLot_2_5 on WE_FE_108-1 at 20.5h, 16.1min qtime_override",
+      "Init_HotLot_10_4 on WE_FE_108-26 at 21.4h, 17.1min qtime_override"
+     ]
+    },
+    "markdown": "# Shift handover · 12.0-24.0 h\n\n**Summary:** Six tools remained down across DE, Diffusion, and Implant families during the 12–24h shift, with Implant_91-2 facing the longest outage at 15.4h remaining. WIP bubbles and qtime overrides persisted, and nine lots are currently late with significant slack deficits.\n\n## Top issues\n- DE_FE_71-6 sustained downtime with 3.6h ETA\n- DE_FE_86-22 critical at 1.0h remaining ETA\n- Diffusion_FE_127-3 nearly recovered at 0.1h ETA\n- Implant_88-1 outage 4.1h remaining\n- Implant_91-2 long outage 15.4h remaining\n- WIP bubbles WE_FE_41/WE_BE_82/Implant_128 show severe congestion\n\n## WIP bubbles\n- WE_FE_41: 15-69\n- WE_BE_82: 38-89\n- Implant_128: 6-56\n\n## At-risk lots\n- Init_Lot_6_2\n- Init_Lot_7_2\n- Init_Lot_4_4\n- Init_Lot_10_1\n- Init_Lot_1_4\n- Init_Lot_6_6\n\n## Tools down (ETA, note)\n- DE_FE_71-6 · ETA 27.6 h · ETA 27.6h, 3.6h left\n- DE_FE_86-22 · ETA 25.0 h · ETA 25.0h, 1.0h left\n- DE_FE_86-104 · ETA 24.9 h · ETA 24.9h, 0.9h left\n- Diffusion_FE_127-3 · ETA 24.1 h · ETA 24.1h, 0.1h left\n- Implant_88-1 · ETA 28.1 h · ETA 28.1h, 4.1h left\n- Implant_91-2 · ETA 39.4 h · ETA 39.4h, 15.4h left\n\n## PM next shift\n- none\n\n## Decision overrides and outcomes\n- Init_HotLot_1_1 on Dielectric_BE_21-3 at 13.3h, 35.9min qtime_override\n- Init_Lot_9_107 on Implant_90-1 at 15.0h, 28.8min qtime_override\n- Init_Lot_3_175 on Implant_90-2 at 15.3h, 34.8min qtime_override\n- Init_Lot_10_115 on Implant_90-1 at 16.9h, 49.8min qtime_override\n- Init_HotLot_2_5 on WE_FE_108-1 at 20.5h, 16.1min qtime_override\n- Init_HotLot_10_4 on WE_FE_108-26 at 21.4h, 17.1min qtime_override\n\n_Advice only; nothing was dispatched._\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_FE_71-6",
+     "DE_FE_86-104",
+     "DE_FE_86-22",
+     "Diffusion_FE_127-3",
+     "Implant_88-1",
+     "Implant_91-2",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_41",
+     "WE_BE_82",
+     "Implant_128"
+    ],
+    "must_named": [
+     "DE_FE_71-6",
+     "DE_FE_86-104",
+     "DE_FE_86-22",
+     "Diffusion_FE_127-3",
+     "Implant_88-1",
+     "Implant_91-2",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_41",
+     "WE_BE_82",
+     "Implant_128"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 519930.5,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s1-12h-zh",
+   "seed": 1,
+   "lang": "zh",
+   "ai": {
+    "seed": 1,
+    "shift_h": [
+     12.0,
+     24.0
+    ],
+    "language": "zh",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 221,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 387,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 527,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 630,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 788,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 941,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 3517,
+    "replayed_history_units": 14215,
+    "chunk_notes": [
+     {
+      "window_h": [
+       12.0,
+       14.0
+      ],
+      "notes": [
+       "6工具在窗口期[12.0,14.0]内运行，均满足最小120.0分钟在窗时间：DE_BE_66-6, DE_FE_71-17, DE_FE_86-40, Dielectric_FE_31-1, Implant_128-5, Implant_74-2",
+       "Override延迟：Init_HotLot_1_1 在13.3h于Dielectric_BE_21-3处累计35.9分钟延迟，源于qtime_override",
+       "WIP泡沫状态：Implant_128 6-26, Planar_FE_77 0-19, DefMet_FE_43 0-16"
+      ]
+     },
+     {
+      "window_h": [
+       14.0,
+       16.0
+      ],
+      "notes": [
+       "14:0-16:0窗口内，6工具（DE_BE_66-6, DE_FE_71-17, DE_FE_86-22, DE_FE_86-40, Diffusion_BE_123-8, Litho_BE_110-15）全部满足最小120分钟在窗要求。",
+       "三个WIP泡沫家族（Dielectric_FE_130, WE_FE_84, Diffusion_FE_122）在本窗口活跃，需监控产出与平衡。",
+       "两个qtime_override延迟 lot（Init_Lot_9_107于15.0h于Implant_90-1累计28.8min, Init_Lot_3_175于15.3h于Implant_90-2累计34.8min）需排查根因。"
+      ]
+     },
+     {
+      "window_h": [
+       16.0,
+       18.0
+      ],
+      "notes": [
+       "12.0-14.0窗口6工具满足最小120.0min在窗要求，Init_HotLot_1_1于Dielectric_BE_21-3累计35.9minqtime_override延迟",
+       "14.0-16.0窗口6工具全部达标，WIP泡沫家族Dielectric_FE_130, WE_FE_84, Diffusion_FE_122活跃需监控产出与平衡",
+       "两qtime_override延迟lotInit_Lot_9_107(Implant_90-1, 28.8min)和Init_Lot_3_175(Implant_90-2, 34.8min)需根因排查"
+      ]
+     },
+     {
+      "window_h": [
+       18.0,
+       20.0
+      ],
+      "notes": [
+       "18.0-20.0窗口内，6工具全部满足最小120.0分钟在窗要求。",
+       "WIP泡沫家族WE_FE_41, DefMEt_FE_118, Diffusion_FE_122活跃，需监控产出与平衡。",
+       "qtime_override延迟lotInit_HotLot_1_1, Init_Lot_9_107, Init_Lot_3_175在本窗口无活跃延迟，override计数为0。"
+      ]
+     },
+     {
+      "window_h": [
+       20.0,
+       22.0
+      ],
+      "notes": [
+       "20-22窗口内6工具(DE_BE_67-4, DE_BE_67-5, DE_FE_51-15, DE_FE_71-6, DE_FE_86-22, DE_FE_86-40)全部满足最小120.0分钟在窗要求。",
+       "WIP泡沫家族WE_FE_83, Litho_BE_110, Diffusion_FE_122在本窗口活跃，需监控产出与平衡。",
+       "两个qtime_override延迟lotInit_HotLot_2_5(WE_FE_108-1, 16.1min)和Init_HotLot_10_4(WE_FE_108-26, 17.1min)在20-22窗口活跃，需排查根因。"
+      ]
+     },
+     {
+      "window_h": [
+       22.0,
+       24.0
+      ],
+      "notes": [
+       "6工具全部满足最小120.0分钟在窗要求：DE_FE_71-6, DE_FE_86-22, DE_FE_86-104, Diffusion_FE_127-3, Litho_BE_110-4, Litho_BE_110-15",
+       "qtime_override延迟lot活跃：Init_Lot_8_134(26.7min), Init_Lot_3_156(80.4min), Init_HotLot_3_5(28.1min)，涉及EPI_38-1和TF_FE_3-1/2-3工具，需根因排查",
+       "WIP泡沫家族Diffusion_FE_100, DefMet_FE_43, LithoMet_BE_18在本窗口活跃，产出与平衡需监控"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      12.0,
+      24.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_FE_71-6",
+       "family": "DE_FE_71",
+       "since_h": 18.2,
+       "eta_h": 27.6,
+       "hours_left": 3.6
+      },
+      {
+       "tool": "DE_FE_86-22",
+       "family": "DE_FE_86",
+       "since_h": 13.5,
+       "eta_h": 25.0,
+       "hours_left": 1.0
+      },
+      {
+       "tool": "DE_FE_86-104",
+       "family": "DE_FE_86",
+       "since_h": 21.3,
+       "eta_h": 24.9,
+       "hours_left": 0.9
+      },
+      {
+       "tool": "Diffusion_FE_127-3",
+       "family": "Diffusion_FE_127",
+       "since_h": 21.1,
+       "eta_h": 24.1,
+       "hours_left": 0.1
+      },
+      {
+       "tool": "Implant_88-1",
+       "family": "Implant_88",
+       "since_h": 23.0,
+       "eta_h": 28.1,
+       "hours_left": 4.1
+      },
+      {
+       "tool": "Implant_91-2",
+       "family": "Implant_91",
+       "since_h": 23.4,
+       "eta_h": 39.4,
+       "hours_left": 15.4
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_6_2",
+       "due_h": 0.0,
+       "slack_h": -33.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_7_2",
+       "due_h": 2.8,
+       "slack_h": -31.8,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.3,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_10_1",
+       "due_h": 2.8,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -22.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -16.6,
+       "late_now": false
+      },
+      {
+       "lot": "Init_Lot_6_6",
+       "due_h": 21.2,
+       "slack_h": -10.9,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_5",
+       "due_h": 21.7,
+       "slack_h": -3.7,
+       "late_now": true
+      }
+     ],
+     "at_risk_count": 9,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_41",
+       "wip_from": 15,
+       "wip_to": 69
+      },
+      {
+       "family": "WE_BE_82",
+       "wip_from": 38,
+       "wip_to": 89
+      },
+      {
+       "family": "Implant_128",
+       "wip_from": 6,
+       "wip_to": 56
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_HotLot_1_1",
+       "tool": "Dielectric_BE_21-3",
+       "at_h": 13.3,
+       "delay_min": 35.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_107",
+       "tool": "Implant_90-1",
+       "at_h": 15.0,
+       "delay_min": 28.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_175",
+       "tool": "Implant_90-2",
+       "at_h": 15.3,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_10_115",
+       "tool": "Implant_90-1",
+       "at_h": 16.9,
+       "delay_min": 49.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_2_5",
+       "tool": "WE_FE_108-1",
+       "at_h": 20.5,
+       "delay_min": 16.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_10_4",
+       "tool": "WE_FE_108-26",
+       "at_h": 21.4,
+       "delay_min": 17.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 15,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_FE_71-6",
+       "DE_FE_86-104",
+       "DE_FE_86-22",
+       "Diffusion_FE_127-3",
+       "Implant_88-1",
+       "Implant_91-2"
+      ],
+      "lots": [
+       "Init_Lot_6_2",
+       "Init_Lot_7_2",
+       "Init_Lot_4_4"
+      ],
+      "families": [
+       "WE_FE_41",
+       "WE_BE_82",
+       "Implant_128"
+      ]
+     }
+    },
+    "report": {
+     "summary": "12.0-24.0班次内，6工具全部满足最小120.0分钟在窗要求。3设备持续下线及6个qtime_override延迟lot需持续关注。",
+     "top_issues": [
+      "Init_HotLot_2_5",
+      "Init_HotLot_10_4",
+      "Diffusion_FE_122"
+     ],
+     "wip_bubbles": [
+      "WE_FE_41 15-69",
+      "WE_BE_82 38-89",
+      "Implant_128 6-56"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_6_2",
+      "Init_Lot_7_2",
+      "Init_Lot_4_4",
+      "Init_Lot_10_1",
+      "Init_Lot_1_4",
+      "Init_Lot_6_6"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_FE_71-6",
+       "eta_h": 27.6,
+       "note": "自18.2h下线，ETA 27.6h，剩余3.6h"
+      },
+      {
+       "tool": "DE_FE_86-22",
+       "eta_h": 25.0,
+       "note": "自13.5h下线，ETA 25.0h，剩余1.0h"
+      },
+      {
+       "tool": "DE_FE_86-104",
+       "eta_h": 24.9,
+       "note": "自21.3h下线，ETA 24.9h，剩余0.9h"
+      },
+      {
+       "tool": "Diffusion_FE_127-3",
+       "eta_h": 24.1,
+       "note": "自21.1h下线，ETA 24.1h，剩余0.1h"
+      },
+      {
+       "tool": "Implant_88-1",
+       "eta_h": 28.1,
+       "note": "自23.0h下线，ETA 28.1h，剩余4.1h"
+      },
+      {
+       "tool": "Implant_91-2",
+       "eta_h": 39.4,
+       "note": "自23.4h下线，ETA 39.4h，剩余15.4h"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_HotLot_1_1 在13.3h于Dielectric_BE_21-3累计35.9min qtime_override",
+      "Init_Lot_9_107 在15.0h于Implant_90-1累计28.8min qtime_override",
+      "Init_Lot_3_175 在15.3h于Implant_90-2累计34.8min qtime_override",
+      "Init_Lot_10_115 在16.9h于Implant_90-1累计49.8min qtime_override",
+      "Init_HotLot_2_5 在20.5h于WE_FE_108-1累计16.1min qtime_override",
+      "Init_HotLot_10_4 在21.4h于WE_FE_108-26累计17.1min qtime_override"
+     ]
+    },
+    "markdown": "# 交班报告 · 12.0-24.0 h\n\n**概要:** 12.0-24.0班次内，6工具全部满足最小120.0分钟在窗要求。3设备持续下线及6个qtime_override延迟lot需持续关注。\n\n## 主要问题\n- Init_HotLot_2_5\n- Init_HotLot_10_4\n- Diffusion_FE_122\n\n## WIP 堆积\n- WE_FE_41 15-69\n- WE_BE_82 38-89\n- Implant_128 6-56\n\n## 有迟交风险的批次\n- Init_Lot_6_2\n- Init_Lot_7_2\n- Init_Lot_4_4\n- Init_Lot_10_1\n- Init_Lot_1_4\n- Init_Lot_6_6\n\n## 宕机机台（预计恢复、备注）\n- DE_FE_71-6 · ETA 27.6 h · 自18.2h下线，ETA 27.6h，剩余3.6h\n- DE_FE_86-22 · ETA 25.0 h · 自13.5h下线，ETA 25.0h，剩余1.0h\n- DE_FE_86-104 · ETA 24.9 h · 自21.3h下线，ETA 24.9h，剩余0.9h\n- Diffusion_FE_127-3 · ETA 24.1 h · 自21.1h下线，ETA 24.1h，剩余0.1h\n- Implant_88-1 · ETA 28.1 h · 自23.0h下线，ETA 28.1h，剩余4.1h\n- Implant_91-2 · ETA 39.4 h · 自23.4h下线，ETA 39.4h，剩余15.4h\n\n## 下一班 PM\n- 无\n\n## 决策让行及结果\n- Init_HotLot_1_1 在13.3h于Dielectric_BE_21-3累计35.9min qtime_override\n- Init_Lot_9_107 在15.0h于Implant_90-1累计28.8min qtime_override\n- Init_Lot_3_175 在15.3h于Implant_90-2累计34.8min qtime_override\n- Init_Lot_10_115 在16.9h于Implant_90-1累计49.8min qtime_override\n- Init_HotLot_2_5 在20.5h于WE_FE_108-1累计16.1min qtime_override\n- Init_HotLot_10_4 在21.4h于WE_FE_108-26累计17.1min qtime_override\n\n_仅供参考；未下发任何派工。_\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": true,
+    "must_mention": [
+     "DE_FE_71-6",
+     "DE_FE_86-104",
+     "DE_FE_86-22",
+     "Diffusion_FE_127-3",
+     "Implant_88-1",
+     "Implant_91-2",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_41",
+     "WE_BE_82",
+     "Implant_128"
+    ],
+    "must_named": [
+     "DE_FE_71-6",
+     "DE_FE_86-104",
+     "DE_FE_86-22",
+     "Diffusion_FE_127-3",
+     "Implant_88-1",
+     "Implant_91-2",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_41",
+     "WE_BE_82",
+     "Implant_128"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 8,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 687770.9,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s1-12h-ja",
+   "seed": 1,
+   "lang": "ja",
+   "ai": {
+    "seed": 1,
+    "shift_h": [
+     12.0,
+     24.0
+    ],
+    "language": "ja",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 198,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 303,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 358,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 422,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 480,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 546,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 2330,
+    "replayed_history_units": 9765,
+    "chunk_notes": [
+     {
+      "window_h": [
+       12.0,
+       14.0
+      ],
+      "notes": [
+       "6ツールが2時間ウィンドウ全体でダウン（min_in_window 120.0）",
+       "WIPバブル：Implant_128 6-26, Planar_FE_77 0-19, DefMet_FE_43 0-16",
+       "Init_HotLot_1_1 に35.9分遅延override（13.3h, Dielectric_BE_21-3）"
+      ]
+     },
+     {
+      "window_h": [
+       14.0,
+       16.0
+      ],
+      "notes": [
+       "2時間ウィンドウ全体で6ツールがダウン（min_in_window 120.0）",
+       "WIPバブル：Implant_128 26, Planar_FE_77 19, DefMet_FE_43 16",
+       "Init_HotLot_1_1 遅延override（35.9分）に加え、Init_Lot_9_107/Implant_90-1 および Init_Lot_3_175/Implant_90-2 のqtime遅延"
+      ]
+     },
+     {
+      "window_h": [
+       16.0,
+       18.0
+      ],
+      "notes": [
+       "DE_FE_71-17 は min_in_window 120.0 で 2時間ダウン継続",
+       "WIPバブル：Implant_128-5, Planar_FE_77, DefMet_FE_43 が活性化",
+       "Init_HotLot_1_1 に 35.9分遅延override が継続"
+      ]
+     },
+     {
+      "window_h": [
+       18.0,
+       20.0
+      ],
+      "notes": [
+       "DE_FE_71-17がmin_in_window 120.0で継続ダウン中",
+       "DE_FE_86-40も同様に120.0ダウン継続",
+       "Implant_128-5が活性化、Init_HotLot_1_1の35.9分override継続"
+      ]
+     },
+     {
+      "window_h": [
+       20.0,
+       22.0
+      ],
+      "notes": [
+       "20-22h窓でDE_FE_86-40等が120minダウン継続",
+       "Init_HotLot_2_5/10_4が20.5/21.4hでqtimeoverride発生",
+       "Implant_128-5活性化しWIPバブル継続"
+      ]
+     },
+     {
+      "window_h": [
+       22.0,
+       24.0
+      ],
+      "notes": [
+       "22-24h窓でDE_FE_71-6等DEツールが120minダウン継続",
+       "qtimeオーバーライドによりInit_Lot_3_156他が遅延",
+       "WIPバブルDefMet_FE_43等が活性化"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      12.0,
+      24.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_FE_71-6",
+       "family": "DE_FE_71",
+       "since_h": 18.2,
+       "eta_h": 27.6,
+       "hours_left": 3.6
+      },
+      {
+       "tool": "DE_FE_86-22",
+       "family": "DE_FE_86",
+       "since_h": 13.5,
+       "eta_h": 25.0,
+       "hours_left": 1.0
+      },
+      {
+       "tool": "DE_FE_86-104",
+       "family": "DE_FE_86",
+       "since_h": 21.3,
+       "eta_h": 24.9,
+       "hours_left": 0.9
+      },
+      {
+       "tool": "Diffusion_FE_127-3",
+       "family": "Diffusion_FE_127",
+       "since_h": 21.1,
+       "eta_h": 24.1,
+       "hours_left": 0.1
+      },
+      {
+       "tool": "Implant_88-1",
+       "family": "Implant_88",
+       "since_h": 23.0,
+       "eta_h": 28.1,
+       "hours_left": 4.1
+      },
+      {
+       "tool": "Implant_91-2",
+       "family": "Implant_91",
+       "since_h": 23.4,
+       "eta_h": 39.4,
+       "hours_left": 15.4
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_6_2",
+       "due_h": 0.0,
+       "slack_h": -33.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_7_2",
+       "due_h": 2.8,
+       "slack_h": -31.8,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.3,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_10_1",
+       "due_h": 2.8,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -22.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -16.6,
+       "late_now": false
+      },
+      {
+       "lot": "Init_Lot_6_6",
+       "due_h": 21.2,
+       "slack_h": -10.9,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_5",
+       "due_h": 21.7,
+       "slack_h": -3.7,
+       "late_now": true
+      }
+     ],
+     "at_risk_count": 9,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_41",
+       "wip_from": 15,
+       "wip_to": 69
+      },
+      {
+       "family": "WE_BE_82",
+       "wip_from": 38,
+       "wip_to": 89
+      },
+      {
+       "family": "Implant_128",
+       "wip_from": 6,
+       "wip_to": 56
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_HotLot_1_1",
+       "tool": "Dielectric_BE_21-3",
+       "at_h": 13.3,
+       "delay_min": 35.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_107",
+       "tool": "Implant_90-1",
+       "at_h": 15.0,
+       "delay_min": 28.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_175",
+       "tool": "Implant_90-2",
+       "at_h": 15.3,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_10_115",
+       "tool": "Implant_90-1",
+       "at_h": 16.9,
+       "delay_min": 49.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_2_5",
+       "tool": "WE_FE_108-1",
+       "at_h": 20.5,
+       "delay_min": 16.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_10_4",
+       "tool": "WE_FE_108-26",
+       "at_h": 21.4,
+       "delay_min": 17.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 15,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_FE_71-6",
+       "DE_FE_86-104",
+       "DE_FE_86-22",
+       "Diffusion_FE_127-3",
+       "Implant_88-1",
+       "Implant_91-2"
+      ],
+      "lots": [
+       "Init_Lot_6_2",
+       "Init_Lot_7_2",
+       "Init_Lot_4_4"
+      ],
+      "families": [
+       "WE_FE_41",
+       "WE_BE_82",
+       "Implant_128"
+      ]
+     }
+    },
+    "report": {
+     "summary": "2台のDEツールと1つのImplantツールが継続ダウン中。qtimeオーバーライドにより複数ロットが遅延発生。",
+     "top_issues": [
+      "DE_FE_71-6ほか5ツールが継続ダウン中",
+      "Init_HotLot_1_1ほか5件のqtimeオーバーライドでロット遅延"
+     ],
+     "wip_bubbles": [
+      "WE_FE_41: 15-69 WIP",
+      "WE_BE_82: 38-89 WIP",
+      "Implant_128: 6-56 WIP"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_6_2 (due 0.0h, slack -33.2h)",
+      "Init_Lot_7_2 (due 2.8h, slack -31.8h)",
+      "Init_Lot_4_4 (due 13.1h, slack -28.3h)",
+      "Init_Lot_10_1 (due 2.8h, slack -23.6h)",
+      "Init_Lot_1_4 (due 14.7h, slack -22.2h)",
+      "Init_Lot_3_2 (due 29.0h, slack -16.6h)"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_FE_71-6",
+       "eta_h": 27.6,
+       "note": "27.6時間後に予定復旧。継続的なダウン監視を推奨。"
+      },
+      {
+       "tool": "DE_FE_86-22",
+       "eta_h": 25.0,
+       "note": "25.0時間後に予定復旧。状態確認を推奨。"
+      },
+      {
+       "tool": "DE_FE_86-104",
+       "eta_h": 24.9,
+       "note": "24.9時間後に予定復旧。早期復旧を推奨。"
+      },
+      {
+       "tool": "Diffusion_FE_127-3",
+       "eta_h": 24.1,
+       "note": "24.1時間後に予定復旧。プロセス影響を最小化するよう監視。"
+      },
+      {
+       "tool": "Implant_88-1",
+       "eta_h": 28.1,
+       "note": "28.1時間後に予定復旧。ウェーハ影響を考慮した調整を推奨。"
+      },
+      {
+       "tool": "Implant_91-2",
+       "eta_h": 39.4,
+       "note": "39.4時間後に予定復旧。長期ダウンにつき優先順位を見直すことを推奨。"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_HotLot_1_1/Dielectric_BE_21-3 13.3h 35.9min qtime_override",
+      "Init_Lot_9_107/Implant_90-1 15.0h 28.8min qtime_override",
+      "Init_Lot_3_175/Implant_90-2 15.3h 34.8min qtime_override",
+      "Init_Lot_10_115/Implant_90-1 16.9h 49.8min qtime_override",
+      "Init_HotLot_2_5/WE_FE_108-1 20.5h 16.1min qtime_override",
+      "Init_HotLot_10_4/WE_FE_108-26 21.4h 17.1min qtime_override"
+     ]
+    },
+    "markdown": "# シフト引き継ぎ · 12.0-24.0 h\n\n**概要:** 2台のDEツールと1つのImplantツールが継続ダウン中。qtimeオーバーライドにより複数ロットが遅延発生。\n\n## 主な課題\n- DE_FE_71-6ほか5ツールが継続ダウン中\n- Init_HotLot_1_1ほか5件のqtimeオーバーライドでロット遅延\n\n## WIP 滞留\n- WE_FE_41: 15-69 WIP\n- WE_BE_82: 38-89 WIP\n- Implant_128: 6-56 WIP\n\n## 遅延リスクのあるロット\n- Init_Lot_6_2 (due 0.0h, slack -33.2h)\n- Init_Lot_7_2 (due 2.8h, slack -31.8h)\n- Init_Lot_4_4 (due 13.1h, slack -28.3h)\n- Init_Lot_10_1 (due 2.8h, slack -23.6h)\n- Init_Lot_1_4 (due 14.7h, slack -22.2h)\n- Init_Lot_3_2 (due 29.0h, slack -16.6h)\n\n## ダウン中の装置（復旧見込み・メモ）\n- DE_FE_71-6 · ETA 27.6 h · 27.6時間後に予定復旧。継続的なダウン監視を推奨。\n- DE_FE_86-22 · ETA 25.0 h · 25.0時間後に予定復旧。状態確認を推奨。\n- DE_FE_86-104 · ETA 24.9 h · 24.9時間後に予定復旧。早期復旧を推奨。\n- Diffusion_FE_127-3 · ETA 24.1 h · 24.1時間後に予定復旧。プロセス影響を最小化するよう監視。\n- Implant_88-1 · ETA 28.1 h · 28.1時間後に予定復旧。ウェーハ影響を考慮した調整を推奨。\n- Implant_91-2 · ETA 39.4 h · 39.4時間後に予定復旧。長期ダウンにつき優先順位を見直すことを推奨。\n\n## 次シフトの PM\n- なし\n\n## 判断による後回しとその結果\n- Init_HotLot_1_1/Dielectric_BE_21-3 13.3h 35.9min qtime_override\n- Init_Lot_9_107/Implant_90-1 15.0h 28.8min qtime_override\n- Init_Lot_3_175/Implant_90-2 15.3h 34.8min qtime_override\n- Init_Lot_10_115/Implant_90-1 16.9h 49.8min qtime_override\n- Init_HotLot_2_5/WE_FE_108-1 20.5h 16.1min qtime_override\n- Init_HotLot_10_4/WE_FE_108-26 21.4h 17.1min qtime_override\n\n_助言のみ。払い出しは行っていません。_\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_FE_71-6",
+     "DE_FE_86-104",
+     "DE_FE_86-22",
+     "Diffusion_FE_127-3",
+     "Implant_88-1",
+     "Implant_91-2",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_41",
+     "WE_BE_82",
+     "Implant_128"
+    ],
+    "must_named": [
+     "DE_FE_71-6",
+     "DE_FE_86-104",
+     "DE_FE_86-22",
+     "Diffusion_FE_127-3",
+     "Implant_88-1",
+     "Implant_91-2",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_41",
+     "WE_BE_82",
+     "Implant_128"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 405494.8,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s1-24h-en",
+   "seed": 1,
+   "lang": "en",
+   "ai": {
+    "seed": 1,
+    "shift_h": [
+     24.0,
+     36.0
+    ],
+    "language": "en",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 180,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 232,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 324,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 435,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 442,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 485,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 2121,
+    "replayed_history_units": 8797,
+    "chunk_notes": [
+     {
+      "window_h": [
+       24.0,
+       26.0
+      ],
+      "notes": [
+       "6 tools down >=120 min in 24-26h window: DE_FE_71-6, Implant_88-1, Implant_91-2, Litho_BE_110-4, Litho_BE_110-15, Litho_BE_93-2",
+       "4 init lots delayed on Implant_90-1/2 with qtime overrides: Init_Lot_9_111, Init_Lot_10_122, Init_Lot_3_170",
+       "WIP bubbles: WE_FE_84 5-17, Planar_FE_76 1-7, TF_BE_40 0-5"
+      ]
+     },
+     {
+      "window_h": [
+       26.0,
+       28.0
+      ],
+      "notes": [
+       "Implant_88-1 & Implant_91-2 at 120min downtime in 26-28h window",
+       "DE_FE_86-30 & DE_FE_86-92 down 120min each, capacity pressure",
+       "Three qtime overrides: Init_Lot_3_170, Init_Lot_8_116, Init_Lot_9_133"
+      ]
+     },
+     {
+      "window_h": [
+       28.0,
+       30.0
+      ],
+      "notes": [
+       "Six tools at 120min+ downtime in 28-30h: DE_BE_11-1, DE_FE_86-30, DE_FE_86-92, Dielectric_FE_30-1, Diffusion_FE_125-5, Diffusion_FE_94-5",
+       "Two qtime overrides active: Init_Lot_3_161 on EPI_38-1 (26.7min) and Init_Lot_8_119 on Implant_90-2 (34.8min)",
+       "WIP bubbles: Dielectric_FE_112 (13), TF_FE_3 (32), LithoTrack_FE_96 (8); Implant_90 WIP 17-27"
+      ]
+     },
+     {
+      "window_h": [
+       30.0,
+       32.0
+      ],
+      "notes": [
+       "6 tools at 120min+ downtime in 30-32h window: DE_FE_86-30, DE_FE_86-69, Dielectric_FE_30-1, Diffusion_FE_94-5, Implant_132-3, Implant_90-1",
+       "3 qtime overrides active: Init_Lot_1_139 on TF_FE_3 at 30.4h (80.4min each), Init_Lot_8_124 and Init_Lot_10_118 on Implant_90-2 at 30.5-31.2h",
+       "WIP bubbles: Litho_FE_111 (4-20), Planar_FE_79 (0-10), DE_FE_59 (7-15)"
+      ]
+     },
+     {
+      "window_h": [
+       32.0,
+       34.0
+      ],
+      "notes": [
+       "DE_FE_86-30 down 120min in 32-34h window",
+       "Init_Lot_8_124 override at 32.6h",
+       "WE_FE_84 WIP 15-28 active"
+      ]
+     },
+     {
+      "window_h": [
+       34.0,
+       36.0
+      ],
+      "notes": [
+       "DE_FE_86-30 sustained >120min downtime in 34-36h window",
+       "Init_Lot_3_170 qtime override active on TF_FE_3-1 at 34.4h (80.4min delay)",
+       "Implant_132-3 and Implant_90-1 remain down >120min"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      24.0,
+      36.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_13-6",
+       "family": "DE_BE_13",
+       "since_h": 34.6,
+       "eta_h": 53.5,
+       "hours_left": 17.5
+      },
+      {
+       "tool": "DE_FE_51-17",
+       "family": "DE_FE_51",
+       "since_h": 31.6,
+       "eta_h": 39.4,
+       "hours_left": 3.4
+      },
+      {
+       "tool": "DE_FE_62-1",
+       "family": "DE_FE_62",
+       "since_h": 31.2,
+       "eta_h": 40.6,
+       "hours_left": 4.6
+      },
+      {
+       "tool": "Dielectric_BE_27-10",
+       "family": "Dielectric_BE_27",
+       "since_h": 31.4,
+       "eta_h": 41.1,
+       "hours_left": 5.1
+      },
+      {
+       "tool": "Dielectric_FE_30-1",
+       "family": "Dielectric_FE_30",
+       "since_h": 27.7,
+       "eta_h": 45.8,
+       "hours_left": 9.8
+      },
+      {
+       "tool": "Diffusion_FE_120-5",
+       "family": "Diffusion_FE_120",
+       "since_h": 35.4,
+       "eta_h": 37.9,
+       "hours_left": 1.9
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -16.9,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_2_2",
+       "due_h": 37.1,
+       "slack_h": -2.3,
+       "late_now": false
+      }
+     ],
+     "at_risk_count": 4,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_41",
+       "wip_from": 69,
+       "wip_to": 109
+      },
+      {
+       "family": "WE_BE_16",
+       "wip_from": 36,
+       "wip_to": 70
+      },
+      {
+       "family": "Implant_91",
+       "wip_from": 66,
+       "wip_to": 99
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_9_111",
+       "tool": "Implant_90-1",
+       "at_h": 24.8,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_10_122",
+       "tool": "Implant_90-2",
+       "at_h": 25.1,
+       "delay_min": 28.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-1",
+       "at_h": 25.3,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-2",
+       "at_h": 25.6,
+       "delay_min": 49.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-2",
+       "at_h": 26.4,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_116",
+       "tool": "Implant_90-2",
+       "at_h": 27.0,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 16,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_13-6",
+       "DE_FE_51-17",
+       "DE_FE_62-1",
+       "Dielectric_BE_27-10",
+       "Dielectric_FE_30-1",
+       "Diffusion_FE_120-5"
+      ],
+      "lots": [
+       "Init_Lot_4_4",
+       "Init_Lot_1_4",
+       "Init_Lot_3_2"
+      ],
+      "families": [
+       "WE_FE_41",
+       "WE_BE_16",
+       "Implant_91"
+      ]
+     }
+    },
+    "report": {
+     "summary": "Shift 24-36h sustained multiple tool downtimes >120min with Implant_90-1/2 experiencing repeated qtime overrides. DE_FE_86-30 remained down across windows, while Diffusion_FE_120-5 had 1.9h ETA remaining.",
+     "top_issues": [
+      "DE_FE_86-30 >120min downtime in 34-36h window",
+      "Implant_90-1 qtime overrides active at 24.8h 25.3h",
+      "Dielectric_FE_30-1 >120min downtime since 27.7h",
+      "Diffusion_FE_120-5 ETA 1.9h remaining",
+      "Init_Lot_4_4 due 13.1h slack -28.4h late",
+      "WE_FE_41 WIP bubble 69-109"
+     ],
+     "wip_bubbles": [
+      "WE_FE_41 69-109",
+      "WE_BE_16 36-70",
+      "Implant_91 66-99"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_4_4 due 13.1h slack -28.4h late",
+      "Init_Lot_1_4 due 14.7h slack -23.6h late",
+      "Init_Lot_3_2 due 29.0h slack -16.9h late",
+      "Init_Lot_2_2 due 37.1h slack -2.3h"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_13-6",
+       "eta_h": 53.5,
+       "note": "since 34.6"
+      },
+      {
+       "tool": "DE_FE_51-17",
+       "eta_h": 39.4,
+       "note": "since 31.6"
+      },
+      {
+       "tool": "DE_FE_62-1",
+       "eta_h": 40.6,
+       "note": "since 31.2"
+      },
+      {
+       "tool": "Dielectric_BE_27-10",
+       "eta_h": 41.1,
+       "note": "since 31.4"
+      },
+      {
+       "tool": "Dielectric_FE_30-1",
+       "eta_h": 45.8,
+       "note": "since 27.7"
+      },
+      {
+       "tool": "Diffusion_FE_120-5",
+       "eta_h": 37.9,
+       "note": "since 35.4"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_Lot_9_111 on Implant_90-1 at 24.8 34.8min delay",
+      "Init_Lot_10_122 on Implant_90-2 at 25.1 28.8min delay",
+      "Init_Lot_3_170 on Implant_90-1 at 25.3 34.8min delay",
+      "Init_Lot_3_170 on Implant_90-2 at 25.6 49.8min delay",
+      "Init_Lot_3_170 on Implant_90-2 at 26.4 34.8min delay",
+      "Init_Lot_8_116 on Implant_90-2 at 27.0 34.8min delay"
+     ]
+    },
+    "markdown": "# Shift handover · 24.0-36.0 h\n\n**Summary:** Shift 24-36h sustained multiple tool downtimes >120min with Implant_90-1/2 experiencing repeated qtime overrides. DE_FE_86-30 remained down across windows, while Diffusion_FE_120-5 had 1.9h ETA remaining.\n\n## Top issues\n- DE_FE_86-30 >120min downtime in 34-36h window\n- Implant_90-1 qtime overrides active at 24.8h 25.3h\n- Dielectric_FE_30-1 >120min downtime since 27.7h\n- Diffusion_FE_120-5 ETA 1.9h remaining\n- Init_Lot_4_4 due 13.1h slack -28.4h late\n- WE_FE_41 WIP bubble 69-109\n\n## WIP bubbles\n- WE_FE_41 69-109\n- WE_BE_16 36-70\n- Implant_91 66-99\n\n## At-risk lots\n- Init_Lot_4_4 due 13.1h slack -28.4h late\n- Init_Lot_1_4 due 14.7h slack -23.6h late\n- Init_Lot_3_2 due 29.0h slack -16.9h late\n- Init_Lot_2_2 due 37.1h slack -2.3h\n\n## Tools down (ETA, note)\n- DE_BE_13-6 · ETA 53.5 h · since 34.6\n- DE_FE_51-17 · ETA 39.4 h · since 31.6\n- DE_FE_62-1 · ETA 40.6 h · since 31.2\n- Dielectric_BE_27-10 · ETA 41.1 h · since 31.4\n- Dielectric_FE_30-1 · ETA 45.8 h · since 27.7\n- Diffusion_FE_120-5 · ETA 37.9 h · since 35.4\n\n## PM next shift\n- none\n\n## Decision overrides and outcomes\n- Init_Lot_9_111 on Implant_90-1 at 24.8 34.8min delay\n- Init_Lot_10_122 on Implant_90-2 at 25.1 28.8min delay\n- Init_Lot_3_170 on Implant_90-1 at 25.3 34.8min delay\n- Init_Lot_3_170 on Implant_90-2 at 25.6 49.8min delay\n- Init_Lot_3_170 on Implant_90-2 at 26.4 34.8min delay\n- Init_Lot_8_116 on Implant_90-2 at 27.0 34.8min delay\n\n_Advice only; nothing was dispatched._\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_BE_13-6",
+     "DE_FE_51-17",
+     "DE_FE_62-1",
+     "Dielectric_BE_27-10",
+     "Dielectric_FE_30-1",
+     "Diffusion_FE_120-5",
+     "Init_Lot_4_4",
+     "Init_Lot_1_4",
+     "Init_Lot_3_2",
+     "WE_FE_41",
+     "WE_BE_16",
+     "Implant_91"
+    ],
+    "must_named": [
+     "DE_BE_13-6",
+     "DE_FE_51-17",
+     "DE_FE_62-1",
+     "Dielectric_BE_27-10",
+     "Dielectric_FE_30-1",
+     "Diffusion_FE_120-5",
+     "Init_Lot_4_4",
+     "Init_Lot_1_4",
+     "Init_Lot_3_2",
+     "WE_FE_41",
+     "WE_BE_16",
+     "Implant_91"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 527082.5,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s1-24h-zh",
+   "seed": 1,
+   "lang": "zh",
+   "ai": {
+    "seed": 1,
+    "shift_h": [
+     24.0,
+     36.0
+    ],
+    "language": "zh",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 218,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 393,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 497,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 605,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 694,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 754,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 3184,
+    "replayed_history_units": 13138,
+    "chunk_notes": [
+     {
+      "window_h": [
+       24.0,
+       26.0
+      ],
+      "notes": [
+       "24-26时窗口内6工具最小停机时间 120分钟：DE_FE_71-6, Implant_88-1, Implant_91-2, Litho_BE_110-4, Litho_BE_110-15, Litho_BE_93-2",
+       "4个 override 在24.8-25.6时触发，Init_Lot_9_111/10_122/3_170 延迟28.8-49.8分钟，涉及 Implant_90-1/90-2",
+       "7 批次 完成，WIP分布：WE_FE_84 5-17, Planar_FE_76 1-7, TF_BE_40 0-5"
+      ]
+     },
+     {
+      "window_h": [
+       26.0,
+       28.0
+      ],
+      "notes": [
+       "24-26h窗口6工具最小停机120分钟：DE_FE_71-6, Implant_88-1, Implant_91-2, Litho_BE_110-4, Litho_BE_110-15, Litho_BE_93-2，4个override在24.8-25.6h触发，Init_Lot_9_111/10_122/3_170延迟28.8-49.8分钟。",
+       "26-28h窗口6工具停机：DE_BE_11-1, DE_FE_86-30, DE_FE_86-92, Implant_88-1, Implant_91-2, Litho_BE_110-4，WIP泡沫：WE_FE_84 5-17, Planar_FE_76 1-7, TF_BE_40 0-5。",
+       "Init_Lot_3_170在26.4h有Implant_90-2 qtime_override延迟34.8分钟，Init_Lot_9_111/10_122仍待关注，6批次lot完成。"
+      ]
+     },
+     {
+      "window_h": [
+       28.0,
+       30.0
+      ],
+      "notes": [
+       "28-30h窗口内两个qtime_override先后在28.0h和29.3h触发，涉及Init_Lot_3_161/EPI_38-1和Init_Lot_8_119/Implant_90-2",
+       "六工具持续停机：DE_BE_11-1、DE_FE_86-30、DE_FE_86-92、Implant_88-1、Implant_91-2、Litho_BE_110-4",
+       "WIP泡沫分布：WE_FE_84 12-28, Implant_90 17-27, Diffusion_FE_101 0-9"
+      ]
+     },
+     {
+      "window_h": [
+       30.0,
+       32.0
+      ],
+      "notes": [
+       "30.4h Init_Lot_1_139 经 TF_FE_3-1/-2/-3 触发 qtime_override，每工具延迟 80.4 分钟",
+       "30.5h Init_Lot_8_124 经 Implant_90-2 触发 qtime_override，延迟 43.8 分钟",
+       "31.2h Init_Lot_10_118 经 Implant_90-2 触发 qtime_override，延迟 49.8 分钟，六工具（DE_FE_86-30 等）持续停机"
+      ]
+     },
+     {
+      "window_h": [
+       32.0,
+       34.0
+      ],
+      "notes": [
+       "32-34h窗口：Init_Lot_8_124 在 Implant_90-2 触发 qtime_override，延迟 34.8 分钟",
+       "六工具持续停机：DE_BE_48-8、DE_BE_50-10、DE_FE_1-1、DE_FE_51-17、DE_FE_62-1、DE_FE_86-30",
+       "WIP泡沫分布：WE_FE_84 15-28, Dielectric_FE_30 0-6, Planar_BE_75 0-6"
+      ]
+     },
+     {
+      "window_h": [
+       34.0,
+       36.0
+      ],
+      "notes": [
+       "34.4时 Init_Lot_3_170 触发 qtime_override，延迟 80.4分钟",
+       "DE_FE_51-17/DE_FE_62-1 等工具在 34.0-36.0时 窗口持续停机",
+       "WIP泡沫 Diffusion_FE_126 持续"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      24.0,
+      36.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_13-6",
+       "family": "DE_BE_13",
+       "since_h": 34.6,
+       "eta_h": 53.5,
+       "hours_left": 17.5
+      },
+      {
+       "tool": "DE_FE_51-17",
+       "family": "DE_FE_51",
+       "since_h": 31.6,
+       "eta_h": 39.4,
+       "hours_left": 3.4
+      },
+      {
+       "tool": "DE_FE_62-1",
+       "family": "DE_FE_62",
+       "since_h": 31.2,
+       "eta_h": 40.6,
+       "hours_left": 4.6
+      },
+      {
+       "tool": "Dielectric_BE_27-10",
+       "family": "Dielectric_BE_27",
+       "since_h": 31.4,
+       "eta_h": 41.1,
+       "hours_left": 5.1
+      },
+      {
+       "tool": "Dielectric_FE_30-1",
+       "family": "Dielectric_FE_30",
+       "since_h": 27.7,
+       "eta_h": 45.8,
+       "hours_left": 9.8
+      },
+      {
+       "tool": "Diffusion_FE_120-5",
+       "family": "Diffusion_FE_120",
+       "since_h": 35.4,
+       "eta_h": 37.9,
+       "hours_left": 1.9
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -16.9,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_2_2",
+       "due_h": 37.1,
+       "slack_h": -2.3,
+       "late_now": false
+      }
+     ],
+     "at_risk_count": 4,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_41",
+       "wip_from": 69,
+       "wip_to": 109
+      },
+      {
+       "family": "WE_BE_16",
+       "wip_from": 36,
+       "wip_to": 70
+      },
+      {
+       "family": "Implant_91",
+       "wip_from": 66,
+       "wip_to": 99
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_9_111",
+       "tool": "Implant_90-1",
+       "at_h": 24.8,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_10_122",
+       "tool": "Implant_90-2",
+       "at_h": 25.1,
+       "delay_min": 28.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-1",
+       "at_h": 25.3,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-2",
+       "at_h": 25.6,
+       "delay_min": 49.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-2",
+       "at_h": 26.4,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_116",
+       "tool": "Implant_90-2",
+       "at_h": 27.0,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 16,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_13-6",
+       "DE_FE_51-17",
+       "DE_FE_62-1",
+       "Dielectric_BE_27-10",
+       "Dielectric_FE_30-1",
+       "Diffusion_FE_120-5"
+      ],
+      "lots": [
+       "Init_Lot_4_4",
+       "Init_Lot_1_4",
+       "Init_Lot_3_2"
+      ],
+      "families": [
+       "WE_FE_41",
+       "WE_BE_16",
+       "Implant_91"
+      ]
+     }
+    },
+    "report": {
+     "summary": "本班次（24.0-36.0h）内，6工具持续停机，16次qtime_override频繁触发，多个lot和工具面临延迟风险。WIP泡沫在Implant_91及FE/BE工具间波动，需关注下班接班事项。",
+     "top_issues": [
+      "6工具(DE_BE_13-6/DE_FE_51-17/DE_FE_62-1/Dielectric_BE_27-10/Dielectric_FE_30-1/Diffusion_FE_120-5)自不同时间点以来持续停机",
+      "16次qtime_override触发，涉及Init_Lot_9_111/10_122/3_170/8_116",
+      "4个风险lot(Init_Lot_4_4/1_4/3_2/2_2)当前逾期/滞后，slack_h分别为-28.4/-23.6/-16.9/-2.3",
+      "WIP泡沫WE_FE_41累计69-109片，WE_BE_16累计36-70片，Implant_91累计66-99片，产能紧张",
+      "DE_FE_51-17自31.6h以来停机，ETA 39.4h；DE_FE_62-1自31.2h以来，ETA 40.6h",
+      "下班后Litho_FE_35/LithoTrack_FE_96将在153.6h后开始PM，Litho_BE_99在158.4h后开始"
+     ],
+     "wip_bubbles": [
+      "WE_FE_41: 69-109片",
+      "WE_BE_16: 36-70片",
+      "Implant_91: 66-99片"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_4_4: due 13.1h slack -28.4h 逾期",
+      "Init_Lot_1_4: due 14.7h slack -23.6h 逾期",
+      "Init_Lot_3_2: due 29.0h slack -16.9h 逾期",
+      "Init_Lot_2_2: due 37.1h slack -2.3h 滞后"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_13-6",
+       "eta_h": 53.5,
+       "note": "自34.6h以来停机，预计53.5h恢复"
+      },
+      {
+       "tool": "DE_FE_51-17",
+       "eta_h": 39.4,
+       "note": "自31.6h以来停机，预计39.4h恢复"
+      },
+      {
+       "tool": "DE_FE_62-1",
+       "eta_h": 40.6,
+       "note": "自31.2h以来停机，预计40.6h恢复"
+      },
+      {
+       "tool": "Dielectric_BE_27-10",
+       "eta_h": 41.1,
+       "note": "自31.4h以来停机，预计41.1h恢复"
+      },
+      {
+       "tool": "Dielectric_FE_30-1",
+       "eta_h": 45.8,
+       "note": "自27.7h以来停机，预计45.8h恢复"
+      },
+      {
+       "tool": "Diffusion_FE_120-5",
+       "eta_h": 37.9,
+       "note": "自35.4h以来停机，预计37.9h恢复"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_Lot_9_111/Implant_90-1于24.8h触发qtime_override延迟34.8min",
+      "Init_Lot_10_122/Implant_90-2于25.1h触发qtime_override延迟28.8min",
+      "Init_Lot_3_170/Implant_90-1于25.3h触发qtime_override延迟34.8min",
+      "Init_Lot_3_170/Implant_90-2于25.6h触发qtime_override延迟49.8min",
+      "Init_Lot_3_170/Implant_90-2于26.4h触发qtime_override延迟34.8min",
+      "Init_Lot_8_116/Implant_90-2于27.0h触发qtime_override延迟34.8min"
+     ]
+    },
+    "markdown": "# 交班报告 · 24.0-36.0 h\n\n**概要:** 本班次（24.0-36.0h）内，6工具持续停机，16次qtime_override频繁触发，多个lot和工具面临延迟风险。WIP泡沫在Implant_91及FE/BE工具间波动，需关注下班接班事项。\n\n## 主要问题\n- 6工具(DE_BE_13-6/DE_FE_51-17/DE_FE_62-1/Dielectric_BE_27-10/Dielectric_FE_30-1/Diffusion_FE_120-5)自不同时间点以来持续停机\n- 16次qtime_override触发，涉及Init_Lot_9_111/10_122/3_170/8_116\n- 4个风险lot(Init_Lot_4_4/1_4/3_2/2_2)当前逾期/滞后，slack_h分别为-28.4/-23.6/-16.9/-2.3\n- WIP泡沫WE_FE_41累计69-109片，WE_BE_16累计36-70片，Implant_91累计66-99片，产能紧张\n- DE_FE_51-17自31.6h以来停机，ETA 39.4h；DE_FE_62-1自31.2h以来，ETA 40.6h\n- 下班后Litho_FE_35/LithoTrack_FE_96将在153.6h后开始PM，Litho_BE_99在158.4h后开始\n\n## WIP 堆积\n- WE_FE_41: 69-109片\n- WE_BE_16: 36-70片\n- Implant_91: 66-99片\n\n## 有迟交风险的批次\n- Init_Lot_4_4: due 13.1h slack -28.4h 逾期\n- Init_Lot_1_4: due 14.7h slack -23.6h 逾期\n- Init_Lot_3_2: due 29.0h slack -16.9h 逾期\n- Init_Lot_2_2: due 37.1h slack -2.3h 滞后\n\n## 宕机机台（预计恢复、备注）\n- DE_BE_13-6 · ETA 53.5 h · 自34.6h以来停机，预计53.5h恢复\n- DE_FE_51-17 · ETA 39.4 h · 自31.6h以来停机，预计39.4h恢复\n- DE_FE_62-1 · ETA 40.6 h · 自31.2h以来停机，预计40.6h恢复\n- Dielectric_BE_27-10 · ETA 41.1 h · 自31.4h以来停机，预计41.1h恢复\n- Dielectric_FE_30-1 · ETA 45.8 h · 自27.7h以来停机，预计45.8h恢复\n- Diffusion_FE_120-5 · ETA 37.9 h · 自35.4h以来停机，预计37.9h恢复\n\n## 下一班 PM\n- 无\n\n## 决策让行及结果\n- Init_Lot_9_111/Implant_90-1于24.8h触发qtime_override延迟34.8min\n- Init_Lot_10_122/Implant_90-2于25.1h触发qtime_override延迟28.8min\n- Init_Lot_3_170/Implant_90-1于25.3h触发qtime_override延迟34.8min\n- Init_Lot_3_170/Implant_90-2于25.6h触发qtime_override延迟49.8min\n- Init_Lot_3_170/Implant_90-2于26.4h触发qtime_override延迟34.8min\n- Init_Lot_8_116/Implant_90-2于27.0h触发qtime_override延迟34.8min\n\n_仅供参考；未下发任何派工。_\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": true,
+    "must_mention": [
+     "DE_BE_13-6",
+     "DE_FE_51-17",
+     "DE_FE_62-1",
+     "Dielectric_BE_27-10",
+     "Dielectric_FE_30-1",
+     "Diffusion_FE_120-5",
+     "Init_Lot_4_4",
+     "Init_Lot_1_4",
+     "Init_Lot_3_2",
+     "WE_FE_41",
+     "WE_BE_16",
+     "Implant_91"
+    ],
+    "must_named": [
+     "DE_BE_13-6",
+     "DE_FE_51-17",
+     "DE_FE_62-1",
+     "Dielectric_BE_27-10",
+     "Dielectric_FE_30-1",
+     "Diffusion_FE_120-5",
+     "Init_Lot_4_4",
+     "Init_Lot_1_4",
+     "Init_Lot_3_2",
+     "WE_FE_41",
+     "WE_BE_16",
+     "Implant_91"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 8,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 728830.8,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s1-24h-ja",
+   "seed": 1,
+   "lang": "ja",
+   "ai": {
+    "seed": 1,
+    "shift_h": [
+     24.0,
+     36.0
+    ],
+    "language": "ja",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 170,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 214,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 309,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 400,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 438,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 508,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 2062,
+    "replayed_history_units": 8462,
+    "chunk_notes": [
+     {
+      "window_h": [
+       24.0,
+       26.0
+      ],
+      "notes": [
+       "24.0-26.0窓でDE_FE_71-6, Implant_88-1, Implant_91-2がダウン",
+       "オーバーライドによりInit_Lot_9_111, Init_Lot_10_122が遅延中",
+       "WIP: WE_FE_84(5-17), Planar_FE_76(1-7), TF_BE_40(0-5)"
+      ]
+     },
+     {
+      "window_h": [
+       26.0,
+       28.0
+      ],
+      "notes": [
+       "26-28窓でImplant_91-2がダウン継続",
+       "Litho_BE_93-2が57.6で最長ダウン",
+       "Init_Lot_9_133が27.6にEPI_38-1で遅延"
+      ]
+     },
+     {
+      "window_h": [
+       28.0,
+       30.0
+      ],
+      "notes": [
+       "28-30窓でDE_BE_11-1からDiffusion_FE_94-5まで6ツールがダウン継続",
+       "OverrideによりInit_Lot_3_161がEPI_38-1で26.7分、Init_Lot_8_119がImplant_90-2で34.8分遅延",
+       "WIPバブルWE_FE_84(12-28)とImplant_90(17-27)がこの窓で終了"
+      ]
+     },
+     {
+      "window_h": [
+       30.0,
+       32.0
+      ],
+      "notes": [
+       "30-32h窓でDE_FE_86-30、DE_FE_86-69がダウン継続",
+       "Dielectric_FE_30-1とDiffusion_FE_94-5が長時間ダウン",
+       "Implant_132-3、Implant_90-1ダウンに伴いInit_Lot_8_124、Init_Lot_10_118がOverride遅延"
+      ]
+     },
+     {
+      "window_h": [
+       32.0,
+       34.0
+      ],
+      "notes": [
+       "DE_FE_86-30は32-34窓で継続ダウン",
+       "Init_Lot_8_124がImplant_90-2により遅延",
+       "Dielectric_FE_30-1のダウンが解消"
+      ]
+     },
+     {
+      "window_h": [
+       34.0,
+       36.0
+      ],
+      "notes": [
+       "34-36窓でDE_FE_51-17、DE_FE_62-1が継続ダウン",
+       "Dielectric_FE_30-1とImplant_90-1が長時間ダウン中",
+       "Init_Lot_3_170がTF_FE_3-1によりオーバーライドで遅延"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      24.0,
+      36.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_13-6",
+       "family": "DE_BE_13",
+       "since_h": 34.6,
+       "eta_h": 53.5,
+       "hours_left": 17.5
+      },
+      {
+       "tool": "DE_FE_51-17",
+       "family": "DE_FE_51",
+       "since_h": 31.6,
+       "eta_h": 39.4,
+       "hours_left": 3.4
+      },
+      {
+       "tool": "DE_FE_62-1",
+       "family": "DE_FE_62",
+       "since_h": 31.2,
+       "eta_h": 40.6,
+       "hours_left": 4.6
+      },
+      {
+       "tool": "Dielectric_BE_27-10",
+       "family": "Dielectric_BE_27",
+       "since_h": 31.4,
+       "eta_h": 41.1,
+       "hours_left": 5.1
+      },
+      {
+       "tool": "Dielectric_FE_30-1",
+       "family": "Dielectric_FE_30",
+       "since_h": 27.7,
+       "eta_h": 45.8,
+       "hours_left": 9.8
+      },
+      {
+       "tool": "Diffusion_FE_120-5",
+       "family": "Diffusion_FE_120",
+       "since_h": 35.4,
+       "eta_h": 37.9,
+       "hours_left": 1.9
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -16.9,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_2_2",
+       "due_h": 37.1,
+       "slack_h": -2.3,
+       "late_now": false
+      }
+     ],
+     "at_risk_count": 4,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_41",
+       "wip_from": 69,
+       "wip_to": 109
+      },
+      {
+       "family": "WE_BE_16",
+       "wip_from": 36,
+       "wip_to": 70
+      },
+      {
+       "family": "Implant_91",
+       "wip_from": 66,
+       "wip_to": 99
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_9_111",
+       "tool": "Implant_90-1",
+       "at_h": 24.8,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_10_122",
+       "tool": "Implant_90-2",
+       "at_h": 25.1,
+       "delay_min": 28.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-1",
+       "at_h": 25.3,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-2",
+       "at_h": 25.6,
+       "delay_min": 49.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_170",
+       "tool": "Implant_90-2",
+       "at_h": 26.4,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_116",
+       "tool": "Implant_90-2",
+       "at_h": 27.0,
+       "delay_min": 34.8,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 16,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_13-6",
+       "DE_FE_51-17",
+       "DE_FE_62-1",
+       "Dielectric_BE_27-10",
+       "Dielectric_FE_30-1",
+       "Diffusion_FE_120-5"
+      ],
+      "lots": [
+       "Init_Lot_4_4",
+       "Init_Lot_1_4",
+       "Init_Lot_3_2"
+      ],
+      "families": [
+       "WE_FE_41",
+       "WE_BE_16",
+       "Implant_91"
+      ]
+     }
+    },
+    "report": {
+     "summary": "36時間のシフト終了時、6ツールがダウンし4ロットが遅延リスク。ツール復旧とロット優先順位の見直しを提案する。",
+     "top_issues": [
+      "DE_FE_86-30 ダウン継続",
+      "Implant_90-1 長時間ダウン",
+      "Dielectric_FE_30-1 長時間ダウン",
+      "Init_Lot_4_4 スラック切れ",
+      "Init_Lot_1_4 スラック切れ",
+      "Init_Lot_3_2 スラック切れ"
+     ],
+     "wip_bubbles": [
+      "WE_FE_41: 69-109",
+      "WE_BE_16: 36-70",
+      "Implant_91: 66-99"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_4_4 (due 13.1, slack -28.4, late)",
+      "Init_Lot_1_4 (due 14.7, slack -23.6, late)",
+      "Init_Lot_3_2 (due 29.0, slack -16.9, late)",
+      "Init_Lot_2_2 (due 37.1, slack -2.3)"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_13-6",
+       "eta_h": 53.5,
+       "note": "34.6hよりダウン、ETA 53.5hで復旧見込み"
+      },
+      {
+       "tool": "DE_FE_51-17",
+       "eta_h": 39.4,
+       "note": "31.6hよりダウン、ETA 39.4hで復旧見込み"
+      },
+      {
+       "tool": "DE_FE_62-1",
+       "eta_h": 40.6,
+       "note": "31.2hよりダウン、ETA 40.6hで復旧見込み"
+      },
+      {
+       "tool": "Dielectric_BE_27-10",
+       "eta_h": 41.1,
+       "note": "31.4hよりダウン、ETA 41.1hで復旧見込み"
+      },
+      {
+       "tool": "Dielectric_FE_30-1",
+       "eta_h": 45.8,
+       "note": "27.7hよりダウン、ETA 45.8hで復旧見込み"
+      },
+      {
+       "tool": "Diffusion_FE_120-5",
+       "eta_h": 37.9,
+       "note": "35.4hよりダウン、ETA 37.9hで復旧見込み"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_Lot_9_111: Implant_90-1 at 24.8h, 34.8min delay",
+      "Init_Lot_10_122: Implant_90-2 at 25.1h, 28.8min delay",
+      "Init_Lot_3_170: Implant_90-1 at 25.3h, 34.8min delay",
+      "Init_Lot_3_170: Implant_90-2 at 25.6h, 49.8min delay",
+      "Init_Lot_3_170: Implant_90-2 at 26.4h, 34.8min delay",
+      "Init_Lot_8_116: Implant_90-2 at 27.0h, 34.8min delay"
+     ]
+    },
+    "markdown": "# シフト引き継ぎ · 24.0-36.0 h\n\n**概要:** 36時間のシフト終了時、6ツールがダウンし4ロットが遅延リスク。ツール復旧とロット優先順位の見直しを提案する。\n\n## 主な課題\n- DE_FE_86-30 ダウン継続\n- Implant_90-1 長時間ダウン\n- Dielectric_FE_30-1 長時間ダウン\n- Init_Lot_4_4 スラック切れ\n- Init_Lot_1_4 スラック切れ\n- Init_Lot_3_2 スラック切れ\n\n## WIP 滞留\n- WE_FE_41: 69-109\n- WE_BE_16: 36-70\n- Implant_91: 66-99\n\n## 遅延リスクのあるロット\n- Init_Lot_4_4 (due 13.1, slack -28.4, late)\n- Init_Lot_1_4 (due 14.7, slack -23.6, late)\n- Init_Lot_3_2 (due 29.0, slack -16.9, late)\n- Init_Lot_2_2 (due 37.1, slack -2.3)\n\n## ダウン中の装置（復旧見込み・メモ）\n- DE_BE_13-6 · ETA 53.5 h · 34.6hよりダウン、ETA 53.5hで復旧見込み\n- DE_FE_51-17 · ETA 39.4 h · 31.6hよりダウン、ETA 39.4hで復旧見込み\n- DE_FE_62-1 · ETA 40.6 h · 31.2hよりダウン、ETA 40.6hで復旧見込み\n- Dielectric_BE_27-10 · ETA 41.1 h · 31.4hよりダウン、ETA 41.1hで復旧見込み\n- Dielectric_FE_30-1 · ETA 45.8 h · 27.7hよりダウン、ETA 45.8hで復旧見込み\n- Diffusion_FE_120-5 · ETA 37.9 h · 35.4hよりダウン、ETA 37.9hで復旧見込み\n\n## 次シフトの PM\n- なし\n\n## 判断による後回しとその結果\n- Init_Lot_9_111: Implant_90-1 at 24.8h, 34.8min delay\n- Init_Lot_10_122: Implant_90-2 at 25.1h, 28.8min delay\n- Init_Lot_3_170: Implant_90-1 at 25.3h, 34.8min delay\n- Init_Lot_3_170: Implant_90-2 at 25.6h, 49.8min delay\n- Init_Lot_3_170: Implant_90-2 at 26.4h, 34.8min delay\n- Init_Lot_8_116: Implant_90-2 at 27.0h, 34.8min delay\n\n_助言のみ。払い出しは行っていません。_\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_BE_13-6",
+     "DE_FE_51-17",
+     "DE_FE_62-1",
+     "Dielectric_BE_27-10",
+     "Dielectric_FE_30-1",
+     "Diffusion_FE_120-5",
+     "Init_Lot_4_4",
+     "Init_Lot_1_4",
+     "Init_Lot_3_2",
+     "WE_FE_41",
+     "WE_BE_16",
+     "Implant_91"
+    ],
+    "must_named": [
+     "DE_BE_13-6",
+     "DE_FE_51-17",
+     "DE_FE_62-1",
+     "Dielectric_BE_27-10",
+     "Dielectric_FE_30-1",
+     "Diffusion_FE_120-5",
+     "Init_Lot_4_4",
+     "Init_Lot_1_4",
+     "Init_Lot_3_2",
+     "WE_FE_41",
+     "WE_BE_16",
+     "Implant_91"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 481058.6,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s2-12h-en",
+   "seed": 2,
+   "lang": "en",
+   "ai": {
+    "seed": 2,
+    "shift_h": [
+     12.0,
+     24.0
+    ],
+    "language": "en",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 146,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 178,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 252,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 306,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 369,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 470,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 1744,
+    "replayed_history_units": 7096,
+    "chunk_notes": [
+     {
+      "window_h": [
+       12.0,
+       14.0
+      ],
+      "notes": [
+       "6 tools down for full 2h window",
+       "3 WIP bubbles active",
+       "3 lots completed"
+      ]
+     },
+     {
+      "window_h": [
+       14.0,
+       16.0
+      ],
+      "notes": [
+       "DE_BE_66-17 and Dielectric_BE_28-1 down across 14-16h window",
+       "Init_Lot_2_139 delayed 80.4min on TF_FE_3-2 at 14.3h",
+       "WIP bubbles: WE_FE_108 69 lots, Implant_128 batch 21-40, Diffusion_FE_94 24 lots"
+      ]
+     },
+     {
+      "window_h": [
+       16.0,
+       18.0
+      ],
+      "notes": [
+       "6 tools down in 16-18h window: DE_BE_66-1, DE_BE_66-17, DE_FE_59-8, DE_FE_86-54, Dielectric_BE_28-1, Implant_119-2 (all min_in_window 120m)",
+       "2 lots completed (lots_finished: 2) during this shift window",
+       "Open issues DE_BE_66-17 and Dielectric_BE_28-1 remain active across full 16-18h interval"
+      ]
+     },
+     {
+      "window_h": [
+       18.0,
+       20.0
+      ],
+      "notes": [
+       "DE_BE_66-17 and Dielectric_BE_28-1 down >120min in 18-20h window",
+       "WIP bubbles: Implant_128 (39-64), Implant_132 (27-43), DefMEt_FE_118 (0-13)",
+       "3 lots completed; no overrides in window"
+      ]
+     },
+     {
+      "window_h": [
+       20.0,
+       22.0
+      ],
+      "notes": [
+       "DE_BE_66-17 and Dielectric_BE_28-1 sustained outages >120min through 20-22h",
+       "Two qtime overrides applied: Init_Lot_8_125 (Implant_119-1 at 20.2h) and Init_Lot_9_125 (EPI_38-1 at 21.4h)",
+       "WIP bubble WE_FE_83 active (25 lots) within the window"
+      ]
+     },
+     {
+      "window_h": [
+       22.0,
+       24.0
+      ],
+      "notes": [
+       "DE_BE_66-17 and Dielectric_BE_28-1 outages persist >120min in 22-24h window (FACTS min_in_window: 120.0)",
+       "Qtime overrides applied 22.0-23.7h: Init_Lot_8_128@Implant_119-1, Init_Lot_3_156@TF_FE_3-1/2, Init_Lot_8_109@Implant_90-2, Init_Lot_8_130@EPI_38-1 (FACTS overrides list)",
+       "WE_FE_83 WIP bubble active (25 lots); 2 lots completed this window (FACTS lots_finished: 2)"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      12.0,
+      24.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_66-17",
+       "family": "DE_BE_66",
+       "since_h": 7.4,
+       "eta_h": 25.2,
+       "hours_left": 1.2
+      },
+      {
+       "tool": "DE_BE_69-1",
+       "family": "DE_BE_69",
+       "since_h": 22.9,
+       "eta_h": 26.3,
+       "hours_left": 2.3
+      },
+      {
+       "tool": "DE_FE_51-13",
+       "family": "DE_FE_51",
+       "since_h": 19.8,
+       "eta_h": 24.8,
+       "hours_left": 0.8
+      },
+      {
+       "tool": "DE_FE_71-5",
+       "family": "DE_FE_71",
+       "since_h": 23.1,
+       "eta_h": 24.5,
+       "hours_left": 0.5
+      },
+      {
+       "tool": "DE_FE_86-17",
+       "family": "DE_FE_86",
+       "since_h": 17.8,
+       "eta_h": 24.3,
+       "hours_left": 0.3
+      },
+      {
+       "tool": "DE_FE_86-69",
+       "family": "DE_FE_86",
+       "since_h": 19.9,
+       "eta_h": 26.5,
+       "hours_left": 2.5
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_6_2",
+       "due_h": 0.0,
+       "slack_h": -33.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_7_2",
+       "due_h": 2.8,
+       "slack_h": -31.8,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.3,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_1",
+       "due_h": 0.0,
+       "slack_h": -26.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_2",
+       "due_h": 0.0,
+       "slack_h": -26.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_10_1",
+       "due_h": 2.8,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -19.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_3",
+       "due_h": 8.8,
+       "slack_h": -17.7,
+       "late_now": true
+      }
+     ],
+     "at_risk_count": 13,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_108",
+       "wip_from": 41,
+       "wip_to": 122
+      },
+      {
+       "family": "Implant_128",
+       "wip_from": 10,
+       "wip_to": 72
+      },
+      {
+       "family": "WE_FE_41",
+       "wip_from": 15,
+       "wip_to": 58
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_2_139",
+       "tool": "TF_FE_3-2",
+       "at_h": 14.3,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_125",
+       "tool": "Implant_119-1",
+       "at_h": 20.2,
+       "delay_min": 28.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_125",
+       "tool": "EPI_38-1",
+       "at_h": 21.4,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_4_2",
+       "tool": "WE_FE_108-25",
+       "at_h": 22.0,
+       "delay_min": 28.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_128",
+       "tool": "Implant_119-1",
+       "at_h": 22.1,
+       "delay_min": 28.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_156",
+       "tool": "TF_FE_3-1",
+       "at_h": 22.4,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 9,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_66-17",
+       "DE_BE_69-1",
+       "DE_FE_51-13",
+       "DE_FE_71-5",
+       "DE_FE_86-17",
+       "DE_FE_86-69"
+      ],
+      "lots": [
+       "Init_Lot_6_2",
+       "Init_Lot_7_2",
+       "Init_Lot_4_4"
+      ],
+      "families": [
+       "WE_FE_108",
+       "Implant_128",
+       "WE_FE_41"
+      ]
+     }
+    },
+    "report": {
+     "summary": "DE_BE_66-17 and Dielectric_BE_28-1 outages persisted >120min through the 18-24h window, leaving 6 tools offline at shift end. 13 at-risk lots include Init_Lot_6_2, Init_Lot_7_2, Init_Lot_4_4 with negative slack, and 9 qtime overrides were applied to mitigate delays.",
+     "top_issues": [
+      "DE_BE_66-17 outage >120min",
+      "Dielectric_BE_28-1 outage >120min",
+      "6 tools down at shift end",
+      "13 at-risk lots with negative slack",
+      "WE_FE_108 WIP bubble active",
+      "9 qtime overrides applied"
+     ],
+     "wip_bubbles": [
+      "WE_FE_108 41-122",
+      "Implant_128 10-72",
+      "WE_FE_41 15-58"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_6_2",
+      "Init_Lot_7_2",
+      "Init_Lot_4_4",
+      "Init_Lot_4_1",
+      "Init_Lot_4_2",
+      "Init_Lot_10_1"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_66-17",
+       "eta_h": 25.2,
+       "note": "since 7.4h, eta 25.2h"
+      },
+      {
+       "tool": "DE_BE_69-1",
+       "eta_h": 26.3,
+       "note": "since 22.9h, eta 26.3h"
+      },
+      {
+       "tool": "DE_FE_51-13",
+       "eta_h": 24.8,
+       "note": "since 19.8h, eta 24.8h"
+      },
+      {
+       "tool": "DE_FE_71-5",
+       "eta_h": 24.5,
+       "note": "since 23.1h, eta 24.5h"
+      },
+      {
+       "tool": "DE_FE_86-17",
+       "eta_h": 24.3,
+       "note": "since 17.8h, eta 24.3h"
+      },
+      {
+       "tool": "DE_FE_86-69",
+       "eta_h": 26.5,
+       "note": "since 19.9h, eta 26.5h"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      {
+       "lot": "Init_Lot_2_139",
+       "tool": "TF_FE_3-2",
+       "at_h": 14.3,
+       "delay_min": 80.4
+      },
+      {
+       "lot": "Init_Lot_8_125",
+       "tool": "Implant_119-1",
+       "at_h": 20.2,
+       "delay_min": 28.9
+      },
+      {
+       "lot": "Init_Lot_9_125",
+       "tool": "EPI_38-1",
+       "at_h": 21.4,
+       "delay_min": 26.7
+      },
+      {
+       "lot": "Init_HotLot_4_2",
+       "tool": "WE_FE_108-25",
+       "at_h": 22.0,
+       "delay_min": 28.1
+      },
+      {
+       "lot": "Init_Lot_8_128",
+       "tool": "Implant_119-1",
+       "at_h": 22.1,
+       "delay_min": 28.9
+      },
+      {
+       "lot": "Init_Lot_3_156",
+       "tool": "TF_FE_3-1",
+       "at_h": 22.4,
+       "delay_min": 80.4
+      }
+     ]
+    },
+    "markdown": "# Shift handover · 12.0-24.0 h\n\n**Summary:** DE_BE_66-17 and Dielectric_BE_28-1 outages persisted >120min through the 18-24h window, leaving 6 tools offline at shift end. 13 at-risk lots include Init_Lot_6_2, Init_Lot_7_2, Init_Lot_4_4 with negative slack, and 9 qtime overrides were applied to mitigate delays.\n\n## Top issues\n- DE_BE_66-17 outage >120min\n- Dielectric_BE_28-1 outage >120min\n- 6 tools down at shift end\n- 13 at-risk lots with negative slack\n- WE_FE_108 WIP bubble active\n- 9 qtime overrides applied\n\n## WIP bubbles\n- WE_FE_108 41-122\n- Implant_128 10-72\n- WE_FE_41 15-58\n\n## At-risk lots\n- Init_Lot_6_2\n- Init_Lot_7_2\n- Init_Lot_4_4\n- Init_Lot_4_1\n- Init_Lot_4_2\n- Init_Lot_10_1\n\n## Tools down (ETA, note)\n- DE_BE_66-17 · ETA 25.2 h · since 7.4h, eta 25.2h\n- DE_BE_69-1 · ETA 26.3 h · since 22.9h, eta 26.3h\n- DE_FE_51-13 · ETA 24.8 h · since 19.8h, eta 24.8h\n- DE_FE_71-5 · ETA 24.5 h · since 23.1h, eta 24.5h\n- DE_FE_86-17 · ETA 24.3 h · since 17.8h, eta 24.3h\n- DE_FE_86-69 · ETA 26.5 h · since 19.9h, eta 26.5h\n\n## PM next shift\n- none\n\n## Decision overrides and outcomes\n- TF_FE_3-2 · ETA  h · \n- Implant_119-1 · ETA  h · \n- EPI_38-1 · ETA  h · \n- WE_FE_108-25 · ETA  h · \n- Implant_119-1 · ETA  h · \n- TF_FE_3-1 · ETA  h · \n\n_Advice only; nothing was dispatched._\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_BE_66-17",
+     "DE_BE_69-1",
+     "DE_FE_51-13",
+     "DE_FE_71-5",
+     "DE_FE_86-17",
+     "DE_FE_86-69",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_108",
+     "Implant_128",
+     "WE_FE_41"
+    ],
+    "must_named": [
+     "DE_BE_66-17",
+     "DE_BE_69-1",
+     "DE_FE_51-13",
+     "DE_FE_71-5",
+     "DE_FE_86-17",
+     "DE_FE_86-69",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_108",
+     "Implant_128",
+     "WE_FE_41"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 358562.2,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s2-12h-zh",
+   "seed": 2,
+   "lang": "zh",
+   "ai": {
+    "seed": 2,
+    "shift_h": [
+     12.0,
+     24.0
+    ],
+    "language": "zh",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 176,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 259,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 369,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 434,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 501,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 594,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 2356,
+    "replayed_history_units": 9656,
+    "chunk_notes": [
+     {
+      "window_h": [
+       12.0,
+       14.0
+      ],
+      "notes": [
+       "6件工具本时段离线超120分钟",
+       "WIP泡沫：WE_FE_108 41-69, Planar_FE_77 0-19, Diffusion_FE_94 8-24",
+       "完成3批次产出"
+      ]
+     },
+     {
+      "window_h": [
+       14.0,
+       16.0
+      ],
+      "notes": [
+       "14-16h窗口内6件工具离线超120分钟，DE_BE_66-17、Dielectric_BE_28-1等持续下线",
+       "WIP泡沫家族Dielectric_FE_130、Implant_128、TF_BE_26出现，需监控物流平衡",
+       "Init_Lot_2_139 在TF_FE_3-2产生80.4min qtime_override延迟，影响产出排程"
+      ]
+     },
+     {
+      "window_h": [
+       16.0,
+       18.0
+      ],
+      "notes": [
+       "16-18h窗口内6件工具离线超120分钟，DE_BE_66-17、Dielectric_BE_28-1持续下线",
+       "WIP泡沫家族Dielectric_FE_130、Implant_128、TF_BE_26本时段出现，需监控物流平衡",
+       "Init_Lot_2_139在TF_FE_3-2产生80.4min qtime_override延迟，当班共完成2批次产出"
+      ]
+     },
+     {
+      "window_h": [
+       18.0,
+       20.0
+      ],
+      "notes": [
+       "18-20h窗口DE_BE_66-17持续离线超120min",
+       "Dielectric_BE_28-1本窗口仍下线影响WIP平衡",
+       "DE_FE_86-54本时段离线导致产出延迟"
+      ]
+     },
+     {
+      "window_h": [
+       20.0,
+       22.0
+      ],
+      "notes": [
+       "DE_BE_66-17 持续离线超120min，产出受阻",
+       "DE_FE_71-10 在20-22h窗口内离线120min，产出延迟",
+       "Init_Lot_8_125/Init_Lot_9_125 在20.2/21.4h产生qtime_override延迟"
+      ]
+     },
+     {
+      "window_h": [
+       22.0,
+       24.0
+      ],
+      "notes": [
+       "22-24h窗口DE_BE_66-17持续离线超120min，产出受阻",
+       "Dielectric_BE_28-1继续下线，WIP平衡受影响",
+       "本窗口内多个qtime_override延迟（如Init_Lot_3_156/TF_FE_3-2产生80.4min），影响排程"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      12.0,
+      24.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_66-17",
+       "family": "DE_BE_66",
+       "since_h": 7.4,
+       "eta_h": 25.2,
+       "hours_left": 1.2
+      },
+      {
+       "tool": "DE_BE_69-1",
+       "family": "DE_BE_69",
+       "since_h": 22.9,
+       "eta_h": 26.3,
+       "hours_left": 2.3
+      },
+      {
+       "tool": "DE_FE_51-13",
+       "family": "DE_FE_51",
+       "since_h": 19.8,
+       "eta_h": 24.8,
+       "hours_left": 0.8
+      },
+      {
+       "tool": "DE_FE_71-5",
+       "family": "DE_FE_71",
+       "since_h": 23.1,
+       "eta_h": 24.5,
+       "hours_left": 0.5
+      },
+      {
+       "tool": "DE_FE_86-17",
+       "family": "DE_FE_86",
+       "since_h": 17.8,
+       "eta_h": 24.3,
+       "hours_left": 0.3
+      },
+      {
+       "tool": "DE_FE_86-69",
+       "family": "DE_FE_86",
+       "since_h": 19.9,
+       "eta_h": 26.5,
+       "hours_left": 2.5
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_6_2",
+       "due_h": 0.0,
+       "slack_h": -33.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_7_2",
+       "due_h": 2.8,
+       "slack_h": -31.8,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.3,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_1",
+       "due_h": 0.0,
+       "slack_h": -26.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_2",
+       "due_h": 0.0,
+       "slack_h": -26.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_10_1",
+       "due_h": 2.8,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -19.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_3",
+       "due_h": 8.8,
+       "slack_h": -17.7,
+       "late_now": true
+      }
+     ],
+     "at_risk_count": 13,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_108",
+       "wip_from": 41,
+       "wip_to": 122
+      },
+      {
+       "family": "Implant_128",
+       "wip_from": 10,
+       "wip_to": 72
+      },
+      {
+       "family": "WE_FE_41",
+       "wip_from": 15,
+       "wip_to": 58
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_2_139",
+       "tool": "TF_FE_3-2",
+       "at_h": 14.3,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_125",
+       "tool": "Implant_119-1",
+       "at_h": 20.2,
+       "delay_min": 28.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_125",
+       "tool": "EPI_38-1",
+       "at_h": 21.4,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_4_2",
+       "tool": "WE_FE_108-25",
+       "at_h": 22.0,
+       "delay_min": 28.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_128",
+       "tool": "Implant_119-1",
+       "at_h": 22.1,
+       "delay_min": 28.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_156",
+       "tool": "TF_FE_3-1",
+       "at_h": 22.4,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 9,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_66-17",
+       "DE_BE_69-1",
+       "DE_FE_51-13",
+       "DE_FE_71-5",
+       "DE_FE_86-17",
+       "DE_FE_86-69"
+      ],
+      "lots": [
+       "Init_Lot_6_2",
+       "Init_Lot_7_2",
+       "Init_Lot_4_4"
+      ],
+      "families": [
+       "WE_FE_108",
+       "Implant_128",
+       "WE_FE_41"
+      ]
+     }
+    },
+    "report": {
+     "summary": "DE_BE_66-17及Dielectric_BE_28-1持续离线，产出受阻。Init_Lot_6_2等关键批次因排程延迟面临风险。",
+     "top_issues": [
+      "DE_BE_66-17",
+      "Dielectric_BE_28-1"
+     ],
+     "wip_bubbles": [
+      "WE_FE_108",
+      "Implant_128",
+      "WE_FE_41"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_6_2",
+      "Init_Lot_7_2",
+      "Init_Lot_4_4",
+      "Init_Lot_10_1",
+      "Init_Lot_1_4",
+      "Init_Lot_4_3"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_66-17",
+       "eta_h": 25.2,
+       "note": "建议优先维修，当前ETA 25.2h"
+      },
+      {
+       "tool": "DE_BE_69-1",
+       "eta_h": 26.3,
+       "note": "建议优先维修，当前ETA 26.3h"
+      },
+      {
+       "tool": "DE_FE_51-13",
+       "eta_h": 24.8,
+       "note": "建议优先维修，当前ETA 24.8h"
+      },
+      {
+       "tool": "DE_FE_71-5",
+       "eta_h": 24.5,
+       "note": "建议优先维修，当前ETA 24.5h"
+      },
+      {
+       "tool": "DE_FE_86-17",
+       "eta_h": 24.3,
+       "note": "建议优先维修，当前ETA 24.3h"
+      },
+      {
+       "tool": "DE_FE_86-69",
+       "eta_h": 26.5,
+       "note": "建议优先维修，当前ETA 26.5h"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_Lot_2_139/TF_FE_3-2 在14.3h产生80.4min qtime_override延迟",
+      "Init_Lot_8_125/Implant_119-1 在20.2h产生28.9min qtime_override延迟",
+      "Init_Lot_9_125/EPI_38-1 在21.4h产生26.7min qtime_override延迟",
+      "Init_HotLot_4_2/WE_FE_108-25 在22.0h产生28.1min qtime_override延迟",
+      "Init_Lot_8_128/Implant_119-1 在22.1h产生28.9min qtime_override延迟",
+      "Init_Lot_3_156/TF_FE_3-1 在22.4h产生80.4min qtime_override延迟"
+     ]
+    },
+    "markdown": "# 交班报告 · 12.0-24.0 h\n\n**概要:** DE_BE_66-17及Dielectric_BE_28-1持续离线，产出受阻。Init_Lot_6_2等关键批次因排程延迟面临风险。\n\n## 主要问题\n- DE_BE_66-17\n- Dielectric_BE_28-1\n\n## WIP 堆积\n- WE_FE_108\n- Implant_128\n- WE_FE_41\n\n## 有迟交风险的批次\n- Init_Lot_6_2\n- Init_Lot_7_2\n- Init_Lot_4_4\n- Init_Lot_10_1\n- Init_Lot_1_4\n- Init_Lot_4_3\n\n## 宕机机台（预计恢复、备注）\n- DE_BE_66-17 · ETA 25.2 h · 建议优先维修，当前ETA 25.2h\n- DE_BE_69-1 · ETA 26.3 h · 建议优先维修，当前ETA 26.3h\n- DE_FE_51-13 · ETA 24.8 h · 建议优先维修，当前ETA 24.8h\n- DE_FE_71-5 · ETA 24.5 h · 建议优先维修，当前ETA 24.5h\n- DE_FE_86-17 · ETA 24.3 h · 建议优先维修，当前ETA 24.3h\n- DE_FE_86-69 · ETA 26.5 h · 建议优先维修，当前ETA 26.5h\n\n## 下一班 PM\n- 无\n\n## 决策让行及结果\n- Init_Lot_2_139/TF_FE_3-2 在14.3h产生80.4min qtime_override延迟\n- Init_Lot_8_125/Implant_119-1 在20.2h产生28.9min qtime_override延迟\n- Init_Lot_9_125/EPI_38-1 在21.4h产生26.7min qtime_override延迟\n- Init_HotLot_4_2/WE_FE_108-25 在22.0h产生28.1min qtime_override延迟\n- Init_Lot_8_128/Implant_119-1 在22.1h产生28.9min qtime_override延迟\n- Init_Lot_3_156/TF_FE_3-1 在22.4h产生80.4min qtime_override延迟\n\n_仅供参考；未下发任何派工。_\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_BE_66-17",
+     "DE_BE_69-1",
+     "DE_FE_51-13",
+     "DE_FE_71-5",
+     "DE_FE_86-17",
+     "DE_FE_86-69",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_108",
+     "Implant_128",
+     "WE_FE_41"
+    ],
+    "must_named": [
+     "DE_BE_66-17",
+     "DE_BE_69-1",
+     "DE_FE_51-13",
+     "DE_FE_71-5",
+     "DE_FE_86-17",
+     "DE_FE_86-69",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_108",
+     "Implant_128",
+     "WE_FE_41"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 355378.5,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s2-12h-ja",
+   "seed": 2,
+   "lang": "ja",
+   "ai": {
+    "seed": 2,
+    "shift_h": [
+     12.0,
+     24.0
+    ],
+    "language": "ja",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 158,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 190,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 244,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 317,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 380,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 465,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 1777,
+    "replayed_history_units": 7273,
+    "chunk_notes": [
+     {
+      "window_h": [
+       12.0,
+       14.0
+      ],
+      "notes": [
+       "DE_BE_66-17 が 120 分間ダウン",
+       "Dielectric_BE_28-1 も 120 分間ダウン",
+       "Litho_BE_110-20 ダウン、WIP WE_FE_108 41-69"
+      ]
+     },
+     {
+      "window_h": [
+       14.0,
+       16.0
+      ],
+      "notes": [
+       "DE_BE_66-17 120分ダウン",
+       "Dielectric_BE_28-1 120分ダウン",
+       "WE_FE_108 41-69 溜まり"
+      ]
+     },
+     {
+      "window_h": [
+       16.0,
+       18.0
+      ],
+      "notes": [
+       "16-18h: DE_BE_66-17 と Dielectric_BE_28-1 継続ダウン",
+       "DE_BE_66-1、DE_FE_59-8、DE_FE_86-54 が部分的にダウン",
+       "Implant_119-2 も 16-18h 継続ダウン"
+      ]
+     },
+     {
+      "window_h": [
+       18.0,
+       20.0
+      ],
+      "notes": [
+       "18-20h: DE_BE_66-17、Dielectric_BE_28-1 ともにダウン継続",
+       "DE_FE_86-17、DE_FE_86-54、DE_FE_86-60 もダウン中",
+       "WIP バブル: Implant_128 (39-64)、Implant_132 (27-43) 蓄積"
+      ]
+     },
+     {
+      "window_h": [
+       20.0,
+       22.0
+      ],
+      "notes": [
+       "DE_BE_66-17 継続ダウン (7.4-25.2h, min120min)",
+       "Dielectric_BE_28-1 18-20hダウン継続",
+       "20.2h/21.4h オーバーライド: Init_Lot_8_125→Implant_119-1, Init_Lot_9_125→EPI_38-1"
+      ]
+     },
+     {
+      "window_h": [
+       22.0,
+       24.0
+      ],
+      "notes": [
+       "DE_BE_66-17 と Dielectric_BE_28-1 は 22-24h 継続ダウン",
+       "22-24h 帯で 6 件の qtime_override 実施（Init_Lot_8_128→Implant_119-1 等）",
+       "DE_FE_51-13、DE_FE_86-17、DE_FE_86-69 も 22-24h 帯でダウン継続"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      12.0,
+      24.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_66-17",
+       "family": "DE_BE_66",
+       "since_h": 7.4,
+       "eta_h": 25.2,
+       "hours_left": 1.2
+      },
+      {
+       "tool": "DE_BE_69-1",
+       "family": "DE_BE_69",
+       "since_h": 22.9,
+       "eta_h": 26.3,
+       "hours_left": 2.3
+      },
+      {
+       "tool": "DE_FE_51-13",
+       "family": "DE_FE_51",
+       "since_h": 19.8,
+       "eta_h": 24.8,
+       "hours_left": 0.8
+      },
+      {
+       "tool": "DE_FE_71-5",
+       "family": "DE_FE_71",
+       "since_h": 23.1,
+       "eta_h": 24.5,
+       "hours_left": 0.5
+      },
+      {
+       "tool": "DE_FE_86-17",
+       "family": "DE_FE_86",
+       "since_h": 17.8,
+       "eta_h": 24.3,
+       "hours_left": 0.3
+      },
+      {
+       "tool": "DE_FE_86-69",
+       "family": "DE_FE_86",
+       "since_h": 19.9,
+       "eta_h": 26.5,
+       "hours_left": 2.5
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_6_2",
+       "due_h": 0.0,
+       "slack_h": -33.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_7_2",
+       "due_h": 2.8,
+       "slack_h": -31.8,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -28.3,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_1",
+       "due_h": 0.0,
+       "slack_h": -26.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_2",
+       "due_h": 0.0,
+       "slack_h": -26.4,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_10_1",
+       "due_h": 2.8,
+       "slack_h": -23.6,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_1_4",
+       "due_h": 14.7,
+       "slack_h": -19.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_4_3",
+       "due_h": 8.8,
+       "slack_h": -17.7,
+       "late_now": true
+      }
+     ],
+     "at_risk_count": 13,
+     "wip_bubbles": [
+      {
+       "family": "WE_FE_108",
+       "wip_from": 41,
+       "wip_to": 122
+      },
+      {
+       "family": "Implant_128",
+       "wip_from": 10,
+       "wip_to": 72
+      },
+      {
+       "family": "WE_FE_41",
+       "wip_from": 15,
+       "wip_to": 58
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_2_139",
+       "tool": "TF_FE_3-2",
+       "at_h": 14.3,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_125",
+       "tool": "Implant_119-1",
+       "at_h": 20.2,
+       "delay_min": 28.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_125",
+       "tool": "EPI_38-1",
+       "at_h": 21.4,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_HotLot_4_2",
+       "tool": "WE_FE_108-25",
+       "at_h": 22.0,
+       "delay_min": 28.1,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_128",
+       "tool": "Implant_119-1",
+       "at_h": 22.1,
+       "delay_min": 28.9,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_156",
+       "tool": "TF_FE_3-1",
+       "at_h": 22.4,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 9,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_66-17",
+       "DE_BE_69-1",
+       "DE_FE_51-13",
+       "DE_FE_71-5",
+       "DE_FE_86-17",
+       "DE_FE_86-69"
+      ],
+      "lots": [
+       "Init_Lot_6_2",
+       "Init_Lot_7_2",
+       "Init_Lot_4_4"
+      ],
+      "families": [
+       "WE_FE_108",
+       "Implant_128",
+       "WE_FE_41"
+      ]
+     }
+    },
+    "report": {
+     "summary": "シフト中に複数のツールがダウンし、ウェーハバブルと遅延ロットが発生しました。次のシフトではツールの復旧状況とリスクロットの優先順位を確認してください。",
+     "top_issues": [
+      "DE_BE_66-17",
+      "Dielectric_BE_28-1"
+     ],
+     "wip_bubbles": [
+      "WE_FE_108 (41-122)",
+      "Implant_128 (10-72)",
+      "WE_FE_41 (15-58)"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_6_2",
+      "Init_Lot_7_2",
+      "Init_Lot_4_4"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_66-17",
+       "eta_h": 25.2,
+       "note": "復旧見込み 25.2h、次のシフトで状況確認を推奨します。"
+      },
+      {
+       "tool": "DE_BE_69-1",
+       "eta_h": 26.3,
+       "note": "復旧見込み 26.3h、次のシフトで状況確認を推奨します。"
+      },
+      {
+       "tool": "DE_FE_51-13",
+       "eta_h": 24.8,
+       "note": "復旧見込み 24.8h、次のシフトで状況確認を推奨します。"
+      },
+      {
+       "tool": "DE_FE_71-5",
+       "eta_h": 24.5,
+       "note": "復旧見込み 24.5h、次のシフトで状況確認を推奨します。"
+      },
+      {
+       "tool": "DE_FE_86-17",
+       "eta_h": 24.3,
+       "note": "復旧見込み 24.3h、次のシフトで状況確認を推奨します。"
+      },
+      {
+       "tool": "DE_FE_86-69",
+       "eta_h": 26.5,
+       "note": "復旧見込み 26.5h、次のシフトで状況確認を推奨します。"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_Lot_2_139 TF_FE_3-2 14.3時間 80.4分 qtime_override",
+      "Init_Lot_8_125 Implant_119-1 20.2時間 28.9分 qtime_override",
+      "Init_Lot_9_125 EPI_38-1 21.4時間 26.7分 qtime_override",
+      "Init_HotLot_4_2 WE_FE_108-25 22.0時間 28.1分 qtime_override",
+      "Init_Lot_8_128 Implant_119-1 22.1時間 28.9分 qtime_override",
+      "Init_Lot_3_156 TF_FE_3-1 22.4時間 80.4分 qtime_override"
+     ]
+    },
+    "markdown": "# シフト引き継ぎ · 12.0-24.0 h\n\n**概要:** シフト中に複数のツールがダウンし、ウェーハバブルと遅延ロットが発生しました。次のシフトではツールの復旧状況とリスクロットの優先順位を確認してください。\n\n## 主な課題\n- DE_BE_66-17\n- Dielectric_BE_28-1\n\n## WIP 滞留\n- WE_FE_108 (41-122)\n- Implant_128 (10-72)\n- WE_FE_41 (15-58)\n\n## 遅延リスクのあるロット\n- Init_Lot_6_2\n- Init_Lot_7_2\n- Init_Lot_4_4\n\n## ダウン中の装置（復旧見込み・メモ）\n- DE_BE_66-17 · ETA 25.2 h · 復旧見込み 25.2h、次のシフトで状況確認を推奨します。\n- DE_BE_69-1 · ETA 26.3 h · 復旧見込み 26.3h、次のシフトで状況確認を推奨します。\n- DE_FE_51-13 · ETA 24.8 h · 復旧見込み 24.8h、次のシフトで状況確認を推奨します。\n- DE_FE_71-5 · ETA 24.5 h · 復旧見込み 24.5h、次のシフトで状況確認を推奨します。\n- DE_FE_86-17 · ETA 24.3 h · 復旧見込み 24.3h、次のシフトで状況確認を推奨します。\n- DE_FE_86-69 · ETA 26.5 h · 復旧見込み 26.5h、次のシフトで状況確認を推奨します。\n\n## 次シフトの PM\n- なし\n\n## 判断による後回しとその結果\n- Init_Lot_2_139 TF_FE_3-2 14.3時間 80.4分 qtime_override\n- Init_Lot_8_125 Implant_119-1 20.2時間 28.9分 qtime_override\n- Init_Lot_9_125 EPI_38-1 21.4時間 26.7分 qtime_override\n- Init_HotLot_4_2 WE_FE_108-25 22.0時間 28.1分 qtime_override\n- Init_Lot_8_128 Implant_119-1 22.1時間 28.9分 qtime_override\n- Init_Lot_3_156 TF_FE_3-1 22.4時間 80.4分 qtime_override\n\n_助言のみ。払い出しは行っていません。_\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_BE_66-17",
+     "DE_BE_69-1",
+     "DE_FE_51-13",
+     "DE_FE_71-5",
+     "DE_FE_86-17",
+     "DE_FE_86-69",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_108",
+     "Implant_128",
+     "WE_FE_41"
+    ],
+    "must_named": [
+     "DE_BE_66-17",
+     "DE_BE_69-1",
+     "DE_FE_51-13",
+     "DE_FE_71-5",
+     "DE_FE_86-17",
+     "DE_FE_86-69",
+     "Init_Lot_6_2",
+     "Init_Lot_7_2",
+     "Init_Lot_4_4",
+     "WE_FE_108",
+     "Implant_128",
+     "WE_FE_41"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 362890.0,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s2-24h-en",
+   "seed": 2,
+   "lang": "en",
+   "ai": {
+    "seed": 2,
+    "shift_h": [
+     24.0,
+     36.0
+    ],
+    "language": "en",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 150,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 243,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 302,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 359,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 419,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 487,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 1983,
+    "replayed_history_units": 8176,
+    "chunk_notes": [
+     {
+      "window_h": [
+       24.0,
+       26.0
+      ],
+      "notes": [
+       "DE_BE_69-1 down 120min in window (22.9–26.3h)",
+       "Dielectric_BE_27-7 down 120min (23.1–51.0h) spans beyond window",
+       "Init_Lot_8_133 delayed 26.7min on EPI_38-1 at 25.8h"
+      ]
+     },
+     {
+      "window_h": [
+       26.0,
+       28.0
+      ],
+      "notes": [
+       "DE_BE_69-1 down 120min in window (22.9–26.3h); Dielectric_BE_27-7 downtime 23.1–51.0h extends beyond window",
+       "Init_Lot_8_133 and Init_Lot_9_134 delayed 26.7min on EPI_38-1 at 25.8h and 27.1h",
+       "WIP bubbles Implant_91 (61), DE_FE_72 (6), Diffusion_FE_126 (6) present; Dielectric_BE_27-12 and Dielectric_BE_28-1 down >120min in window"
+      ]
+     },
+     {
+      "window_h": [
+       28.0,
+       30.0
+      ],
+      "notes": [
+       "Dielectric_BE_27-7 down 23.1–51.0",
+       "Init_Lot_3_178 delayed 80.4min on TF_FE_3-1 at 29.1",
+       "Init_Lot_8_142 delayed 26.7min on EPI_38-1 at 28.0, 28.9, 29.4"
+      ]
+     },
+     {
+      "window_h": [
+       30.0,
+       32.0
+      ],
+      "notes": [
+       "Dielectric_BE_27-7 down 23.1–51.0h spans entire 30–32h window",
+       "DE_BE_69-3 down 120min in window (26.1–38.5h) causing BE bottleneck",
+       "Override lots Init_Lot_3_171, Init_Lot_1_143, Init_Lot_3_156 delayed 26.7–80.4min on EPI_38-1/TF_FE_3-2 at 30.3–31.8h"
+      ]
+     },
+     {
+      "window_h": [
+       32.0,
+       34.0
+      ],
+      "notes": [
+       "Dielectric_BE_27-7 down 23.1–51.0h covers entire 32–34h window",
+       "DE_BE_69-3 down 120min (26.1–38.5h) causing BE bottleneck",
+       "Override Init_Lot_1_139 delayed 80.4min on TF_FE_3-2 at 33.1h; Init_Lot_1_143 34.8min at 32.5h"
+      ]
+     },
+     {
+      "window_h": [
+       34.0,
+       36.0
+      ],
+      "notes": [
+       "Dielectric_BE_27-7 down entire 34–36h window (23.1–51.0h)",
+       "DE_BE_69-3 BE bottleneck active through 38.5h impacting 34–36h",
+       "Override lots Init_Lot_3_172@34.4h/TF_FE_3-2, Init_Lot_1_169@34.7h/EPI_38-1, Init_HotLot_6_3@35.2h/WE_FE_108-27 causing delays"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      24.0,
+      36.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_13-10",
+       "family": "DE_BE_13",
+       "since_h": 33.7,
+       "eta_h": 42.4,
+       "hours_left": 6.4
+      },
+      {
+       "tool": "DE_BE_50-10",
+       "family": "DE_BE_50",
+       "since_h": 30.5,
+       "eta_h": 39.7,
+       "hours_left": 3.7
+      },
+      {
+       "tool": "DE_BE_66-3",
+       "family": "DE_BE_66",
+       "since_h": 35.7,
+       "eta_h": 41.0,
+       "hours_left": 5.0
+      },
+      {
+       "tool": "DE_BE_69-3",
+       "family": "DE_BE_69",
+       "since_h": 26.1,
+       "eta_h": 38.5,
+       "hours_left": 2.5
+      },
+      {
+       "tool": "DE_FE_72-3",
+       "family": "DE_FE_72",
+       "since_h": 33.5,
+       "eta_h": 37.0,
+       "hours_left": 1.0
+      },
+      {
+       "tool": "DE_FE_72-4",
+       "family": "DE_FE_72",
+       "since_h": 33.4,
+       "eta_h": 36.2,
+       "hours_left": 0.2
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -26.1,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -14.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_2_2",
+       "due_h": 37.1,
+       "slack_h": -4.0,
+       "late_now": false
+      }
+     ],
+     "at_risk_count": 3,
+     "wip_bubbles": [
+      {
+       "family": "Implant_128",
+       "wip_from": 72,
+       "wip_to": 112
+      },
+      {
+       "family": "Implant_91",
+       "wip_from": 37,
+       "wip_to": 65
+      },
+      {
+       "family": "WE_BE_9",
+       "wip_from": 39,
+       "wip_to": 61
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_8_133",
+       "tool": "EPI_38-1",
+       "at_h": 25.8,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_134",
+       "tool": "EPI_38-1",
+       "at_h": 27.1,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_142",
+       "tool": "EPI_38-1",
+       "at_h": 28.0,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_142",
+       "tool": "EPI_38-1",
+       "at_h": 28.9,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_178",
+       "tool": "TF_FE_3-2",
+       "at_h": 29.1,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_178",
+       "tool": "TF_FE_3-3",
+       "at_h": 29.1,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 23,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_13-10",
+       "DE_BE_50-10",
+       "DE_BE_66-3",
+       "DE_BE_69-3",
+       "DE_FE_72-3",
+       "DE_FE_72-4"
+      ],
+      "lots": [
+       "Init_Lot_4_4",
+       "Init_Lot_3_2",
+       "Init_Lot_2_2"
+      ],
+      "families": [
+       "Implant_128",
+       "Implant_91",
+       "WE_BE_9"
+      ]
+     }
+    },
+    "report": {
+     "summary": "Dielectric_BE_27-7 down 23.1–51.0h spans the full 24–36h shift window, and DE_BE_69-3 causes BE bottleneck through 38.5h. Override lots Init_Lot_3_178 on TF_FE_3-2 and Init_Lot_8_133 on EPI_38-1 have incurred 80.4min and 26.7min delays, suggesting priority review for at-risk lots Init_Lot_4_4 and Init_Lot_3_2.",
+     "top_issues": [
+      "Dielectric_BE_27-7",
+      "DE_BE_69-3"
+     ],
+     "wip_bubbles": [
+      "Implant_128 (72-112)",
+      "Implant_91 (37-65)",
+      "WE_BE_9 (39-61)"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_4_4 due=13.1 slack=-26.1 late=true",
+      "Init_Lot_3_2 due=29.0 slack=-14.2 late=true",
+      "Init_Lot_2_2 due=37.1 slack=-4.0 late=false"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_13-10",
+       "eta_h": 42.4,
+       "note": "Down since 33.7h, ETA 42.4h"
+      },
+      {
+       "tool": "DE_BE_50-10",
+       "eta_h": 39.7,
+       "note": "Down since 30.5h, ETA 39.7h"
+      },
+      {
+       "tool": "DE_BE_66-3",
+       "eta_h": 41.0,
+       "note": "Down since 35.7h, ETA 41.0h"
+      },
+      {
+       "tool": "DE_BE_69-3",
+       "eta_h": 38.5,
+       "note": "Down since 26.1h, ETA 38.5h"
+      },
+      {
+       "tool": "DE_FE_72-3",
+       "eta_h": 37.0,
+       "note": "Down since 33.5h, ETA 37.0h"
+      },
+      {
+       "tool": "DE_FE_72-4",
+       "eta_h": 36.2,
+       "note": "Down since 33.4h, ETA 36.2h"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_Lot_8_133 EPI_38-1 at 25.8h 26.7min qtime_override",
+      "Init_Lot_9_134 EPI_38-1 at 27.1h 26.7min qtime_override",
+      "Init_Lot_8_142 EPI_38-1 at 28.0h 26.7min qtime_override",
+      "Init_Lot_8_142 EPI_38-1 at 28.9h 26.7min qtime_override",
+      "Init_Lot_3_178 TF_FE_3-2 at 29.1h 80.4min qtime_override",
+      "Init_Lot_3_178 TF_FE_3-3 at 29.1h 80.4min qtime_override"
+     ]
+    },
+    "markdown": "# Shift handover · 24.0-36.0 h\n\n**Summary:** Dielectric_BE_27-7 down 23.1–51.0h spans the full 24–36h shift window, and DE_BE_69-3 causes BE bottleneck through 38.5h. Override lots Init_Lot_3_178 on TF_FE_3-2 and Init_Lot_8_133 on EPI_38-1 have incurred 80.4min and 26.7min delays, suggesting priority review for at-risk lots Init_Lot_4_4 and Init_Lot_3_2.\n\n## Top issues\n- Dielectric_BE_27-7\n- DE_BE_69-3\n\n## WIP bubbles\n- Implant_128 (72-112)\n- Implant_91 (37-65)\n- WE_BE_9 (39-61)\n\n## At-risk lots\n- Init_Lot_4_4 due=13.1 slack=-26.1 late=true\n- Init_Lot_3_2 due=29.0 slack=-14.2 late=true\n- Init_Lot_2_2 due=37.1 slack=-4.0 late=false\n\n## Tools down (ETA, note)\n- DE_BE_13-10 · ETA 42.4 h · Down since 33.7h, ETA 42.4h\n- DE_BE_50-10 · ETA 39.7 h · Down since 30.5h, ETA 39.7h\n- DE_BE_66-3 · ETA 41.0 h · Down since 35.7h, ETA 41.0h\n- DE_BE_69-3 · ETA 38.5 h · Down since 26.1h, ETA 38.5h\n- DE_FE_72-3 · ETA 37.0 h · Down since 33.5h, ETA 37.0h\n- DE_FE_72-4 · ETA 36.2 h · Down since 33.4h, ETA 36.2h\n\n## PM next shift\n- none\n\n## Decision overrides and outcomes\n- Init_Lot_8_133 EPI_38-1 at 25.8h 26.7min qtime_override\n- Init_Lot_9_134 EPI_38-1 at 27.1h 26.7min qtime_override\n- Init_Lot_8_142 EPI_38-1 at 28.0h 26.7min qtime_override\n- Init_Lot_8_142 EPI_38-1 at 28.9h 26.7min qtime_override\n- Init_Lot_3_178 TF_FE_3-2 at 29.1h 80.4min qtime_override\n- Init_Lot_3_178 TF_FE_3-3 at 29.1h 80.4min qtime_override\n\n_Advice only; nothing was dispatched._\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_BE_13-10",
+     "DE_BE_50-10",
+     "DE_BE_66-3",
+     "DE_BE_69-3",
+     "DE_FE_72-3",
+     "DE_FE_72-4",
+     "Init_Lot_4_4",
+     "Init_Lot_3_2",
+     "Init_Lot_2_2",
+     "Implant_128",
+     "Implant_91",
+     "WE_BE_9"
+    ],
+    "must_named": [
+     "DE_BE_13-10",
+     "DE_BE_50-10",
+     "DE_BE_66-3",
+     "DE_BE_69-3",
+     "DE_FE_72-3",
+     "DE_FE_72-4",
+     "Init_Lot_4_4",
+     "Init_Lot_3_2",
+     "Init_Lot_2_2",
+     "Implant_128",
+     "Implant_91",
+     "WE_BE_9"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 567787.4,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s2-24h-zh",
+   "seed": 2,
+   "lang": "zh",
+   "ai": {
+    "seed": 2,
+    "shift_h": [
+     24.0,
+     36.0
+    ],
+    "language": "zh",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 179,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 267,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 384,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 472,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 610,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 709,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 2644,
+    "replayed_history_units": 10625,
+    "chunk_notes": [
+     {
+      "window_h": [
+       24.0,
+       26.0
+      ],
+      "notes": [
+       "24-26h窗口内 DE_BE_69-1 等工具持续停机，min_in_window 120min",
+       "Init_Lot_8_133 在 25.8h 因 qtime_override 导致 EPI_38-1 延迟 26.7min",
+       "WIP气泡：Implant_91 37-61, DE_FE_72 0-6, Diffusion_FE_126 0-6"
+      ]
+     },
+     {
+      "window_h": [
+       26.0,
+       28.0
+      ],
+      "notes": [
+       "Dielectric_BE_27-7 与 Dielectric_BE_27-12 继续停机，窗口内 min_in_window 均 ≥120min",
+       "Init_Lot_9_134 在 27.1h 因 qtime_override 导致 EPI_38-1 延迟 26.7min",
+       "DE_BE_69-1 累计停机 26.3h，DE_FE_86-69 26.5h，持续影响本窗口"
+      ]
+     },
+     {
+      "window_h": [
+       28.0,
+       30.0
+      ],
+      "notes": [
+       "窗口内 Dielectric_BE_27-7、Dielectric_BE_27-12、Dielectric_BE_28-1、Dielectric_BE_60-1、Dielectric_BE_60-6 均持续停机，min_in_window ≥120min。",
+       "Init_Lot_8_142 与 Init_Lot_3_178 因 qtime_override 分别延迟 EPI_38-1 26.7min 与 TF_FE_3-1/3-2/3-3 80.4min。",
+       "DE_BE_69-3 自 26.1h 持续停机，影响本窗口产出。"
+      ]
+     },
+     {
+      "window_h": [
+       30.0,
+       32.0
+      ],
+      "notes": [
+       "Dielectric_BE_27-7、27-12、60-1、60-6 连续停机，min_in_window ≥120min，产出受阻",
+       "DE_BE_69-3 自 26.1h 持续停机，影响本窗口产出",
+       "qtime_override 导致 Init_Lot_3_171/3_156 及 Init_Lot_1_143 分别延迟 EPI_38-1 26.7min 与 TF_FE 80.4min"
+      ]
+     },
+     {
+      "window_h": [
+       32.0,
+       34.0
+      ],
+      "notes": [
+       "32-34h窗口内，DE_BE_69-3及Dielectric_BE_27-7/27-12持续停机，min_in_window ≥120min，产出受阻",
+       "qtime_override 导致 Init_Lot_1_143、Init_Lot_1_139、Init_Lot_3_156 在本窗口内分别延迟 EPI_38-1 与 TF_FE，总延迟超160min",
+       "WIP气泡Litho_FE_111 数量达13，暗示前段产能瓶颈"
+      ]
+     },
+     {
+      "window_h": [
+       34.0,
+       36.0
+      ],
+      "notes": [
+       "34-36h窗口内，DE_BE_69-3 持续停机，min_in_window ≥120min，产出受阻",
+       "qtime_override 导致 Init_Lot_3_172 在 34.4h 延迟 TF_FE_3-2 80.4min，Init_Lot_1_169 在 34.7h/35.2h 两次延迟 EPI_38-1 26.7min",
+       "WIP气泡 WE_FE_84 累计 11 片，Diffusion_BE_123 10 片，暗示前段产能瓶颈"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      24.0,
+      36.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_13-10",
+       "family": "DE_BE_13",
+       "since_h": 33.7,
+       "eta_h": 42.4,
+       "hours_left": 6.4
+      },
+      {
+       "tool": "DE_BE_50-10",
+       "family": "DE_BE_50",
+       "since_h": 30.5,
+       "eta_h": 39.7,
+       "hours_left": 3.7
+      },
+      {
+       "tool": "DE_BE_66-3",
+       "family": "DE_BE_66",
+       "since_h": 35.7,
+       "eta_h": 41.0,
+       "hours_left": 5.0
+      },
+      {
+       "tool": "DE_BE_69-3",
+       "family": "DE_BE_69",
+       "since_h": 26.1,
+       "eta_h": 38.5,
+       "hours_left": 2.5
+      },
+      {
+       "tool": "DE_FE_72-3",
+       "family": "DE_FE_72",
+       "since_h": 33.5,
+       "eta_h": 37.0,
+       "hours_left": 1.0
+      },
+      {
+       "tool": "DE_FE_72-4",
+       "family": "DE_FE_72",
+       "since_h": 33.4,
+       "eta_h": 36.2,
+       "hours_left": 0.2
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -26.1,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -14.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_2_2",
+       "due_h": 37.1,
+       "slack_h": -4.0,
+       "late_now": false
+      }
+     ],
+     "at_risk_count": 3,
+     "wip_bubbles": [
+      {
+       "family": "Implant_128",
+       "wip_from": 72,
+       "wip_to": 112
+      },
+      {
+       "family": "Implant_91",
+       "wip_from": 37,
+       "wip_to": 65
+      },
+      {
+       "family": "WE_BE_9",
+       "wip_from": 39,
+       "wip_to": 61
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_8_133",
+       "tool": "EPI_38-1",
+       "at_h": 25.8,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_134",
+       "tool": "EPI_38-1",
+       "at_h": 27.1,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_142",
+       "tool": "EPI_38-1",
+       "at_h": 28.0,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_142",
+       "tool": "EPI_38-1",
+       "at_h": 28.9,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_178",
+       "tool": "TF_FE_3-2",
+       "at_h": 29.1,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_178",
+       "tool": "TF_FE_3-3",
+       "at_h": 29.1,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 23,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_13-10",
+       "DE_BE_50-10",
+       "DE_BE_66-3",
+       "DE_BE_69-3",
+       "DE_FE_72-3",
+       "DE_FE_72-4"
+      ],
+      "lots": [
+       "Init_Lot_4_4",
+       "Init_Lot_3_2",
+       "Init_Lot_2_2"
+      ],
+      "families": [
+       "Implant_128",
+       "Implant_91",
+       "WE_BE_9"
+      ]
+     }
+    },
+    "report": {
+     "summary": "本班次DE_BE_69-3等工具持续停机，产出受阻；qtime_override 导致多批次lot延迟。多个WIP气泡累积，暗示前段产能瓶颈。",
+     "top_issues": [
+      "DE_BE_69-3持续停机",
+      "DE_FE_72-3剩余1.0h",
+      "Init_Lot_3_172延迟TF_FE",
+      "Init_Lot_1_169双次延迟EPI_38-1",
+      "Litho_FE_111产能瓶颈",
+      "WE_BE_9WIP累积"
+     ],
+     "wip_bubbles": [
+      "Implant_128 72-112片",
+      "Implant_91 37-65片",
+      "WE_BE_9 39-61片"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_4_4滞后26.1h",
+      "Init_Lot_3_2滞后14.2h",
+      "Init_Lot_2_2滞后4.0h"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_13-10",
+       "eta_h": 42.4,
+       "note": "建议跟进维修进度"
+      },
+      {
+       "tool": "DE_BE_50-10",
+       "eta_h": 39.7,
+       "note": "建议跟进维修进度"
+      },
+      {
+       "tool": "DE_BE_66-3",
+       "eta_h": 41.0,
+       "note": "建议跟进维修进度"
+      },
+      {
+       "tool": "DE_BE_69-3",
+       "eta_h": 38.5,
+       "note": "建议跟进维修进度"
+      },
+      {
+       "tool": "DE_FE_72-3",
+       "eta_h": 37.0,
+       "note": "建议跟进维修进度"
+      },
+      {
+       "tool": "DE_FE_72-4",
+       "eta_h": 36.2,
+       "note": "建议跟进维修进度"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_Lot_8_133 25.8h EPI_38-1 延迟 26.7min qtime_override",
+      "Init_Lot_9_134 27.1h EPI_38-1 延迟 26.7min qtime_override",
+      "Init_Lot_8_142 28.0h EPI_38-1 延迟 26.7min qtime_override",
+      "Init_Lot_8_142 28.9h EPI_38-1 延迟 26.7min qtime_override",
+      "Init_Lot_3_178 29.1h TF_FE_3-2 延迟 80.4min qtime_override",
+      "Init_Lot_3_178 29.1h TF_FE_3-3 延迟 80.4min qtime_override"
+     ]
+    },
+    "markdown": "# 交班报告 · 24.0-36.0 h\n\n**概要:** 本班次DE_BE_69-3等工具持续停机，产出受阻；qtime_override 导致多批次lot延迟。多个WIP气泡累积，暗示前段产能瓶颈。\n\n## 主要问题\n- DE_BE_69-3持续停机\n- DE_FE_72-3剩余1.0h\n- Init_Lot_3_172延迟TF_FE\n- Init_Lot_1_169双次延迟EPI_38-1\n- Litho_FE_111产能瓶颈\n- WE_BE_9WIP累积\n\n## WIP 堆积\n- Implant_128 72-112片\n- Implant_91 37-65片\n- WE_BE_9 39-61片\n\n## 有迟交风险的批次\n- Init_Lot_4_4滞后26.1h\n- Init_Lot_3_2滞后14.2h\n- Init_Lot_2_2滞后4.0h\n\n## 宕机机台（预计恢复、备注）\n- DE_BE_13-10 · ETA 42.4 h · 建议跟进维修进度\n- DE_BE_50-10 · ETA 39.7 h · 建议跟进维修进度\n- DE_BE_66-3 · ETA 41.0 h · 建议跟进维修进度\n- DE_BE_69-3 · ETA 38.5 h · 建议跟进维修进度\n- DE_FE_72-3 · ETA 37.0 h · 建议跟进维修进度\n- DE_FE_72-4 · ETA 36.2 h · 建议跟进维修进度\n\n## 下一班 PM\n- 无\n\n## 决策让行及结果\n- Init_Lot_8_133 25.8h EPI_38-1 延迟 26.7min qtime_override\n- Init_Lot_9_134 27.1h EPI_38-1 延迟 26.7min qtime_override\n- Init_Lot_8_142 28.0h EPI_38-1 延迟 26.7min qtime_override\n- Init_Lot_8_142 28.9h EPI_38-1 延迟 26.7min qtime_override\n- Init_Lot_3_178 29.1h TF_FE_3-2 延迟 80.4min qtime_override\n- Init_Lot_3_178 29.1h TF_FE_3-3 延迟 80.4min qtime_override\n\n_仅供参考；未下发任何派工。_\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_BE_13-10",
+     "DE_BE_50-10",
+     "DE_BE_66-3",
+     "DE_BE_69-3",
+     "DE_FE_72-3",
+     "DE_FE_72-4",
+     "Init_Lot_4_4",
+     "Init_Lot_3_2",
+     "Init_Lot_2_2",
+     "Implant_128",
+     "Implant_91",
+     "WE_BE_9"
+    ],
+    "must_named": [
+     "DE_BE_13-10",
+     "DE_BE_50-10",
+     "DE_BE_66-3",
+     "DE_BE_69-3",
+     "DE_FE_72-3",
+     "DE_FE_72-4",
+     "Init_Lot_4_4",
+     "Init_Lot_3_2",
+     "Init_Lot_2_2",
+     "Implant_128",
+     "Implant_91",
+     "WE_BE_9"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 478697.0,
+    "error": null,
+    "advice_only": true
+   }
+  },
+  {
+   "id": "s2-24h-ja",
+   "seed": 2,
+   "lang": "ja",
+   "ai": {
+    "seed": 2,
+    "shift_h": [
+     24.0,
+     36.0
+    ],
+    "language": "ja",
+    "engine": "markovian",
+    "chunks": [
+     {
+      "index": 0,
+      "ok": true,
+      "checkpoint_units": 23,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 1,
+      "ok": true,
+      "checkpoint_units": 216,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 2,
+      "ok": true,
+      "checkpoint_units": 266,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 3,
+      "ok": true,
+      "checkpoint_units": 319,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 4,
+      "ok": true,
+      "checkpoint_units": 406,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 5,
+      "ok": true,
+      "checkpoint_units": 494,
+      "marker": "STATE_CHECKPOINT",
+      "error": null
+     },
+     {
+      "index": 6,
+      "ok": true,
+      "checkpoint_units": 549,
+      "marker": "TASK_COMPLETE",
+      "error": null
+     }
+    ],
+    "chunks_ok": 7,
+    "checkpoint_units": 2273,
+    "replayed_history_units": 9460,
+    "chunk_notes": [
+     {
+      "window_h": [
+       24.0,
+       26.0
+      ],
+      "notes": [
+       "24-26hウィンドウでDE_BE_69-1、DE_FE_86-69、Dielectric_BE_27-7など複数ツールがダウンタイム実施",
+       "WIPバブル：Implant_91は37-61と高水準、DE_FE_72とDiffusion_FE_126は0-6と低水準",
+       "Init_Lot_8_133が25.8hでEPI_38-1に26.7分の遅延Override"
+      ]
+     },
+     {
+      "window_h": [
+       26.0,
+       28.0
+      ],
+      "notes": [
+       "Dielectric_BE_27-7 がダウン中 (51.0h)",
+       "Implant_91 の WIP が高水準 (61)",
+       "Init_Lot_8_133 で EPI_38-1 に 26.7min Override"
+      ]
+     },
+     {
+      "window_h": [
+       28.0,
+       30.0
+      ],
+      "notes": [
+       "28-30h ウィンドウ: Dielectric_BE_27-7 ダウン継続 (51.0h)",
+       "Init_Lot_8_133 Override (26.7min) は 25.8h で完了",
+       "Implant_91 WIP (61) は継続中"
+      ]
+     },
+     {
+      "window_h": [
+       30.0,
+       32.0
+      ],
+      "notes": [
+       "30-32h ウィンドウで Dielectric_BE_27-7 が継続ダウン (51.0h)",
+       "DE_BE_48-5、DE_BE_69-3、Dielectric_BE_60-1、Dielectric_BE_60-6 もダウン中",
+       "Override 活性化：Init_Lot_3_171/EPI_38-1 26.7min、Init_Lot_1_143/TF_FE_3-2 80.4min の遅延"
+      ]
+     },
+     {
+      "window_h": [
+       32.0,
+       34.0
+      ],
+      "notes": [
+       "32-34h: Dielectric_BE_27-7 継続ダウン（51.0h）、DE_BE_48-5・DE_BE_69-3 稼働中",
+       "Override：Init_Lot_1_143/Implant_90-1 32.5h 34.8min、Init_Lot_1_139/TF_FE_3-2 33.1h 80.4min",
+       "WIP：Implant_91 高水準残存、オープンイシュー継続"
+      ]
+     },
+     {
+      "window_h": [
+       34.0,
+       36.0
+      ],
+      "notes": [
+       "34-36h ウィンドウで Dielectric_BE_27-7 ダウン解消",
+       "Implant_91 WIP 高水準 継続",
+       "Override 活性化: Init_Lot_3_172/TF_FE_3-2 80.4min, Init_Lot_1_169/EPI_38-1 26.7min"
+      ]
+     }
+    ],
+    "end_facts": {
+     "shift_h": [
+      24.0,
+      36.0
+     ],
+     "tools_down_at_end": [
+      {
+       "tool": "DE_BE_13-10",
+       "family": "DE_BE_13",
+       "since_h": 33.7,
+       "eta_h": 42.4,
+       "hours_left": 6.4
+      },
+      {
+       "tool": "DE_BE_50-10",
+       "family": "DE_BE_50",
+       "since_h": 30.5,
+       "eta_h": 39.7,
+       "hours_left": 3.7
+      },
+      {
+       "tool": "DE_BE_66-3",
+       "family": "DE_BE_66",
+       "since_h": 35.7,
+       "eta_h": 41.0,
+       "hours_left": 5.0
+      },
+      {
+       "tool": "DE_BE_69-3",
+       "family": "DE_BE_69",
+       "since_h": 26.1,
+       "eta_h": 38.5,
+       "hours_left": 2.5
+      },
+      {
+       "tool": "DE_FE_72-3",
+       "family": "DE_FE_72",
+       "since_h": 33.5,
+       "eta_h": 37.0,
+       "hours_left": 1.0
+      },
+      {
+       "tool": "DE_FE_72-4",
+       "family": "DE_FE_72",
+       "since_h": 33.4,
+       "eta_h": 36.2,
+       "hours_left": 0.2
+      }
+     ],
+     "next_shift_pm": [],
+     "next_calendar_pm": [
+      {
+       "family": "Litho_FE_35",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "LithoTrack_FE_96",
+       "from_h": 153.6,
+       "hours": 6.7
+      },
+      {
+       "family": "Litho_BE_99",
+       "from_h": 158.4,
+       "hours": 6.7
+      }
+     ],
+     "at_risk_lots": [
+      {
+       "lot": "Init_Lot_4_4",
+       "due_h": 13.1,
+       "slack_h": -26.1,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_3_2",
+       "due_h": 29.0,
+       "slack_h": -14.2,
+       "late_now": true
+      },
+      {
+       "lot": "Init_Lot_2_2",
+       "due_h": 37.1,
+       "slack_h": -4.0,
+       "late_now": false
+      }
+     ],
+     "at_risk_count": 3,
+     "wip_bubbles": [
+      {
+       "family": "Implant_128",
+       "wip_from": 72,
+       "wip_to": 112
+      },
+      {
+       "family": "Implant_91",
+       "wip_from": 37,
+       "wip_to": 65
+      },
+      {
+       "family": "WE_BE_9",
+       "wip_from": 39,
+       "wip_to": 61
+      }
+     ],
+     "overrides": [
+      {
+       "lot": "Init_Lot_8_133",
+       "tool": "EPI_38-1",
+       "at_h": 25.8,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_9_134",
+       "tool": "EPI_38-1",
+       "at_h": 27.1,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_142",
+       "tool": "EPI_38-1",
+       "at_h": 28.0,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_8_142",
+       "tool": "EPI_38-1",
+       "at_h": 28.9,
+       "delay_min": 26.7,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_178",
+       "tool": "TF_FE_3-2",
+       "at_h": 29.1,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      },
+      {
+       "lot": "Init_Lot_3_178",
+       "tool": "TF_FE_3-3",
+       "at_h": 29.1,
+       "delay_min": 80.4,
+       "source": "qtime_override",
+       "displaced_lot_late": false
+      }
+     ],
+     "override_count": 23,
+     "override_source": "rule-based Q-time overrides unless the run had an AI shift lead",
+     "must_mention": {
+      "tools": [
+       "DE_BE_13-10",
+       "DE_BE_50-10",
+       "DE_BE_66-3",
+       "DE_BE_69-3",
+       "DE_FE_72-3",
+       "DE_FE_72-4"
+      ],
+      "lots": [
+       "Init_Lot_4_4",
+       "Init_Lot_3_2",
+       "Init_Lot_2_2"
+      ],
+      "families": [
+       "Implant_128",
+       "Implant_91",
+       "WE_BE_9"
+      ]
+     }
+    },
+    "report": {
+     "summary": "シフト中に複数ツールがダウンタイムを実施し、WIPバブルが拡大。Overrideとリスクロットが多数発生し、次シフトへの引き継ぎが必要。",
+     "top_issues": [
+      "DE_BE_13-10 ダウンタイム継続 (33.7h開始, 6.4h残)",
+      "DE_FE_72-3 残り 1.0h",
+      "Init_Lot_4_4 期限 13.1h スラック -26.1h 遅延",
+      "Init_Lot_3_2 期限 29.0h スラック -14.2h 遅延",
+      "Implant_91 WIP 37-65 高水準",
+      "Override 23件 qtime_override 発生"
+     ],
+     "wip_bubbles": [
+      "Implant_128 72-112",
+      "Implant_91 37-65",
+      "WE_BE_9 39-61"
+     ],
+     "at_risk_lots": [
+      "Init_Lot_4_4 期限 13.1h スラック -26.1h 遅延",
+      "Init_Lot_3_2 期限 29.0h スラック -14.2h 遅延",
+      "Init_Lot_2_2 期限 37.1h スラック -4.0h"
+     ],
+     "tools_down": [
+      {
+       "tool": "DE_BE_13-10",
+       "eta_h": 42.4,
+       "note": "33.7h開始 6.4h残"
+      },
+      {
+       "tool": "DE_BE_50-10",
+       "eta_h": 39.7,
+       "note": "30.5h開始 3.7h残"
+      },
+      {
+       "tool": "DE_BE_66-3",
+       "eta_h": 41.0,
+       "note": "35.7h開始 5.0h残"
+      },
+      {
+       "tool": "DE_BE_69-3",
+       "eta_h": 38.5,
+       "note": "26.1h開始 2.5h残"
+      },
+      {
+       "tool": "DE_FE_72-3",
+       "eta_h": 37.0,
+       "note": "33.5h開始 1.0h残"
+      },
+      {
+       "tool": "DE_FE_72-4",
+       "eta_h": 36.2,
+       "note": "33.4h開始 0.2h残"
+      }
+     ],
+     "next_shift_pm": [],
+     "overrides": [
+      "Init_Lot_8_133/EPI_38-1 25.8h 26.7min qtime_override",
+      "Init_Lot_9_134/EPI_38-1 27.1h 26.7min qtime_override",
+      "Init_Lot_8_142/EPI_38-1 28.0h 26.7min qtime_override",
+      "Init_Lot_8_142/EPI_38-1 28.9h 26.7min qtime_override",
+      "Init_Lot_3_178/TF_FE_3-2 29.1h 80.4min qtime_override",
+      "Init_Lot_3_178/TF_FE_3-3 29.1h 80.4min qtime_override"
+     ]
+    },
+    "markdown": "# シフト引き継ぎ · 24.0-36.0 h\n\n**概要:** シフト中に複数ツールがダウンタイムを実施し、WIPバブルが拡大。Overrideとリスクロットが多数発生し、次シフトへの引き継ぎが必要。\n\n## 主な課題\n- DE_BE_13-10 ダウンタイム継続 (33.7h開始, 6.4h残)\n- DE_FE_72-3 残り 1.0h\n- Init_Lot_4_4 期限 13.1h スラック -26.1h 遅延\n- Init_Lot_3_2 期限 29.0h スラック -14.2h 遅延\n- Implant_91 WIP 37-65 高水準\n- Override 23件 qtime_override 発生\n\n## WIP 滞留\n- Implant_128 72-112\n- Implant_91 37-65\n- WE_BE_9 39-61\n\n## 遅延リスクのあるロット\n- Init_Lot_4_4 期限 13.1h スラック -26.1h 遅延\n- Init_Lot_3_2 期限 29.0h スラック -14.2h 遅延\n- Init_Lot_2_2 期限 37.1h スラック -4.0h\n\n## ダウン中の装置（復旧見込み・メモ）\n- DE_BE_13-10 · ETA 42.4 h · 33.7h開始 6.4h残\n- DE_BE_50-10 · ETA 39.7 h · 30.5h開始 3.7h残\n- DE_BE_66-3 · ETA 41.0 h · 35.7h開始 5.0h残\n- DE_BE_69-3 · ETA 38.5 h · 26.1h開始 2.5h残\n- DE_FE_72-3 · ETA 37.0 h · 33.5h開始 1.0h残\n- DE_FE_72-4 · ETA 36.2 h · 33.4h開始 0.2h残\n\n## 次シフトの PM\n- なし\n\n## 判断による後回しとその結果\n- Init_Lot_8_133/EPI_38-1 25.8h 26.7min qtime_override\n- Init_Lot_9_134/EPI_38-1 27.1h 26.7min qtime_override\n- Init_Lot_8_142/EPI_38-1 28.0h 26.7min qtime_override\n- Init_Lot_8_142/EPI_38-1 28.9h 26.7min qtime_override\n- Init_Lot_3_178/TF_FE_3-2 29.1h 80.4min qtime_override\n- Init_Lot_3_178/TF_FE_3-3 29.1h 80.4min qtime_override\n\n_助言のみ。払い出しは行っていません。_\n",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "must_mention": [
+     "DE_BE_13-10",
+     "DE_BE_50-10",
+     "DE_BE_66-3",
+     "DE_BE_69-3",
+     "DE_FE_72-3",
+     "DE_FE_72-4",
+     "Init_Lot_4_4",
+     "Init_Lot_3_2",
+     "Init_Lot_2_2",
+     "Implant_128",
+     "Implant_91",
+     "WE_BE_9"
+    ],
+    "must_named": [
+     "DE_BE_13-10",
+     "DE_BE_50-10",
+     "DE_BE_66-3",
+     "DE_BE_69-3",
+     "DE_FE_72-3",
+     "DE_FE_72-4",
+     "Init_Lot_4_4",
+     "Init_Lot_3_2",
+     "Init_Lot_2_2",
+     "Implant_128",
+     "Implant_91",
+     "WE_BE_9"
+    ],
+    "must_recall": 1.0,
+    "llm_calls": 7,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b",
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "provider": "nightshift",
+    "mocked": false,
+    "latency_ms": 444817.0,
+    "error": null,
+    "advice_only": true
+   }
+  }
+ ]
+}
