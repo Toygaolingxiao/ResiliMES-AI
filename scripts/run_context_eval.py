@@ -248,10 +248,10 @@ def main() -> int:
     kits = build_kits({item["run"] for item in questions})
     live_provider = None
     if args.live:
-        from resilimes.config import Settings
+        from resilimes.config import load_settings
         from resilimes.llm.factory import build_provider
 
-        live_provider = build_provider(Settings())
+        live_provider = build_provider(load_settings())
         print(
             f"live provider: {live_provider.name} (mocked={getattr(live_provider, 'mocked', '?')})"
         )

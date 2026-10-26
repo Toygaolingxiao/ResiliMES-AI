@@ -32,7 +32,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from resilimes.config import Settings
+from resilimes.config import load_settings
 from resilimes.insight.notes import (
     LlmExtractor,
     RegexExtractor,
@@ -73,7 +73,7 @@ class _CachingCompleter:
 
 
 def main() -> int:
-    provider = _CachingCompleter(build_provider(Settings()))
+    provider = _CachingCompleter(build_provider(load_settings()))
     print(f"provider={provider.name} mocked={provider.mocked}")
     if provider.mocked:
         print(

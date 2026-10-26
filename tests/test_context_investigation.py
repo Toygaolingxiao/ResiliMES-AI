@@ -321,7 +321,9 @@ def test_eval_fixture_covers_all_four_types():
     from pathlib import Path
 
     fixture = json.loads(
-        (Path(__file__).resolve().parents[1] / "eval" / "context_questions.json").read_text()
+        (Path(__file__).resolve().parents[1] / "eval" / "context_questions.json").read_text(
+            encoding="utf-8"
+        )
     )
     questions = fixture["questions"]
     assert 8 <= len(questions) <= 12
@@ -335,7 +337,9 @@ def test_eval_two_arms_on_a_subset(run24):
     from pathlib import Path
 
     fixture = json.loads(
-        (Path(__file__).resolve().parents[1] / "eval" / "context_questions.json").read_text()
+        (Path(__file__).resolve().parents[1] / "eval" / "context_questions.json").read_text(
+            encoding="utf-8"
+        )
     )
     report = module.evaluate(fixture, {"smt24": Toolkit(run24)}, limit=3)
     for arm in ("template", "full"):
