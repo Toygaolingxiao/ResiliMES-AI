@@ -11,7 +11,7 @@ from functools import lru_cache
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -38,6 +38,17 @@ class InvestigateBody(BaseModel):
     scenario_id: str | None = Field(default=None, max_length=64)
     lang: Literal["en", "zh", "ja"] = "en"
 
+    @model_validator(mode="before")
+    @classmethod
+    def _blank_is_none(cls, data: Any) -> Any:
+        """Blank strings mean "not given" (older front ends sent "" for absent ids)."""
+        if isinstance(data, dict):
+            return {
+                key: (None if isinstance(value, str) and not value.strip() else value)
+                for key, value in data.items()
+            }
+        return data
+
 
 def _provider(request: Request) -> Any:
     from resilimes.llm.factory import build_provider
@@ -50,6 +61,27 @@ def _fab() -> Any:
     from resilimes.smt.fab import load_fab
 
     return load_fab()
+
+
+def _context_run(body: InvestigateBody) -> dict[str, Any]:
+    """Which recorded run answered the query, and whether it is the on-screen one.
+
+    Only ``scenario_id="seed-<n>"`` names an explainer run directly; any other
+    scenario (an SMT book, the sample bay, ...) is answered from the cached
+    reference run ``seed-<seed>`` and is labelled ``reference: true``.
+    """
+    import re
+
+    from resilimes.insight.explainer import HORIZON_H
+
+    named = bool(body.scenario_id and re.fullmatch(r"seed-[1-4]", body.scenario_id))
+    return {
+        "id": f"seed-{body.seed}",
+        "seed": body.seed,
+        "horizon_h": HORIZON_H,
+        "reference": not named,
+        "requested_scenario": body.scenario_id,
+    }
 
 
 def _context_query(body: InvestigateBody) -> Any:
@@ -130,6 +162,7 @@ def investigate_case(body: InvestigateBody, request: Request) -> dict[str, Any]:
         return {
             "context": answer.to_json(),
             "scenario_id": body.scenario_id,
+            "run": _context_run(body),
             "advice_only": True,
         }
     if body.case_id is None:

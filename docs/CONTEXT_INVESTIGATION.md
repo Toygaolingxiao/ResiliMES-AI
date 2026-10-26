@@ -185,12 +185,20 @@ are labelled as such.
 
 ## Open alignment points
 
-- Front end (`feat/gantt-upgrade`): payload already matches this
-  contract (type/tool/family/lot/step/t1_min/t2_min/scenario_id/lang/
-  question; reads answer/basis/citations/fact_ok/source/degraded at
-  `context.*`). New in v2 for the UI to surface: `tier` (badge),
-  `part_tiers`, `basis[].source` (grouping). `lang` is accepted but
-  answers are English in v1 — localisation is a follow-up.
+- Front end (`resilimes/demo/static/app.js`, `investigateContext` /
+  `renderCtxAnswer`): sends type/tool/family/lot/step/t1_min/t2_min/
+  scenario_id/lang/question with absent values as `null` and numbers as
+  numbers (the API also treats `""` as absent). It reads the answer at
+  `context.answer`, evidence at `context.basis`, and shows `context.tier`,
+  the Mock/Live source and degraded/timeout labels. A family row has no
+  single tool, so a gap right-click there is sent as a `window` query on
+  the family. Covered by `test_api_accepts_every_payload_the_gantt_sends`.
+  Not yet surfaced: `part_tiers`, grouping by `basis[].source`. `lang` is
+  accepted but answers are English in v1 — localisation is a follow-up.
+- Which run answered: the response carries `run` = `{id, seed, horizon_h,
+  reference, requested_scenario}`. Only `scenario_id="seed-<n>"` selects an
+  explainer run; any other scenario is answered from the 48 h reference run
+  `seed-1` (`reference: true`), and the panel says so.
 - `scenario_id` semantics beyond `seed-<n>` (e.g. naming an SMT book or
   a study case) need the front end's scenario list to pin down.
 - `insight.gaps` merge: the adapter prefers the real module when
