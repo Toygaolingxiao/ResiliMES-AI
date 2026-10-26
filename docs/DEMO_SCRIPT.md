@@ -100,7 +100,7 @@ Click By lot, then click the LOT-1001 bar. "Each row is one lot. The gap between
 
 Leave the theme on Light. Dark is the control next to the languages, for a second cut only.
 
-#### 1:25–1:45 — Why it is allowed (Innovation, Track 03)
+#### 1:25–1:45 — Why it is allowed (Innovation)
 
 Open **Verify**.
 

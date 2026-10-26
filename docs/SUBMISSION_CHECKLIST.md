@@ -7,7 +7,7 @@ Deadline: **27 Oct 2026 23:45 UTC** (= 28 Oct 08:45 JST; code freeze 28 Oct 02:4
 | Requirement | Where it is satisfied | Still manual |
 | --- | --- | --- |
 | Build window 22 Oct 2026 00:00 UTC through 27 Oct 2026 23:45 UTC | Git history starts 22 Oct 2026 22:22 UTC. This branch is window work. | If anything existed only outside git, declare it on the form. |
-| One primary track | Track 03: Reasoning Architecture. Justification in the README (head and Positioning) and deck slides 3–4. | Select it in the team workspace. You can change it until the deadline. |
+| One primary track | Track 02: The Agent That Can Explain Why. Justification in the README (head and Positioning) and deck slides 3–4. | Select it in the team workspace. You can change it until the deadline. |
 | Team of 1–5, one account each, composition locks at first submission | README team section. | Register, name both people, create the submission once. |
 | Integrate Zetaris | `agent/tools_zetaris.py`, `resilimes/data/zetaris_source.py`, `data/sql/seed.sql`, `docs/SPONSOR_TECH.md` | Load the seed into your org. Set `ZETARIS_*`. |
 | At least one Meterless engine in a working feature | Scout Intent on every recovery. Tests: `tests/test_scout_engine.py`. Also used: World Model, Markovian. | Name Scout Intent and the test path on the form. |
@@ -29,7 +29,7 @@ Deadline: **27 Oct 2026 23:45 UTC** (= 28 Oct 08:45 JST; code freeze 28 Oct 02:4
 
 **Description.** Paste the ~1,900-character text kept outside the repo (`desc_v5.txt`). Its claims, each from a committed doc: 99.26% true Q-time compliance and 71 avoidable misses (seeds 1–3, 7 d, `docs/HARD_QTIME.md`); EDD only as an infeasible reference (1,719 avoidable); +19 avoidable violations when every deliberate gap is filled (`docs/gap_counterfactual/seed1_48h.md`); 0 AI calls under the shipped trigger (`study_zero_call/zero_call.md`, 0/16 stress books); flat same-budget K-curve (`study_search_curve/k_curve.md`); B/C comparisons are exploratory study mode (`SHIFT_LEAD_ESCALATE=always`).
 
-**Track.** Track 03: Reasoning Architecture.
+**Track.** Track 02: The Agent That Can Explain Why.
 
 **Engine.** Scout Intent. Test: `pytest tests/test_scout_engine.py`. The recovery loop also commits through a World Model event log and runs as Markovian chunks. See `docs/SPONSOR_TECH.md`.
 
