@@ -29,6 +29,7 @@ import math
 import os
 import random
 import time
+import warnings
 from bisect import bisect_left
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -724,6 +725,10 @@ class _Sim:
         # and bit-identical): (lot, step) -> moment from which the lot's
         # deliberate wait (Q-time gate / batch fill) is overridden.
         self.force_start_at = force_start_at or {}
+        if self.force_start_at:  # research-only override: never silent
+            warnings.warn(
+                "force_start_at bypasses the hard Q-time gate (research only)", stacklevel=2
+            )
         # Progress callback (off when None): reads the clock, changes nothing.
         self.progress: Callable[[float], None] | None = None
         # Read-only miss causes; the hard Q-time gate only when switched on.

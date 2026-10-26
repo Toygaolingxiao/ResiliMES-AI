@@ -742,6 +742,12 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `gantt.ctxPayload` | Request payload | 请求内容 | リクエスト内容 |
 | `gantt.ctxClose` | Close | 关闭 | 閉じる |
 | `gantt.ctxLever` | Suggested lever (advice only) | 建议杠杆（仅供参考） | 提案レバー（助言のみ） |
+| `gantt.ctxRefRun` | Answered from reference run {run} ({h} h), not the scenario on screen. | 基于参考运行 {run}（{h} 小时）回答，并非当前画面上的场景。 | 参照ラン {run}（{h} 時間）に基づく回答で、画面上のシナリオではありません。 |
+| `gantt.ctxTier` | Evidence tier | 证据等级 | 根拠レベル |
+| `gantt.ctxTiers.decision_record` | recorded decision | 有记录的决策 | 記録された判断 |
+| `gantt.ctxTiers.rule_emergent` | result of the dispatch rule | 派工规则的结果 | ディスパッチ規則の結果 |
+| `gantt.ctxTiers.unknown` | unknown (no evidence) | 未知（无证据） | 不明（根拠なし） |
+| `gantt.ctxTimeout` | AI timed out: showing the rule-based answer | AI 超时：显示规则结果 | AI タイムアウト：ルールの結果を表示 |
 
 ## AI shift lead study progress (new, needs zh/ja review)
 
