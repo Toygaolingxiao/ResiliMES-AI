@@ -701,6 +701,30 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `ai.hoEngine` | Engine | 引擎 | エンジン |
 | `ai.hoChunks` | Chunks | 分段 | チャンク |
 | `ai.hoRecall` | Must-mention recall | 必提项召回率 | 必須項目の再現率 |
+| `ai.ntTitle` | Fab notes → scheduling events | 工厂文字记录 → 排程事件 | 工場テキスト記録 → スケジュールイベント |
+| `ai.ntHelp` | Free-text fab notes (maintenance, planning, engineering, shift handover) extracted into scheduling events. Every event passes a fact check against the real fab before it may touch a schedule; rejected events are shown, never hidden. | 把维修、计划、工程与交接班的文字记录抽取为排程事件。每个事件进入排程前都必须通过与真实工厂数据的事实核查；被拦下的事件会显示出来，不会隐藏。 | 保守・計画・エンジニアリング・引継ぎのテキスト記録をスケジュールイベントに抽出します。各イベントはスケジュールに触れる前に実工場データとの事実確認を通過しなければならず、却下されたイベントは隠さず表示します。 |
+| `ai.ntExtractor` | extractor | 抽取器 | 抽出器 |
+| `ai.ntTruncated` | note list truncated, limit | 列表已截断，上限 | リストは切り詰められています。上限 |
+| `ai.ntAbcTitle` | A/B/C comparison (same notes, same book) | A/B/C 对比（同一批记录、同一账本） | A/B/C 比較（同じ記録・同じブック） |
+| `ai.ntNotRun` | The live A/B/C comparison has not been run yet, so there are no numbers to show. Run scripts/compare_notes_ab.py to produce outputs/notes_ab.json and they will appear here. | live A/B/C 对比尚未运行，没有数字可显示。运行 scripts/compare_notes_ab.py 生成 outputs/notes_ab.json 后，结果会显示在这里。 | live の A/B/C 比較はまだ実行されていないため、表示できる数値はありません。scripts/compare_notes_ab.py を実行して outputs/notes_ab.json を生成すると、結果がここに表示されます。 |
+| `ai.ntMockNumbers` | The numbers below come from the offline mock ledger runner, not a fab simulation. Treat them as a pipeline demo only. | 以下数字来自离线 mock 账本模型，不是工厂仿真结果，只能用于演示流水线。 | 以下の数値はオフラインのモック台帳モデルによるもので、工場シミュレーション結果ではありません。パイプラインのデモとしてのみ扱ってください。 |
+| `ai.ntAvoidable` | avoidable Q-time violations | 可避免 Q-time 违规 | 回避可能な Q-time 違反 |
+| `ai.ntApplied` | events applied | 生效事件数 | 適用されたイベント数 |
+| `ai.ntArmBlind` | no notes (blind) | 看不到文字（盲排） | テキストなし（ブラインド） |
+| `ai.ntArmAi` | AI-extracted events | AI 抽取事件 | AI 抽出イベント |
+| `ai.ntArmGold` | gold events (ceiling) | gold 事件（上限） | gold イベント（上限） |
+| `ai.ntGapClosure` | gap closure (A-B)/(A-C) | 缺口弥合率 (A-B)/(A-C) | ギャップ解消率 (A-B)/(A-C) |
+| `ai.ntWrongEvents` | wrong events applied | 误伤事件数 | 誤適用イベント数 |
+| `ai.ntNewViolations` | new violations | 新增违规 | 新規違反 |
+| `ai.ntGoldShow` | Show gold labels | 显示 gold 标注 | gold ラベルを表示 |
+| `ai.ntGoldHide` | Hide gold labels | 隐藏 gold 标注 | gold ラベルを隠す |
+| `ai.ntHard` | hard for regex | 正则难例 | 正規表現の難例 |
+| `ai.ntEvents` | Extracted events (fact-checked) | 抽取事件（已核查） | 抽出イベント（事実確認済み） |
+| `ai.ntRejected` | rejected by fact check | 被事实核查拦下 | 事実確認で却下 |
+| `ai.ntNoEvents` | none | 无 | なし |
+| `ai.ntGoldLabel` | Gold (hand-labeled) | Gold（人工标注） | Gold（手作業ラベル） |
+| `ai.ntUnavailable` | No notes data is available in this build, so this section stays empty. Nothing else in the console depends on it. | 当前版本没有可用的文字记录数据，本节留空；控制台其他部分不依赖它。 | このビルドではテキスト記録データが利用できないため、このセクションは空のままです。コンソールの他の部分はこれに依存しません。 |
+| `ai.ntRunner` | runner | 运行器 | ランナー |
 | `gantt.fromLabel` | From | 起始 | 開始 |
 | `gantt.toLabel` | To | 结束 | 終了 |
 | `gantt.minUnit` | min | 分钟 | 分 |
