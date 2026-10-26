@@ -1,4 +1,4 @@
-﻿"""Live evaluation on the PC: every sim-select arm, all held-out seeds, one go.
+"""Live evaluation on the PC: every sim-select arm, all held-out seeds, one go.
 
     python scripts\\run_live_eval.py                 (Windows, from the repo root)
     python scripts/run_live_eval.py --out-dir study_sim_select_live
@@ -135,4 +135,3 @@ def main() -> int:
 
 if __name__ == "__main__":  # required for the Windows spawn pool
     sys.exit(main())
-
