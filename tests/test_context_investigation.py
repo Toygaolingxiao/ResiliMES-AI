@@ -348,3 +348,100 @@ def test_eval_two_arms_on_a_subset(run24):
         "rule_emergent": 1,
         "unknown": 1,
     }
+
+
+class _Raising:
+    """Non-mocked provider stand-in whose complete() always raises."""
+
+    name = "test-raiser"
+    mocked = False
+
+    def __init__(self, exc: Exception) -> None:
+        self.exc = exc
+
+    def model_for(self, lane: str) -> str:
+        return "nemotron-test"
+
+    def complete(self, messages, *, lane, temperature=0.2):
+        raise self.exc
+
+
+def test_polish_timeout_is_labelled_timeout_not_provider_error(run24):
+    visit = _started_visit(run24)
+    lot_id = run24.fab.lot_id[visit.lot]
+    query = ContextQuery(type="bar", lot=lot_id, step=visit.step)
+    answer = investigate_context(Toolkit(run24), query, _Raising(TimeoutError("no reply")))
+    assert answer.source == "scripted"  # fell back to the rule answer
+    assert answer.degraded and answer.degrade_reason == "timeout"
+
+    other = investigate_context(Toolkit(run24), query, _Raising(RuntimeError("boom")))
+    assert other.degraded and other.degrade_reason == "provider_error"
+
+
+def test_gap_classification_keeps_dict_evidence(run24, monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    from resilimes.insight.context_investigation import _gap_classification
+
+    visit = _started_visit(run24)
+    record = SimpleNamespace(
+        tool=visit.tool,
+        start=0.0,
+        end=100.0,
+        tier="inferred",
+        reason=SimpleNamespace(value="qtime_gate"),
+        source="dispatch_log",
+        evidence={"gate_blocks": 7, "blocked_lot": "Init_Lot_2_13"},
+    )
+    fake_gaps = SimpleNamespace(
+        TIER_DECISION_RECORD="decision_record",
+        TIER_INFERRED="inferred",
+        TIER_UNKNOWN="unknown",
+        gaps_from_run=lambda run: [record],
+    )
+    monkeypatch.setitem(sys.modules, "resilimes.insight.gaps", fake_gaps)
+    reason, _tier, facts = _gap_classification(Toolkit(run24), visit.tool, 0.0, 24 * HOUR)
+    assert reason == "qtime_gate"
+    assert facts["classifier"] == "insight.gaps"
+    # GapRecord.evidence is a plain dict: it must survive, not collapse to {}.
+    assert facts["evidence"] == {"gate_blocks": 7, "blocked_lot": "Init_Lot_2_13"}
+
+
+def test_notes_part_filters_notes_outside_the_query_window(run24, monkeypatch, tmp_path):
+    from resilimes.insight.context_investigation import _notes_part
+
+    def _note(note_id, ts, start, duration_min):
+        return {
+            "id": note_id,
+            "ts": ts,
+            "source": "maintenance",
+            "text": f"Litho_FE_92-1 down window ({note_id})",
+            "gold": [
+                {
+                    "type": "planned_down",
+                    "equipment": "Litho_FE_92-1",
+                    "start": start,
+                    "duration_min": duration_min,
+                }
+            ],
+        }
+
+    early = _note("n-early", "2026-10-22T05:30:00Z", "2026-10-22T14:00:00Z", 360)
+    late = _note("n-late", "2026-10-22T06:00:00Z", "2026-10-23T08:00:00Z", 240)
+    path = tmp_path / "fab_notes.json"
+    path.write_text(json.dumps({"items": [early, late]}), encoding="utf-8")
+    monkeypatch.setenv("RESILIMES_NOTES_PATH", str(path))
+
+    windowed = ContextQuery(type="free", tool="Litho_FE_92-1", t1_h=30.0, t2_h=40.0)
+    entries, _text = _notes_part(Toolkit(run24), windowed)
+    facts = entries[0][2]
+    assert [m["id"] for m in facts["matched"]] == ["n-late"]  # span 32-36 h overlaps
+    assert facts["time_filter"]["dropped_off_window"] == 1
+    assert facts["matched"][0]["span_h"] == [32.0, 36.0]
+
+    timeless = ContextQuery(type="free", tool="Litho_FE_92-1")
+    entries, _text = _notes_part(Toolkit(run24), timeless)
+    facts = entries[0][2]
+    assert [m["id"] for m in facts["matched"]] == ["n-early", "n-late"]
+    assert facts["time_filter"]["window_h"] is None
