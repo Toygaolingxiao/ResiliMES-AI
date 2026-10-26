@@ -1174,3 +1174,91 @@ details[open]::details-content { block-size: auto; }
   }
   .sl-progress.running .sl-bar span::after, .ai-card.busy::after { animation: none !important; }
 }
+
+/* ——— SMT virtual Gantt: frozen axis, zoom, idle gaps; context investigation ——— */
+.vg-scroll { max-height: 462px; }
+.vg-content { position: relative; }
+.vg-axis {
+  position: sticky; top: 0; z-index: 3; display: flex;
+  background: var(--card); border-bottom: 1px solid var(--line);
+}
+.vg-corner {
+  position: sticky; left: 0; z-index: 4; flex: 0 0 168px; width: 168px;
+  background: var(--card); border-right: 1px solid var(--line);
+}
+.vg-axis-track {
+  position: relative; flex: 0 0 auto;
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
+  background-repeat: repeat-x;
+}
+.vg-tick {
+  position: absolute; top: 4px; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap;
+}
+.vg-tick.first { transform: translateX(2px); color: var(--ink); }
+.vg-body { position: relative; }
+.smt-row { display: flex; grid-template-columns: none; align-items: stretch; }
+.smt-label {
+  position: sticky; left: 0; z-index: 2; flex: 0 0 168px; width: 168px;
+  height: 28px; background: var(--card); display: flex; align-items: center;
+}
+.smt-track {
+  flex: 0 0 auto; height: 28px;
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
+  background-repeat: repeat-x;
+}
+.smt-seg {
+  position: absolute; top: 6px; height: 16px; background: var(--accent);
+  cursor: pointer; display: flex; align-items: center; overflow: hidden;
+}
+.smt-seg:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+.smt-seg-label { font-family: var(--mono); font-size: 9px; color: var(--accent-ink); padding: 0 2px; pointer-events: none; }
+.smt-gap {
+  position: absolute; top: 6px; height: 16px; box-sizing: border-box;
+  border: 1px dashed var(--field-line);
+  background: repeating-linear-gradient(-45deg, rgba(111, 111, 111, 0.28) 0 2px, transparent 2px 5px);
+  cursor: pointer;
+}
+.smt-gap:hover { border-color: var(--ink); }
+.swatch.hatch-gap {
+  border: 1px dashed var(--field-line);
+  background: repeating-linear-gradient(-45deg, rgba(111, 111, 111, 0.28) 0 2px, transparent 2px 5px);
+}
+.smt-zoom { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.smt-zoom button { min-width: 26px; }
+.smt-zlevel { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.ctx-menu {
+  position: fixed; z-index: 50; min-width: 220px; max-width: 300px; padding: 4px 0;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line-strong); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.ctx-menu[hidden] { display: none; }
+.ctx-menu ul { list-style: none; margin: 0; padding: 0; }
+.ctx-menu li button {
+  display: block; width: 100%; text-align: left; background: none; border: 0;
+  padding: 7px 12px; font: inherit; font-size: var(--text-label); color: var(--ink); cursor: pointer;
+}
+.ctx-menu li button:hover { background: var(--layer-hover); }
+.ctx-menu .ctx-free input { width: calc(100% - 24px); margin: 2px 12px 8px; box-sizing: border-box; }
+.ctx-panel {
+  position: fixed; right: 16px; bottom: 16px; z-index: 40;
+  width: 340px; max-width: calc(100vw - 32px); max-height: 70vh; overflow: auto;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line-strong); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: var(--text-label); line-height: 1.45;
+}
+.ctx-panel[hidden] { display: none; }
+.ctx-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ctx-head strong { flex: 1; }
+.ctx-close { border: 0; background: none; font-size: 16px; line-height: 1; cursor: pointer; color: var(--muted); padding: 0 2px; }
+.ctx-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 6px 0; }
+.ctx-facts dt { color: var(--muted); }
+.ctx-facts dd { margin: 0; font-family: var(--mono); }
+.ctx-panel .muted { color: var(--muted); }
+.ctx-sub { margin: 10px 0 4px; font-size: var(--text-label); }
+.ctx-basis, .ctx-chain { margin: 4px 0; padding-left: 1.2em; }
+.ctx-payload pre {
+  white-space: pre-wrap; word-break: break-all; font-size: 11px;
+  background: var(--sheet); padding: 6px; margin: 4px 0 0;
+}
