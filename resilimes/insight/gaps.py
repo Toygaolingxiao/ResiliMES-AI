@@ -24,8 +24,8 @@ Honesty rules (they are the point of the feature):
 
 from __future__ import annotations
 
-import enum
 from dataclasses import asdict, dataclass, field
+from enum import StrEnum
 from typing import Any
 
 from resilimes.evidence.timeline import Timeline
@@ -34,7 +34,7 @@ from resilimes.smt.dispatch_log import DispatchRecord
 _WAFERS = 25
 
 
-class GapReason(str, enum.Enum):
+class GapReason(StrEnum):
     BATCH_WAIT = "batch_wait"
     QTIME_GATE = "qtime_gate"
     PLAN_WAIT = "plan_wait"
@@ -264,7 +264,9 @@ def gaps_from_run(
     """
     timeline: Timeline = run.timeline
     out: list[GapRecord] = []
-    dispatch_gaps = gaps_from_dispatch(dispatch_records or [], timeline if dispatch_records else None)
+    dispatch_gaps = gaps_from_dispatch(
+        dispatch_records or [], timeline if dispatch_records else None
+    )
     covered: dict[int, list[tuple[float, float]]] = {}
     for gap in dispatch_gaps:
         covered.setdefault(gap.tool, []).append((gap.start, gap.end))

@@ -18,7 +18,7 @@ from typing import Any
 
 from resilimes.agents.jsonutil import extract_json_object
 from resilimes.evidence.factcheck import FactRegistry, check
-from resilimes.insight.gaps import GapRecord, GapReason
+from resilimes.insight.gaps import GapReason, GapRecord
 from resilimes.llm.base import Completer, LlmResult
 
 LANE = "gap_explainer"
@@ -136,15 +136,9 @@ def scripted_text(gap: GapRecord) -> str:
             "would have overrun the planned maintenance beginning during this gap."
         )
     if gap.reason is GapReason.PLAN_WAIT:
-        return (
-            f"Tool {gap.tool} waited {mins:g} min for the planning band to "
-            "release this start."
-        )
+        return f"Tool {gap.tool} waited {mins:g} min for the planning band to release this start."
     if gap.reason is GapReason.CAPACITY_RESERVE:
-        return (
-            f"Tool {gap.tool} waited {mins:g} min holding capacity for an "
-            "expected hot lot."
-        )
+        return f"Tool {gap.tool} waited {mins:g} min holding capacity for an expected hot lot."
     if gap.reason is GapReason.SETUP_SAVING:
         return (
             f"Tool {gap.tool} waited {mins:g} min so the next start could "

@@ -46,9 +46,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from resilimes.evidence.timeline import Timeline, build_timeline  # noqa: E402
-from resilimes.smt.dispatch_log import REASON_BATCH_WAIT, REASON_QTIME_GATE, GapRecorder
-from resilimes.smt.fab import Fab, load_fab
-from resilimes.smt.simulate import RunResult, make_sim, pm_windows, sample_downs
+from resilimes.smt.dispatch_log import REASON_BATCH_WAIT, REASON_QTIME_GATE, GapRecorder  # noqa: E402
+from resilimes.smt.fab import Fab, load_fab  # noqa: E402
+from resilimes.smt.simulate import RunResult, make_sim, pm_windows, sample_downs  # noqa: E402
 
 FILL_REASONS = (REASON_QTIME_GATE, REASON_BATCH_WAIT)
 _WAFERS = 25
@@ -102,14 +102,15 @@ def _window_missed(timeline: Timeline, fab: Fab, lot: int, origin_step: int) -> 
     if origin_starts:
         first = min(origin_starts)
         if any(
-            gap.kind == "qtime_hold" and gap.start >= first
-            for gap in timeline.gaps.get(lot, [])
+            gap.kind == "qtime_hold" and gap.start >= first for gap in timeline.gaps.get(lot, [])
         ):
             return True
     return False
 
 
-def analyse(fab: Fab, *, seed: int = 1, horizon_h: float = 12.0, policy: str = "resilimes") -> dict[str, Any]:
+def analyse(
+    fab: Fab, *, seed: int = 1, horizon_h: float = 12.0, policy: str = "resilimes"
+) -> dict[str, Any]:
     horizon = horizon_h * 3600.0
     recorder = GapRecorder()
     base = _run(fab, seed=seed, horizon=horizon, policy=policy, recorder=recorder)
@@ -138,7 +139,9 @@ def analyse(fab: Fab, *, seed: int = 1, horizon_h: float = 12.0, policy: str = "
         filled_total += 1
         if rec.reason == REASON_QTIME_GATE and rec.lot is not None:
             missed = _window_missed(timeline, fab, rec.lot, rec.step)
-            verdict = "inconclusive" if missed is None else ("protective" if missed else "not_protective")
+            verdict = (
+                "inconclusive" if missed is None else ("protective" if missed else "not_protective")
+            )
         elif rec.reason == REASON_BATCH_WAIT:
             floor_lots = int(rec.evidence.get("floor_wafers", 0)) // _WAFERS
             underfilled = any(
@@ -152,9 +155,7 @@ def analyse(fab: Fab, *, seed: int = 1, horizon_h: float = 12.0, policy: str = "
         if verdict == "protective":
             protective_total += 1
 
-    judged = sum(
-        bucket["protective"] + bucket["not_protective"] for bucket in per_reason.values()
-    )
+    judged = sum(bucket["protective"] + bucket["not_protective"] for bucket in per_reason.values())
     base_avoidable = int(base.qtime_miss_class.get("avoidable", 0))
     filled_avoidable = int(filled.qtime_miss_class.get("avoidable", 0))
     return {
@@ -170,7 +171,8 @@ def analyse(fab: Fab, *, seed: int = 1, horizon_h: float = 12.0, policy: str = "
         "gaps_recorded_total": len(recorder.records),
         "gaps_filled": filled_total,
         "gaps_by_reason": {
-            reason: len(recorder.by_reason(reason)) for reason in {r.reason for r in recorder.records}
+            reason: len(recorder.by_reason(reason))
+            for reason in {r.reason for r in recorder.records}
         },
         "new_avoidable_qtime_violations": filled_avoidable - base_avoidable,
         "base_avoidable_qtime_violations": base_avoidable,

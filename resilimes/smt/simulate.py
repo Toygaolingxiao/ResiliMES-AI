@@ -38,6 +38,12 @@ from heapq import heappush as _sched_push
 from typing import TYPE_CHECKING, Any
 
 from resilimes.kernel.score import class_tier, dynamic_priority, ped_risk, tiered_key
+from resilimes.smt.dispatch_log import (
+    REASON_BATCH_WAIT,
+    REASON_PM_AVOIDANCE,
+    REASON_QTIME_GATE,
+    GapRecorder,
+)
 from resilimes.smt.fab import (
     BATCH_MAX_WAIT_SEC,
     HOT_BATCH_WAIT_SEC,
@@ -53,12 +59,6 @@ from resilimes.smt.fab import (
     measured,
     release_at,
     transport_seconds,
-)
-from resilimes.smt.dispatch_log import (
-    REASON_BATCH_WAIT,
-    REASON_PM_AVOIDANCE,
-    REASON_QTIME_GATE,
-    GapRecorder,
 )
 from resilimes.smt.faults import FaultPlan
 from resilimes.smt.freeze import FreezeConfig, Freezer

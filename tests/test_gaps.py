@@ -10,8 +10,8 @@ from resilimes.evidence.timeline import Timeline, Visit
 from resilimes.insight.gap_explainer import explain_gap
 from resilimes.insight.gaps import (
     GapEvidence,
-    GapRecord,
     GapReason,
+    GapRecord,
     classify_gap,
     find_gaps,
     gaps_from_run,
@@ -98,8 +98,14 @@ def _batch_visit(fab: Fab, tool: int, start: float) -> Visit:
                     if not want_cqt and route.cqt_limit[step] > 0:
                         continue  # keep Q-time evidence out of the batch case
                     return Visit(
-                        lot=lot, step=step, family=family, ready=start - 3600.0,
-                        start=start, tool=tool, leave=start + 600.0, batch_lots=3,
+                        lot=lot,
+                        step=step,
+                        family=family,
+                        ready=start - 3600.0,
+                        start=start,
+                        tool=tool,
+                        leave=start + 600.0,
+                        batch_lots=3,
                     )
     raise AssertionError("no batch step found")
 
@@ -162,7 +168,9 @@ class _FakeProvider:
     def model_for(self, lane: str) -> str:
         return "fake-1"
 
-    def complete(self, messages: list[dict[str, str]], *, lane: str, temperature: float = 0.2) -> LlmResult:
+    def complete(
+        self, messages: list[dict[str, str]], *, lane: str, temperature: float = 0.2
+    ) -> LlmResult:
         return LlmResult(
             content=json.dumps({"explanation": self.text}),
             model="fake-1",

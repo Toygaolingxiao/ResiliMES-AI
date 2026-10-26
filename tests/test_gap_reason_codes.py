@@ -91,7 +91,13 @@ def test_recorder_coalesces_repeated_decisions() -> None:
     recorder = GapRecorder()
     for _ in range(3):
         recorder.record(
-            "qtime_gate", lot=7, lots=(7,), step=10, tool=3, family=1, t=100.0,
+            "qtime_gate",
+            lot=7,
+            lots=(7,),
+            step=10,
+            tool=3,
+            family=1,
+            t=100.0,
             evidence={"blocked_family": 2},
         )
     recorder.record(
@@ -151,7 +157,9 @@ def test_batch_wait_records(edd_batch: tuple[RunResult, GapRecorder]) -> None:
         assert len(rec.lots) >= 1 and rec.lot == rec.lots[0]
 
 
-def test_batch_fill_override_starts_underfilled(edd_batch: tuple[RunResult, GapRecorder], fab: Fab) -> None:
+def test_batch_fill_override_starts_underfilled(
+    edd_batch: tuple[RunResult, GapRecorder], fab: Fab
+) -> None:
     """The research-arm fill: forcing the recorded batch lots starts the
     batch under-filled (batch_reasons gains ``forced_fill``)."""
     _result, recorder = edd_batch
@@ -211,8 +219,13 @@ def test_dispatch_gap_beats_inferred(fab: Fab) -> None:
         busy=[[(0.0, 1000.0), (4600.0, 7200.0)] if tool == 0 else [] for tool in range(tools)],
     )
     record = DispatchRecord(
-        reason="qtime_gate", lot=11, lots=(11,), step=4, tool=0,
-        family=fab.tool_family[0], t=1500.0,
+        reason="qtime_gate",
+        lot=11,
+        lots=(11,),
+        step=4,
+        tool=0,
+        family=fab.tool_family[0],
+        t=1500.0,
         evidence={"blocked_family": 3, "target_step": 5},
     )
 
@@ -254,8 +267,7 @@ def test_counterfactual_report_consistent(fab: Fab) -> None:
         report["filled_avoidable_qtime_violations"] - report["base_avoidable_qtime_violations"]
     )
     judged = sum(
-        bucket["protective"] + bucket["not_protective"]
-        for bucket in report["per_reason"].values()
+        bucket["protective"] + bucket["not_protective"] for bucket in report["per_reason"].values()
     )
     total = sum(bucket["gaps"] for bucket in report["per_reason"].values())
     assert total == report["gaps_filled"]
