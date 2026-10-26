@@ -54,6 +54,12 @@ from resilimes.smt.fab import (
     release_at,
     transport_seconds,
 )
+from resilimes.smt.dispatch_log import (
+    REASON_BATCH_WAIT,
+    REASON_PM_AVOIDANCE,
+    REASON_QTIME_GATE,
+    GapRecorder,
+)
 from resilimes.smt.faults import FaultPlan
 from resilimes.smt.freeze import FreezeConfig, Freezer
 from resilimes.smt.hard_qtime import CAUSES, MISS_CLASSES, HardQtime, classify, miss_class
@@ -528,6 +534,8 @@ def make_sim(
     layout: FabLayout | bool | str | None = None,
     sched_mode: str | None = None,
     hard_qtime: bool | None = None,
+    gap_recorder: GapRecorder | None = None,
+    force_start_at: dict[tuple[int, int], float] | None = None,
 ) -> _Sim:
     """A ready simulator; ``.run()`` is one run. ``deadline_event`` (all policies) sends an un-started lot to
     re-clean or Q-time hold at its latest start. ``r2_policy`` turns on the
@@ -552,7 +560,14 @@ def make_sim(
     unchanged qtime-r2 path. ``shift_lead`` (ResiliMES only, default None:
     off and bit-identical) is a ``resilimes.agents.shift_lead.ShiftLead``
     asked at scheduling exceptions; see ``docs/AI_SHIFT_LEAD.md``.
-    ``plan_wait`` (plan runs only) picks the expected
+    ``gap_recorder`` (Plan 4 v1.5, default None: off and bit-identical) is a
+    ``resilimes.smt.dispatch_log.GapRecorder`` the dispatcher feeds at the
+    moment it refuses or holds a start (hard Q-time gate, batch fill wait,
+    PM avoidance); unset reads RESILIMES_GAP_LOG=1 as "create one", readable
+    afterwards as ``sim.gap_recorder``. ``force_start_at`` (research arm
+    only, default None) maps (lot, step) to the moment from which that lot's
+    deliberate wait is overridden, for the gap counterfactual study; it is
+    never set on the default path. ``plan_wait`` (plan runs only) picks the expected
     wait in the risk: ``position`` (default) the lot's own place in the
     dispatch-ordered queue, ``family`` the family-average wait of planning-r1
     before the fix (kept for the A/B study). ``progress`` (default None) is
@@ -572,6 +587,8 @@ def make_sim(
         raise ValueError(f"Unknown sched_mode {mode}")
     if hard_qtime is None:
         hard_qtime = default_hard_qtime(policy, mode)
+    if gap_recorder is None and os.environ.get("RESILIMES_GAP_LOG") == "1":
+        gap_recorder = GapRecorder()
     if plan is None and policy == "resilimes" and mode == "plan":
         plan = auto_plan(
             fab,
@@ -608,6 +625,8 @@ def make_sim(
         freeze=FreezeConfig.from_env() if freeze is None else freeze,
         layout=resolve(layout),
         hard_qtime=hard_qtime,
+        gap_recorder=gap_recorder,
+        force_start_at=force_start_at,
     )
     sim.progress = progress
     return sim
@@ -686,10 +705,19 @@ class _Sim:
         freeze: FreezeConfig | None = None,
         layout: FabLayout | None = None,
         hard_qtime: bool = False,
+        gap_recorder: GapRecorder | None = None,
+        force_start_at: dict[tuple[int, int], float] | None = None,
     ) -> None:
         self.fab = fab
         # AI shift lead hook (off when None): asked at exceptions in tick().
         self.lead = shift_lead
+        # Plan 4 v1.5 dispatch-time gap log (off when None): a read-only
+        # sink; recording never feeds a decision (see smt/dispatch_log.py).
+        self.gap_recorder = gap_recorder
+        # Research-arm gap fill for the counterfactual study (empty = off
+        # and bit-identical): (lot, step) -> moment from which the lot's
+        # deliberate wait (Q-time gate / batch fill) is overridden.
+        self.force_start_at = force_start_at or {}
         # Progress callback (off when None): reads the clock, changes nothing.
         self.progress: Callable[[float], None] | None = None
         # Read-only miss causes; the hard Q-time gate only when switched on.
@@ -1260,6 +1288,13 @@ class _Sim:
                     and self.fab.routes[self.fab.lot_route[lot]].batch_max[self.step[lot]] > 0
                 ]
                 candidates = pool + extra
+        if self.force_start_at:
+            # Research-arm gap fill: a forced lot is a candidate even when
+            # the candidate cap cut it from the shortlist.
+            kept = set(candidates)
+            for lot in whole:
+                if lot not in kept and self._gap_forced(lot, moment):
+                    candidates.append(lot)
         pm_start = self.next_pm_start(tool, moment)
         feasible: list[int] = []
         skipped = False
@@ -1272,10 +1307,49 @@ class _Sim:
                 procs[lot] = proc
             if pm_start is not None and moment + proc > pm_start:
                 skipped = True
+                if self.gap_recorder is not None:
+                    self.gap_recorder.record(
+                        REASON_PM_AVOIDANCE,
+                        lot=lot,
+                        lots=(lot,),
+                        step=self.step[lot],
+                        tool=tool,
+                        family=fam,
+                        t=moment,
+                        wake=pm_start,
+                        evidence={
+                            "proc_s": proc,
+                            "pm_start_s": pm_start,
+                            "overshoot_s": moment + proc - pm_start,
+                        },
+                    )
                 continue
             if self.hq is not None:
                 self.hq.urgent_wake = None
-            if self.hq is not None and not self.hq.admit(lot, moment, proc):
+            if (
+                self.hq is not None
+                and not self._gap_forced(lot, moment)
+                and not self.hq.admit(lot, moment, proc)
+            ):
+                if self.gap_recorder is not None:
+                    route = self.fab.routes[self.fab.lot_route[lot]]
+                    index = self.step[lot]
+                    self.gap_recorder.record(
+                        REASON_QTIME_GATE,
+                        lot=lot,
+                        lots=(lot,),
+                        step=index,
+                        tool=tool,
+                        family=fam,
+                        t=moment,
+                        evidence={
+                            "blocked_family": self.hq.blocked_fam,
+                            "target_step": route.cqt_target[index],
+                            "cqt_limit_s": route.cqt_limit[index],
+                            "proc_s": proc,
+                            "deadline_s": self.deadline[lot],
+                        },
+                    )
                 # Woken when the blocking family finishes a step or a tool comes
                 # up (``_hq_wake``); the late fallback covers time-only changes.
                 gated = True
@@ -1326,9 +1400,32 @@ class _Sim:
         batch_wake: float | None = None
         if batches:
             chosen, reason, batch_wake = self.pick_batch(batches, tool, moment)
-            if self.hq is not None and len(chosen) > 1:
+            if (
+                self.hq is not None
+                and len(chosen) > 1
+                and not any(self._gap_forced(lot, moment) for lot in chosen)
+            ):
                 # One run starts every member at once: admit them together.
-                chosen = self.hq.admit_batch(chosen, moment, procs)
+                admitted = self.hq.admit_batch(chosen, moment, procs)
+                if self.gap_recorder is not None and len(admitted) < len(chosen):
+                    kept = set(admitted)
+                    for lot in chosen:
+                        if lot not in kept:
+                            self.gap_recorder.record(
+                                REASON_QTIME_GATE,
+                                lot=lot,
+                                lots=(lot,),
+                                step=self.step[lot],
+                                tool=tool,
+                                family=fam,
+                                t=moment,
+                                evidence={
+                                    "detail": "batch_joint",
+                                    "blocked_family": self.hq.blocked_fam,
+                                    "proc_s": procs.get(lot),
+                                },
+                            )
+                chosen = admitted
         if singles:
             single = min(singles, key=lambda lot: self.rank(lot, tool, moment))
             if not chosen or self.rank(single, tool, moment) < self.rank(chosen[0], tool, moment):
@@ -1344,6 +1441,12 @@ class _Sim:
                     self.pending_override = (chosen[0], plain, urgent[0], urgent[1])
         self._sample(t0, True)
         return chosen, wake_at, reason
+
+    def _gap_forced(self, lot: int, moment: float) -> bool:
+        """Research-arm gap fill: this lot's deliberate wait is overridden
+        from its ``force_start_at`` moment on. Empty map (default) = never."""
+        at = self.force_start_at.get((lot, self.step[lot]))
+        return at is not None and moment >= at
 
     def in_window(self, lot: int) -> bool:
         """The lot is inside an open dataset CQT window (target not started)."""
@@ -1464,6 +1567,26 @@ class _Sim:
             wafers = len(taken) * _WAFERS
             reason, until = self.batch_rule(taken, group, fam, recipe, wafers, floor, moment)
             if until is not None:
+                if self.gap_recorder is not None:
+                    self.gap_recorder.record(
+                        REASON_BATCH_WAIT,
+                        lot=head,
+                        lots=tuple(taken),
+                        step=index,
+                        tool=tool,
+                        family=fam,
+                        t=moment,
+                        wake=until,
+                        evidence={
+                            "recipe": recipe,
+                            "wafers": wafers,
+                            "floor_wafers": floor,
+                            "need_lots": -(-(floor - wafers) // _WAFERS),
+                            "expected_arrivals": self.expected_arrivals(fam, recipe, until),
+                            "oldest_ready_s": min(self.ready[lot] for lot in group),
+                            "cap_at_s": until,
+                        },
+                    )
                 wake = until if wake is None else min(wake, until)
                 continue
             key = self.rank(head, tool, moment)
@@ -1493,6 +1616,9 @@ class _Sim:
         """
         if wafers >= floor:
             return "min_met", None
+        if self.force_start_at and any(self._gap_forced(lot, moment) for lot in taken):
+            # Research-arm gap fill: start under-filled rather than wait.
+            return "forced_fill", None
         if self.lead is not None and self.lead.start_batch(fam, recipe, moment):
             return "shift_lead", None
         if self.policy == "resilimes" and any(
