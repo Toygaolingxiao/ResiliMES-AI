@@ -1,0 +1,21 @@
+{
+ "book": "gen_04_down_pm_batch",
+ "archetype": "down_pm_batch",
+ "seed": 9,
+ "horizon_h": 6.0,
+ "wall_s": 116.2,
+ "exceptions": 70,
+ "gate_checks": 0,
+ "escalated": 40,
+ "triggers": {
+  "always": 40
+ },
+ "rule_handled": 30,
+ "triggered": true,
+ "kpi": {
+  "qtime_avoidable": 0,
+  "hot_late": 0,
+  "weighted_tardiness_min": 3983.7,
+  "completed_routes": 7
+ }
+}

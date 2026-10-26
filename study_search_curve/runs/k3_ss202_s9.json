@@ -1,0 +1,26 @@
+{
+ "k": 3,
+ "search_seed": 202,
+ "book_seed": 9,
+ "book": "heldout_published",
+ "config": {
+  "horizon_h": 5.0,
+  "fork_h": 1.0,
+  "futures": 2,
+  "llm_timeout_s": 30.0,
+  "budget": null,
+  "escalation_mode": "always",
+  "provider": "lever-search",
+  "mocked": true,
+  "selector": "pareto",
+  "search_seed": 202
+ },
+ "wall_s": 977.5,
+ "qtime_avoidable": 0,
+ "hot_late": 0,
+ "weighted_tardiness_min": 3323.7,
+ "completed_routes": 5,
+ "escalated": 38,
+ "propose_calls": 38,
+ "sim_calls": 348
+}
