@@ -373,22 +373,28 @@ def situation(sim: Any, exc: FabException, moment: float) -> dict[str, Any]:
     }
 
 
-PLAN_SYSTEM = (
-    "You are the shift lead of a semiconductor fab (SMT2020). A rule-based "
-    "dispatcher runs the fab; you only act at this exception. Propose up to "
-    f"{MAX_PLANS} alternative plans to the rule default. Every plan is tested in "
-    "a simulator over several sampled futures before anything is applied, so "
-    "propose plans that are genuinely different. Levers (JSON):\n"
-    '{"type":"keep_pin","lots":[ids],"hours":h} lots wait for their pinned tool;\n'
-    '{"type":"reroute","lots":[ids]} (breakdown only) lots go to a sibling tool;\n'
-    '{"type":"boost","lots":[ids in order],"ttl_min":<=60} run these first;\n'
-    '{"type":"defer_pm","tool":name,"shift_min":m} move the next PM of a family '
-    "tool by m minutes (negative = earlier); within 24 h of plan, no overlap "
-    "with its other PMs, no two family tools in PM together;\n"
-    '{"type":"start_batch","recipe":r} start an under-filled furnace batch now.\n'
-    "Only lots and tools listed in the input. Fixed lots stay on their tool. "
-    'Reply with JSON only: {"plans":[{"id":"P1","levers":[...],"why":"..."}]}'
-)
+def plan_system(max_plans: int = MAX_PLANS) -> str:
+    """The PLAN_LANE prompt for a given proposer budget. ``plan_system()``
+    with no argument is byte-identical to the shipped prompt."""
+    return (
+        "You are the shift lead of a semiconductor fab (SMT2020). A rule-based "
+        "dispatcher runs the fab; you only act at this exception. Propose up to "
+        f"{max_plans} alternative plans to the rule default. Every plan is tested in "
+        "a simulator over several sampled futures before anything is applied, so "
+        "propose plans that are genuinely different. Levers (JSON):\n"
+        '{"type":"keep_pin","lots":[ids],"hours":h} lots wait for their pinned tool;\n'
+        '{"type":"reroute","lots":[ids]} (breakdown only) lots go to a sibling tool;\n'
+        '{"type":"boost","lots":[ids in order],"ttl_min":<=60} run these first;\n'
+        '{"type":"defer_pm","tool":name,"shift_min":m} move the next PM of a family '
+        "tool by m minutes (negative = earlier); within 24 h of plan, no overlap "
+        "with its other PMs, no two family tools in PM together;\n"
+        '{"type":"start_batch","recipe":r} start an under-filled furnace batch now.\n'
+        "Only lots and tools listed in the input. Fixed lots stay on their tool. "
+        'Reply with JSON only: {"plans":[{"id":"P1","levers":[...],"why":"..."}]}'
+    )
+
+
+PLAN_SYSTEM = plan_system()
 
 SELECT_SYSTEM = (
     "You are the shift lead of a semiconductor fab. Each candidate plan was "
@@ -507,6 +513,7 @@ class SimShiftLead(ShiftLead):
         progress: Any = None,
         max_per_tick: int = 8,
         escalation: str | None = None,
+        max_plans: int = MAX_PLANS,
     ) -> None:
         super().__init__(
             RuleDefault("en"), max_per_tick=max_per_tick, budget=budget, progress=progress
@@ -517,6 +524,7 @@ class SimShiftLead(ShiftLead):
             raise ValueError("selector llm needs a completer")
         self.twin = twin
         self.completer = completer
+        self.max_plans = max(1, int(max_plans))
         self.selector = selector
         self.memory = memory
         self.timeout_s = timeout_s
@@ -648,15 +656,15 @@ class SimShiftLead(ShiftLead):
             self.twin_skips += 1
             cause = "memory_skip"
         if cause is None and self.completer is not None:
-            payload = {**view, "max_plans": MAX_PLANS, "similar_past_cases": cases}
+            payload = {**view, "max_plans": self.max_plans, "similar_past_cases": cases}
             try:
-                answer = self._call(PLAN_LANE, PLAN_SYSTEM, payload)
+                answer = self._call(PLAN_LANE, plan_system(self.max_plans), payload)
                 raw = answer.get("plans")
                 if not isinstance(raw, list):
                     raise DecisionError("bad_json", "plans must be a list")
                 assert self.planned is not None
                 builder = PlanBuilder(sim, exc, moment, self.planned)
-                for k, item in enumerate(raw[:MAX_PLANS]):
+                for k, item in enumerate(raw[: self.max_plans]):
                     plan = builder.plan(f"P{k + 1}", item)
                     plans[plan.id] = plan
             except DecisionError as error:
@@ -772,6 +780,7 @@ class SimShiftLead(ShiftLead):
             {
                 "decider": "sim+"
                 + (getattr(self.completer, "name", "llm") if self.completer else "pareto"),
+                "max_plans": self.max_plans,
                 "escalation_mode": self.escalation,
                 "escalated": self.escalations,
                 "rule_handled": self.rule_handled,

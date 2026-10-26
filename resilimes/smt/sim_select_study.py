@@ -16,6 +16,11 @@ Arms (all on the same held-out seeds, same book, same horizon):
 * ``sim_llm``    ``sim`` with Nemotron via Nightshift proposing and selecting
                  (needs ``RESILIMES_MODE=live`` and the Nightshift settings).
 * ``sim_llm_hmem`` ``sim_llm`` plus H-MEM cases in both prompts.
+* ``sim_search`` ``sim`` with the non-LLM lever-search sampler proposing
+                 (same ``MAX_PLANS`` budget, fixed seed — ``RESILIMES_SEARCH_SEED``
+                 overrides it) and the Pareto rule selecting. The same-budget
+                 baseline for the LLM proposers: not a model, never in
+                 ``LLM_ARMS``.
 
 Memory arms warm-start from ``<out-dir>/memory_<arm>.json``, built once on
 the dev seeds (``--warm-seeds``, default 1-3, same book without the
@@ -39,7 +44,16 @@ import time
 from pathlib import Path
 from typing import Any
 
-ARMS = ("rules", "heuristic", "sim", "sim_hmem", "sim_mock", "sim_llm", "sim_llm_hmem")
+ARMS = (
+    "rules",
+    "heuristic",
+    "sim",
+    "sim_hmem",
+    "sim_mock",
+    "sim_llm",
+    "sim_llm_hmem",
+    "sim_search",
+)
 LLM_ARMS = ("sim_mock", "sim_llm", "sim_llm_hmem")
 MEMORY_ARMS = ("sim_hmem", "sim_llm_hmem")
 HEADLINE = (
@@ -80,7 +94,21 @@ def _say(message: str) -> None:
     print(time.strftime("%H:%M:%S"), message, flush=True)
 
 
+def _search_seed() -> int:
+    from resilimes.llm.search import DEFAULT_SEED
+
+    raw = os.environ.get("RESILIMES_SEARCH_SEED", "").strip()
+    try:
+        return int(raw) if raw else DEFAULT_SEED
+    except ValueError:
+        return DEFAULT_SEED
+
+
 def _completer(arm: str) -> Any:
+    if arm == "sim_search":
+        from resilimes.llm.search import SearchCompleter
+
+        return SearchCompleter(seed=_search_seed())
     if arm == "sim_mock":
         from resilimes.llm.mock import MockProvider
 
@@ -94,6 +122,16 @@ def _completer(arm: str) -> Any:
             raise RuntimeError("sim_llm arms need RESILIMES_MODE=live and the Nightshift .env")
         return build_provider(settings)
     return None
+
+
+def _selector(arm: str, completer: Any) -> str:
+    """Who picks among the twin-scored plans. ``sim_search`` proposes by
+    sampling and must be judged by the Pareto rule — letting it use the
+    ``llm`` selector would ask the sampler to pick its own samples (it
+    refuses; see ``resilimes.llm.search``)."""
+    if arm == "sim_search":
+        return "pareto"
+    return "llm" if completer is not None else "pareto"
 
 
 def run_one(
@@ -137,10 +175,11 @@ def run_one(
         lead = SimShiftLead(
             twin,
             completer=completer,
-            selector="llm" if completer is not None else "pareto",
+            selector=_selector(arm, completer),
             memory=memory,
             timeout_s=args.llm_timeout,
             budget=args.budget,
+            max_plans=getattr(args, "max_plans", 4),
         )
     started = time.perf_counter()
     last = [started]
@@ -173,6 +212,8 @@ def run_one(
         "escalation_mode": getattr(lead, "escalation", None),
         "provider": getattr(getattr(lead, "completer", None), "name", None),
         "mocked": getattr(getattr(lead, "completer", None), "mocked", None),
+        "selector": getattr(lead, "selector", None),
+        "search_seed": getattr(getattr(lead, "completer", None), "seed", None),
     }
     for key in (*HEADLINE, "on_time", "due_in_horizon", "completed_routes"):
         if hasattr(result, key):
@@ -545,6 +586,12 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--workers", type=int, default=3, help="twin fork processes")
     p.add_argument("--llm-timeout", type=float, default=1200.0, help="per LLM call, s")
     p.add_argument("--budget", type=int, default=None, help="max escalations (default: no cap)")
+    p.add_argument(
+        "--max-plans",
+        type=int,
+        default=4,
+        help="proposer plan budget per escalation (default: 4, the shipped MAX_PLANS)",
+    )
     p.add_argument("--progress-s", type=float, default=30.0)
     p.add_argument("--out-dir", default="study_sim_select")
     args = p.parse_args(argv)

@@ -144,6 +144,18 @@ def _setup(
         pm = pm_windows(fab, horizon)
         kwargs["horizon"] = horizon
         stress_book.apply(fab, book, policy, downs, pm, kwargs)
+    elif book.startswith("gen_"):
+        # Generated stress set, pre-registered (resilimes.smt.stress_gen,
+        # docs/STRESS_GEN_PREREG.md). Definitions are data, not code:
+        # stress_gen_scenarios.json, reproducible from GEN_SEED.
+        from resilimes.smt import stress_gen
+
+        if not stress_gen.is_gen(book):
+            raise KeyError(book)
+        downs = sample_downs(fab, seed, horizon)
+        pm = pm_windows(fab, horizon)
+        kwargs["horizon"] = horizon
+        stress_gen.apply(fab, book, policy, downs, pm, kwargs)
     else:
         raise KeyError(book)
     if _releases() if releases is None else releases:

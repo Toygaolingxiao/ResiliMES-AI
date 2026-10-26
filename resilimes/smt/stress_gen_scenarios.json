@@ -1,0 +1,222 @@
+{
+ "generator": "resilimes.smt.stress_gen",
+ "gen_seed": 20261026,
+ "scenarios": [
+  {
+   "id": "gen_01_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "gen_seed": 20261026,
+   "origin_family": "Planar_BE_75",
+   "target_family": "Dielectric_BE_27",
+   "pair_route_steps": 39,
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_02_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "gen_seed": 20261026,
+   "origin_family": "Dielectric_BE_27",
+   "target_family": "Dielectric_BE_21",
+   "pair_route_steps": 26,
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_03_hot_cluster",
+   "archetype": "hot_cluster",
+   "gen_seed": 20261026,
+   "family": "Litho_FE_92",
+   "hot_factor": 1.48,
+   "hold_lots": 10,
+   "hold_until_h": 0.89,
+   "remain_window_h": [
+    2.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_04_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "gen_seed": 20261026,
+   "down_family": "Litho_FE_98",
+   "pm_family": "LithoTrack_FE_96",
+   "batch_family": "Diffusion_FE_120",
+   "batch_cap_wafers": 25,
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_05_combo_down",
+   "archetype": "combo_down",
+   "gen_seed": 20261026,
+   "families": [
+    "Litho_FE_98",
+    "LithoTrack_FE_95"
+   ],
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_06_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "gen_seed": 20261026,
+   "origin_family": "TF_BE_24",
+   "target_family": "DefMet_BE_42",
+   "pair_route_steps": 8,
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    1.25
+   ]
+  },
+  {
+   "id": "gen_07_combo_down",
+   "archetype": "combo_down",
+   "gen_seed": 20261026,
+   "families": [
+    "Litho_BE_99",
+    "Litho_FE_111"
+   ],
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_08_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "gen_seed": 20261026,
+   "origin_family": "DE_BE_67",
+   "target_family": "WE_BE_16",
+   "pair_route_steps": 7,
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_09_combo_down",
+   "archetype": "combo_down",
+   "gen_seed": 20261026,
+   "families": [
+    "Litho_FE_35",
+    "Litho_BE_93"
+   ],
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_10_hot_cluster",
+   "archetype": "hot_cluster",
+   "gen_seed": 20261026,
+   "family": "LithoTrack_FE_115",
+   "hot_factor": 1.24,
+   "hold_lots": 20,
+   "hold_until_h": 0.69,
+   "remain_window_h": [
+    2.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_11_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "gen_seed": 20261026,
+   "down_family": "Litho_FE_111",
+   "pm_family": "Litho_FE_92",
+   "batch_family": "Diffusion_BE_123",
+   "batch_cap_wafers": 25,
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_12_hot_cluster",
+   "archetype": "hot_cluster",
+   "gen_seed": 20261026,
+   "family": "Dielectric_BE_20",
+   "hot_factor": 1.22,
+   "hold_lots": 19,
+   "hold_until_h": 0.95,
+   "remain_window_h": [
+    2.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_13_hot_cluster",
+   "archetype": "hot_cluster",
+   "gen_seed": 20261026,
+   "family": "Litho_BE_110",
+   "hot_factor": 1.47,
+   "hold_lots": 13,
+   "hold_until_h": 0.73,
+   "remain_window_h": [
+    2.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_14_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "gen_seed": 20261026,
+   "down_family": "Dielectric_BE_20",
+   "pm_family": "Litho_FE_35",
+   "batch_family": "Diffusion_FE_120",
+   "batch_cap_wafers": 25,
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_15_combo_down",
+   "archetype": "combo_down",
+   "gen_seed": 20261026,
+   "families": [
+    "Dielectric_BE_20",
+    "LithoTrack_BE_117"
+   ],
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  },
+  {
+   "id": "gen_16_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "gen_seed": 20261026,
+   "down_family": "Litho_FE_98",
+   "pm_family": "LithoTrack_FE_96",
+   "batch_family": "Diffusion_FE_125",
+   "batch_cap_wafers": 25,
+   "tool_fraction": 0.5,
+   "span_h": [
+    0.0,
+    6.0
+   ]
+  }
+ ]
+}
