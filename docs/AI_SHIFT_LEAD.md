@@ -217,7 +217,7 @@ There were 0 fallbacks: the stand-in only picks offered, guarded options.
 Mean deltas: Q-time violations −1.3, on-time −0.17 lots (−0.3 pp), weighted
 tardiness +1432 min, recleans −2.2, batch starts +1.9.
 
-**Honest reading.** The result is mixed and not a win.
+**Reading.** The result is mixed and not a win.
 
 * Seed 1 improves Q-time strongly in every book (−9 to −23 violations).
 * Seeds 2 and 3 get slightly worse (+1 to +12).
@@ -268,8 +268,8 @@ Then check `fallback_causes` and latency p50/p95 in the summary.
 
 ### Watching a long run
 
-A live run makes one slow model call per exception, so the study now shows
-where it is. On stderr it prints a start line, then one progress line,
+A live run makes one slow model call per exception, so the study shows
+its progress. On stderr it prints a start line, then one progress line,
 redrawn in place on a terminal and printed every 10 s
 (`--progress-every`) when stderr goes to a log file:
 

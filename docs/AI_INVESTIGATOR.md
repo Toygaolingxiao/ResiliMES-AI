@@ -180,7 +180,7 @@ minutes per start, 130 changeovers) as secondary because one tool was down.
   family. It uses the same metrics as the baseline (`cause_indicators`), and its numbers go into
   the fact registry like every other tool. It gives **no ranking and no winner**, so the model
   still has to reason.
-- **Mock stand-in.** It now calls `compare_windows` first. Its answers still equal the baseline's.
+- **Mock stand-in.** It calls `compare_windows` first. Its answers still equal the baseline's.
 
 Cases, seeds, weights and scoring are unchanged.
 

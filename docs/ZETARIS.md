@@ -222,7 +222,7 @@ datasources.
 The script never prints the Postgres password, the admin email or password,
 the id token, or the API key. Those strings are scrubbed from the registration log.
 
-`scripts/load_zetaris.py` does not send SQL anymore. It prints this recipe.
+`scripts/load_zetaris.py` does not send SQL. It prints this recipe.
 
 ## Federated check
 

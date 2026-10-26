@@ -110,7 +110,7 @@ and 8 h show the gate works and what it costs. They do not show that
 avoidable misses are rare in general: HARD_QTIME.md finds about 24 avoidable
 misses per 7-day run, roughly 1 per 8 h.
 
-## Study (honest benchmark)
+## Study
 
 `python -m resilimes.smt.sim_select_study --arms ...` — same held-out seeds
 (9–13, book `heldout_published`), 24 h horizon, fork 8 h × 3 futures. All
@@ -144,7 +144,7 @@ Per seed (wt / Q-viol): rules 14549.5/40, 13932.4/41, 14332.8/38, 14452.9/35,
 14508.9/37; sim 14680.6/36, 13976.4/40, 14301.2/37, 14520.0/35, 14579.4/32;
 sim_hmem 14498.4/37, 13859.8/42, 14326.4/36, 14445.2/37, 14534.6/33.
 
-Honest reading: the twin trades a little waiting time (+0.4 %) for fewer
+Reading: the twin trades a little waiting time (+0.4 %) for fewer
 Q-time violations (−5.8 %, never worse on any seed). It is not a clear win on
 waiting time, and on-time % does not move in 24 h. Five seeds and one horizon
 are too few for significance; nothing was tuned on these seeds. The plain

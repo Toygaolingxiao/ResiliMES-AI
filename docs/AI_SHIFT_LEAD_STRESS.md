@@ -185,13 +185,13 @@ fork 8 h, 3 futures. Sums over the three seeds, `rules / sim`:
   furnace incidents delay lots that are not due inside the horizon, so the
   censored tardiness of due lots does not move. The Q-time columns do move.
 
-**Conclusion (honest).** With hard Q-time gating (docs/HARD_QTIME.md) the
+**Conclusion.** With hard Q-time gating (docs/HARD_QTIME.md) the
 rule plan already holds Q-time in all pre-registered incidents at the 8 h
 scale: the gate does not release a lot into a window it cannot close, so
 the incidents turn into queueing upstream of the CQT origin (tardiness), not
 into avoidable Q-time misses. The AI shift lead is a **safety net** that
 these incidents never trip. This is a negative result for "the AI is
 needed" and a positive result for the rules-first design. Demo cases where
-the AI is genuinely called are built separately, from moments where the
+the AI is actually called are built separately, from moments where the
 rule failed in long runs, and are **not** part of this pre-registered
 evaluation (docs/AI_SHIFT_LEAD_DEMO.md).
