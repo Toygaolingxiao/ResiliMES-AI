@@ -4,7 +4,7 @@
 
 The user is a fab shift lead. A schedule over 1,313 tools, 2,156 lots and 264 Q-time limits cannot be read on the floor, so people override it, often by filling an idle gap that was protecting a downstream Q-time window. ResiliMES answers "why is this lot here, why is this tool idle?" from the decision record, right on the Gantt, before anyone overrides.
 
-**Primary track: Track 03, Reasoning Architecture.** The reasoning is split on purpose: a tested rule kernel (planning, scheduling tick, dispatch, hard Q-time gate) makes every decision and logs why; an AI understanding layer reads that record, answers with an honesty tier assigned by code, and never writes the schedule. See [why this track](#track).
+**Primary track: Track 02, The Agent That Can Explain Why.** The work is split on purpose: a tested rule kernel (planning, scheduling tick, dispatch, hard Q-time gate) makes every decision and logs why; an AI understanding layer reads that record, answers with an honesty tier assigned by code, and never writes the schedule. See [why this track](#track).
 
 ## Positioning: rules decide, AI explains
 
@@ -146,7 +146,7 @@ flowchart TD
   explain --> user
 ```
 
-Nemotron turns a dispatcher sentence into one tool call, and later turns the engine result into a business note. Every number in that note is checked against the engine. The committed plan comes from a list scheduler. CP-SAT scores that same objective, and the critic checks both books. That split is the reliability argument for Track 03.
+Nemotron turns a dispatcher sentence into one tool call, and later turns the engine result into a business note. Every number in that note is checked against the engine. The committed plan comes from a list scheduler. CP-SAT scores that same objective, and the critic checks both books. That split is what makes the explanation trustworthy.
 
 | Piece | Role |
 | --- | --- |
@@ -329,11 +329,11 @@ The offline twins implement the same interfaces. Mock mode is labeled in the con
 
 ## Track
 
-Track 03: Reasoning Architecture.
+Track 02: The Agent That Can Explain Why.
 
-The challenge is to turn data, knowledge, memory, and reasoning into reliable decisions and actions. ResiliMES does that for a named user: the production supervisor on shift when a tool fails. The decision is a schedule. The action is the set of assignments written to the world model. Memory is the event log and the Markovian checkpoint. The critic is what makes the decision reliable: an unsafe plan is not committed, including a plan that would look better on a KPI by preempting a running lot or starting work on a down tool.
+The challenge is to investigate complex questions across several data sources, connect the findings, and give answers backed by evidence. The user is the fab shift lead looking at a schedule too large to read. The questions are the ones asked on the floor: why is this lot here, why is this tool idle, what caused this incident, what happened on the last shift. The sources are the decision record, the simulator state, the fab master data in Zetaris, and shift notes in English, Chinese and Japanese. Each answer cites the record it came from, carries an evidence tier assigned by code, and passes a fact check on every number and ID, or it is shown as a labelled rule result.
 
-Track 02 (explain why) is a property of the same loop, visible in the narrative, the rejected alternative, and the fact list. It is not the primary track, because the product is the decision, not only the explanation. Track 01 is how the specialist reads fragmented tables. Wildcard would score only the increment on a prior product and pays less; the git history of this repository starts inside the build window (first commit 22 Oct 2026 22:22 UTC, window opened 22 Oct 2026 00:00 UTC), so the whole system is window work.
+The schedule itself is decided by rules, not by the model. That is why Track 03 is not the primary track: the decisions are reliable because they are rule-based, and the AI's measured contribution is the explanation. Track 01 is how the investigator reads fragmented tables. Wildcard would score only the increment on a prior product; the git history of this repository starts inside the build window (first commit 22 Oct 2026 22:22 UTC, window opened 22 Oct 2026 00:00 UTC), so the whole system is window work.
 
 ## Team
 
