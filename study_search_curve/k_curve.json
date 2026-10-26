@@ -1,0 +1,615 @@
+{
+ "manifest": {
+  "environment": "Linux-7.0.0-39-generic-x86_64-with-glibc2.39 / python 3.12.3",
+  "ran_at": "2026-10-26T03:43:30+0000",
+  "git_commit": "9d7fc23",
+  "note": ""
+ },
+ "config": {
+  "book": "heldout_published",
+  "book_seeds": [
+   9
+  ],
+  "search_seeds": [
+   101,
+   202,
+   303
+  ],
+  "ks": [
+   5,
+   10,
+   15
+  ],
+  "d_ks": [],
+  "horizon_h": 5.0,
+  "fork_h": 1.0,
+  "futures": 2,
+  "escalation": "always"
+ },
+ "runs_planned": 9,
+ "runs_done": 15,
+ "by_k": {
+  "1": {
+   "runs": 3,
+   "qtime_avoidable": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "hot_late": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "weighted_tardiness_min": {
+    "mean": 3323.7,
+    "min": 3323.7,
+    "max": 3323.7
+   },
+   "completed_routes": {
+    "mean": 5.0,
+    "min": 5.0,
+    "max": 5.0
+   },
+   "sim_calls": {
+    "mean": 222.667,
+    "min": 218.0,
+    "max": 228.0
+   },
+   "propose_calls": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   },
+   "escalated": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   }
+  },
+  "3": {
+   "runs": 3,
+   "qtime_avoidable": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "hot_late": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "weighted_tardiness_min": {
+    "mean": 3323.7,
+    "min": 3323.7,
+    "max": 3323.7
+   },
+   "completed_routes": {
+    "mean": 5.0,
+    "min": 5.0,
+    "max": 5.0
+   },
+   "sim_calls": {
+    "mean": 352.0,
+    "min": 342.0,
+    "max": 366.0
+   },
+   "propose_calls": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   },
+   "escalated": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   }
+  },
+  "5": {
+   "runs": 3,
+   "qtime_avoidable": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "hot_late": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "weighted_tardiness_min": {
+    "mean": 3323.7,
+    "min": 3323.7,
+    "max": 3323.7
+   },
+   "completed_routes": {
+    "mean": 5.0,
+    "min": 5.0,
+    "max": 5.0
+   },
+   "sim_calls": {
+    "mean": 483.333,
+    "min": 478.0,
+    "max": 494.0
+   },
+   "propose_calls": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   },
+   "escalated": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   }
+  },
+  "10": {
+   "runs": 3,
+   "qtime_avoidable": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "hot_late": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "weighted_tardiness_min": {
+    "mean": 3323.7,
+    "min": 3323.7,
+    "max": 3323.7
+   },
+   "completed_routes": {
+    "mean": 5.0,
+    "min": 5.0,
+    "max": 5.0
+   },
+   "sim_calls": {
+    "mean": 795.333,
+    "min": 786.0,
+    "max": 812.0
+   },
+   "propose_calls": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   },
+   "escalated": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   }
+  },
+  "15": {
+   "runs": 3,
+   "qtime_avoidable": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "hot_late": {
+    "mean": 0.0,
+    "min": 0.0,
+    "max": 0.0
+   },
+   "weighted_tardiness_min": {
+    "mean": 3323.7,
+    "min": 3323.7,
+    "max": 3323.7
+   },
+   "completed_routes": {
+    "mean": 5.0,
+    "min": 5.0,
+    "max": 5.0
+   },
+   "sim_calls": {
+    "mean": 1106.0,
+    "min": 1090.0,
+    "max": 1134.0
+   },
+   "propose_calls": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   },
+   "escalated": {
+    "mean": 38.0,
+    "min": 38.0,
+    "max": 38.0
+   }
+  }
+ },
+ "rows": [
+  {
+   "k": 10,
+   "search_seed": 101,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 101
+   },
+   "wall_s": 439.7,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 786
+  },
+  {
+   "k": 10,
+   "search_seed": 202,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 202
+   },
+   "wall_s": 517.5,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 812
+  },
+  {
+   "k": 10,
+   "search_seed": 303,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 303
+   },
+   "wall_s": 509.4,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 788
+  },
+  {
+   "k": 15,
+   "search_seed": 101,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 101
+   },
+   "wall_s": 635.0,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 1094
+  },
+  {
+   "k": 15,
+   "search_seed": 202,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 202
+   },
+   "wall_s": 858.9,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 1134
+  },
+  {
+   "k": 15,
+   "search_seed": 303,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 303
+   },
+   "wall_s": 816.8,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 1090
+  },
+  {
+   "k": 1,
+   "search_seed": 101,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 101
+   },
+   "wall_s": 559.5,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 228
+  },
+  {
+   "k": 1,
+   "search_seed": 202,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 202
+   },
+   "wall_s": 713.6,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 222
+  },
+  {
+   "k": 1,
+   "search_seed": 303,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 303
+   },
+   "wall_s": 687.8,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 218
+  },
+  {
+   "k": 3,
+   "search_seed": 101,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 101
+   },
+   "wall_s": 661.4,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 366
+  },
+  {
+   "k": 3,
+   "search_seed": 202,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 202
+   },
+   "wall_s": 977.5,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 348
+  },
+  {
+   "k": 3,
+   "search_seed": 303,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 303
+   },
+   "wall_s": 608.8,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 342
+  },
+  {
+   "k": 5,
+   "search_seed": 101,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 101
+   },
+   "wall_s": 835.5,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 494
+  },
+  {
+   "k": 5,
+   "search_seed": 202,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 202
+   },
+   "wall_s": 717.7,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 478
+  },
+  {
+   "k": 5,
+   "search_seed": 303,
+   "book_seed": 9,
+   "book": "heldout_published",
+   "config": {
+    "horizon_h": 5.0,
+    "fork_h": 1.0,
+    "futures": 2,
+    "llm_timeout_s": 30.0,
+    "budget": null,
+    "escalation_mode": "always",
+    "provider": "lever-search",
+    "mocked": true,
+    "selector": "pareto",
+    "search_seed": 303
+   },
+   "wall_s": 452.3,
+   "qtime_avoidable": 0,
+   "hot_late": 0,
+   "weighted_tardiness_min": 3323.7,
+   "completed_routes": 5,
+   "escalated": 38,
+   "propose_calls": 38,
+   "sim_calls": 478
+  }
+ ]
+}

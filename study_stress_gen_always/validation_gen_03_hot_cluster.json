@@ -1,0 +1,21 @@
+{
+ "book": "gen_03_hot_cluster",
+ "archetype": "hot_cluster",
+ "seed": 9,
+ "horizon_h": 6.0,
+ "wall_s": 116.6,
+ "exceptions": 66,
+ "gate_checks": 0,
+ "escalated": 39,
+ "triggers": {
+  "always": 39
+ },
+ "rule_handled": 27,
+ "triggered": true,
+ "kpi": {
+  "qtime_avoidable": 0,
+  "hot_late": 0,
+  "weighted_tardiness_min": 3984.0,
+  "completed_routes": 7
+ }
+}

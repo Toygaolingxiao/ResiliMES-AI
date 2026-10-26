@@ -1,0 +1,366 @@
+{
+ "environment": "Linux-7.0.0-39-generic-x86_64-with-glibc2.39 / python 3.12.3",
+ "ran_at": "2026-10-26T04:48:15+0000",
+ "git_commit": "a52671c",
+ "rule": "triggered := escalations >= 1 in the no-AI gate run (exception mode, fork 1 h, futures 2, horizon 6 h, seed 9)",
+ "generated": 16,
+ "validated": 16,
+ "triggered": [
+  "gen_01_qtime_chain_down",
+  "gen_02_qtime_chain_down",
+  "gen_03_hot_cluster",
+  "gen_04_down_pm_batch",
+  "gen_05_combo_down",
+  "gen_06_qtime_chain_down",
+  "gen_07_combo_down",
+  "gen_08_qtime_chain_down",
+  "gen_09_combo_down",
+  "gen_10_hot_cluster",
+  "gen_11_down_pm_batch",
+  "gen_12_hot_cluster",
+  "gen_13_hot_cluster",
+  "gen_14_down_pm_batch",
+  "gen_15_combo_down",
+  "gen_16_down_pm_batch"
+ ],
+ "excluded_no_trigger": [],
+ "pending": [],
+ "rows": [
+  {
+   "book": "gen_01_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 114.4,
+   "exceptions": 60,
+   "gate_checks": 0,
+   "escalated": 35,
+   "triggers": {
+    "always": 35
+   },
+   "rule_handled": 25,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3986.6,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_02_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 101.2,
+   "exceptions": 70,
+   "gate_checks": 0,
+   "escalated": 33,
+   "triggers": {
+    "always": 33
+   },
+   "rule_handled": 37,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3980.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_03_hot_cluster",
+   "archetype": "hot_cluster",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 116.6,
+   "exceptions": 66,
+   "gate_checks": 0,
+   "escalated": 39,
+   "triggers": {
+    "always": 39
+   },
+   "rule_handled": 27,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3984.0,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_04_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 116.2,
+   "exceptions": 70,
+   "gate_checks": 0,
+   "escalated": 40,
+   "triggers": {
+    "always": 40
+   },
+   "rule_handled": 30,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_05_combo_down",
+   "archetype": "combo_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 118.7,
+   "exceptions": 68,
+   "gate_checks": 0,
+   "escalated": 41,
+   "triggers": {
+    "always": 41
+   },
+   "rule_handled": 27,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_06_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 120.1,
+   "exceptions": 70,
+   "gate_checks": 0,
+   "escalated": 42,
+   "triggers": {
+    "always": 42
+   },
+   "rule_handled": 28,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_07_combo_down",
+   "archetype": "combo_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 132.8,
+   "exceptions": 71,
+   "gate_checks": 0,
+   "escalated": 41,
+   "triggers": {
+    "always": 41
+   },
+   "rule_handled": 30,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3984.0,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_08_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 140.2,
+   "exceptions": 74,
+   "gate_checks": 0,
+   "escalated": 49,
+   "triggers": {
+    "always": 49
+   },
+   "rule_handled": 25,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_09_combo_down",
+   "archetype": "combo_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 113.5,
+   "exceptions": 69,
+   "gate_checks": 0,
+   "escalated": 40,
+   "triggers": {
+    "always": 40
+   },
+   "rule_handled": 29,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_10_hot_cluster",
+   "archetype": "hot_cluster",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 118.3,
+   "exceptions": 69,
+   "gate_checks": 0,
+   "escalated": 39,
+   "triggers": {
+    "always": 39
+   },
+   "rule_handled": 30,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_11_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 192.6,
+   "exceptions": 69,
+   "gate_checks": 0,
+   "escalated": 39,
+   "triggers": {
+    "always": 39
+   },
+   "rule_handled": 30,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_12_hot_cluster",
+   "archetype": "hot_cluster",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 171.9,
+   "exceptions": 65,
+   "gate_checks": 0,
+   "escalated": 37,
+   "triggers": {
+    "always": 37
+   },
+   "rule_handled": 28,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.0,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_13_hot_cluster",
+   "archetype": "hot_cluster",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 191.8,
+   "exceptions": 70,
+   "gate_checks": 0,
+   "escalated": 40,
+   "triggers": {
+    "always": 40
+   },
+   "rule_handled": 30,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 6
+   }
+  },
+  {
+   "book": "gen_14_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 198.8,
+   "exceptions": 79,
+   "gate_checks": 0,
+   "escalated": 43,
+   "triggers": {
+    "always": 43
+   },
+   "rule_handled": 36,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3979.2,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_15_combo_down",
+   "archetype": "combo_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 271.5,
+   "exceptions": 84,
+   "gate_checks": 0,
+   "escalated": 46,
+   "triggers": {
+    "always": 46
+   },
+   "rule_handled": 38,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_16_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 194.5,
+   "exceptions": 70,
+   "gate_checks": 0,
+   "escalated": 40,
+   "triggers": {
+    "always": 40
+   },
+   "rule_handled": 30,
+   "triggered": true,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  }
+ ]
+}
