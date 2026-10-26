@@ -27,8 +27,8 @@ the forward litho capacity check (`smt/planning.py`); order lead time is not spr
 - Baselines (EDD, FIFO, CR, SMT rule) do not read the plan; they are identical in the dyn and plan runs
   (branch simulator code). Main-code baselines differ slightly because the shared r2 simulator fixes
   (full-queue batching, scheduling tick, stranded-lot fix) change every policy.
-- All 9 × 225-run files completed with no failed or missing rows (`/workspace/study_kpi/*.json` on the
-  study box).
+- All 9 × 225-run files completed with no failed or missing rows (the per-run
+  `study_kpi/*.json` files stayed on the study machine and are not committed).
 
 ## Table R1. Outcome KPIs, ResiliMES (on-time pooled over due lots; others mean per run)
 
