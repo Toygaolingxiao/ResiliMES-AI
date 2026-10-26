@@ -1,10 +1,26 @@
 # ResiliMES-AI
 
-Semiconductor fab dispatching on the full SMT2020 fab: rule-based scheduling with a hard Q-time gate decides; Nemotron agents explain and advise only, every claim fact-checked, with a labelled rule fallback. Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026).
+**The scheduler stays rule-based and auditable, like mainstream APS. AI makes its decisions understandable to the people who run the fab.** Semiconductor fab dispatching on the full SMT2020 fab, with a hard Q-time gate on by default; NVIDIA Nemotron (through Meterless Nightshift) explains and advises only, every number fact-checked, with a labelled rule fallback. Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026).
 
-A production supervisor gets a line-down, a rush order, a material shortage, a lithography rework, or a queue-time miss. ResiliMES reads the plant, classifies the disruption, builds a constraint-safe schedule, and shows the before/after Gantt with the KPI delta and the reason each move was allowed or refused.
+The user is a fab shift lead. A schedule over 1,313 tools, 2,156 lots and 264 Q-time limits cannot be read on the floor, so people override it — often by filling an idle gap that was protecting a downstream Q-time window. ResiliMES answers "why is this lot here, why is this tool idle?" from the decision record, right on the Gantt, before anyone overrides.
 
-**Primary track: Track 03 — Reasoning Architecture.** The product turns fragmented factory data, a signed intent contract, a world-model event log, and bounded agent steps into a schedule a supervisor can commit. Explainability is part of that decision, not a separate product. See [why this track](#track).
+**Primary track: Track 03 — Reasoning Architecture.** The reasoning is split on purpose: a tested rule kernel (planning, scheduling tick, dispatch, hard Q-time gate) makes every decision and logs why; an AI understanding layer reads that record, answers with an honesty tier assigned by code, and never writes the schedule. See [why this track](#track).
+
+## Positioning: rules decide, AI explains
+
+| | What it does | Where |
+| --- | --- | --- |
+| **Gantt right-click "why?"** | Right-click a bar, a gap on a tool, a family window, or ask a free question. The answer cites the decision record; its tier (`decision_record` / `rule_emergent` / `unknown`) is set by code, and a model rewrite that claims intent on a rule-emergent answer is refused. Advice only. | [docs/CONTEXT_INVESTIGATION.md](docs/CONTEXT_INVESTIGATION.md) |
+| **Gap reasons + counterfactual** | Every deliberate idle gap is recorded at dispatch time with its reason (`qtime_gate`, `batch_wait`, `pm_avoidance`). A simulator twin fills them: on seed 1 / 48 h, 6,864 gaps, filling adds +19 avoidable Q-time violations (23 → 42); 546 gaps were protective. | [docs/gap_counterfactual/](docs/gap_counterfactual/seed1_48h.md) |
+| **Notes → constraints** | Free-text shift notes (EN / 中文 / 日本語) become validated, typed events (`planned_down`, `priority_change`, `hold`, `capacity_derate`). Regex baseline P 0.973 / R 0.750 / hard-note recall 0.0; the live Nemotron run is on the owner's PC. | [data/notes/README.md](data/notes/README.md) |
+
+**Design evidence — why the AI explains instead of schedules.**
+
+- Under the shipped exception-only trigger the AI shift lead is called **0 times**: published book 58 exceptions, 0 escalations, every KPI identical to rules only ([study_zero_call/zero_call.md](study_zero_call/zero_call.md)); generated stress set 0/16 triggered. By design the AI never touches decisions.
+- A same-budget lever search (K = 1–15, non-LLM) is **flat**: identical outcomes at every K ([study_search_curve/k_curve.md](study_search_curve/k_curve.md)). No headroom on this book, so AI effort goes to explanation.
+- B/C ordering comparisons run only in study mode (`SHIFT_LEAD_ESCALATE=always`) and are **exploratory**, not a claim that an LLM schedules better.
+- **Q-time first.** A schedule with an avoidable Q-time violation is infeasible. EDD appears only as an infeasible reference (1,719 avoidable violations), never as something we "beat" or are "behind".
+- **Safety.** AI output is advice only and fact-checked; a fact-check failure, provider error or timeout (90 s per call, 180 s per task) falls back to the rule result, labelled with its reason.
 
 ## Default scheduling mode: planning layer
 
