@@ -1,0 +1,304 @@
+{
+ "case_id": "combo-burst-setup-s2",
+ "category": "combo",
+ "question": "Why did Implant_90 WIP double between 6 h and 14 h (waiting lots 2 -> 12)?",
+ "truths": [
+  "release_burst",
+  "setup_thrash"
+ ],
+ "baseline_pred": [
+  "release_burst",
+  "setup_thrash"
+ ],
+ "investigation": {
+  "question": "Why did Implant_90 WIP double between 6 h and 14 h (waiting lots 2 -> 12)?",
+  "family": "Implant_90",
+  "t1_h": 6.0,
+  "t2_h": 14.0,
+  "primary_cause": "release_burst",
+  "secondary_cause": "setup_thrash",
+  "causal_chain": [
+   "Implant_90 waiting lots went from 2 at 6.0 h to 12 at 14.0 h.",
+   "In the window the family had 30.0 arrivals, against 4.0 in the hours before.",
+   "Against the 4 h before, arrivals per hour went from 1.0 to 3.75 (relative change 2.75).",
+   "That points to: a burst of lots released / arriving at once."
+  ],
+  "lever": "Smooth releases upstream instead of letting lots arrive at once.",
+  "citations": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "calls": [
+   {
+    "n": 1,
+    "tool": "compare_windows",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 6.0,
+     "end_h": 14.0
+    }
+   },
+   {
+    "n": 2,
+    "tool": "family_wip",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 2.0,
+     "end_h": 14.0
+    }
+   },
+   {
+    "n": 3,
+    "tool": "family_window",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 2.0,
+     "end_h": 6.0
+    }
+   },
+   {
+    "n": 4,
+    "tool": "family_window",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 6.0,
+     "end_h": 14.0
+    }
+   },
+   {
+    "n": 5,
+    "tool": "tool_states",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 6.0,
+     "end_h": 14.0
+    }
+   },
+   {
+    "n": 6,
+    "tool": "family_window",
+    "args": {
+     "family": "TF_FE_3",
+     "start_h": 6.0,
+     "end_h": 14.0
+    }
+   }
+  ],
+  "fact_misses": [],
+  "fact_ok": true,
+  "repaired": false,
+  "turns": 7,
+  "llm_calls": 7,
+  "latency_ms": 54.1,
+  "provider": "scripted-mock",
+  "model": "scripted-mock",
+  "mocked": true,
+  "response_models": [
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock"
+  ],
+  "error": null,
+  "trace": [
+   {
+    "round": 1,
+    "action": "compare_windows",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 6.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 1,
+    "evidence": {
+     "chars": 1231,
+     "keys": [
+      "before_h",
+      "causes",
+      "family",
+      "pairs_are",
+      "waiting_lots",
+      "window_h"
+     ],
+     "causes": {
+      "tool_down": 0.0,
+      "pm_in_peak": 0.0,
+      "release_burst": 2.75,
+      "setup_thrash": 1.42,
+      "batch_cap": 0.0,
+      "upstream_starvation": 0.0
+     },
+     "sizes": {
+      "before_h": 2,
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.013
+   },
+   {
+    "round": 2,
+    "action": "family_wip",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 2.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 2,
+    "evidence": {
+     "chars": 640,
+     "keys": [
+      "family",
+      "series"
+     ],
+     "sizes": {
+      "series": 13
+     }
+    },
+    "elapsed_s": 0.0
+   },
+   {
+    "round": 3,
+    "action": "family_window",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 2.0,
+     "end_h": 6.0
+    },
+    "status": "executed",
+    "result": 3,
+    "evidence": {
+     "chars": 421,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.028
+   },
+   {
+    "round": 4,
+    "action": "family_window",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 6.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 4,
+    "evidence": {
+     "chars": 429,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.003
+   },
+   {
+    "round": 5,
+    "action": "tool_states",
+    "args": {
+     "family": "Implant_90",
+     "start_h": 6.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 5,
+    "evidence": {
+     "chars": 312,
+     "keys": [
+      "family",
+      "tools",
+      "window_h"
+     ],
+     "sizes": {
+      "window_h": 2,
+      "tools": 2
+     }
+    },
+    "elapsed_s": 0.0
+   },
+   {
+    "round": 6,
+    "action": "family_window",
+    "args": {
+     "family": "TF_FE_3",
+     "start_h": 6.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 6,
+    "evidence": {
+     "chars": 422,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.002
+   },
+   {
+    "round": 7,
+    "action": "answer",
+    "status": "accepted",
+    "elapsed_s": 0.008
+   }
+  ],
+  "stop_reason": "answered",
+  "degraded": false,
+  "degrade_reason": null,
+  "system": {
+   "source": "ai",
+   "primary_cause": "release_burst",
+   "secondary_cause": "setup_thrash"
+  },
+  "elapsed_s": 0.054,
+  "timed_out": false
+ }
+}
