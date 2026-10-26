@@ -97,7 +97,9 @@ class LiveScheduleRunner:
         # Note timestamps (id -> sim-second offset) and the t=0 anchor.
         items = load_notes(notes_path)
         stamps = {str(n["id"]): _parse_iso(str(n["ts"])) for n in items}
-        anchor_day = min(stamps.values()).date() if stamps else datetime(2026, 10, 22, tzinfo=UTC).date()
+        anchor_day = (
+            min(stamps.values()).date() if stamps else datetime(2026, 10, 22, tzinfo=UTC).date()
+        )
         self._anchor = datetime(anchor_day.year, anchor_day.month, anchor_day.day, tzinfo=UTC)
         self._note_ts = {
             note_id: (ts - self._anchor).total_seconds() for note_id, ts in stamps.items()
