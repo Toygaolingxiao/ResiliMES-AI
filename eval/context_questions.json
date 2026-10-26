@@ -1,0 +1,244 @@
+{
+ "about": "Fixed question set for the context-investigation evaluation (docs/CONTEXT_INVESTIGATION.md). Runs: 'smt24' = record_run(load_fab(), seed=1, 24 h) under the repo's pinned RESILIMES_SCHED_MODE; 'starve' = the committed study case upstream_starvation-s1 rebuilt. Expected tiers and evidence points were frozen from those runs; if a fixture value stops matching, the run changed — investigate, do not silently edit the expectation.",
+ "questions": [
+  {
+   "expect": {
+    "tier": "decision_record"
+   },
+   "id": "bar-decision-record",
+   "points": [
+    {
+     "basis_kind": "visit",
+     "contains": "min_met"
+    },
+    {
+     "basis_kind": "wait_split"
+    },
+    {
+     "answer_contains": "Init_Lot_1_54"
+    }
+   ],
+   "query": {
+    "lot": "Init_Lot_1_54",
+    "question_preset": "why_this_time",
+    "step": 399,
+    "type": "bar"
+   },
+   "run": "smt24"
+  },
+  {
+   "expect": {
+    "tier": "rule_emergent"
+   },
+   "id": "bar-rule-emergent",
+   "points": [
+    {
+     "basis_kind": "emergent"
+    },
+    {
+     "basis_kind": "wait_split"
+    },
+    {
+     "answer_contains": "emergent"
+    }
+   ],
+   "query": {
+    "lot": "Init_Lot_1_1",
+    "question_preset": "why_here",
+    "step": 505,
+    "type": "bar"
+   },
+   "run": "smt24"
+  },
+  {
+   "expect": {
+    "status": "unknown",
+    "tier": "unknown"
+   },
+   "id": "gap-unknown",
+   "points": [
+    {
+     "answer_contains": "unknown"
+    },
+    {
+     "basis_kind": "waiting_lots",
+     "contains": "\"count\": 0"
+    }
+   ],
+   "query": {
+    "question_preset": "why_idle",
+    "t1_h": 0,
+    "t2_h": 1,
+    "tool": "DE_BE_69-3",
+    "type": "gap"
+   },
+   "run": "smt24"
+  },
+  {
+   "expect": {
+    "tier": "rule_emergent"
+   },
+   "id": "gap-with-waiters",
+   "points": [
+    {
+     "basis_kind": "waiting_lots",
+     "contains": "DE_BE_11"
+    },
+    {
+     "basis_kind": "wait_causes"
+    },
+    {
+     "basis_kind": "gap_classification"
+    }
+   ],
+   "query": {
+    "question_preset": "why_idle",
+    "t1_h": 2,
+    "t2_h": 3,
+    "tool": "DE_BE_11-1",
+    "type": "gap"
+   },
+   "run": "smt24"
+  },
+  {
+   "expect": {
+    "tier": "rule_emergent"
+   },
+   "id": "gap-not-idle",
+   "points": [
+    {
+     "answer_contains": "not idle"
+    },
+    {
+     "basis_kind": "tool_window",
+     "contains": "DE_BE_11-1"
+    }
+   ],
+   "query": {
+    "question_preset": "why_idle",
+    "t1_h": 0,
+    "t2_h": 1,
+    "tool": "DE_BE_11-1",
+    "type": "gap"
+   },
+   "run": "smt24"
+  },
+  {
+   "expect": {
+    "primary_cause": "upstream_starvation"
+   },
+   "id": "window-starvation",
+   "points": [
+    {
+     "basis_kind": "investigation",
+     "contains": "upstream_starvation"
+    },
+    {
+     "primary_cause": "upstream_starvation"
+    }
+   ],
+   "query": {
+    "family": "WE_BE_82",
+    "question_preset": "what_happened",
+    "t1_h": 6,
+    "t2_h": 10,
+    "type": "window",
+    "question": "Why did WE_BE_82 WIP fall between 6 h and 10 h?"
+   },
+   "run": "starve"
+  },
+  {
+   "expect": {
+    "tier": "rule_emergent"
+   },
+   "id": "window-baseline",
+   "points": [
+    {
+     "basis_kind": "investigation"
+    },
+    {
+     "basis_source": "investigator"
+    }
+   ],
+   "query": {
+    "family": "DE_BE_69",
+    "question_preset": "what_happened",
+    "t1_h": 0,
+    "t2_h": 4,
+    "type": "window"
+   },
+   "run": "smt24"
+  },
+  {
+   "expect": {
+    "tier": "rule_emergent"
+   },
+   "id": "free-gap",
+   "points": [
+    {
+     "basis_source": "gap_classifier"
+    },
+    {
+     "basis_source": "fab_notes"
+    },
+    {
+     "answer_contains": "DE_BE_11-1"
+    }
+   ],
+   "query": {
+    "question": "Why is this tool idle in this window?",
+    "t1_h": 2,
+    "t2_h": 3,
+    "tool": "DE_BE_11-1",
+    "type": "free"
+   },
+   "run": "smt24"
+  },
+  {
+   "expect": {
+    "tier": "decision_record"
+   },
+   "id": "free-lot",
+   "points": [
+    {
+     "basis_kind": "visit",
+     "contains": "min_met"
+    },
+    {
+     "basis_source": "run_record"
+    }
+   ],
+   "query": {
+    "lot": "Init_Lot_1_54",
+    "question": "Why did this lot wait so long before starting?",
+    "type": "free",
+    "step": 399
+   },
+   "run": "smt24"
+  },
+  {
+   "expect": {
+    "tier": "rule_emergent"
+   },
+   "id": "free-mixed",
+   "points": [
+    {
+     "basis_source": "gap_classifier"
+    },
+    {
+     "basis_source": "investigator"
+    }
+   ],
+   "query": {
+    "family": "DE_BE_69",
+    "question": "What happened here, and why is the tool idle?",
+    "t1_h": 0,
+    "t2_h": 1,
+    "tool": "DE_BE_69-3",
+    "type": "free"
+   },
+   "run": "smt24"
+  }
+ ],
+ "version": 1
+}
