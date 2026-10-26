@@ -1,0 +1,154 @@
+{
+ "extraction_mode": "LIVE",
+ "provider": "nightshift",
+ "b_extractor": "llm",
+ "comparison": {
+  "runner": "live-smt2020-resilimes",
+  "is_mock": false,
+  "primary_metric": "avoidable_qtime_violations",
+  "arms": {
+   "A": {
+    "avoidable_qtime": 17,
+    "qtime_violations": 33,
+    "on_time_pct": 21.43,
+    "completed": 28,
+    "applied_events": 0,
+    "unsupported_events": 0
+   },
+   "B": {
+    "avoidable_qtime": 14,
+    "qtime_violations": 32,
+    "on_time_pct": 19.35,
+    "completed": 33,
+    "applied_events": 15,
+    "unsupported_events": 32
+   },
+   "C": {
+    "avoidable_qtime": 14,
+    "qtime_violations": 32,
+    "on_time_pct": 19.35,
+    "completed": 31,
+    "applied_events": 15,
+    "unsupported_events": 33
+   }
+  },
+  "gap_closure": 1.0,
+  "collateral": {
+   "wrong_events_applied": 1,
+   "new_violations": 0,
+   "target": 0
+  }
+ },
+ "extraction": {
+  "regex": {
+   "extractor": "regex",
+   "per_type": {
+    "planned_down": {
+     "tp": 14,
+     "fp": 0,
+     "fn": 6,
+     "precision": 1.0,
+     "recall": 0.7
+    },
+    "priority_change": {
+     "tp": 9,
+     "fp": 0,
+     "fn": 2,
+     "precision": 1.0,
+     "recall": 0.8182
+    },
+    "hold": {
+     "tp": 7,
+     "fp": 1,
+     "fn": 1,
+     "precision": 0.875,
+     "recall": 0.875
+    },
+    "capacity_derate": {
+     "tp": 6,
+     "fp": 0,
+     "fn": 3,
+     "precision": 1.0,
+     "recall": 0.6667
+    }
+   },
+   "overall": {
+    "tp": 36,
+    "fp": 1,
+    "fn": 12,
+    "precision": 0.973,
+    "recall": 0.75
+   },
+   "raw_events": 37,
+   "rejected_by_validation": 0,
+   "hold_reason_accuracy": 1.0,
+   "recall_by_flag": {
+    "plain": {
+     "gold": 36,
+     "hit": 36,
+     "recall": 1.0
+    },
+    "hard": {
+     "gold": 12,
+     "hit": 0,
+     "recall": 0.0
+    }
+   }
+  },
+  "llm": {
+   "extractor": "llm",
+   "per_type": {
+    "planned_down": {
+     "tp": 20,
+     "fp": 0,
+     "fn": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    },
+    "priority_change": {
+     "tp": 10,
+     "fp": 1,
+     "fn": 1,
+     "precision": 0.9091,
+     "recall": 0.9091
+    },
+    "hold": {
+     "tp": 7,
+     "fp": 0,
+     "fn": 1,
+     "precision": 1.0,
+     "recall": 0.875
+    },
+    "capacity_derate": {
+     "tp": 8,
+     "fp": 1,
+     "fn": 1,
+     "precision": 0.8889,
+     "recall": 0.8889
+    }
+   },
+   "overall": {
+    "tp": 45,
+    "fp": 2,
+    "fn": 3,
+    "precision": 0.9574,
+    "recall": 0.9375
+   },
+   "raw_events": 48,
+   "rejected_by_validation": 1,
+   "hold_reason_accuracy": 1.0,
+   "recall_by_flag": {
+    "plain": {
+     "gold": 36,
+     "hit": 35,
+     "recall": 0.9722
+    },
+    "hard": {
+     "gold": 12,
+     "hit": 10,
+     "recall": 0.8333
+    }
+   }
+  }
+ }
+}
