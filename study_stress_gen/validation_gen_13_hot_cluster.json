@@ -1,0 +1,19 @@
+{
+ "book": "gen_13_hot_cluster",
+ "archetype": "hot_cluster",
+ "seed": 9,
+ "horizon_h": 6.0,
+ "wall_s": 280.0,
+ "exceptions": 70,
+ "gate_checks": 70,
+ "escalated": 0,
+ "triggers": {},
+ "rule_handled": 70,
+ "triggered": false,
+ "kpi": {
+  "qtime_avoidable": 0,
+  "hot_late": 0,
+  "weighted_tardiness_min": 3983.7,
+  "completed_routes": 6
+ }
+}

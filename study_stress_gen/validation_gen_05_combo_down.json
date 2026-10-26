@@ -1,0 +1,19 @@
+{
+ "book": "gen_05_combo_down",
+ "archetype": "combo_down",
+ "seed": 9,
+ "horizon_h": 6.0,
+ "wall_s": 297.8,
+ "exceptions": 68,
+ "gate_checks": 68,
+ "escalated": 0,
+ "triggers": {},
+ "rule_handled": 68,
+ "triggered": false,
+ "kpi": {
+  "qtime_avoidable": 0,
+  "hot_late": 0,
+  "weighted_tardiness_min": 3983.7,
+  "completed_routes": 7
+ }
+}

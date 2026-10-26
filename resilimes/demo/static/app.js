@@ -858,7 +858,9 @@ function renderVirtualGantt(host, rows, report) {
       hideTip();
       onGapClick(info);
     });
-    const openMenu = (x, y) => openCtxMenu(x, y, { type: "gap", ...info });
+    // A family row has no single tool, and gap queries need one: ask the
+    // family-window question instead (the investigator answers it).
+    const openMenu = (x, y) => openCtxMenu(x, y, info.tool ? { type: "gap", ...info } : { type: "window", ...info });
     node.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -1181,17 +1183,28 @@ function onGapClick(info) {
 
 async function investigateContext(ctx) {
   const g = t().gantt || {};
+  // Wire contract (docs/CONTEXT_INVESTIGATION.md): absent values are null,
+  // numbers are numbers, never "" (the API rejects "" for numeric fields).
+  const str = (value) => (value === undefined || value === null || String(value).trim() === "" ? null : String(value));
+  const num = (value) => {
+    if (value === undefined || value === null || value === "") return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  const step = num(ctx.step);
+  const t1 = num(ctx.t1_min);
+  const t2 = num(ctx.t2_min);
   const payload = {
     type: ctx.type || "window",
-    tool: ctx.tool || "",
-    family: ctx.family || "",
-    lot: ctx.lot || "",
-    step: ctx.step || "",
-    t1_min: Math.round(ctx.t1_min || 0),
-    t2_min: Math.round(ctx.t2_min || 0),
-    scenario_id: (state.report && state.report.scenario_id) || state.activeScenario || "",
+    tool: str(ctx.tool),
+    family: str(ctx.family),
+    lot: str(ctx.lot),
+    step: step !== null && Number.isInteger(step) && step >= 0 ? step : null,
+    t1_min: t1 !== null ? Math.max(0, Math.round(t1)) : null,
+    t2_min: t2 !== null ? Math.max(0, Math.round(t2)) : null,
+    scenario_id: str((state.report && state.report.scenario_id) || state.activeScenario),
     lang: state.lang || "en",
-    question: ctx.question || "",
+    question: str(ctx.question),
   };
   showCtxPanel((panel) => {
     ctxPanelHead(panel, g.ctxTitle || "Scheduling investigation", "");
@@ -1205,7 +1218,15 @@ async function investigateContext(ctx) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      // Surface the API's own message (e.g. "unknown lot ...") instead of a bare status.
+      let detail = "";
+      try {
+        const body = await response.json();
+        detail = typeof body.detail === "string" ? body.detail : "";
+      } catch (_ignored) { detail = ""; }
+      throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
+    }
     result = await response.json();
     if (result && result.error && !result.answer) throw new Error(String(result.error));
   } catch (error) {
@@ -1225,13 +1246,29 @@ async function investigateContext(ctx) {
 function renderCtxAnswer(payload, result) {
   const g = t().gantt || {};
   const ai = t().ai || {};
-  const answer = (result && result.answer) || result || {};
+  // Context mode answers live at result.context (ContextAnswer); the case
+  // mode's investigation object at result.answer is still accepted.
+  const isContext = Boolean(result && result.context && typeof result.context === "object");
+  const answer = isContext
+    ? result.context
+    : ((result && typeof result.answer === "object" && result.answer) || result || {});
   showCtxPanel((panel) => {
     const mocked = answer.mocked !== undefined && answer.mocked !== null ? answer.mocked : result.mocked;
     const chip = mocked === undefined || mocked === null ? "" : (mocked ? (ai.mock || "Mock") : (ai.live || "Live"));
     ctxPanelHead(panel, g.ctxTitle || "Scheduling investigation", chip);
+    const run = result && result.run;
+    if (run && run.reference) {
+      panel.appendChild(mkEl("p", "muted ctx-ref", fill(g.ctxRefRun || "Answered from reference run {run} ({h} h), not the scenario on screen.", { run: run.id, h: run.horizon_h })));
+    }
+    if (answer.tier) {
+      const tierName = (g.ctxTiers && g.ctxTiers[answer.tier]) || answer.tier;
+      panel.appendChild(mkEl("p", "chip ctx-tier", `${g.ctxTier || "Evidence tier"}: ${tierName}`));
+    }
     if (answer.degraded) {
-      panel.appendChild(mkEl("p", "ai-warn", `${ai.degraded || "Degraded"}${answer.degrade_reason ? ` (${answer.degrade_reason})` : ""}`));
+      const reason = answer.degrade_reason === "timeout"
+        ? (g.ctxTimeout || "AI timed out: showing the rule-based answer")
+        : `${ai.degraded || "Degraded"}${answer.degrade_reason ? ` (${answer.degrade_reason})` : ""}`;
+      panel.appendChild(mkEl("p", "ai-warn", reason));
     }
     const causeName = (id) => (ai.causes && ai.causes[id]) || id;
     if (answer.primary_cause) {
@@ -1240,7 +1277,7 @@ function renderCtxAnswer(payload, result) {
       if (answer.secondary_cause) head.appendChild(mkEl("span", "muted", ` · ${causeName(answer.secondary_cause)}`));
       panel.appendChild(head);
     }
-    const text = answer.text || answer.explanation || "";
+    const text = (typeof answer.answer === "string" && answer.answer) || answer.text || answer.explanation || "";
     if (text) panel.appendChild(mkEl("p", "", text));
     const chain = answer.causal_chain || [];
     if (chain.length) {
@@ -1249,13 +1286,15 @@ function renderCtxAnswer(payload, result) {
       panel.appendChild(ol);
     }
     panel.appendChild(mkEl("h4", "ctx-sub", g.ctxBasis || "Basis"));
-    const basis = result.basis || answer.basis || result.citations || answer.citations || [];
+    const basis = answer.basis || result.basis || answer.citations || result.citations || [];
     if (basis.length) {
       const ul = mkEl("ul", "ctx-basis");
       for (const item of basis) {
         const label = typeof item === "string"
           ? item
-          : (item && item.tool ? `${item.tool}${item.detail ? ` · ${item.detail}` : ""}` : JSON.stringify(item));
+          : (item && item.kind
+            ? `[${item.n}] ${item.kind} · ${item.source}: ${JSON.stringify(item.facts || {}).slice(0, 220)}`
+            : (item && item.tool ? `${item.tool}${item.detail ? ` · ${item.detail}` : ""}` : JSON.stringify(item)));
         ul.appendChild(mkEl("li", "", label));
       }
       panel.appendChild(ul);

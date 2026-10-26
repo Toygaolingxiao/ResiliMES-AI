@@ -1,0 +1,334 @@
+{
+ "environment": "Linux-7.0.0-39-generic-x86_64-with-glibc2.39 / python 3.12.3",
+ "ran_at": "2026-10-26T02:04:34+0000",
+ "git_commit": "9d7fc23",
+ "rule": "triggered := escalations >= 1 in the no-AI gate run (exception mode, fork 1 h, futures 2, horizon 6 h, seed 9)",
+ "generated": 16,
+ "validated": 16,
+ "triggered": [],
+ "excluded_no_trigger": [
+  "gen_01_qtime_chain_down",
+  "gen_02_qtime_chain_down",
+  "gen_03_hot_cluster",
+  "gen_04_down_pm_batch",
+  "gen_05_combo_down",
+  "gen_06_qtime_chain_down",
+  "gen_07_combo_down",
+  "gen_08_qtime_chain_down",
+  "gen_09_combo_down",
+  "gen_10_hot_cluster",
+  "gen_11_down_pm_batch",
+  "gen_12_hot_cluster",
+  "gen_13_hot_cluster",
+  "gen_14_down_pm_batch",
+  "gen_15_combo_down",
+  "gen_16_down_pm_batch"
+ ],
+ "pending": [],
+ "rows": [
+  {
+   "book": "gen_01_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 313.6,
+   "exceptions": 60,
+   "gate_checks": 60,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 60,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3986.6,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_02_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 405.2,
+   "exceptions": 70,
+   "gate_checks": 70,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 70,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3980.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_03_hot_cluster",
+   "archetype": "hot_cluster",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 497.9,
+   "exceptions": 66,
+   "gate_checks": 66,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 66,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3984.0,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_04_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 584.1,
+   "exceptions": 70,
+   "gate_checks": 70,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 70,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_05_combo_down",
+   "archetype": "combo_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 297.8,
+   "exceptions": 68,
+   "gate_checks": 68,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 68,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_06_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 261.3,
+   "exceptions": 70,
+   "gate_checks": 70,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 70,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_07_combo_down",
+   "archetype": "combo_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 289.0,
+   "exceptions": 71,
+   "gate_checks": 71,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 71,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3984.0,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_08_qtime_chain_down",
+   "archetype": "qtime_chain_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 433.0,
+   "exceptions": 74,
+   "gate_checks": 74,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 74,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_09_combo_down",
+   "archetype": "combo_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 437.3,
+   "exceptions": 69,
+   "gate_checks": 69,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 69,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_10_hot_cluster",
+   "archetype": "hot_cluster",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 413.2,
+   "exceptions": 69,
+   "gate_checks": 69,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 69,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_11_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 234.7,
+   "exceptions": 69,
+   "gate_checks": 69,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 69,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_12_hot_cluster",
+   "archetype": "hot_cluster",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 266.4,
+   "exceptions": 65,
+   "gate_checks": 65,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 65,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.0,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_13_hot_cluster",
+   "archetype": "hot_cluster",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 280.0,
+   "exceptions": 70,
+   "gate_checks": 70,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 70,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 6
+   }
+  },
+  {
+   "book": "gen_14_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 243.1,
+   "exceptions": 79,
+   "gate_checks": 79,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 79,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3979.2,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_15_combo_down",
+   "archetype": "combo_down",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 394.3,
+   "exceptions": 84,
+   "gate_checks": 84,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 84,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  },
+  {
+   "book": "gen_16_down_pm_batch",
+   "archetype": "down_pm_batch",
+   "seed": 9,
+   "horizon_h": 6.0,
+   "wall_s": 202.3,
+   "exceptions": 70,
+   "gate_checks": 70,
+   "escalated": 0,
+   "triggers": {},
+   "rule_handled": 70,
+   "triggered": false,
+   "kpi": {
+    "qtime_avoidable": 0,
+    "hot_late": 0,
+    "weighted_tardiness_min": 3983.7,
+    "completed_routes": 7
+   }
+  }
+ ]
+}

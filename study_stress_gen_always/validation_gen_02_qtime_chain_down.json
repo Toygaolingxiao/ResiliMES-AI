@@ -1,0 +1,21 @@
+{
+ "book": "gen_02_qtime_chain_down",
+ "archetype": "qtime_chain_down",
+ "seed": 9,
+ "horizon_h": 6.0,
+ "wall_s": 101.2,
+ "exceptions": 70,
+ "gate_checks": 0,
+ "escalated": 33,
+ "triggers": {
+  "always": 33
+ },
+ "rule_handled": 37,
+ "triggered": true,
+ "kpi": {
+  "qtime_avoidable": 0,
+  "hot_late": 0,
+  "weighted_tardiness_min": 3980.7,
+  "completed_routes": 7
+ }
+}
