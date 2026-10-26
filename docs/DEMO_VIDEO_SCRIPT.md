@@ -4,7 +4,7 @@ Target **≤ 4:00** (rules: demo video 1–4 minutes, show one real request thro
 
 **Positioning the film has to carry:** the scheduler stays rule-based and auditable, like mainstream APS. AI makes its decisions understandable to the people who run the fab.
 
-v2 is the v1 film (3:51, already uploaded once) re-cut with two new clips. Nothing in the kept v1 footage is re-shot.
+v2 is the v1 film (3:51) re-cut with two new clips. Nothing in the kept v1 footage is re-shot.
 
 - **Clip A (~25 s):** deck slide 7, "Q-time first". It replaces the v1 segment 1:46–2:08, whose subtitle and slide described the old comparison.
 - **Clip B (~28 s):** the Gantt right-click investigation, inserted right after the litho reschedule. It continues from the Gantt that is already on screen.
