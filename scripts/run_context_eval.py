@@ -36,9 +36,9 @@ from typing import Any
 os.environ.setdefault("RESILIMES_SCHED_MODE", "strict_qtime")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from resilimes.evidence.toolkit import HOUR, Toolkit, record_run  # noqa: E402
-from resilimes.insight.context_investigation import ContextQuery, investigate_context  # noqa: E402
-from resilimes.llm.base import Completer, LlmResult  # noqa: E402
+from resilimes.evidence.toolkit import HOUR, Toolkit, record_run
+from resilimes.insight.context_investigation import ContextQuery, investigate_context
+from resilimes.llm.base import Completer, LlmResult
 
 FIXTURE = Path(__file__).resolve().parents[1] / "eval" / "context_questions.json"
 
@@ -135,9 +135,7 @@ def evaluate(
             # Window answers have no context-layer rewrite (see docstring):
             # the full arm's polisher applies to bar/gap/free only.
             provider = (
-                EvalPolisher()
-                if arm == "full" and item["query"]["type"] != "window"
-                else None
+                EvalPolisher() if arm == "full" and item["query"]["type"] != "window" else None
             )
             spec = item["query"]
             query = ContextQuery(

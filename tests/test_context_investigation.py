@@ -35,7 +35,7 @@ def run24(fab):
 def _started_visit(run):
     """A started visit with a real wait and a recorded start reason, if any."""
     fallback = None
-    for lot, visits in run.timeline.visits.items():
+    for _lot, visits in run.timeline.visits.items():
         for visit in visits:
             if visit.start is None or visit.start - visit.ready < 60.0:
                 continue
@@ -199,6 +199,7 @@ def test_api_context_mode_validates_the_query():
 
 # ---- tiers are decided by code, not by the model ---------------------------------------------
 
+
 def test_bar_with_a_recorded_reason_is_decision_record_tier(run24):
     # Frozen from the seed-1 run: this start carries a recorded reason.
     answer = investigate_context(
@@ -218,9 +219,7 @@ def test_bar_without_a_recorded_reason_is_rule_emergent(run24):
 
 def test_rule_emergent_rewrite_cannot_use_decision_language(run24):
     upgrade = _Polisher(
-        json.dumps(
-            {"answer": "The dispatcher decided to start it then, in order to win time."}
-        )
+        json.dumps({"answer": "The dispatcher decided to start it then, in order to win time."})
     )
     answer = investigate_context(
         Toolkit(run24), ContextQuery(type="bar", lot="Init_Lot_1_1", step=505), upgrade
@@ -238,6 +237,7 @@ def test_gap_unknown_also_carries_the_unknown_tier(run24):
 
 
 # ---- free questions chain the evidence sources ------------------------------------------------
+
 
 def test_free_gap_question_chains_classifier_and_notes_placeholder(run24):
     answer = investigate_context(
@@ -278,12 +278,17 @@ def test_free_without_any_anchor_is_unknown(run24):
 
 # ---- wire contract: minutes, scenario_id, lang -------------------------------------------------
 
+
 def test_context_query_maps_minutes_scenario_and_lang():
     from resilimes.api.insight import InvestigateBody, _context_query
 
     body = InvestigateBody(
-        type="gap", tool="DE_BE_11-1", t1_min=120, t2_min=180,
-        scenario_id="seed-2", lang="zh",
+        type="gap",
+        tool="DE_BE_11-1",
+        t1_min=120,
+        t2_min=180,
+        scenario_id="seed-2",
+        lang="zh",
     )
     query = _context_query(body)
     assert query.t1_h == 2.0 and query.t2_h == 3.0
@@ -295,6 +300,7 @@ def test_context_query_maps_minutes_scenario_and_lang():
 
 
 # ---- evaluation fixture ------------------------------------------------------------------------
+
 
 def _eval_module():
     import importlib.util
