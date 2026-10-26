@@ -1,0 +1,1187 @@
+{
+ "horizon_h": 16.0,
+ "note": "Hard investigator cases: combo (two injected causes), misleading (decoy indicator louder than the primary, ablation-verified) and ood (boundary stacks / out-of-range strengths). Ground truth is the injected fault set; see resilimes/insight/hard_cases.py.",
+ "cases": [
+  {
+   "case_id": "combo-burst-setup-s2",
+   "category": "combo",
+   "seed": 2,
+   "family": "Implant_90",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 14.0,
+   "direction": "rise",
+   "wip_t1": 2,
+   "wip_t2": 12,
+   "base_wip_t2": 4,
+   "truths": [
+    "release_burst",
+    "setup_thrash"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "setup_thrash",
+     "role": "secondary",
+     "tool_frac": 0.5,
+     "setup_mult": 0.7,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "lots_held": 8,
+     "release_frac": 1.0,
+     "family": "Implant_90"
+    },
+    {
+     "cause": "setup_thrash",
+     "role": "secondary",
+     "extra_setup_min_per_changeover": 31.499999999999996,
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 2.75,
+     "rel_change": 2.75
+    },
+    "setup_thrash": {
+     "anomaly": 1.4235294117647057,
+     "rel_change": 1.42
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": null,
+   "question": "Why did Implant_90 WIP double between 6 h and 14 h (waiting lots 2 -> 12)?"
+  },
+  {
+   "case_id": "combo-down-burst-s1",
+   "category": "combo",
+   "seed": 1,
+   "family": "Planar_BE_75",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 10.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 14,
+   "base_wip_t2": 1,
+   "truths": [
+    "tool_down",
+    "release_burst"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "tool_down",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "release_burst",
+     "role": "secondary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 0.6,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "tool_down",
+     "role": "primary",
+     "tools_down": [
+      "Planar_BE_75-1",
+      "Planar_BE_75-2",
+      "Planar_BE_75-3",
+      "Planar_BE_75-4",
+      "Planar_BE_75-5",
+      "Planar_BE_75-6",
+      "Planar_BE_75-7"
+     ],
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    },
+    {
+     "cause": "release_burst",
+     "role": "secondary",
+     "lots_held": 17,
+     "release_frac": 0.6,
+     "family": "Planar_BE_75"
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 4.724580974407183,
+     "rel_change": 4.72
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 0.5555555555555556,
+     "rel_change": 0.56
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": -0.21
+    }
+   },
+   "ablation": null,
+   "question": "Why did Planar_BE_75 WIP rise between 6 h and 10 h (waiting lots 0 -> 14)?"
+  },
+  {
+   "case_id": "combo-down-setup-s2",
+   "category": "combo",
+   "seed": 2,
+   "family": "LithoTrack_FE_115",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 11.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 53,
+   "base_wip_t2": 0,
+   "truths": [
+    "tool_down",
+    "setup_thrash"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "tool_down",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "setup_thrash",
+     "role": "secondary",
+     "tool_frac": 0.5,
+     "setup_mult": 0.7,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "tool_down",
+     "role": "primary",
+     "tools_down": [
+      "LithoTrack_FE_115-1",
+      "LithoTrack_FE_115-2",
+      "LithoTrack_FE_115-3",
+      "LithoTrack_FE_115-4",
+      "LithoTrack_FE_115-5",
+      "LithoTrack_FE_115-6",
+      "LithoTrack_FE_115-7",
+      "LithoTrack_FE_115-8",
+      "LithoTrack_FE_115-9",
+      "LithoTrack_FE_115-10",
+      "LithoTrack_FE_115-11",
+      "LithoTrack_FE_115-12",
+      "LithoTrack_FE_115-13",
+      "LithoTrack_FE_115-14",
+      "LithoTrack_FE_115-15",
+      "LithoTrack_FE_115-16",
+      "LithoTrack_FE_115-17",
+      "LithoTrack_FE_115-18",
+      "LithoTrack_FE_115-19",
+      "LithoTrack_FE_115-20",
+      "LithoTrack_FE_115-21"
+     ],
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    },
+    {
+     "cause": "setup_thrash",
+     "role": "secondary",
+     "extra_setup_min_per_changeover": 31.499999999999996,
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 5.0,
+     "rel_change": 5.07
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 0.1946666666666666,
+     "rel_change": 0.19
+    },
+    "setup_thrash": {
+     "anomaly": 4.3670740012106535,
+     "rel_change": 4.37
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.4261652092618312,
+     "rel_change": 0.43
+    }
+   },
+   "ablation": null,
+   "question": "Why did LithoTrack_FE_115 WIP rise between 6 h and 11 h (waiting lots 0 -> 53)?"
+  },
+  {
+   "case_id": "combo-pm-burst-s1",
+   "category": "combo",
+   "seed": 1,
+   "family": "WE_BE_16",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 16.0,
+   "direction": "rise",
+   "wip_t1": 5,
+   "wip_t2": 77,
+   "base_wip_t2": 24,
+   "truths": [
+    "pm_in_peak",
+    "release_burst"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "pm_in_peak",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": true,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "release_burst",
+     "role": "secondary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 0.6,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "pm_in_peak",
+     "role": "primary",
+     "tools_pm": [
+      "WE_BE_16-1",
+      "WE_BE_16-2",
+      "WE_BE_16-3",
+      "WE_BE_16-4"
+     ],
+     "window_h": [
+      10.0,
+      14.0
+     ]
+    },
+    {
+     "cause": "release_burst",
+     "role": "secondary",
+     "lots_held": 38,
+     "release_frac": 0.6,
+     "family": "WE_BE_16"
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.08415852243432936,
+     "rel_change": 0.08
+    },
+    "pm_in_peak": {
+     "anomaly": 2.0,
+     "rel_change": 2.0
+    },
+    "release_burst": {
+     "anomaly": 0.5379310344827587,
+     "rel_change": 0.54
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": -0.28
+    }
+   },
+   "ablation": null,
+   "question": "Why did WE_BE_16 WIP double between 6 h and 16 h (waiting lots 5 -> 77)?"
+  },
+  {
+   "case_id": "combo-starve-setup-s1",
+   "category": "combo",
+   "seed": 1,
+   "family": "Implant_128",
+   "upstream": "Litho_REG_FE_64",
+   "t1_h": 6.0,
+   "t2_h": 13.0,
+   "direction": "fall",
+   "wip_t1": 25,
+   "wip_t2": 0,
+   "base_wip_t2": 4,
+   "truths": [
+    "upstream_starvation",
+    "setup_thrash"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "upstream_starvation",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "setup_thrash",
+     "role": "secondary",
+     "tool_frac": 0.5,
+     "setup_mult": 0.7,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "upstream_starvation",
+     "role": "primary",
+     "upstream_family_down": "Litho_REG_FE_64",
+     "upstream_tool_frac": 0.5,
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    },
+    {
+     "cause": "setup_thrash",
+     "role": "secondary",
+     "extra_setup_min_per_changeover": 31.499999999999996,
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 0.0,
+     "rel_change": -0.58
+    },
+    "setup_thrash": {
+     "anomaly": 0.8961610486891387,
+     "rel_change": 0.9
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 4.161405364677854,
+     "rel_change": 4.16
+    }
+   },
+   "ablation": null,
+   "question": "Why did Implant_128 WIP fall between 6 h and 13 h (waiting lots 25 -> 0)?"
+  },
+  {
+   "case_id": "mislead-down-burst-s1",
+   "category": "misleading",
+   "seed": 1,
+   "family": "DefMet_FE_43",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 9.0,
+   "direction": "rise",
+   "wip_t1": 3,
+   "wip_t2": 26,
+   "base_wip_t2": 0,
+   "truths": [
+    "release_burst"
+   ],
+   "decoy": "tool_down",
+   "specs": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "tool_down",
+     "role": "decoy",
+     "tool_frac": 0.15,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "lots_held": 57,
+     "release_frac": 1.0,
+     "family": "DefMet_FE_43"
+    },
+    {
+     "cause": "tool_down",
+     "role": "decoy",
+     "tools_down": [
+      "DefMet_FE_43-1"
+     ],
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 2.0,
+     "rel_change": 2.0
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 1.8444444444444443,
+     "rel_change": 1.84
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": -0.04
+    }
+   },
+   "ablation": {
+    "decoy_solo_wip_delta": 6.0,
+    "primary_solo_wip_delta": 16.0
+   },
+   "question": "Why did DefMet_FE_43 WIP double between 6 h and 9 h (waiting lots 3 -> 26)?"
+  },
+  {
+   "case_id": "mislead-down-burst-s2",
+   "category": "misleading",
+   "seed": 2,
+   "family": "WE_FE_41",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 14.0,
+   "direction": "rise",
+   "wip_t1": 6,
+   "wip_t2": 46,
+   "base_wip_t2": 7,
+   "truths": [
+    "release_burst"
+   ],
+   "decoy": "tool_down",
+   "specs": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "tool_down",
+     "role": "decoy",
+     "tool_frac": 0.15,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "lots_held": 45,
+     "release_frac": 1.0,
+     "family": "WE_FE_41"
+    },
+    {
+     "cause": "tool_down",
+     "role": "decoy",
+     "tools_down": [
+      "WE_FE_41-1"
+     ],
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 2.23545545558972,
+     "rel_change": 2.24
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 1.74,
+     "rel_change": 1.74
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": {
+    "decoy_solo_wip_delta": 0.0,
+    "primary_solo_wip_delta": 27.0
+   },
+   "question": "Why did WE_FE_41 WIP double between 6 h and 14 h (waiting lots 6 -> 46)?"
+  },
+  {
+   "case_id": "mislead-pm-burst-s1",
+   "category": "misleading",
+   "seed": 1,
+   "family": "Implant_91",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 12.0,
+   "direction": "rise",
+   "wip_t1": 21,
+   "wip_t2": 80,
+   "base_wip_t2": 30,
+   "truths": [
+    "release_burst"
+   ],
+   "decoy": "pm_in_peak",
+   "specs": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "pm_in_peak",
+     "role": "decoy",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": true,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "lots_held": 37,
+     "release_frac": 1.0,
+     "family": "Implant_91"
+    },
+    {
+     "cause": "pm_in_peak",
+     "role": "decoy",
+     "tools_pm": [
+      "Implant_91-1",
+      "Implant_91-2",
+      "Implant_91-3",
+      "Implant_91-4"
+     ],
+     "window_h": [
+      9.0,
+      13.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.12064379992398067,
+     "rel_change": 0.12
+    },
+    "pm_in_peak": {
+     "anomaly": 2.504258731868543,
+     "rel_change": 2.5
+    },
+    "release_burst": {
+     "anomaly": 2.1666666666666665,
+     "rel_change": 2.17
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": -0.74
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": {
+    "decoy_solo_wip_delta": 19.0,
+    "primary_solo_wip_delta": 35.0
+   },
+   "question": "Why did Implant_91 WIP double between 6 h and 12 h (waiting lots 21 -> 80)?"
+  },
+  {
+   "case_id": "mislead-pm-burst-s2",
+   "category": "misleading",
+   "seed": 2,
+   "family": "WE_FE_41",
+   "upstream": null,
+   "t1_h": 5.0,
+   "t2_h": 14.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 51,
+   "base_wip_t2": 7,
+   "truths": [
+    "release_burst"
+   ],
+   "decoy": "pm_in_peak",
+   "specs": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "pm_in_peak",
+     "role": "decoy",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": true,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "lots_held": 45,
+     "release_frac": 1.0,
+     "family": "WE_FE_41"
+    },
+    {
+     "cause": "pm_in_peak",
+     "role": "decoy",
+     "tools_pm": [
+      "WE_FE_41-1",
+      "WE_FE_41-2",
+      "WE_FE_41-3"
+     ],
+     "window_h": [
+      5.0,
+      9.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.6537381827464178,
+     "rel_change": 0.65
+    },
+    "pm_in_peak": {
+     "anomaly": 2.6666666666666665,
+     "rel_change": 2.67
+    },
+    "release_burst": {
+     "anomaly": 2.3580246913580245,
+     "rel_change": 2.36
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": {
+    "decoy_solo_wip_delta": -1,
+    "primary_solo_wip_delta": 27
+   },
+   "question": "Why did WE_FE_41 WIP rise between 5 h and 14 h (waiting lots 0 -> 51)?"
+  },
+  {
+   "case_id": "ood-batch-down-stack-s2",
+   "category": "ood",
+   "seed": 2,
+   "family": "Diffusion_FE_127",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 11.0,
+   "direction": "rise",
+   "wip_t1": 19,
+   "wip_t2": 72,
+   "base_wip_t2": 17,
+   "truths": [
+    "batch_cap",
+    "tool_down"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "batch_cap",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 10,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "tool_down",
+     "role": "secondary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "batch_cap",
+     "role": "primary",
+     "batch_cap_wafers": 10,
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    },
+    {
+     "cause": "tool_down",
+     "role": "secondary",
+     "tools_down": [
+      "Diffusion_FE_127-1",
+      "Diffusion_FE_127-2",
+      "Diffusion_FE_127-3",
+      "Diffusion_FE_127-4"
+     ],
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 5.0,
+     "rel_change": 5.0
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 5.0,
+     "rel_change": 11.2
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.8,
+     "rel_change": -0.8
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": null,
+   "question": "Why did Diffusion_FE_127 WIP double between 6 h and 11 h (waiting lots 19 -> 72)?"
+  },
+  {
+   "case_id": "ood-down-total-s2",
+   "category": "ood",
+   "seed": 2,
+   "family": "DefMet_FE_34",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 9.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 7,
+   "base_wip_t2": 0,
+   "truths": [
+    "tool_down"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "tool_down",
+     "role": "primary",
+     "tool_frac": 1.0,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 3.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "tool_down",
+     "role": "primary",
+     "tools_down": [
+      "DefMet_FE_34-1",
+      "DefMet_FE_34-2"
+     ],
+     "window_h": [
+      6.0,
+      9.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 5.0,
+     "rel_change": 10.0
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 0.0,
+     "rel_change": -0.2
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": -1.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": null,
+   "question": "Why did DefMet_FE_34 WIP rise between 6 h and 9 h (waiting lots 0 -> 7)?"
+  },
+  {
+   "case_id": "ood-pm-burst-s1",
+   "category": "ood",
+   "seed": 1,
+   "family": "Dielectric_BE_60",
+   "upstream": null,
+   "t1_h": 5.0,
+   "t2_h": 8.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 22,
+   "base_wip_t2": 0,
+   "truths": [
+    "pm_in_peak",
+    "release_burst"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "pm_in_peak",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": true,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    },
+    {
+     "cause": "release_burst",
+     "role": "secondary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "pm_in_peak",
+     "role": "primary",
+     "tools_pm": [
+      "Dielectric_BE_60-1",
+      "Dielectric_BE_60-2",
+      "Dielectric_BE_60-3"
+     ],
+     "window_h": [
+      5.0,
+      9.0
+     ]
+    },
+    {
+     "cause": "release_burst",
+     "role": "secondary",
+     "lots_held": 40,
+     "release_frac": 1.0,
+     "family": "Dielectric_BE_60"
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "pm_in_peak": {
+     "anomaly": 5.0,
+     "rel_change": 5.0
+    },
+    "release_burst": {
+     "anomaly": 2.757575757575758,
+     "rel_change": 2.76
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": null,
+   "question": "Why did Dielectric_BE_60 WIP rise between 5 h and 8 h (waiting lots 0 -> 22)?"
+  },
+  {
+   "case_id": "ood-setup-extreme-s2",
+   "category": "ood",
+   "seed": 2,
+   "family": "LithoTrack_FE_115",
+   "upstream": null,
+   "t1_h": 6.0,
+   "t2_h": 14.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 55,
+   "base_wip_t2": 1,
+   "truths": [
+    "setup_thrash"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "setup_thrash",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 2.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "setup_thrash",
+     "role": "primary",
+     "extra_setup_min_per_changeover": 90.0,
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.08645445058278418,
+     "rel_change": 0.09
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 0.2733333333333333,
+     "rel_change": 0.27
+    },
+    "setup_thrash": {
+     "anomaly": 5.0,
+     "rel_change": 8.95
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.3135943546582546,
+     "rel_change": 0.31
+    }
+   },
+   "ablation": null,
+   "question": "Why did LithoTrack_FE_115 WIP rise between 6 h and 14 h (waiting lots 0 -> 55)?"
+  }
+ ]
+}

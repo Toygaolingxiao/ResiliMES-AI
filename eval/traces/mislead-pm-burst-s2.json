@@ -1,0 +1,303 @@
+{
+ "case_id": "mislead-pm-burst-s2",
+ "category": "misleading",
+ "question": "Why did WE_FE_41 WIP rise between 5 h and 14 h (waiting lots 0 -> 51)?",
+ "truths": [
+  "release_burst"
+ ],
+ "baseline_pred": [
+  "pm_in_peak",
+  "release_burst"
+ ],
+ "investigation": {
+  "question": "Why did WE_FE_41 WIP rise between 5 h and 14 h (waiting lots 0 -> 51)?",
+  "family": "WE_FE_41",
+  "t1_h": 5.0,
+  "t2_h": 14.0,
+  "primary_cause": "pm_in_peak",
+  "secondary_cause": "release_burst",
+  "causal_chain": [
+   "WE_FE_41 waiting lots went from 0 at 5.0 h to 51 at 14.0 h.",
+   "In the window the family had 12.0 tool-hours in PM, against 0.0 in the hours before.",
+   "Against the 4 h before, PM share of tool time went from 0.0 to 0.267 (relative change 2.67).",
+   "That points to: planned PM placed in the family's arrival peak (capacity lost to PM)."
+  ],
+  "lever": "Move the PM out of the arrival peak to a low-WIP hour.",
+  "citations": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "calls": [
+   {
+    "n": 1,
+    "tool": "compare_windows",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 5.0,
+     "end_h": 14.0
+    }
+   },
+   {
+    "n": 2,
+    "tool": "family_wip",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 1.0,
+     "end_h": 14.0
+    }
+   },
+   {
+    "n": 3,
+    "tool": "family_window",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 1.0,
+     "end_h": 5.0
+    }
+   },
+   {
+    "n": 4,
+    "tool": "family_window",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 5.0,
+     "end_h": 14.0
+    }
+   },
+   {
+    "n": 5,
+    "tool": "tool_states",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 5.0,
+     "end_h": 14.0
+    }
+   },
+   {
+    "n": 6,
+    "tool": "family_window",
+    "args": {
+     "family": "Dielectric_FE_130",
+     "start_h": 5.0,
+     "end_h": 14.0
+    }
+   }
+  ],
+  "fact_misses": [],
+  "fact_ok": true,
+  "repaired": false,
+  "turns": 7,
+  "llm_calls": 7,
+  "latency_ms": 29.0,
+  "provider": "scripted-mock",
+  "model": "scripted-mock",
+  "mocked": true,
+  "response_models": [
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock"
+  ],
+  "error": null,
+  "trace": [
+   {
+    "round": 1,
+    "action": "compare_windows",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 5.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 1,
+    "evidence": {
+     "chars": 1245,
+     "keys": [
+      "before_h",
+      "causes",
+      "family",
+      "pairs_are",
+      "waiting_lots",
+      "window_h"
+     ],
+     "causes": {
+      "tool_down": 0.65,
+      "pm_in_peak": 2.67,
+      "release_burst": 2.36,
+      "setup_thrash": 0.0,
+      "batch_cap": 0.0,
+      "upstream_starvation": 0.0
+     },
+     "sizes": {
+      "before_h": 2,
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.01
+   },
+   {
+    "round": 2,
+    "action": "family_wip",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 1.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 2,
+    "evidence": {
+     "chars": 691,
+     "keys": [
+      "family",
+      "series"
+     ],
+     "sizes": {
+      "series": 14
+     }
+    },
+    "elapsed_s": 0.0
+   },
+   {
+    "round": 3,
+    "action": "family_window",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 1.0,
+     "end_h": 5.0
+    },
+    "status": "executed",
+    "result": 3,
+    "evidence": {
+     "chars": 421,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.002
+   },
+   {
+    "round": 4,
+    "action": "family_window",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 5.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 4,
+    "evidence": {
+     "chars": 427,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.003
+   },
+   {
+    "round": 5,
+    "action": "tool_states",
+    "args": {
+     "family": "WE_FE_41",
+     "start_h": 5.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 5,
+    "evidence": {
+     "chars": 720,
+     "keys": [
+      "family",
+      "tools",
+      "window_h"
+     ],
+     "sizes": {
+      "window_h": 2,
+      "tools": 5
+     }
+    },
+    "elapsed_s": 0.0
+   },
+   {
+    "round": 6,
+    "action": "family_window",
+    "args": {
+     "family": "Dielectric_FE_130",
+     "start_h": 5.0,
+     "end_h": 14.0
+    },
+    "status": "executed",
+    "result": 6,
+    "evidence": {
+     "chars": 433,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.003
+   },
+   {
+    "round": 7,
+    "action": "answer",
+    "status": "accepted",
+    "elapsed_s": 0.01
+   }
+  ],
+  "stop_reason": "answered",
+  "degraded": false,
+  "degrade_reason": null,
+  "system": {
+   "source": "ai",
+   "primary_cause": "pm_in_peak",
+   "secondary_cause": "release_burst"
+  },
+  "elapsed_s": 0.029,
+  "timed_out": false
+ }
+}

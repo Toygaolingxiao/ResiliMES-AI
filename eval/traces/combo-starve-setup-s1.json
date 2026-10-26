@@ -1,0 +1,304 @@
+{
+ "case_id": "combo-starve-setup-s1",
+ "category": "combo",
+ "question": "Why did Implant_128 WIP fall between 6 h and 13 h (waiting lots 25 -> 0)?",
+ "truths": [
+  "upstream_starvation",
+  "setup_thrash"
+ ],
+ "baseline_pred": [
+  "upstream_starvation",
+  "setup_thrash"
+ ],
+ "investigation": {
+  "question": "Why did Implant_128 WIP fall between 6 h and 13 h (waiting lots 25 -> 0)?",
+  "family": "Implant_128",
+  "t1_h": 6.0,
+  "t2_h": 13.0,
+  "primary_cause": "upstream_starvation",
+  "secondary_cause": "setup_thrash",
+  "causal_chain": [
+   "Implant_128 waiting lots went from 25 at 6.0 h to 0 at 13.0 h.",
+   "In the window the family had 36.0 tool-hours down at Litho_REG_FE_64.",
+   "Against the 4 h before, main upstream down+PM share of tool time went from 0.012 to 0.429 (relative change 4.16).",
+   "That points to: the main upstream family stopped feeding (it is down), so WIP drains."
+  ],
+  "lever": "Recover the upstream family first; this family is starved.",
+  "citations": [
+   1,
+   2,
+   4,
+   6
+  ],
+  "calls": [
+   {
+    "n": 1,
+    "tool": "compare_windows",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 6.0,
+     "end_h": 13.0
+    }
+   },
+   {
+    "n": 2,
+    "tool": "family_wip",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 2.0,
+     "end_h": 13.0
+    }
+   },
+   {
+    "n": 3,
+    "tool": "family_window",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 2.0,
+     "end_h": 6.0
+    }
+   },
+   {
+    "n": 4,
+    "tool": "family_window",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 6.0,
+     "end_h": 13.0
+    }
+   },
+   {
+    "n": 5,
+    "tool": "tool_states",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 6.0,
+     "end_h": 13.0
+    }
+   },
+   {
+    "n": 6,
+    "tool": "family_window",
+    "args": {
+     "family": "Litho_REG_FE_64",
+     "start_h": 6.0,
+     "end_h": 13.0
+    }
+   }
+  ],
+  "fact_misses": [],
+  "fact_ok": true,
+  "repaired": false,
+  "turns": 7,
+  "llm_calls": 7,
+  "latency_ms": 84.4,
+  "provider": "scripted-mock",
+  "model": "scripted-mock",
+  "mocked": true,
+  "response_models": [
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock"
+  ],
+  "error": null,
+  "trace": [
+   {
+    "round": 1,
+    "action": "compare_windows",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 6.0,
+     "end_h": 13.0
+    },
+    "status": "executed",
+    "result": 1,
+    "evidence": {
+     "chars": 1251,
+     "keys": [
+      "before_h",
+      "causes",
+      "family",
+      "pairs_are",
+      "waiting_lots",
+      "window_h"
+     ],
+     "causes": {
+      "tool_down": 0.0,
+      "pm_in_peak": 0.0,
+      "release_burst": -0.58,
+      "setup_thrash": 0.9,
+      "batch_cap": 0.0,
+      "upstream_starvation": 4.16
+     },
+     "sizes": {
+      "before_h": 2,
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.023
+   },
+   {
+    "round": 2,
+    "action": "family_wip",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 2.0,
+     "end_h": 13.0
+    },
+    "status": "executed",
+    "result": 2,
+    "evidence": {
+     "chars": 613,
+     "keys": [
+      "family",
+      "series"
+     ],
+     "sizes": {
+      "series": 12
+     }
+    },
+    "elapsed_s": 0.001
+   },
+   {
+    "round": 3,
+    "action": "family_window",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 2.0,
+     "end_h": 6.0
+    },
+    "status": "executed",
+    "result": 3,
+    "evidence": {
+     "chars": 434,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.006
+   },
+   {
+    "round": 4,
+    "action": "family_window",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 6.0,
+     "end_h": 13.0
+    },
+    "status": "executed",
+    "result": 4,
+    "evidence": {
+     "chars": 433,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.006
+   },
+   {
+    "round": 5,
+    "action": "tool_states",
+    "args": {
+     "family": "Implant_128",
+     "start_h": 6.0,
+     "end_h": 13.0
+    },
+    "status": "executed",
+    "result": 5,
+    "evidence": {
+     "chars": 1460,
+     "keys": [
+      "family",
+      "tools",
+      "window_h"
+     ],
+     "sizes": {
+      "window_h": 2,
+      "tools": 11
+     }
+    },
+    "elapsed_s": 0.001
+   },
+   {
+    "round": 6,
+    "action": "family_window",
+    "args": {
+     "family": "Litho_REG_FE_64",
+     "start_h": 6.0,
+     "end_h": 13.0
+    },
+    "status": "executed",
+    "result": 6,
+    "evidence": {
+     "chars": 437,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.03
+   },
+   {
+    "round": 7,
+    "action": "answer",
+    "status": "accepted",
+    "elapsed_s": 0.018
+   }
+  ],
+  "stop_reason": "answered",
+  "degraded": false,
+  "degrade_reason": null,
+  "system": {
+   "source": "ai",
+   "primary_cause": "upstream_starvation",
+   "secondary_cause": "setup_thrash"
+  },
+  "elapsed_s": 0.084,
+  "timed_out": false
+ }
+}

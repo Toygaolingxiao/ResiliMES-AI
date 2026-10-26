@@ -1,0 +1,303 @@
+{
+ "case_id": "notes-pm-masked-s2",
+ "category": "notes",
+ "question": "Why did TF_FE_5 WIP rise between 6 h and 12 h (waiting lots 0 -> 12)?\n\nFab notes from this shift (text only; the monitoring tools do not see them):\n- [2026-10-22T04:00:00Z] (shift) Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: TF_FE_5-1 will be down for preventive maintenance on 2026-10-22 from 06:00 to 10:00 (brought forward from next week after a leak check).\n- [2026-10-22T05:30:00Z] (planning) Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.",
+ "truths": [
+  "pm_in_peak"
+ ],
+ "baseline_pred": [
+  "release_burst",
+  "pm_in_peak"
+ ],
+ "investigation": {
+  "question": "Why did TF_FE_5 WIP rise between 6 h and 12 h (waiting lots 0 -> 12)?\n\nFab notes from this shift (text only; the monitoring tools do not see them):\n- [2026-10-22T04:00:00Z] (shift) Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: TF_FE_5-1 will be down for preventive maintenance on 2026-10-22 from 06:00 to 10:00 (brought forward from next week after a leak check).\n- [2026-10-22T05:30:00Z] (planning) Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.",
+  "family": "TF_FE_5",
+  "t1_h": 6.0,
+  "t2_h": 12.0,
+  "primary_cause": "release_burst",
+  "secondary_cause": "pm_in_peak",
+  "causal_chain": [
+   "TF_FE_5 waiting lots went from 0 at 6.0 h to 12 at 12.0 h.",
+   "In the window the family had 26.0 arrivals, against 4.0 in the hours before.",
+   "Against the 4 h before, arrivals per hour went from 1.0 to 4.33 (relative change 3.33).",
+   "That points to: a burst of lots released / arriving at once."
+  ],
+  "lever": "Smooth releases upstream instead of letting lots arrive at once.",
+  "citations": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "calls": [
+   {
+    "n": 1,
+    "tool": "compare_windows",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 6.0,
+     "end_h": 12.0
+    }
+   },
+   {
+    "n": 2,
+    "tool": "family_wip",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 2.0,
+     "end_h": 12.0
+    }
+   },
+   {
+    "n": 3,
+    "tool": "family_window",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 2.0,
+     "end_h": 6.0
+    }
+   },
+   {
+    "n": 4,
+    "tool": "family_window",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 6.0,
+     "end_h": 12.0
+    }
+   },
+   {
+    "n": 5,
+    "tool": "tool_states",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 6.0,
+     "end_h": 12.0
+    }
+   },
+   {
+    "n": 6,
+    "tool": "family_window",
+    "args": {
+     "family": "TF_Met_FE_61",
+     "start_h": 6.0,
+     "end_h": 12.0
+    }
+   }
+  ],
+  "fact_misses": [],
+  "fact_ok": true,
+  "repaired": false,
+  "turns": 7,
+  "llm_calls": 7,
+  "latency_ms": 54.4,
+  "provider": "scripted-mock",
+  "model": "scripted-mock",
+  "mocked": true,
+  "response_models": [
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock",
+   "unreported:scripted-mock"
+  ],
+  "error": null,
+  "trace": [
+   {
+    "round": 1,
+    "action": "compare_windows",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 6.0,
+     "end_h": 12.0
+    },
+    "status": "executed",
+    "result": 1,
+    "evidence": {
+     "chars": 1234,
+     "keys": [
+      "before_h",
+      "causes",
+      "family",
+      "pairs_are",
+      "waiting_lots",
+      "window_h"
+     ],
+     "causes": {
+      "tool_down": 0.0,
+      "pm_in_peak": 2.22,
+      "release_burst": 3.33,
+      "setup_thrash": 0.0,
+      "batch_cap": 0.0,
+      "upstream_starvation": 0.0
+     },
+     "sizes": {
+      "before_h": 2,
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.008
+   },
+   {
+    "round": 2,
+    "action": "family_wip",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 2.0,
+     "end_h": 12.0
+    },
+    "status": "executed",
+    "result": 2,
+    "evidence": {
+     "chars": 543,
+     "keys": [
+      "family",
+      "series"
+     ],
+     "sizes": {
+      "series": 11
+     }
+    },
+    "elapsed_s": 0.0
+   },
+   {
+    "round": 3,
+    "action": "family_window",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 2.0,
+     "end_h": 6.0
+    },
+    "status": "executed",
+    "result": 3,
+    "evidence": {
+     "chars": 416,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.002
+   },
+   {
+    "round": 4,
+    "action": "family_window",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 6.0,
+     "end_h": 12.0
+    },
+    "status": "executed",
+    "result": 4,
+    "evidence": {
+     "chars": 423,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.002
+   },
+   {
+    "round": 5,
+    "action": "tool_states",
+    "args": {
+     "family": "TF_FE_5",
+     "start_h": 6.0,
+     "end_h": 12.0
+    },
+    "status": "executed",
+    "result": 5,
+    "evidence": {
+     "chars": 437,
+     "keys": [
+      "family",
+      "tools",
+      "window_h"
+     ],
+     "sizes": {
+      "window_h": 2,
+      "tools": 3
+     }
+    },
+    "elapsed_s": 0.0
+   },
+   {
+    "round": 6,
+    "action": "family_window",
+    "args": {
+     "family": "TF_Met_FE_61",
+     "start_h": 6.0,
+     "end_h": 12.0
+    },
+    "status": "executed",
+    "result": 6,
+    "evidence": {
+     "chars": 425,
+     "keys": [
+      "arrivals",
+      "arrivals_per_h",
+      "batch_family",
+      "busy_tool_h",
+      "changeovers",
+      "down_tool_h",
+      "family",
+      "idle_tool_h",
+      "lot_starts",
+      "lots_per_start",
+      "mean_wait_min",
+      "pm_tool_h"
+     ],
+     "sizes": {
+      "window_h": 2
+     }
+    },
+    "elapsed_s": 0.002
+   },
+   {
+    "round": 7,
+    "action": "answer",
+    "status": "accepted",
+    "elapsed_s": 0.04
+   }
+  ],
+  "stop_reason": "answered",
+  "degraded": false,
+  "degrade_reason": null,
+  "system": {
+   "source": "ai",
+   "primary_cause": "release_burst",
+   "secondary_cause": "pm_in_peak"
+  },
+  "elapsed_s": 0.054,
+  "timed_out": false
+ }
+}

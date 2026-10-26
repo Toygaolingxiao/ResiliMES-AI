@@ -1,0 +1,532 @@
+{
+ "version": 1,
+ "kind": "notes-rooted hard cases; ground truth by injection, root cause stated only in the attached fab notes (format of data/notes/fab_notes.json items)",
+ "cases": [
+  {
+   "case_id": "notes-batch-invisible-s2",
+   "category": "notes",
+   "seed": 2,
+   "family": "Diffusion_FE_127",
+   "upstream": "TF_Met_FE_45",
+   "t1_h": 6.0,
+   "t2_h": 12.0,
+   "direction": "rise",
+   "wip_t1": 19,
+   "wip_t2": 45,
+   "base_wip_t2": 19,
+   "truths": [
+    "batch_cap"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "batch_cap",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 10,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "batch_cap",
+     "role": "primary",
+     "batch_cap_wafers": 10,
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 5.0,
+     "rel_change": 5.5
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.8,
+     "rel_change": -0.8
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": null,
+   "notes_items": [
+    {
+     "id": "n01",
+     "ts": "2026-10-22T05:30:00Z",
+     "source": "planning",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.",
+     "gold": [
+      {
+       "type": "priority_change",
+       "lot": "Init_Lot_1_1",
+       "priority": "hot"
+      }
+     ]
+    },
+    {
+     "id": "n02",
+     "ts": "2026-10-22T04:00:00Z",
+     "source": "shift",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.",
+     "gold": []
+    },
+    {
+     "id": "n03",
+     "ts": "2026-10-22T05:00:00Z",
+     "source": "maintenance",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.",
+     "gold": [
+      {
+       "type": "planned_down",
+       "equipment": "DE_BE_11-1",
+       "start": "2026-10-23T08:00:00Z",
+       "duration_min": 240
+      }
+     ]
+    },
+    {
+     "id": "n04",
+     "ts": "2026-10-22T05:30:00Z",
+     "source": "engineering",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Contamination control: Diffusion_FE_127 batch size is capped at 10 wafers per run from 06:00 until further notice (Diffusion_FE_127-1 line). Starts will run with partial batches meanwhile.",
+     "gold": [
+      {
+       "type": "capacity_derate",
+       "equipment": "Diffusion_FE_127-1",
+       "factor": 0.4,
+       "window_h": 6.0
+      }
+     ]
+    }
+   ],
+   "baseline_pred": [
+    "release_burst",
+    "batch_cap"
+   ],
+   "question": "Why did Diffusion_FE_127 WIP double between 6 h and 12 h (waiting lots 19 -> 45)?\n\nFab notes from this shift (text only; the monitoring tools do not see them):\n- [2026-10-22T05:30:00Z] (planning) Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.\n- [2026-10-22T04:00:00Z] (shift) Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.\n- [2026-10-22T05:30:00Z] (engineering) Contamination control: Diffusion_FE_127 batch size is capped at 10 wafers per run from 06:00 until further notice (Diffusion_FE_127-1 line). Starts will run with partial batches meanwhile."
+  },
+  {
+   "case_id": "notes-burst-masked-s1",
+   "category": "notes",
+   "seed": 1,
+   "family": "Litho_BE_93",
+   "upstream": "LithoTrack_FE_95",
+   "t1_h": 6.0,
+   "t2_h": 9.0,
+   "direction": "rise",
+   "wip_t1": 2,
+   "wip_t2": 11,
+   "base_wip_t2": 6,
+   "truths": [
+    "release_burst"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "tool_frac": 0.5,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 0.3,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "release_burst",
+     "role": "primary",
+     "lots_held": 10,
+     "release_frac": 0.3,
+     "family": "Litho_BE_93"
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 2.0060882655608,
+     "rel_change": 2.01
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 0.8666666666666667,
+     "rel_change": 0.87
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.03034592496657347,
+     "rel_change": 0.03
+    }
+   },
+   "ablation": null,
+   "notes_items": [
+    {
+     "id": "n01",
+     "ts": "2026-10-22T05:00:00Z",
+     "source": "maintenance",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.",
+     "gold": [
+      {
+       "type": "planned_down",
+       "equipment": "DE_BE_11-1",
+       "start": "2026-10-23T08:00:00Z",
+       "duration_min": 240
+      }
+     ]
+    },
+    {
+     "id": "n02",
+     "ts": "2026-10-22T05:30:00Z",
+     "source": "planning",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.",
+     "gold": [
+      {
+       "type": "priority_change",
+       "lot": "Init_Lot_1_1",
+       "priority": "hot"
+      }
+     ]
+    },
+    {
+     "id": "n03",
+     "ts": "2026-10-22T04:00:00Z",
+     "source": "shift",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.",
+     "gold": []
+    },
+    {
+     "id": "n04",
+     "ts": "2026-10-22T05:30:00Z",
+     "source": "planning",
+     "lang": "zh",
+     "hard_for_regex": false,
+     "text": "客户催单：Init_HotLot_1_1 等被 hold 的批次已全部提前放行，06:00 起陆续进站，请相关站点留意在制品上升。",
+     "gold": [
+      {
+       "type": "priority_change",
+       "lot": "Init_HotLot_1_1",
+       "priority": "hot"
+      }
+     ]
+    }
+   ],
+   "baseline_pred": [
+    "tool_down",
+    "release_burst"
+   ],
+   "question": "Why did Litho_BE_93 WIP double between 6 h and 9 h (waiting lots 2 -> 11)?\n\nFab notes from this shift (text only; the monitoring tools do not see them):\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.\n- [2026-10-22T05:30:00Z] (planning) Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.\n- [2026-10-22T04:00:00Z] (shift) Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.\n- [2026-10-22T05:30:00Z] (planning) 客户催单：Init_HotLot_1_1 等被 hold 的批次已全部提前放行，06:00 起陆续进站，请相关站点留意在制品上升。"
+  },
+  {
+   "case_id": "notes-down-masked-s1",
+   "category": "notes",
+   "seed": 1,
+   "family": "Diffusion_FE_127",
+   "upstream": "TF_Met_FE_45",
+   "t1_h": 6.0,
+   "t2_h": 11.0,
+   "direction": "rise",
+   "wip_t1": 19,
+   "wip_t2": 38,
+   "base_wip_t2": 17,
+   "truths": [
+    "tool_down"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "tool_down",
+     "role": "primary",
+     "tool_frac": 0.15,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "tool_down",
+     "role": "primary",
+     "tools_down": [
+      "Diffusion_FE_127-1",
+      "Diffusion_FE_127-2"
+     ],
+     "window_h": [
+      6.0,
+      12.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 2.5,
+     "rel_change": 2.5
+    },
+    "pm_in_peak": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "release_burst": {
+     "anomaly": 5.0,
+     "rel_change": 8.8
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": null,
+   "notes_items": [
+    {
+     "id": "n01",
+     "ts": "2026-10-22T05:30:00Z",
+     "source": "maintenance",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Diffusion_FE_127-1 fault: vacuum pump failure. The tool is down from 06:00 today; expected repair time 6 h. Lots are being rerouted where possible.",
+     "gold": [
+      {
+       "type": "planned_down",
+       "equipment": "Diffusion_FE_127-1",
+       "start": "2026-10-22T06:00:00Z",
+       "duration_min": 360
+      }
+     ]
+    },
+    {
+     "id": "n02",
+     "ts": "2026-10-22T05:30:00Z",
+     "source": "planning",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.",
+     "gold": [
+      {
+       "type": "priority_change",
+       "lot": "Init_Lot_1_1",
+       "priority": "hot"
+      }
+     ]
+    },
+    {
+     "id": "n03",
+     "ts": "2026-10-22T04:00:00Z",
+     "source": "shift",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.",
+     "gold": []
+    },
+    {
+     "id": "n04",
+     "ts": "2026-10-22T05:00:00Z",
+     "source": "maintenance",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.",
+     "gold": [
+      {
+       "type": "planned_down",
+       "equipment": "DE_BE_11-1",
+       "start": "2026-10-23T08:00:00Z",
+       "duration_min": 240
+      }
+     ]
+    }
+   ],
+   "baseline_pred": [
+    "release_burst",
+    "tool_down"
+   ],
+   "question": "Why did Diffusion_FE_127 WIP double between 6 h and 11 h (waiting lots 19 -> 38)?\n\nFab notes from this shift (text only; the monitoring tools do not see them):\n- [2026-10-22T05:30:00Z] (maintenance) Diffusion_FE_127-1 fault: vacuum pump failure. The tool is down from 06:00 today; expected repair time 6 h. Lots are being rerouted where possible.\n- [2026-10-22T05:30:00Z] (planning) Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.\n- [2026-10-22T04:00:00Z] (shift) Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00."
+  },
+  {
+   "case_id": "notes-pm-masked-s2",
+   "category": "notes",
+   "seed": 2,
+   "family": "TF_FE_5",
+   "upstream": "TF_Met_FE_61",
+   "t1_h": 6.0,
+   "t2_h": 12.0,
+   "direction": "rise",
+   "wip_t1": 0,
+   "wip_t2": 12,
+   "base_wip_t2": 8,
+   "truths": [
+    "pm_in_peak"
+   ],
+   "decoy": null,
+   "specs": [
+    {
+     "cause": "pm_in_peak",
+     "role": "primary",
+     "tool_frac": 0.25,
+     "setup_mult": 1.0,
+     "batch_cap_wafers": 0,
+     "release_frac": 1.0,
+     "pm_at_peak": false,
+     "t0_h": 6.0,
+     "dur_h": 6.0
+    }
+   ],
+   "injection": [
+    {
+     "cause": "pm_in_peak",
+     "role": "primary",
+     "tools_pm": [
+      "TF_FE_5-1"
+     ],
+     "window_h": [
+      6.0,
+      10.0
+     ]
+    }
+   ],
+   "signals": {
+    "tool_down": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "pm_in_peak": {
+     "anomaly": 2.222222222222222,
+     "rel_change": 2.22
+    },
+    "release_burst": {
+     "anomaly": 3.333333333333333,
+     "rel_change": 3.33
+    },
+    "setup_thrash": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "batch_cap": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    },
+    "upstream_starvation": {
+     "anomaly": 0.0,
+     "rel_change": 0.0
+    }
+   },
+   "ablation": null,
+   "notes_items": [
+    {
+     "id": "n01",
+     "ts": "2026-10-22T04:00:00Z",
+     "source": "shift",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.",
+     "gold": []
+    },
+    {
+     "id": "n02",
+     "ts": "2026-10-22T05:00:00Z",
+     "source": "maintenance",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.",
+     "gold": [
+      {
+       "type": "planned_down",
+       "equipment": "DE_BE_11-1",
+       "start": "2026-10-23T08:00:00Z",
+       "duration_min": 240
+      }
+     ]
+    },
+    {
+     "id": "n03",
+     "ts": "2026-10-22T05:00:00Z",
+     "source": "maintenance",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "PM notice: TF_FE_5-1 will be down for preventive maintenance on 2026-10-22 from 06:00 to 10:00 (brought forward from next week after a leak check).",
+     "gold": [
+      {
+       "type": "planned_down",
+       "equipment": "TF_FE_5-1",
+       "start": "2026-10-22T06:00:00Z",
+       "duration_min": 240
+      }
+     ]
+    },
+    {
+     "id": "n04",
+     "ts": "2026-10-22T05:30:00Z",
+     "source": "planning",
+     "lang": "en",
+     "hard_for_regex": false,
+     "text": "Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately.",
+     "gold": [
+      {
+       "type": "priority_change",
+       "lot": "Init_Lot_1_1",
+       "priority": "hot"
+      }
+     ]
+    }
+   ],
+   "baseline_pred": [
+    "release_burst",
+    "pm_in_peak"
+   ],
+   "question": "Why did TF_FE_5 WIP rise between 6 h and 12 h (waiting lots 0 -> 12)?\n\nFab notes from this shift (text only; the monitoring tools do not see them):\n- [2026-10-22T04:00:00Z] (shift) Recap: yesterday's DE_BE_12-1 alarm was cleared within the hour; all tools are back to normal.\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: DE_BE_11-1 will be down for preventive maintenance tomorrow (2026-10-23) from 08:00 to 12:00.\n- [2026-10-22T05:00:00Z] (maintenance) PM notice: TF_FE_5-1 will be down for preventive maintenance on 2026-10-22 from 06:00 to 10:00 (brought forward from next week after a leak check).\n- [2026-10-22T05:30:00Z] (planning) Customer escalation: Init_Lot_1_1 is now a hot lot, effective immediately."
+  }
+ ]
+}
