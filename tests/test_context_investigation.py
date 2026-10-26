@@ -255,7 +255,10 @@ def test_free_gap_question_chains_classifier_and_notes_placeholder(run24):
     assert answer.part_tiers.get("gap_classifier") == "rule_emergent"
     assert answer.tier == "rule_emergent"
     notes = next(e for e in answer.basis if e["source"] == "fab_notes")
-    assert notes["facts"]["available"] is False  # dataset not in this tree: placeholder
+    # Placeholder when the fab_notes dataset is absent; real matches once it is in the tree.
+    from resilimes.insight.context_investigation import load_fab_notes
+
+    assert notes["facts"]["available"] is (load_fab_notes() is not None)
 
 
 def test_free_lot_question_keeps_the_decision_record_tier(run24):
