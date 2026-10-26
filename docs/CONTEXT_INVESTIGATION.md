@@ -40,7 +40,7 @@ it down unless every part abstains. Per-part tiers are in `part_tiers`.
 | `t1_min` / `t2_min` | number | window bounds in **minutes** from run start — the front end's native unit; wins over hours when both are sent |
 | `t1_h` / `t2_h` | number | window bounds in hours (service-native; still accepted) |
 | `scenario_id` | string | echoed in the response; `"seed-<n>"` (n = 1..4) also selects the run seed |
-| `lang` | `"en" \| "zh" \| "ja"` | accepted and echoed in the query; v1 answers are English (alignment point, below) |
+| `lang` | `"en" \| "zh" \| "ja"` | accepted and echoed in the query; answers are in English (alignment point, below) |
 | `question_preset` | string | per type, see below; validated |
 | `question` | string | free text; the anchor question for `free`, the investigator's question for `window` |
 | `seed` | int 1..4 | which base run (default 1) |
@@ -118,14 +118,14 @@ Gap classification: the service prefers `resilimes.insight.gaps`
 (Plan-4 module) when it is in the tree — its `GapRecord` tiers map
 `decision_record → decision_record`, `inferred_evidence →
 rule_emergent`, `unknown → unknown`. Until the merge, an adapter mirrors
-the same taxonomy, priority and evidence rules (batch / PM / CQT only —
-the same v1 limit `gaps.py` itself states) and says so in the basis
+the same taxonomy, priority and evidence rules (batch / PM / CQT only,
+the same limit `gaps.py` itself states) and says so in the basis
 facts (`classifier: "mirrored insight.gaps taxonomy …"`).
 
 ## Model use
 
 Offline (no provider, or a mocked one) the deterministic scripted
-answers are the product — CI never needs Nightshift. With a live
+answers are the product; CI never needs Nightshift. With a live
 provider, bar/gap/free scripted answers may be rewritten once for
 readability; the rewrite must pass `factcheck.check` against the
 answer's own basis and stay inside the code-assigned tier (see above),
@@ -147,7 +147,7 @@ POST /api/ai/investigate
   "scenario_id": "gantt-demo", "advice_only": true }
 ```
 
-Gap with no evidence — the honest answer:
+Gap with no evidence:
 
 ```json
 {"type": "gap", "tool": "DE_BE_69-3", "t1_min": 0, "t2_min": 60, "question_preset": "why_idle"}
@@ -180,7 +180,7 @@ expected tiers and evidence points, run in two arms — template
 EvalPolisher mock in CI). Metrics: fact-check pass rate, evidence-point
 coverage, tier distribution. The script writes
 `outputs/context_eval/report.{json,md}`; the report has a blank live
-table for the owner's Nightshift run — CI numbers are mock numbers and
+table for the owner's Nightshift run. CI numbers are mock numbers and
 are labelled as such.
 
 ## Open alignment points
@@ -194,7 +194,7 @@ are labelled as such.
   single tool, so a gap right-click there is sent as a `window` query on
   the family. Covered by `test_api_accepts_every_payload_the_gantt_sends`.
   Not yet surfaced: `part_tiers`, grouping by `basis[].source`. `lang` is
-  accepted but answers are English in v1 — localisation is a follow-up.
+  accepted, but answers are in English; localisation is not implemented.
 - Which run answered: the response carries `run` = `{id, seed, horizon_h,
   reference, requested_scenario}`. Only `scenario_id="seed-<n>"` selects an
   explainer run; any other scenario is answered from the 48 h reference run

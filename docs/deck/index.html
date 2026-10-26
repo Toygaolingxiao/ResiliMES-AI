@@ -272,7 +272,7 @@ table.d th{font-size:13px;padding:11px 16px}
           <p style="margin-top:4px"><b>Bar</b> → why here, why this tool, why now · <b>Gap</b> on a tool → why idle · <b>Family window</b> → what happened, why WIP changed · <b>Free</b> question.</p></div>
         <div class="card good" style="padding:12px 16px"><div class="label">Tier · assigned by code, never by the model</div>
           <p style="margin-top:4px"><span class="chip good">decision_record</span> a recorded gate or dispatch decision explains it<br><span class="chip amber">rule_emergent</span> only "the result of rule X in that state"<br><span class="chip">unknown</span> the record does not say, so we say so</p></div>
-        <div class="note" style="font-size:16px"><b>Refused, not softened.</b> A rewrite that claims intent ("decided to", "chose to") on a rule-emergent answer is refused: <span class="mono small">tier_upgrade_refused</span>. A failed fact-check, bad JSON or a provider error degrades to the scripted answer, labelled.</div>
+        <div class="note" style="font-size:16px"><b>Intent claims are refused.</b> A rewrite that claims intent ("decided to", "chose to") on a rule-emergent answer is refused: <span class="mono small">tier_upgrade_refused</span>. A failed fact-check, bad JSON or a provider error degrades to the scripted answer, labelled.</div>
       </div>
     </div>
     <p class="src">docs/CONTEXT_INVESTIGATION.md · resilimes/insight/context_investigation.py · resilimes/demo/static/app.js · answers come from the 48 h base run, seed 1, and change nothing</p>
@@ -400,7 +400,7 @@ table.d th{font-size:13px;padding:11px 16px}
         </table>
         <div class="card good" style="padding:12px 16px"><div class="label">A/B/C schedule effect · mock ledger (ledger units)</div>
           <p style="margin-top:4px">Gap closure on avoidable Q-time: scripted B <b>1.0</b> with 0 collateral; regex B <b>0.7069</b> with 1 collateral event. Live: <span class="tbd">[LIVE: notes A/B/C]</span></p></div>
-        <div class="note amber" style="font-size:15.5px"><b>Honest label:</b> the scripted stand-in is written against these constructions. It proves the pipeline, not the model's quality. Live numbers will be filled in from the owner's PC run.</div>
+        <div class="note amber" style="font-size:15.5px"><b>Scope:</b> the scripted stand-in is written against these constructions. It proves the pipeline, not the model's quality. Live numbers will be filled in from the owner's PC run.</div>
       </div>
     </div>
     <p class="src">data/notes/README.md · resilimes/insight/notes.py · scripts/score_notes.py · scripts/compare_notes_ab.py · resilimes/insight/notes_ab.py</p>
@@ -427,7 +427,7 @@ table.d th{font-size:13px;padding:11px 16px}
         <p>These run only with <span class="mono small">SHIFT_LEAD_ESCALATE=always</span>: 16/16 stress books trigger, with 35–49 escalations each. The trigger threshold was not changed to make it fire.</p>
         <p class="small muted" style="margin-top:auto"><b>Label:</b> exploratory. They are not a claim that the LLM schedules better.</p></div>
     </div>
-    <div class="note" style="margin-top:14px"><b>What we don't claim:</b> that an LLM schedules better than rules. We claim that a rule schedule can be explained honestly, at the level of each bar and gap, with evidence a shift lead can check.</div>
+    <div class="note" style="margin-top:14px"><b>What we don't claim:</b> that an LLM schedules better than rules. We claim that a rule schedule can be explained at the level of each bar and gap, with evidence a shift lead can check.</div>
     <p class="src">study_zero_call/zero_call.md · study_stress_gen/validation.md · study_stress_gen_always/validation.md · docs/STRESS_GEN_AMENDMENT_2026-10-26.md · study_search_curve/k_curve.md · README.md "AI shift lead"</p>
   </div>
 </section>
@@ -440,8 +440,8 @@ table.d th{font-size:13px;padding:11px 16px}
     <h2 style="margin-bottom:12px">The AI explains reliably. Its improvement claims have to be verified.</h2>
     <table class="d" style="font-size:14.5px">
       <tr><th style="text-align:left">Agent · metric</th><th>Rule baseline</th><th>Nemotron (live)</th><th style="text-align:left">Note</th></tr>
-      <tr><td>Investigator v1 · top-1, 24 cases</td><td>20/24</td><td class="down">11/24</td><td style="text-align:left">No decision protocol in the prompt. Fixed in v2.</td></tr>
-      <tr><td>Investigator v2 · top-1, 24 fault cases</td><td>20/24</td><td><b>20/24</b> <span class="chip">equal</span></td><td style="text-align:left">Top-2 21/24 · fact-check 24/24 (4 auto-repaired) · 0 no-answers · 1.54 calls</td></tr>
+      <tr><td>Investigator, no protocol · top-1, 24 cases</td><td>20/24</td><td class="down">11/24</td><td style="text-align:left">Prompt without a decision protocol.</td></tr>
+      <tr><td>Investigator, with protocol · top-1, 24 fault cases</td><td>20/24</td><td><b>20/24</b> <span class="chip">equal</span></td><td style="text-align:left">Top-2 21/24 · fact-check 24/24 (4 auto-repaired) · 0 no-answers · 1.54 calls</td></tr>
       <tr><td>Shift handover · 12 items</td><td>—</td><td><b>12/12</b></td><td style="text-align:left">Fact-check 12/12 (2 auto-repaired) · recall 1.0 · 8.2 min mean</td></tr>
       <tr><td>Late-lot explainer · cause, 12 lots</td><td>exact split</td><td><b>11/12</b></td><td style="text-align:left">Fact-check 12/12</td></tr>
       <tr><td>Late-lot explainer · lever, re-simulated</td><td>—</td><td class="down">1/12 hit</td><td style="text-align:left">4/12 helped at all · mean −9.1 min · worst: 69 min claimed, 301 min worse</td></tr>
@@ -449,7 +449,7 @@ table.d th{font-size:13px;padding:11px 16px}
     </table>
     <div class="grid g2" style="margin-top:12px;gap:14px">
       <div class="note amber" style="font-size:15px;padding:10px 14px;background:var(--amber-wash)"><b>Lesson:</b> the AI names causes reliably (11/12), but only 1/12 of its levers held up in the simulator. That is why it explains and every lever is re-simulated.</div>
-      <div class="note" style="font-size:15px;padding:10px 14px"><b>Same cause list as the rules:</b> the investigator picks one cause from a fixed taxonomy with ≤ 6 evidence calls. Equal to the rule baseline is the honest result.</div>
+      <div class="note" style="font-size:15px;padding:10px 14px"><b>Same cause list as the rules:</b> the investigator picks one cause from a fixed taxonomy with ≤ 6 evidence calls. Its top-1 equals the rule baseline.</div>
     </div>
     <p class="src">docs/AI_INVESTIGATOR.md · docs/AI_HANDOVER.md · docs/AI_EXPLAINER.md · eval/investigator_hard_cases.json, eval/investigator_notes_cases.json (PR #58)</p>
   </div>
@@ -503,7 +503,7 @@ table.d th{font-size:13px;padding:11px 16px}
     </div>
     <div class="grid g2 fill" style="margin-top:14px;gap:18px">
       <div class="note"><b>Fallbacks are always labelled.</b> Without a Nightshift token the answer comes from a scripted stand-in and the badge says "offline stand-in". Without a Zetaris key the query line says "local extract (Zetaris not called)".</div>
-      <div class="note"><b>What is unusual.</b> Most agent demos let the model decide. Here a tested scheduler decides, Scout won't run without a fresh contract, and Nemotron works where language helps: explaining.</div>
+      <div class="note"><b>Division of work.</b> A tested scheduler decides, Scout won't run without a fresh contract, and Nemotron works where language helps: explaining.</div>
     </div>
     <p class="src">docs/SPONSOR_TECH.md · docs/ZETARIS.md · README.md (Sponsor technology) · docs/H_MEM.md · docs/AI_EXPLAINER.md (model check)</p>
   </div>
@@ -560,7 +560,7 @@ table.d th{font-size:13px;padding:11px 16px}
         <li>Answer in 中文 / 日本語 as well as English; today context answers are English.</li>
         <li>Field test with shift leads: does an explained gap get overridden less often?</li></ul><p class="small muted" style="margin-top:10px">That override rate is the metric we want to move. It is not measured yet.</p></div>
     </div>
-    <p class="src">docs/HARD_QTIME.md · docs/CONTEXT_INVESTIGATION.md (v1 answers are English) · data/notes/README.md · README.md (Team)</p>
+    <p class="src">docs/HARD_QTIME.md · docs/CONTEXT_INVESTIGATION.md (answers are English) · data/notes/README.md · README.md (Team)</p>
   </div>
 </section>
 

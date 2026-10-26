@@ -1,6 +1,6 @@
 # Demo script
 
-> **Submission film (2026-10-26):** the shot list is now [DEMO_VIDEO_SCRIPT.md](DEMO_VIDEO_SCRIPT.md), with the planning-layer default, the hard Q-time study, the AI evidence tab and one live Nemotron request. Use the "Before you hit record" setup below for it. The shot lists further down quote numbers recorded before the planning-layer default and are kept as history; do not read them in the new film.
+> **Submission film:** the shot list is [DEMO_VIDEO_SCRIPT.md](DEMO_VIDEO_SCRIPT.md): the planning-layer default, the hard Q-time study, the AI evidence tab and one live Nemotron request. This file holds the setup for it ("Before you hit record") and the six-lot bay walk-through.
 
 Target length: 2:45–3:15. English narration. Film the console full screen. Hide `.env`. Do not read a token aloud.
 
@@ -45,47 +45,11 @@ Say that. Do not say the Gantt was streamed row by row from SQL.
 
 ## Shot list
 
-### 0:00–0:35 — The trade
+The SMT2020 shot list, with its numbers and subtitles, is [DEMO_VIDEO_SCRIPT.md](DEMO_VIDEO_SCRIPT.md).
 
-Idle page. Point at the banner, then at **X-factor dues**. Do not press Run yet. Do not open Tight VIP dues first.
+## Appendix: six-lot bay walk-through (`make demo-bay`)
 
-"This click is seed one. Eighty-seven lots, forty-eight hours. Earliest-due and ResiliMES are both eighty-seven of eighty-seven on time. Re-cleans go from forty-four under earliest-due to fifty-seven, so ResiliMES re-cleans more here. Queue-time violations go from four hundred ninety-four to four hundred forty-eight. The five-seed mean is a different line: queue-time four hundred thirty-six point eight against four hundred seventy-nine, re-cleans fifty-three point four against forty-eight point eight. On that mean, the two tie on on-time, four hundred thirty-three of four hundred thirty-five pooled lots, and both beat FIFO and critical ratio. On-time on the mean does not move if the repair is three hours, five hours, ten hours, or the published lithography repair."
-
-### 0:35–1:05 — The live read
-
-Press **Run** on **X-factor dues**. When the Zetaris node lights, point at the query line under the banner. Leave it on screen.
-
-"This is a live Zetaris read. The SQL is five count queries plus the setup matrix. Matching setup seconds replace the local matrix for this run. Routes, WIP, and dues still come from the local extract. The dispatcher does not read SQL per lot. The sources are resilimes, fab_cmms, and fab_erp. The banner is the public industry benchmark, SMT2020. One hundred six families, one thousand three hundred thirteen tools, two thousand one hundred fifty-six lots. The clock is the 2018-01-01 snapshot."
-
-### 1:05–1:35 — What the cards are
-
-Read re-cleans, Q-time, weighted tardiness, and on-time with the denominator. Then one sentence on the other two books.
-
-"Read the cards. Seed one is eighty-seven of eighty-seven under both rules, re-cleans forty-four to fifty-seven, queue-time four hundred ninety-four to four hundred forty-eight. The line under the cards is the five-seed mean. That mean is not these cards. The nonempty-queue dispatch time is on the timing line. The headline p50 includes empty wakes. The published-due book is fifty-six lots, ten of them already late at the snapshot, so the maximum is forty-six of fifty-six. Earliest-due wins there, one hundred sixty-three of two hundred eighty against one hundred fifty-nine. The tight VIP button rewrites the dues for a stress test. It is a different book."
-
-### 1:35–2:15 — The stress test, then the critic
-
-Press **Run** on **Tight VIP dues**. Point at the refusal line once the lot id and the tool are visible. Open the Dielectric group and click `Dielectric_BE_28` so the three tools draw across the full day.
-
-"These dues were rewritten. Twenty-one lots. Earliest-due is four of twenty-one on this seed, weighted tardiness six thousand eight hundred forty-two point one minutes. ResiliMES is five of twenty-one and three thousand six hundred sixteen point nine. Across five seeds that is twenty-eight of one hundred five against nineteen of one hundred five. Init_Lot_2_13 is the save on this book: five point zero three hours late under earliest-due, on time under ResiliMES. The thirteen normal lots in that queue pay thirty-nine point eight hours for it. There is no refusal sentence on this click. The event trace has no start on the down tool, so refusal stays empty and the verdict stays accept."
-
-### 2:15–2:40 — Twelve-hour lithography
-
-Press **Run** on **Lithography breakdown**. Point at the study line under the cards.
-
-"Same benchmark, twelve hours, seed one. Both policies are two of nineteen. That is a tie on this click. The five-seed lithography study is forty-eight hours and fifty-six lots, and earliest-due is slightly ahead there. The line under the cards is that study."
-
-### 2:40–3:05 — Nightshift
-
-Hover the Nightshift step. The request id has to be on screen. The model id is `nvidia/nemotron-3.5-lightning-30b-a3b`. The base URL is `http://127.0.0.1:8088/v1`.
-
-"Nightshift writes this one sentence after the schedule is fixed. It does not place the lots. The key stays off screen. Without a token this step is the mock narrative and there is no request id."
-
-Stop. Aim to cut before 3:15.
-
-## Appendix — six-lot bay walk-through (`make demo-bay`)
-
-This is the bay recording from the intent-confirmation branch. It is not the SMT2020 shot above. Headings are one level down.
+This is the bay recording. It is not the SMT2020 film. Headings are one level down.
 
 
 Target length: 3 minutes 30 seconds. Stay inside 1–4 minutes. Film the console full screen at 1920×1080. Hide `.env` and any token. A 12-character HMAC prefix in the console is not the runtime token.
