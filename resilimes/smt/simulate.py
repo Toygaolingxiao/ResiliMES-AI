@@ -564,10 +564,16 @@ def make_sim(
     ``resilimes.smt.dispatch_log.GapRecorder`` the dispatcher feeds at the
     moment it refuses or holds a start (hard Q-time gate, batch fill wait,
     PM avoidance); unset reads RESILIMES_GAP_LOG=1 as "create one", readable
-    afterwards as ``sim.gap_recorder``. ``force_start_at`` (research arm
-    only, default None) maps (lot, step) to the moment from which that lot's
-    deliberate wait is overridden, for the gap counterfactual study; it is
-    never set on the default path. ``plan_wait`` (plan runs only) picks the expected
+    afterwards as ``sim.gap_recorder``. ``force_start_at`` (RESEARCH ONLY,
+    default None) maps (lot, step) to the moment from which that lot's
+    deliberate wait is overridden, for the gap counterfactual study
+    (``scripts/gap_counterfactual.py``). Setting it deliberately BYPASSES
+    the hard Q-time gate / batch rule for that lot — that bypass is the
+    intervention the study measures (what would the gate's protection
+    cost?). It must never be set on any production or default path: the
+    default path never sets it, no caller outside the counterfactual
+    script may pass it, and the golden tests pin gate behaviour with it
+    unset. ``plan_wait`` (plan runs only) picks the expected
     wait in the risk: ``position`` (default) the lot's own place in the
     dispatch-ordered queue, ``family`` the family-average wait of planning-r1
     before the fix (kept for the A/B study). ``progress`` (default None) is
@@ -1444,7 +1450,10 @@ class _Sim:
 
     def _gap_forced(self, lot: int, moment: float) -> bool:
         """Research-arm gap fill: this lot's deliberate wait is overridden
-        from its ``force_start_at`` moment on. Empty map (default) = never."""
+        from its ``force_start_at`` moment on, bypassing the hard Q-time
+        gate / batch rule for that lot. RESEARCH ONLY (see the
+        ``force_start_at`` parameter note): empty map (default) = never,
+        and the default path always runs with the empty map."""
         at = self.force_start_at.get((lot, self.step[lot]))
         return at is not None and moment >= at
 
