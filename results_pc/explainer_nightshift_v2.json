@@ -1,0 +1,559 @@
+{
+ "summary": {
+  "label": "real:nvidia/nemotron-3.5-lightning-30b-a3b",
+  "model_audit": {
+   "responses": 12,
+   "models": {
+    "nvidia/nemotron-3.5-lightning-30b-a3b": 12
+   },
+   "non_nemotron_responses": 0,
+   "non_nemotron_items": []
+  },
+  "n": 12,
+  "errors": 0,
+  "exact_sum": 12,
+  "shown_sum_ok": 12,
+  "max_residual_sec": 1.1641532182693481e-10,
+  "answered": 12,
+  "fact_ok": 12,
+  "repaired": 0,
+  "dominant_match": 11,
+  "cf_verified": 12,
+  "cf_hit": 1,
+  "cf_helped": 4,
+  "mean_saving_min": -9.1,
+  "levers": {
+   "prioritise": 12
+  }
+ },
+ "rows": [
+  {
+   "seed": 1,
+   "lot": "Init_Lot_6_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 2.9103830456733704e-11,
+    "shown_sum_ok": true,
+    "late_min": 2018.1
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_6_2",
+    "explanation": "Init_Lot_6_2 finished 2018.1 min late, dominated by 1454.3 min of processing time while late and 440.4 min of lots_ahead waiting. Total fab time was 2018.1 min with 453.7 min spent waiting across 17 steps.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": "Diffusion_BE_123",
+    "expected_saving_min": 440.4,
+    "claim": "Prioritising Init_Lot_6_2 would eliminate 440.4 min of lots_ahead waiting.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 91148.2,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": "Diffusion_BE_123",
+    "late_before_min": 2018.1,
+    "late_after_min": 2018.1,
+    "saving_min": 0.0,
+    "expected_saving_min": 440.4,
+    "hit": false,
+    "rerun_seconds": 11.8
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_7_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.4551915228366852e-11,
+    "shown_sum_ok": true,
+    "late_min": 1861.7
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_7_2",
+    "explanation": "Init_Lot_7_2 finished 1861.7 min late, with 1659.9 min of that due to processing and 95.8 min due to lots_ahead delays while late. Across 22 steps, total wait was 117.6 min, primarily from lots_ahead queues.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": null,
+    "expected_saving_min": 95.8,
+    "claim": "Prioritising Init_Lot_7_2 would remove the 95.8 min lots_ahead delay while late, directly reducing its 1861.7 min lateness.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 60008.2,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": null,
+    "late_before_min": 1861.7,
+    "late_after_min": 1861.7,
+    "saving_min": 0.0,
+    "expected_saving_min": 95.8,
+    "hit": false,
+    "rerun_seconds": 12.1
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_4_4",
+   "split": {
+    "exact": true,
+    "residual_sec": 2.9103830456733704e-11,
+    "shown_sum_ok": true,
+    "late_min": 1599.3
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_4_4",
+    "explanation": "Init_Lot_4_4 finished 1599.3 min late due to 183.6 min of total waiting, mostly caused by lots_ahead queues at 24 steps. The while-late period saw 76.0 min of lots_ahead delay alongside 1452.0 min processing. Even with zero waiting, processing alone would leave it 1415.6 min late.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": "TF_BE_23",
+    "expected_saving_min": 124.3,
+    "claim": "Prioritising Init_Lot_4_4 as the hot lot would eliminate the lots_ahead queues identified in the longest waits (sum 124.3 min), reducing its lateness by 124.3 min.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 104323.1,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": "TF_BE_23",
+    "late_before_min": 1599.3,
+    "late_after_min": 1606.1,
+    "saving_min": -6.9,
+    "expected_saving_min": 124.3,
+    "hit": false,
+    "rerun_seconds": 12.2
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_4_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.4551915228366852e-11,
+    "shown_sum_ok": true,
+    "late_min": 1410.1
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_4_2",
+    "explanation": "Init_Lot_4_2 finished late with a 1410.1 min total stay against a 0.0 h due time, comprising 1109.2 min of processing while late and 239.4 min delayed by lots ahead.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": null,
+    "expected_saving_min": 239.4,
+    "claim": "Prioritising Init_Lot_4_2 would eliminate the 239.4 min lots_ahead delay from its 1410.1 min total lateness.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 90373.2,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": null,
+    "late_before_min": 1410.1,
+    "late_after_min": 1410.1,
+    "saving_min": 0.0,
+    "expected_saving_min": 239.4,
+    "hit": false,
+    "rerun_seconds": 11.8
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_10_1",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.1641532182693481e-10,
+    "shown_sum_ok": true,
+    "late_min": 1380.4
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_10_1",
+    "explanation": "Init_Lot_10_1 finished 1380.4 min late, with 994.6 min attributable to processing alone. The remaining delay includes 302.3 min of lots_ahead waits and 30.0 min of queue time, making lots_ahead the main schedulable factor.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": null,
+    "expected_saving_min": 302.3,
+    "claim": "Prioritising Init_Lot_10_1 would eliminate the 302.3 min lots_ahead wait, cutting its total lateness.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 80788.8,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": null,
+    "late_before_min": 1380.4,
+    "late_after_min": 1358.4,
+    "saving_min": 22.0,
+    "expected_saving_min": 302.3,
+    "hit": false,
+    "rerun_seconds": 12.0
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_1_4",
+   "split": {
+    "exact": true,
+    "residual_sec": 0.0,
+    "shown_sum_ok": true,
+    "late_min": 1345.4
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_1_4",
+    "explanation": "Init_Lot_1_4 finished 1345.4 min late, with 1065.3 min from processing and 128.7 min from lots_ahead waiting. The lot had 27 steps waited, longest queues all due to lots_ahead across families like DE_BE_48 and Dielectric_BE_28.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": null,
+    "expected_saving_min": 128.7,
+    "claim": "Prioritising Init_Lot_1_4 would eliminate the 128.7 min lots_ahead delay, reducing its lateness from 1345.4 to the counterfactual 1066.6 min with zero waiting.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 56164.1,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": null,
+    "late_before_min": 1345.4,
+    "late_after_min": 1188.1,
+    "saving_min": 157.2,
+    "expected_saving_min": 128.7,
+    "hit": true,
+    "rerun_seconds": 12.2
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_7_1",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.4551915228366852e-11,
+    "shown_sum_ok": true,
+    "late_min": 1276.4
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_7_1",
+    "explanation": "Init_Lot_7_1 completed 1276.4 min late, with 1088.8 min of processing and 122.2 min of lots_ahead waiting across 14 steps; total wait was 122.5 min. Even with zero waiting (no_wait_late_min 1153.8), processing alone would still miss the due time.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": "DE_BE_69",
+    "expected_saving_min": 122.5,
+    "claim": "Prioritising Init_Lot_7_1 as the hot lot would eliminate its 122.2-minute lots_ahead wait while late, cutting total lateness from 1276.4 to 1153.8 min.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 59587.3,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": "DE_BE_69",
+    "late_before_min": 1276.4,
+    "late_after_min": 1287.5,
+    "saving_min": -11.1,
+    "expected_saving_min": 122.5,
+    "hit": false,
+    "rerun_seconds": 12.0
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_4_1",
+   "split": {
+    "exact": true,
+    "residual_sec": 7.275957614183426e-12,
+    "shown_sum_ok": true,
+    "late_min": 1084.9
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_4_1",
+    "explanation": "Init_Lot_4_1 finished 1084.9 min late, with 974.4 min from processing and 71.5 min from waiting. The dominant while-late bucket is processing at 974.4 min, while lots_ahead accounts for 69.0 min of the waiting delay.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": "TF_BE_26",
+    "expected_saving_min": 69.0,
+    "claim": "Prioritising Init_Lot_4_1 as the hot lot would remove the 69.0 min lots_ahead wait from TF_BE_26, DE_BE_48 and WE_BE_14 steps, bringing the lot’s total fab time closer to the 1013.4 min no-wait baseline.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 63139.3,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": "TF_BE_26",
+    "late_before_min": 1084.9,
+    "late_after_min": 1386.0,
+    "saving_min": -301.0,
+    "expected_saving_min": 69.0,
+    "hit": false,
+    "rerun_seconds": 11.8
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_3_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 2.9103830456733704e-11,
+    "shown_sum_ok": true,
+    "late_min": 1047.6
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_3_2",
+    "explanation": "Init_Lot_3_2 finished 1047.6 min late, with 887.5 min of that lateness attributable to processing alone. A further 507.0 min of queue waiting, dominated by a 237.0 min hold at step 552 in Diffusion_BE_123 due to lots_ahead, compounded the delay.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": null,
+    "expected_saving_min": 507.0,
+    "claim": "If Init_Lot_3_2 is prioritised as the hot lot, its 507.0 min of queue waiting would be removed, reducing overall lateness from 1047.6 min to near the 510.6 min no-wait threshold.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 57128.5,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": null,
+    "late_before_min": 1047.6,
+    "late_after_min": 1012.0,
+    "saving_min": 35.7,
+    "expected_saving_min": 507.0,
+    "hit": false,
+    "rerun_seconds": 11.9
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_1_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 7.275957614183426e-12,
+    "shown_sum_ok": true,
+    "late_min": 943.5
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_1_2",
+    "explanation": "Init_Lot_1_2 finished 943.5 min late while_late, driven by 792.0 min processing time beyond the 1.8 h due window, with 90.2 min added by lots_ahead queues and 42.0 min transport. Across 13 steps, total wait was 105.8 min, dominated by lots_ahead holds at step 508 (DE_BE_48, 47.3 min) and step 518 (DE_BE_69, 15.2 min).",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": "DE_BE_48",
+    "expected_saving_min": 90.2,
+    "claim": "Prioritising Init_Lot_1_2 saves the 90.2 min lots_ahead wait while late, reducing its 943.5 min lateness.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 80465.5,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": "DE_BE_48",
+    "late_before_min": 943.5,
+    "late_after_min": 943.5,
+    "saving_min": 0.0,
+    "expected_saving_min": 90.2,
+    "hit": false,
+    "rerun_seconds": 12.0
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_4_3",
+   "split": {
+    "exact": true,
+    "residual_sec": 0.0,
+    "shown_sum_ok": true,
+    "late_min": 865.5
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_4_3",
+    "explanation": "Init_Lot_4_3 finished 865.5 min late, with processing alone contributing 784.7 min of that lateness while the lot was late. The lot waited 248.8 min across 11 steps, and 226.1 min of those waits were due to lots_ahead.",
+    "dominant": "processing",
+    "lever": "prioritise",
+    "family": null,
+    "expected_saving_min": 226.1,
+    "claim": "Prioritising Init_Lot_4_3 for its whole stay would remove the 226.1 min of lots_ahead waiting, which is the dominant source of the lot's queue delays.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 54151.9,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": null,
+    "late_before_min": 865.5,
+    "late_after_min": 864.0,
+    "saving_min": 1.5,
+    "expected_saving_min": 226.1,
+    "hit": false,
+    "rerun_seconds": 12.1
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_1_1",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.4551915228366852e-11,
+    "shown_sum_ok": true,
+    "late_min": 847.4
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_1_1",
+    "explanation": "Init_Lot_1_1 took 847.4 min in the fab against a due time of 0.0 h, with 713.7 min processing, 15.0 min setup, 35.0 min transport, 0.1 min down, and 83.6 min lots_ahead waiting, causing 847.4 min lateness. The longest step wait was 40.6 min at step 505 (Litho_BE_110) due to lots_ahead.",
+    "dominant": "processing: 713.7",
+    "lever": "prioritise",
+    "family": "Litho_BE_110",
+    "expected_saving_min": 83.6,
+    "claim": "Prioritising Init_Lot_1_1 would eliminate 83.6 min of lots_ahead waiting, reducing its fab lateness from 847.4 to 763.7 min.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 130774.1,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": "Litho_BE_110",
+    "late_before_min": 847.4,
+    "late_after_min": 853.6,
+    "saving_min": -6.2,
+    "expected_saving_min": 83.6,
+    "hit": false,
+    "rerun_seconds": 12.1
+   }
+  }
+ ]
+}

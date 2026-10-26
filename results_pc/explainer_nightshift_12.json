@@ -1,0 +1,449 @@
+{
+ "summary": {
+  "label": "real:nvidia/nemotron-3.5-lightning-30b-a3b",
+  "model_audit": {
+   "responses": 1,
+   "models": {
+    "nvidia/nemotron-3.5-lightning-30b-a3b": 1
+   },
+   "non_nemotron_responses": 0,
+   "non_nemotron_items": []
+  },
+  "n": 12,
+  "errors": 0,
+  "exact_sum": 12,
+  "shown_sum_ok": 12,
+  "max_residual_sec": 1.1641532182693481e-10,
+  "answered": 1,
+  "fact_ok": 1,
+  "repaired": 0,
+  "dominant_match": 0,
+  "cf_verified": 1,
+  "cf_hit": 0,
+  "cf_helped": 0,
+  "mean_saving_min": -6.2,
+  "levers": {
+   "prioritise": 1
+  }
+ },
+ "rows": [
+  {
+   "seed": 1,
+   "lot": "Init_Lot_6_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 2.9103830456733704e-11,
+    "shown_sum_ok": true,
+    "late_min": 2018.1
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_6_2",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 442212.8,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_7_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.4551915228366852e-11,
+    "shown_sum_ok": true,
+    "late_min": 1861.7
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_7_2",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 350200.2,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_4_4",
+   "split": {
+    "exact": true,
+    "residual_sec": 2.9103830456733704e-11,
+    "shown_sum_ok": true,
+    "late_min": 1599.3
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_4_4",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 356088.3,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_4_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.4551915228366852e-11,
+    "shown_sum_ok": true,
+    "late_min": 1410.1
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_4_2",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 507514.2,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_10_1",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.1641532182693481e-10,
+    "shown_sum_ok": true,
+    "late_min": 1380.4
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_10_1",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 447070.0,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_1_4",
+   "split": {
+    "exact": true,
+    "residual_sec": 0.0,
+    "shown_sum_ok": true,
+    "late_min": 1345.4
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_1_4",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 376765.9,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_7_1",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.4551915228366852e-11,
+    "shown_sum_ok": true,
+    "late_min": 1276.4
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_7_1",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 358796.6,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_4_1",
+   "split": {
+    "exact": true,
+    "residual_sec": 7.275957614183426e-12,
+    "shown_sum_ok": true,
+    "late_min": 1084.9
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_4_1",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 353714.8,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_3_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 2.9103830456733704e-11,
+    "shown_sum_ok": true,
+    "late_min": 1047.6
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_3_2",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 386129.0,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_1_2",
+   "split": {
+    "exact": true,
+    "residual_sec": 7.275957614183426e-12,
+    "shown_sum_ok": true,
+    "late_min": 943.5
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_1_2",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 452285.7,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_4_3",
+   "split": {
+    "exact": true,
+    "residual_sec": 0.0,
+    "shown_sum_ok": true,
+    "late_min": 865.5
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_4_3",
+    "explanation": "",
+    "dominant": null,
+    "lever": null,
+    "family": null,
+    "expected_saving_min": null,
+    "claim": "",
+    "fact_misses": [],
+    "fact_ok": false,
+    "repaired": false,
+    "llm_calls": 0,
+    "latency_ms": 2576432.9,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [],
+    "language": "en",
+    "error": "provider: RuntimeError"
+   },
+   "cf": {
+    "verified": false
+   }
+  },
+  {
+   "seed": 1,
+   "lot": "Init_Lot_1_1",
+   "split": {
+    "exact": true,
+    "residual_sec": 1.4551915228366852e-11,
+    "shown_sum_ok": true,
+    "late_min": 847.4
+   },
+   "true_dominant": "processing",
+   "ai": {
+    "lot": "Init_Lot_1_1",
+    "explanation": "Init_Lot_1_1 finished 847.4 min late because 713.7 min of processing time dominates the delay, with an additional 83.6 min spent waiting due to lots_ahead across six steps including a 40.6 min queue at step 505 (Litho_BE_110).",
+    "dominant": "processing: 713.7",
+    "lever": "prioritise",
+    "family": "Litho_BE_110",
+    "expected_saving_min": 83.6,
+    "claim": "Prioritising Init_Lot_1_1 would eliminate the 83.6 min lots_ahead wait, cutting its total lateness from 847.4 to 763.7 min.",
+    "fact_misses": [],
+    "fact_ok": true,
+    "repaired": false,
+    "llm_calls": 1,
+    "latency_ms": 238839.3,
+    "provider": "nightshift",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "mocked": false,
+    "response_models": [
+     "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "language": "en",
+    "error": null
+   },
+   "cf": {
+    "verified": true,
+    "lever": "prioritise",
+    "family": "Litho_BE_110",
+    "late_before_min": 847.4,
+    "late_after_min": 853.6,
+    "saving_min": -6.2,
+    "expected_saving_min": 83.6,
+    "hit": false,
+    "rerun_seconds": 12.9
+   }
+  }
+ ]
+}
