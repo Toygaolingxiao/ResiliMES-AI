@@ -309,11 +309,7 @@ def _bar(kit: Toolkit, query: ContextQuery) -> ContextAnswer:
     kit.registry.add_text(f"{lot_id} {family_name} {tool_name}")
     # Tier by code: a recorded start reason or a recorded displacement of
     # this lot is a decision record; everything else is the rule's result.
-    tier = (
-        TIER_DECISION_RECORD
-        if (visit.reason or displaced)
-        else TIER_RULE_EMERGENT
-    )
+    tier = TIER_DECISION_RECORD if (visit.reason or displaced) else TIER_RULE_EMERGENT
     top = sorted(buckets.items(), key=lambda kv: -kv[1])[:2]
     split = (
         " and ".join(f"{name} {value:g} min" for name, value in top)
@@ -357,7 +353,9 @@ def _gap_classification(
     """
     fab, tl = kit.fab, kit.tl
     try:
-        from resilimes.insight import gaps as gaps_module
+        from importlib import import_module
+
+        gaps_module: Any = import_module("resilimes.insight.gaps")
 
         for record in gaps_module.gaps_from_run(kit.run):
             if record.tool == tool and record.start < t2 and record.end > t1:
@@ -368,14 +366,18 @@ def _gap_classification(
                 }.get(record.tier, TIER_RULE_EMERGENT)
                 if record.reason.value == "unknown":
                     tier = TIER_UNKNOWN
-                return record.reason.value, tier, {
-                    "reason": record.reason.value,
-                    "classifier": "insight.gaps",
-                    "record_source": record.source,
-                    "evidence": record.evidence.to_json()
-                    if hasattr(record.evidence, "to_json")
-                    else {},
-                }
+                return (
+                    record.reason.value,
+                    tier,
+                    {
+                        "reason": record.reason.value,
+                        "classifier": "insight.gaps",
+                        "record_source": record.source,
+                        "evidence": record.evidence.to_json()
+                        if hasattr(record.evidence, "to_json")
+                        else {},
+                    },
+                )
     except ImportError:
         pass
     # Mirrored classification: the same evidence rules as
@@ -469,16 +471,14 @@ def _gap(kit: Toolkit, query: ContextQuery) -> ContextAnswer:
             for key, sec in row["buckets"].items():
                 totals[key] = totals.get(key, 0.0) + sec
     buckets = {k: round(v / 60.0, 1) for k, v in totals.items() if v > 0}
-    batch_lots = sum(
-        1 for v in waiting if fab.routes[fab.lot_route[v.lot]].batch_max[v.step] > 0
-    )
+    batch_lots = sum(1 for v in waiting if fab.routes[fab.lot_route[v.lot]].batch_max[v.step] > 0)
     qtime_holds = sum(
         1
         for v in waiting
         for gap in tl.gaps.get(v.lot, [])
         if gap.kind == "qtime_hold" and gap.start < t2 and gap.end > t1
     )
-    reason, class_tier_value, class_facts = _gap_classification(kit, tool, t1, t2)
+    reason, _class_tier_value, class_facts = _gap_classification(kit, tool, t1, t2)
     ai_events_here = sum(
         1
         for event in tl.ai_events
@@ -545,7 +545,9 @@ def _gap(kit: Toolkit, query: ContextQuery) -> ContextAnswer:
         )
     top = sorted(buckets.items(), key=lambda kv: -kv[1])[:2]
     causes = (
-        "; ".join(f"{_BUCKET_PHRASE.get(name, name)} ({value:g} min in total)" for name, value in top)
+        "; ".join(
+            f"{_BUCKET_PHRASE.get(name, name)} ({value:g} min in total)" for name, value in top
+        )
         if top
         else "no bucketed wait was recorded for the waiting lots"
     )
@@ -577,9 +579,7 @@ def _window(
     question = query.question or (
         f"Why did {query.family} WIP change between {query.t1_h:g} h and {query.t2_h:g} h?"
     )
-    result = investigate(
-        kit, question, query.family, query.t1_h, query.t2_h, provider, settings
-    )
+    result = investigate(kit, question, query.family, query.t1_h, query.t2_h, provider, settings)
     entries: list[tuple[str, str, dict[str, Any]]] = [
         (
             "investigation",
@@ -710,7 +710,7 @@ def _notes_part(
     events = ", ".join(sorted({str(e.get("type")) for e in (first.get("gold") or [])}))
     text = (
         f"Notes: a {first.get('source')} note ({first.get('id')}, {first.get('ts')}) says: "
-        f"\"{first.get('text')}\" Its recorded events: {events or 'none'}. "
+        f'"{first.get("text")}" Its recorded events: {events or "none"}. '
         "Notes are context claims from people, not run records."
     )
     return entries, text
@@ -771,7 +771,12 @@ def _free(
         tier = causal[0]
         for part_tier in causal[1:]:
             tier = _weaker(tier, part_tier)
-    labels = {"run_record": "Run record", "gap_classifier": "Gap evidence", "investigator": "Investigation", "fab_notes": "Notes"}
+    labels = {
+        "run_record": "Run record",
+        "gap_classifier": "Gap evidence",
+        "investigator": "Investigation",
+        "fab_notes": "Notes",
+    }
     text = " ".join(f"[{labels.get(label, label)}] {part_text}" for label, _t, part_text in parts)
     return ContextAnswer(
         query=query.to_json(),
@@ -811,9 +816,7 @@ def _tier_violation(text: str, tier: str) -> str | None:
     return None
 
 
-def _polish(
-    kit: Toolkit, out: ContextAnswer, provider: Completer | None
-) -> ContextAnswer:
+def _polish(kit: Toolkit, out: ContextAnswer, provider: Completer | None) -> ContextAnswer:
     if provider is None or provider.mocked or out.tier == TIER_UNKNOWN:
         # Unknown answers are never model-rewritten (tier is code-decided).
         misses = check(out.answer, kit.registry)

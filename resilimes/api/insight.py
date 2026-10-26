@@ -141,7 +141,7 @@ def investigate_case(body: InvestigateBody, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="unknown case")
     fab = _fab()
     run = rebuild(fab, case)
-    answer = investigate(
+    inv = investigate(
         Toolkit(run),
         case.question,
         case.family,
@@ -154,12 +154,12 @@ def investigate_case(body: InvestigateBody, request: Request) -> dict[str, Any]:
     return {
         "case_id": case.case_id,
         "question": case.question,
-        "answer": answer.to_json(),
+        "answer": inv.to_json(),
         "baseline": rank[:2],
         "truth": case.fault,
-        "score": score(case.fault, answer.primary_cause, answer.secondary_cause),
+        "score": score(case.fault, inv.primary_cause, inv.secondary_cause),
         "system_score": score(
-            case.fault, answer.system.get("primary_cause"), answer.system.get("secondary_cause")
+            case.fault, inv.system.get("primary_cause"), inv.system.get("secondary_cause")
         ),
         "advice_only": True,
     }
