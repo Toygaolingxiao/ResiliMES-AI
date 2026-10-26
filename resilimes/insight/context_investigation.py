@@ -52,6 +52,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -342,6 +343,23 @@ def _bar(kit: Toolkit, query: ContextQuery) -> ContextAnswer:
 
 
 # ---- gap classification (insight.gaps adapter) ----------------------------------------------
+def _evidence_json(evidence: Any) -> dict[str, Any]:
+    """A gap record's evidence as a plain JSON dict.
+
+    ``insight.gaps`` stores evidence as a dict already (``GapEvidence``
+    is serialised at record time), so a dict passes through unchanged;
+    an object exposing ``to_json()`` is honoured too. Anything else
+    yields {} rather than raising — but never silently drops a dict.
+    """
+    if isinstance(evidence, dict):
+        return dict(evidence)
+    to_json = getattr(evidence, "to_json", None)
+    if callable(to_json):
+        result = to_json()
+        return result if isinstance(result, dict) else {}
+    return {}
+
+
 def _gap_classification(
     kit: Toolkit, tool: int, t1: float, t2: float
 ) -> tuple[str, str, dict[str, Any]]:
@@ -373,9 +391,7 @@ def _gap_classification(
                         "reason": record.reason.value,
                         "classifier": "insight.gaps",
                         "record_source": record.source,
-                        "evidence": record.evidence.to_json()
-                        if hasattr(record.evidence, "to_json")
-                        else {},
+                        "evidence": _evidence_json(record.evidence),
                     },
                 )
     except ImportError:
@@ -658,10 +674,71 @@ def load_fab_notes() -> list[dict[str, Any]] | None:
     return None
 
 
+# The notes dataset's scenario day (data/notes/README.md: every note carries
+# a UTC ts on 2026-10-22, and its event times resolve against that day). The
+# investigation clock is run-relative hours, so a note's time span is expressed
+# in hours from this day zero before it is compared with a query window.
+_NOTES_DAY_ZERO = datetime(2026, 10, 22, tzinfo=UTC)
+
+
+def _iso_hours(value: Any) -> float | None:
+    """Hours from the notes day zero for an ISO timestamp, or None."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return (moment - _NOTES_DAY_ZERO).total_seconds() / 3600.0
+
+
+def _note_span_h(note: dict[str, Any]) -> tuple[float, float] | None:
+    """[start_h, end_h] covered by a note's events, or None if unknowable.
+
+    planned_down: its start + duration_min. capacity_derate: the note's ts
+    + window_h. priority_change: ts .. ts + new_due_h (the ts point when no
+    due is given). hold: the ts point. A note with no time-scoped event is
+    anchored at its ts point; a note with neither events nor a parseable ts
+    returns None and is never time-filtered (nothing to filter on).
+    """
+    spans: list[tuple[float, float]] = []
+    ts_h = _iso_hours(note.get("ts"))
+    for event in note.get("gold") or []:
+        etype = event.get("type")
+        if etype == "planned_down":
+            start_h = _iso_hours(event.get("start"))
+            dur = event.get("duration_min")
+            if start_h is not None and isinstance(dur, (int, float)):
+                spans.append((start_h, start_h + dur / 60.0))
+        elif etype == "capacity_derate" and ts_h is not None:
+            window = event.get("window_h")
+            if isinstance(window, (int, float)):
+                spans.append((ts_h, ts_h + float(window)))
+        elif etype == "priority_change" and ts_h is not None:
+            due = event.get("new_due_h")
+            end_h = ts_h + float(due) if isinstance(due, (int, float)) else ts_h
+            spans.append((ts_h, end_h))
+        elif etype == "hold" and ts_h is not None:
+            spans.append((ts_h, ts_h))
+    if spans:
+        return min(s for s, _ in spans), max(e for _, e in spans)
+    if ts_h is not None:
+        return ts_h, ts_h
+    return None
+
+
 def _notes_part(
     kit: Toolkit, query: ContextQuery
 ) -> tuple[list[tuple[str, str, dict[str, Any]]], str]:
-    """Basis entries + an answer paragraph from notes mentioning the query's ids."""
+    """Basis entries + an answer paragraph from notes mentioning the query's ids.
+
+    Matching is by id (tool / family / lot) AND, when the query carries a
+    time window, by time: a note whose event span does not overlap the
+    window is dropped and counted in the basis, so a note written about a
+    different period is never cited for this window.
+    """
     notes = load_fab_notes()
     if notes is None:
         return [
@@ -676,12 +753,23 @@ def _notes_part(
             )
         ], ""
     needles = [value for value in (query.tool, query.family, query.lot) if value]
-    matched = []
+    window = (query.t1_h, query.t2_h) if query.t1_h is not None and query.t2_h is not None else None
+    matched: list[tuple[dict[str, Any], tuple[float, float] | None]] = []
+    dropped_off_window = 0
     for note in notes:
         gold = note.get("gold") or []
         haystack = str(note.get("text", "")) + json.dumps(gold, ensure_ascii=False)
-        if any(needle in haystack for needle in needles):
-            matched.append(note)
+        if not any(needle in haystack for needle in needles):
+            continue
+        span = _note_span_h(note)
+        if (
+            window is not None
+            and span is not None
+            and not (span[0] < window[1] and span[1] > window[0])
+        ):
+            dropped_off_window += 1
+            continue
+        matched.append((note, span))
         if len(matched) >= 3:
             break
     entries: list[tuple[str, str, dict[str, Any]]] = [
@@ -690,15 +778,21 @@ def _notes_part(
             "fab_notes",
             {
                 "available": True,
+                "time_filter": {
+                    "day_zero": "2026-10-22T00:00:00Z",
+                    "window_h": list(window) if window is not None else None,
+                    "dropped_off_window": dropped_off_window,
+                },
                 "matched": [
                     {
                         "id": note.get("id"),
                         "ts": note.get("ts"),
                         "source": note.get("source"),
                         "text": note.get("text"),
-                        "events": gold,
+                        "events": note.get("gold") or [],
+                        "span_h": list(span) if span is not None else None,
                     }
-                    for note in matched
+                    for note, span in matched
                 ],
             },
         )
@@ -706,7 +800,7 @@ def _notes_part(
     kit.registry.add(_basis(entries))
     if not matched:
         return entries, ""
-    first = matched[0]
+    first = matched[0][0]
     events = ", ".join(sorted({str(e.get("type")) for e in (first.get("gold") or [])}))
     text = (
         f"Notes: a {first.get('source')} note ({first.get('id')}, {first.get('ts')}) says: "
@@ -816,6 +910,21 @@ def _tier_violation(text: str, tier: str) -> str | None:
     return None
 
 
+def _is_timeout(exc: Exception) -> bool:
+    """True when a provider failure is a timeout, however the layer names it.
+
+    Covers builtin ``TimeoutError``, the OpenAI client's ``APITimeoutError``
+    and httpx timeout exceptions (matched by class name, so this module
+    needs no provider imports), and the agents' ``DecisionError`` whose
+    ``cause`` attribute is ``"timeout"``.
+    """
+    if isinstance(exc, TimeoutError):
+        return True
+    if getattr(exc, "cause", None) == "timeout":
+        return True
+    return "timeout" in type(exc).__name__.lower()
+
+
 def _polish(kit: Toolkit, out: ContextAnswer, provider: Completer | None) -> ContextAnswer:
     if provider is None or provider.mocked or out.tier == TIER_UNKNOWN:
         # Unknown answers are never model-rewritten (tier is code-decided).
@@ -845,7 +954,7 @@ def _polish(kit: Toolkit, out: ContextAnswer, provider: Completer | None) -> Con
             reply = provider.complete(messages, lane=LANE, temperature=0.2)
         except Exception as exc:  # provider failure degrades, never blocks
             out.degraded = True
-            out.degrade_reason = "provider_error"
+            out.degrade_reason = "timeout" if _is_timeout(exc) else "provider_error"
             out.error = redact(f"provider: {type(exc).__name__}", 200)
             break
         out.provider = provider.name

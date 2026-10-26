@@ -1,0 +1,62 @@
+{
+  "scenario": {
+    "fab": "SMT2020 extract (simulated, not a real fab)",
+    "policy": "resilimes",
+    "seed": 1,
+    "horizon_h": 48.0,
+    "hard_qtime": true,
+    "llm": false,
+    "synthetic_scenario": false
+  },
+  "gaps_recorded_total": 6864,
+  "gaps_filled": 6864,
+  "gaps_by_reason": {
+    "qtime_gate": 6822,
+    "batch_wait": 42
+  },
+  "new_avoidable_qtime_violations": 19,
+  "base_avoidable_qtime_violations": 23,
+  "filled_avoidable_qtime_violations": 42,
+  "protective_share": 0.0795,
+  "protective_share_judged": 0.0897,
+  "protective_total": 546,
+  "per_reason": {
+    "qtime_gate": {
+      "gaps": 6822,
+      "protective": 529,
+      "not_protective": 5519,
+      "inconclusive": 774
+    },
+    "batch_wait": {
+      "gaps": 42,
+      "protective": 17,
+      "not_protective": 25,
+      "inconclusive": 0
+    }
+  },
+  "base_kpi": {
+    "completed_routes": 86,
+    "qtime_violations": 51,
+    "batch_reasons": {
+      "hot_cap": 9,
+      "max_wait": 46,
+      "no_arrivals": 117,
+      "qtime_urgent": 2
+    }
+  },
+  "filled_kpi": {
+    "completed_routes": 96,
+    "qtime_violations": 105,
+    "batch_reasons": {
+      "hot_cap": 10,
+      "max_wait": 45,
+      "no_arrivals": 123,
+      "qtime_urgent": 2
+    }
+  },
+  "notes": [
+    "All gaps filled in one twin run: per-gap attribution is indicative, fills interact.",
+    "PM-avoidance gaps are recorded but never filled (different intervention).",
+    "Simulator results on the SMT2020 extract; no LLM involved."
+  ]
+}

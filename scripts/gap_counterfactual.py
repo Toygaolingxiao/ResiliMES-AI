@@ -9,7 +9,10 @@ Method (pure simulation, no LLM):
 2. Twin run of the same seed / horizon / downs / PM with every recorded
    gap "filled": each held lot gets a research-arm override
    (``force_start_at``) releasing it at the moment the gate / batch rule
-   first held it. The override never exists on the default path.
+   first held it. The override deliberately BYPASSES the hard Q-time
+   gate for those lots — that bypass is exactly the intervention being
+   measured — and it is RESEARCH ONLY: it exists solely in this study,
+   is never set on the default path, and no production caller may use it.
 3. Compare: how many *new avoidable* Q-time violations appeared
    (``qtime_miss_class["avoidable"]``, filled minus baseline), and for each
    filled gap whether filling it hurt -- for a gate gap, the held lot's

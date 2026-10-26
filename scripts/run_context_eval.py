@@ -125,8 +125,14 @@ def evaluate(
     kits: dict[str, Toolkit],
     *,
     limit: int | None = None,
+    live_provider: Any = None,
 ) -> dict[str, Any]:
-    """Run both arms over the fixture; returns the report dict."""
+    """Run both arms over the fixture; returns the report dict.
+
+    ``live_provider`` (a Completer) replaces the deterministic EvalPolisher
+    in the full arm — the owner's live run (``--live``). None (default)
+    keeps the CI behaviour byte-identical.
+    """
     questions = fixture["questions"][:limit] if limit else fixture["questions"]
     arms: dict[str, Any] = {}
     for arm in ("template", "full"):
@@ -134,9 +140,10 @@ def evaluate(
         for item in questions:
             # Window answers have no context-layer rewrite (see docstring):
             # the full arm's polisher applies to bar/gap/free only.
-            provider = (
-                EvalPolisher() if arm == "full" and item["query"]["type"] != "window" else None
-            )
+            if arm == "full" and item["query"]["type"] != "window":
+                provider = live_provider if live_provider is not None else EvalPolisher()
+            else:
+                provider = None
             spec = item["query"]
             query = ContextQuery(
                 type=spec["type"],
@@ -180,7 +187,15 @@ def evaluate(
             "tier_distribution": dict(Counter(r["tier"] for r in rows)),
             "rows": rows,
         }
-    return {"fixture_version": fixture.get("version"), "arms": arms}
+    return {
+        "fixture_version": fixture.get("version"),
+        "full_arm_provider": (
+            f"{live_provider.name} (live)"
+            if live_provider is not None
+            else "EvalPolisher (deterministic mock)"
+        ),
+        "arms": arms,
+    }
 
 
 def render_md(report: dict[str, Any]) -> str:
@@ -221,11 +236,26 @@ def main() -> int:
     parser.add_argument("--fixture", type=Path, default=FIXTURE)
     parser.add_argument("--out-dir", type=Path, default=Path("outputs/context_eval"))
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="full arm uses the live provider from settings (RESILIMES_MODE=live, "
+        "Nightshift/Nemotron on the owner's machine) instead of the EvalPolisher mock",
+    )
     args = parser.parse_args()
     fixture = json.loads(args.fixture.read_text(encoding="utf-8"))
     questions = fixture["questions"][: args.limit] if args.limit else fixture["questions"]
     kits = build_kits({item["run"] for item in questions})
-    report = evaluate(fixture, kits, limit=args.limit)
+    live_provider = None
+    if args.live:
+        from resilimes.config import Settings
+        from resilimes.llm.factory import build_provider
+
+        live_provider = build_provider(Settings())
+        print(
+            f"live provider: {live_provider.name} (mocked={getattr(live_provider, 'mocked', '?')})"
+        )
+    report = evaluate(fixture, kits, limit=args.limit, live_provider=live_provider)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / "report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8"
