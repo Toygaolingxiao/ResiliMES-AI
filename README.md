@@ -1,20 +1,45 @@
 # ResiliMES-AI
 
-**The scheduler stays rule-based and auditable, like mainstream APS. AI makes its decisions understandable to the people who run the fab.** Semiconductor fab dispatching on the full SMT2020 fab, with a hard Q-time gate on by default; NVIDIA Nemotron (through Meterless Nightshift) explains and advises only, every number fact-checked, with a labelled rule fallback. Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026).
+**Right-click a bar or an idle gap on a fab Gantt and ask "why?". The answer comes from the scheduler's own decision record, every number is fact-checked by code, and it says so when it cannot be sure.** The scheduler stays rule-based and auditable, like mainstream APS; NVIDIA Nemotron (through Meterless Nightshift) explains and advises only. Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026), **Track 02: The Agent That Can Explain Why** ([why this track](#track)).
 
 The user is a fab shift lead. A schedule over 1,313 tools, 2,156 lots and 264 Q-time limits cannot be read on the floor, so people override it, often by filling an idle gap that was protecting a downstream Q-time window. ResiliMES answers "why is this lot here, why is this tool idle?" from the decision record, right on the Gantt, before anyone overrides.
 
-**Primary track: Track 02, The Agent That Can Explain Why.** The work is split on purpose: a tested rule kernel (planning, scheduling tick, dispatch, hard Q-time gate) makes every decision and logs why; an AI understanding layer reads that record, answers with an honesty tier assigned by code, and never writes the schedule. See [why this track](#track).
+## The main feature: "why?" on the Gantt
 
-## Positioning: rules decide, AI explains
+```mermaid
+sequenceDiagram
+  participant U as Shift lead
+  participant G as Gantt
+  participant R as Rule kernel + decision record
+  participant N as Nemotron (Nightshift)
+  participant C as Fact-check (code)
+  U->>G: right-click a bar or gap: why?
+  G->>R: look up the logged decision and reason
+  R->>N: record, gap reason, tool results
+  N->>C: draft answer
+  C-->>G: answer + tier, or rule answer labelled with the reason
+```
 
-| | What it does | Where |
+1. The rule kernel (planning, scheduling tick, dispatch, hard Q-time gate) makes every decision and logs why at decision time, including each deliberate idle gap (`qtime_gate`, `batch_wait`, `pm_avoidance`).
+2. Right-click a bar, a gap on a tool, a family window, or ask a free question. Nemotron reads the record and drafts the answer.
+3. Code checks every number against the tool results and sets the tier (`decision_record` / `rule_emergent` / `unknown`). A rewrite that claims intent on a rule-emergent answer is refused. A failed check, provider error or timeout (90 s per call, 180 s per task) returns the rule answer, labelled with its reason.
+4. The answer is advice. The AI never writes the schedule. Details: [docs/CONTEXT_INVESTIGATION.md](docs/CONTEXT_INVESTIGATION.md).
+
+Why the gaps are worth explaining: a simulator twin fills them. On seed 1 / 48 h there are 6,864 gaps, and filling them adds +19 avoidable Q-time violations (23 → 42); 546 gaps were protective ([docs/gap_counterfactual/](docs/gap_counterfactual/seed1_48h.md)).
+
+## Where else we tried AI
+
+Around the main feature we tried AI in several other parts of fab operations, each behind a switch and measured against a rule baseline. Some helped, some did not, and the results are reported either way.
+
+| Where | What AI does | Measured |
 | --- | --- | --- |
-| **Gantt right-click "why?"** | Right-click a bar, a gap on a tool, a family window, or ask a free question. The answer cites the decision record; its tier (`decision_record` / `rule_emergent` / `unknown`) is set by code, and a model rewrite that claims intent on a rule-emergent answer is refused. Advice only. | [docs/CONTEXT_INVESTIGATION.md](docs/CONTEXT_INVESTIGATION.md) |
-| **Gap reasons + counterfactual** | Every deliberate idle gap is recorded at dispatch time with its reason (`qtime_gate`, `batch_wait`, `pm_avoidance`). A simulator twin fills them: on seed 1 / 48 h, 6,864 gaps, filling adds +19 avoidable Q-time violations (23 → 42); 546 gaps were protective. | [docs/gap_counterfactual/](docs/gap_counterfactual/seed1_48h.md) |
-| **Notes → constraints** | Free-text shift notes (EN / 中文 / 日本語) become validated, typed events (`planned_down`, `priority_change`, `hold`, `capacity_derate`). Regex baseline P 0.973 / R 0.750 / hard-note recall 0.0; the live Nemotron score is not measured yet. | [data/notes/README.md](data/notes/README.md) |
+| Shift notes → constraints | Free-text notes (EN / 中文 / 日本語) become validated, typed events (`planned_down`, `priority_change`, `hold`, `capacity_derate`). | Regex baseline P 0.973 / R 0.750, hard-note recall 0.0 ([data/notes/README.md](data/notes/README.md)) |
+| Fault investigator | Searches Zetaris data for the cause of a fault. | Rules 20/24 top-1, Nemotron 20/24; hard cases rules 8/17, Nemotron 4/17 ([docs/AI_INVESTIGATOR.md](docs/AI_INVESTIGATOR.md)) |
+| Handover report, late-lot explainer | Writes the shift handover and late-lot causes in prose from deterministic facts. | Handover 12/12 live, late-lot causes 11/12 live ([docs/AI_HANDOVER.md](docs/AI_HANDOVER.md), [docs/AI_EXPLAINER.md](docs/AI_EXPLAINER.md)) |
+| AI shift lead | Proposes plans for exceptions the rules cannot handle; a simulator fork evaluates them. | Called 0 times under the shipped trigger (0/58, 0/16) ([docs/AI_SIM_SELECT.md](docs/AI_SIM_SELECT.md)) |
+| Decision memory (H-MEM) | Recalls past decisions for similar situations. | Spec test vectors 13/13; no outcome gain claimed ([docs/H_MEM.md](docs/H_MEM.md)) |
 
-**Design evidence: why the AI explains instead of schedules.**
+**What the exploration showed: AI explains better than it schedules.**
 
 - Under the shipped exception-only trigger the AI shift lead is called **0 times**: published book 58 exceptions, 0 escalations, every KPI identical to rules only ([study_zero_call/zero_call.md](study_zero_call/zero_call.md)); generated stress set 0/16 triggered. Study settings: seed 9, 5–6 h horizon, fork 1 h × 2 futures; the shipped default fork is 8 h × 3 futures. By design the AI never touches decisions.
 - A same-budget lever search (K = 1–15, non-LLM) is **flat**: identical outcomes at every K ([study_search_curve/k_curve.md](study_search_curve/k_curve.md)). The rule plan already had 0 avoidable misses and 0 late hot lots on that 5 h window (seed 9, fork 1 h × 2 futures), so there was nothing to gain. A flat curve can also mean the lever set is too weak or the search too blind; we list that as a limitation, not as proof that no better schedule exists.
