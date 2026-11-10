@@ -191,6 +191,7 @@ Nightshift can point `NEMOTRON_MODEL` at a local on-prem model and keep the same
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Sponsor write-up: [docs/SPONSOR_TECH.md](docs/SPONSOR_TECH.md).
 
 Product split and feasibility plan (zh): [docs/PRODUCT_ARCHITECTURE.md](docs/PRODUCT_ARCHITECTURE.md).
+Development architecture (zh): [docs/DEV_ARCHITECTURE.md](docs/DEV_ARCHITECTURE.md).
 
 ## Quick start
 
