@@ -107,9 +107,23 @@
 - `content_hash` 显示在页上。页面把同一份 bundle 再 POST 到 `/api/explain/report/verify`，用去掉 hash 之后的规范化 JSON 重算 SHA-256，一致才显示「再计算一致」。
 - 时间占比按三个 tier 的秒数算。第一版的对象是一个 lot。bundle 的 `subject.kind` 如果是 `window`，页面把它标成ケース。
 
+## 第五步做了什么（导入页）
+
+导入页接受一份 MES 风格的事件日志，不改排程。
+
+- 页面：`/import`，文件在 `resilimes/demo/static/product/import/`。控制台和报告页上有链接。浏览器读文件，把文本 POST 到 `/api/explain/import`。
+- 文件是 CSV，或一行一个 JSON 对象（整个文件是 JSON 数组也可以）。编码 UTF-8，最大 2 MB。
+- 必填列：`lot`、`step`、`tool`、`event_type`、`timestamp`。可选：`recipe`、`reason`、`decision`、`due`。`timestamp` 和 `due` 可以是秒，也可以是 ISO-8601。时间会平移，使最早的 `timestamp` 变成 0。
+- 能到哪一层：
+  - 任一行有 `reason` 或 `decision`：記録 可能。
+  - 只有事件和时刻：最多 観測帰因。页面写明这不是排程当时的意图。
+  - 缺必填列或必填值为空：不明，并列出缺的名字（空值会带上行号）。
+- 必填齐全时，`explain/ingest.py` 把行转成 `RunRecord`，再跑现有的延误拆分。没有 `due` 时不编造交期，延误这一行是不明，原因是日志里没有交期。
+- 事件类型：`ready` / `arrive` / `queue`，`start` / `track_in`，`end` / `track_out`，`hold_start` / `hold_end`，`down_start` / `down_end`，`pm_start` / `pm_end`，`decision`。认不出的类型会列出来，不拿去造访问记录。
+
 ## 模块归属
 
-**explain（产品侧）**：`record`、`schema`、`interfaces`、`toolkit`、`lateness`、`factcheck`、`sqlguard`、`gaps`、`gap_explainer`、`context_investigation`、`explainer`，第三步加上 `causes`、`investigator`。它们只读记录，再演只能通过 `ReplayService`。
+**explain（产品侧）**：`record`、`schema`、`interfaces`、`toolkit`、`lateness`、`factcheck`、`sqlguard`、`gaps`、`gap_explainer`、`context_investigation`、`explainer`，第三步加上 `causes`、`investigator`，第四步加上 `report`，第五步加上 `ingest`。它们只读记录，再演只能通过 `ReplayService`。
 
 **孪生侧适配器（`evidence/`）**：`timeline.build_timeline`、`toolkit.record_run` 和 `RecordedRun`、`adapters`。`fab_ops` 是把一次运行导出成 SQL 表，也留在这里。`sqlrun` 真正去执行 SQL，有 I/O 和配置，同样留在这里。
 
@@ -118,7 +132,7 @@
 - `injector`、`hard_cases`、`notes_cases`、`notes_ab`、`notes_ab_live`、`study`：故障注入基准和实验，需要孪生给出真值，由它们去调用 explain。
 - `handover`：交接摘要，依赖 `engines.markovian` 压缩和 `engines.contracts` 签名，属于引擎和交接流程。
 - `deliberation`：三角色讨论，最后由 kernel 定，属于决策支持，不是解释。
-- `notes`：把现场笔记转成排程事件，属于输入侧（以后的 Import 页），不是解释。
+- `notes`：把现场笔记转成排程事件，属于输入侧，不是解释。事件日志的导入页在 `explain/ingest.py`，不经过 notes。
 
 ## 依赖现状（第三步之后）
 
@@ -135,7 +149,7 @@
 
 ## 剩下的清单
 
-1. Import 页直接读 Evidence Schema，校验后告诉用户数据能到哪一层，并转成运行记录。Report 页已经有了（`/report`，显示 `content_hash`）。
+1. Import 页和 Report 页都已经接上 Evidence Schema。Import 在 `/import`，Report 在 `/report`。
 2. 产品区页面和工房区页面分目录。
 3. 旧路径的转发模块：等外部引用都改完以后再删。现在测试还在用旧路径，所以先留着。
 4. 现在 explain 的版本号（`0.1.0`）和 Evidence Schema 的版本号是分开的，要定一下怎么对应。

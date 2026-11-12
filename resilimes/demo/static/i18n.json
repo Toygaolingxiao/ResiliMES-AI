@@ -872,7 +872,11 @@
       "ctxLever": "Suggested lever (advice only)",
       "ctxRefRun": "Answered from reference run {run} ({h} h), not the scenario on screen.",
       "ctxTier": "Evidence tier",
-      "ctxTiers": {"decision_record": "recorded decision", "rule_emergent": "result of the dispatch rule", "unknown": "unknown (no evidence)"},
+      "ctxTiers": {
+        "decision_record": "recorded decision",
+        "rule_emergent": "result of the dispatch rule",
+        "unknown": "unknown (no evidence)"
+      },
       "ctxTimeout": "AI timed out: showing the rule-based answer"
     },
     "report": {
@@ -935,6 +939,28 @@
         "release_hold": "release hold",
         "late_at_snapshot": "already late at the start"
       }
+    },
+    "import": {
+      "link": "Import",
+      "title": "Import an event log",
+      "lead": "Read a MES-style event log (CSV or JSON lines). The page says whether the file can support a recorded decision, only observed attribution, or is missing required fields. It does not change the schedule.",
+      "format": "Required columns: lot, step, tool, event_type, timestamp. Optional: recipe, reason, decision, due.",
+      "file": "File",
+      "submit": "Read",
+      "ceiling": "Reachable tier",
+      "ceilingRecorded": "A decision record is present, so an explanation can use the recorded tier.",
+      "ceilingAttributed": "The file has events and timestamps only, so the explanation stops at observed attribution. It does not say what the scheduler intended.",
+      "ceilingUnknown": "A required field is missing, so this stays unknown.",
+      "missing": "Missing",
+      "rows": "Rows",
+      "decisions": "Decision rows",
+      "unrecognised": "Unused event types",
+      "reportTitle": "Explanation from this log",
+      "noDue": "The log has no due time.",
+      "loading": "Reading…",
+      "error": "Could not read: {msg}",
+      "back": "Back to the report",
+      "empty": "Choose a file."
     }
   },
   "zh": {
@@ -1810,7 +1836,11 @@
       "ctxLever": "建议杠杆（仅供参考）",
       "ctxRefRun": "基于参考运行 {run}（{h} 小时）回答，并非当前画面上的场景。",
       "ctxTier": "证据等级",
-      "ctxTiers": {"decision_record": "有记录的决策", "rule_emergent": "派工规则的结果", "unknown": "未知（无证据）"},
+      "ctxTiers": {
+        "decision_record": "有记录的决策",
+        "rule_emergent": "派工规则的结果",
+        "unknown": "未知（无证据）"
+      },
       "ctxTimeout": "AI 超时：显示规则结果"
     },
     "report": {
@@ -1873,6 +1903,28 @@
         "release_hold": "投料保留",
         "late_at_snapshot": "开始时已迟交"
       }
+    },
+    "import": {
+      "link": "导入",
+      "title": "导入事件日志",
+      "lead": "读取 MES 风格的事件日志（CSV 或 JSON 行）。页面会说明这份文件能支持记录层的判断、只能做到观测归因，还是缺了必填项。不会改动排程。",
+      "format": "必填列：lot、step、tool、event_type、timestamp。可选：recipe、reason、decision、due。",
+      "file": "文件",
+      "submit": "读取",
+      "ceiling": "能到达的层级",
+      "ceilingRecorded": "文件里有判断记录，说明可以到记录这一层。",
+      "ceilingAttributed": "文件里只有事件和时刻，说明最多到观测归因。不会把这说成排程当时的意图。",
+      "ceilingUnknown": "必填项缺失，所以结果是不明。",
+      "missing": "缺少",
+      "rows": "行数",
+      "decisions": "判断行",
+      "unrecognised": "未使用的事件类型",
+      "reportTitle": "由这份日志得到的说明",
+      "noDue": "日志里没有交期。",
+      "loading": "读取中…",
+      "error": "无法读取：{msg}",
+      "back": "返回报告",
+      "empty": "请选择文件。"
     }
   },
   "ja": {
@@ -2748,7 +2800,11 @@
       "ctxLever": "提案レバー（助言のみ）",
       "ctxRefRun": "参照ラン {run}（{h} 時間）に基づく回答で、画面上のシナリオではありません。",
       "ctxTier": "根拠レベル",
-      "ctxTiers": {"decision_record": "記録された判断", "rule_emergent": "ディスパッチ規則の結果", "unknown": "不明（根拠なし）"},
+      "ctxTiers": {
+        "decision_record": "記録された判断",
+        "rule_emergent": "ディスパッチ規則の結果",
+        "unknown": "不明（根拠なし）"
+      },
       "ctxTimeout": "AI タイムアウト：ルールの結果を表示"
     },
     "report": {
@@ -2811,6 +2867,28 @@
         "release_hold": "投入保留",
         "late_at_snapshot": "開始時点で遅延"
       }
+    },
+    "import": {
+      "link": "取り込み",
+      "title": "イベントログの取り込み",
+      "lead": "MES 形式のイベントログ（CSV または JSON 行）を読みます。判断の記録があるか、出来事と時刻だけか、必須項目が足りないかを示します。スケジュールは変えません。",
+      "format": "必須の列は lot、step、tool、event_type、timestamp。任意は recipe、reason、decision、due。",
+      "file": "ファイル",
+      "submit": "読み込む",
+      "ceiling": "到達できる層",
+      "ceilingRecorded": "判断の記録があるので、記録の層まで説明できます。",
+      "ceilingAttributed": "出来事と時刻だけなので、観測帰因までです。判断の意図は分かりません。",
+      "ceilingUnknown": "必須項目が足りないので、不明です。",
+      "missing": "不足",
+      "rows": "行数",
+      "decisions": "判断の行",
+      "unrecognised": "使わないイベント種別",
+      "reportTitle": "このログからの説明",
+      "noDue": "ログに納期がありません。",
+      "loading": "読み込み中…",
+      "error": "読み込めませんでした：{msg}",
+      "back": "報告書に戻る",
+      "empty": "ファイルを選んでください。"
     }
   }
 }

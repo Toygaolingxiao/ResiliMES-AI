@@ -70,6 +70,9 @@
     text($("title"), c.title);
     const back = document.querySelector(".back");
     if (back) text(back, c.back || "ResiliMES");
+    const importLink = document.getElementById("import-link");
+    const imported = (state.catalog[state.lang] || {}).import || {};
+    if (importLink) text(importLink, imported.link || "");
     text($("lead"), c.lead);
     text($("seed-label"), c.seed);
     text($("horizon-label"), c.horizon);

@@ -298,6 +298,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         def report_page() -> FileResponse:
             return FileResponse(_STATIC / "product" / "report" / "report.html")
 
+        @app.get("/import")
+        def import_page() -> FileResponse:
+            return FileResponse(_STATIC / "product" / "import" / "import.html")
+
     return app
 
 

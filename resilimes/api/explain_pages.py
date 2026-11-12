@@ -10,6 +10,7 @@ from functools import lru_cache
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from resilimes.explain.report import build_report
 from resilimes.explain.schema import EvidenceBundle, content_hash
@@ -65,6 +66,25 @@ def report_lot(
     body["seed"] = seed
     body["horizon_h"] = horizon_h
     return body
+
+
+class ImportBody(BaseModel):
+    """The text of one event-log file. The page reads the file in the browser."""
+
+    text: str = Field(max_length=2_000_000)
+    filename: str = Field(default="", max_length=200)
+
+
+@router.post("/import")
+def import_log(body: ImportBody) -> dict[str, Any]:
+    """Read one MES event log and say which evidence tier it can reach.
+
+    The schedule is not changed. A complete file is turned into a run record
+    and the lateness split runs on it.
+    """
+    from resilimes.explain.ingest import ingest_text
+
+    return ingest_text(body.text, body.filename).to_json()
 
 
 @router.post("/report/verify")
