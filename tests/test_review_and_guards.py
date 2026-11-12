@@ -10,12 +10,12 @@ import pytest
 from resilimes.agents.feedback import write_feedback
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
 from resilimes.agents.review_panel import run_review_panel
+from resilimes.common.llm import LlmResult
 from resilimes.config import HORIZON, Settings
 from resilimes.data.factory import build_source
 from resilimes.domain.critique import critique_schedule
 from resilimes.domain.models import Critique, Violation
 from resilimes.domain.schedule import POLICY_RECOVER, schedule_plant
-from resilimes.llm.base import LlmResult
 from resilimes.llm.mock import MockProvider
 
 

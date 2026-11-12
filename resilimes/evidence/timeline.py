@@ -5,8 +5,8 @@ from the simulator (``lot_log["ready"]``, ``events``), so nothing here is
 estimated; the only reconstruction is the ordering of the two streams, which
 uses the ``n_events`` index each lot-log row carries.
 
-The record types live in ``resilimes.explain.record`` and are re-exported here
-for old imports.
+The record types live in ``resilimes.explain.record``. This module only builds
+the timeline from a simulator run.
 """
 
 from __future__ import annotations
@@ -15,37 +15,15 @@ from collections import defaultdict
 from typing import Any
 
 from resilimes.explain.record import (
-    BUSY,
-    DOWN,
-    IDLE,
-    PM,
-    RESERVED,
     Displacement,
-    FabView,
     Gap,
     Timeline,
     Visit,
-    _covers_sorted,
-    _merge,
 )
 from resilimes.smt.fab import Fab
 from resilimes.smt.simulate import RunResult
 
-__all__ = [
-    "BUSY",
-    "DOWN",
-    "IDLE",
-    "PM",
-    "RESERVED",
-    "Displacement",
-    "FabView",
-    "Gap",
-    "Timeline",
-    "Visit",
-    "_covers_sorted",
-    "_merge",
-    "build_timeline",
-]
+__all__ = ["build_timeline"]
 
 
 def build_timeline(

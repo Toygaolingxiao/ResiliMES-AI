@@ -138,6 +138,19 @@
 
 交接和现场笔记还在 `demo/static/ai.js`，因为它是控制台里的一块，不是单独的产品页。旧地址 `/assets/app.js` 和 `/assets/fab.js` 仍返回现在的脚本。
 
+## 第七步做了什么（删转发）
+
+测试和代码改成直接 import 新位置之后，删掉只做转发的文件：
+
+- `agents/jsonutil.py` → `common/jsonutil.py`
+- `agents.facts` 里对 `narrative_mismatches` 的转发 → `common/textfacts.py`（`fact_table` 还在 `agents.facts`）
+- `evidence/factcheck.py`、`lateness.py`、`sqlguard.py` → `explain` 里的同名模块
+- `insight/gaps.py`、`gap_explainer.py` → `explain`
+- `insight/progress.py` → `common/progress.py`
+- `llm/base.py`、`llm/deadline.py` → `common/llm.py`、`common/deadline.py`
+
+`evidence/timeline.py` 不再转发记录类型，只留 `build_timeline`。`insight/explainer.py`、`investigator.py`、`context_investigation.py` 还在，它们注入孪生或 SQL。
+
 ## 模块归属
 
 **explain（产品侧）**：`record`、`schema`、`interfaces`、`toolkit`、`lateness`、`factcheck`、`sqlguard`、`gaps`、`gap_explainer`、`context_investigation`、`explainer`，第三步加上 `causes`、`investigator`，第四步加上 `report`，第五步加上 `ingest`。它们只读记录，再演只能通过 `ReplayService`。
@@ -168,7 +181,7 @@
 
 1. Import 页和 Report 页都已经接上 Evidence Schema。Import 在 `/import`，Report 在 `/report`。
 2. 产品区页面和工房区页面已经分目录。见下面的第六步。
-3. 旧路径的转发模块：等外部引用都改完以后再删。现在测试还在用旧路径，所以先留着。
+3. 纯转发的旧路径已经删了。工房区入口（`insight.explainer`、`insight.investigator`、`insight.context_investigation`）还在，因为它们负责注入孪生或 SQL，不是空转发。`evidence/timeline.py` 只留 `build_timeline`。
 4. 现在 explain 的版本号（`0.1.0`）和 Evidence Schema 的版本号是分开的，要定一下怎么对应。
 5. 拆仓时，把 `explain`、`common` 和 `data/zetaris_layout.py` 搬进包目录，去掉 `force-include` 里的 `../../`，sdist 就能用了。
 6. `smoke_test.py` 和根目录的 `pyproject.toml` 还是整包安装，主包里也还带着 explain。要不要让主包依赖 `resilimes-explain`，等拆仓时再定。

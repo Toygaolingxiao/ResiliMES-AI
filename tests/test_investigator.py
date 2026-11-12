@@ -7,12 +7,12 @@ import json
 
 import pytest
 
+from resilimes.common.llm import LlmResult
+from resilimes.common.progress import Progress, redact
 from resilimes.evidence.toolkit import HOUR, Toolkit, record_run
 from resilimes.insight.injector import HORIZON_H, TAXONOMY, rebuild
 from resilimes.insight.investigator import MAX_CALLS, baseline_rank, investigate, score
-from resilimes.insight.progress import Progress, redact
 from resilimes.insight.study import load_cases
-from resilimes.llm.base import LlmResult
 from resilimes.smt.fab import load_fab
 
 
@@ -257,7 +257,7 @@ def test_sql_tool_goes_through_the_guard(starve):
 
 
 def test_prose_hyphen_words_are_not_ids():
-    from resilimes.evidence.factcheck import FactRegistry, check
+    from resilimes.explain.factcheck import FactRegistry, check
 
     registry = FactRegistry()
     registry.add({"family": "WE_BE_82"})
@@ -307,7 +307,7 @@ def test_compare_windows_gives_before_window_change_for_every_cause(starve):
         and out["waiting_lots"]["at_window_end"] < (out["waiting_lots"]["at_window_start"])
     )
     # Its numbers are fact-registered like every other tool result.
-    from resilimes.evidence.factcheck import check
+    from resilimes.explain.factcheck import check
 
     text = f"{starve_row['upstream_family']} went from {starve_row['before']} to " + (
         f"{starve_row['window']}, feed {starve_row['feed_from_upstream_per_h'][0]}"

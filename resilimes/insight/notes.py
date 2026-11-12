@@ -14,7 +14,7 @@ Two extractors share the schema:
 - :class:`RegexExtractor` — the honest keyword/regex baseline. It only reads
   explicit digits and keywords, so it misses spelled-out numbers, implicit
   wording and traps in ``data/notes/fab_notes.json`` (``hard_for_regex``).
-- :class:`LlmExtractor` — any :class:`resilimes.llm.base.Completer`. Offline
+- :class:`LlmExtractor` — any :class:`resilimes.common.llm.Completer`. Offline
   and in CI it is driven by :class:`ScriptedNotesCompleter`, a scripted
   stand-in (same pattern as ``insight.investigator.ScriptedCompleter``) that
   goes through the same prompt/parse/validate pipe as a live Nightshift model
@@ -37,7 +37,7 @@ from pathlib import Path
 from typing import Any, TypeGuard
 
 from resilimes.common.jsonutil import extract_json_object
-from resilimes.llm.base import Completer, LlmResult
+from resilimes.common.llm import Completer, LlmResult
 
 LANE = "notes_extract"
 

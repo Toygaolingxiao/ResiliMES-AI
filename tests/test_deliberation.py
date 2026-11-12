@@ -9,12 +9,12 @@ from __future__ import annotations
 import copy
 import json
 
+from resilimes.common.llm import LlmResult
 from resilimes.insight.deliberation import (
     deliberate,
     exception_views,
     plan_view,
 )
-from resilimes.llm.base import LlmResult
 from resilimes.llm.mock import MockProvider
 from resilimes.smt.exceptions import FabException, Impact, Lever, Option
 from resilimes.smt.planning import LotPlan, PlanningOutput

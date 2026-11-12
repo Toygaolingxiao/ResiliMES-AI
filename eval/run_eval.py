@@ -11,8 +11,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from resilimes.agents.facts import narrative_mismatches
 from resilimes.agents.toolcall import regex_tool_call
+from resilimes.common.textfacts import narrative_mismatches
 from resilimes.engines.scout.engine import default_scout
 
 _SET = Path(__file__).resolve().parent / "incidents.json"

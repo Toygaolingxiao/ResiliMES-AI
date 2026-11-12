@@ -32,7 +32,7 @@ import re
 import time
 from typing import Any
 
-from resilimes.llm.base import LlmResult
+from resilimes.common.llm import LlmResult
 
 # Lane names must match resilimes.agents.sim_select (kept local so the llm
 # package does not import the agents layer).

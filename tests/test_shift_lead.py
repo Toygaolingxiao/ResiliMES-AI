@@ -22,7 +22,7 @@ from resilimes.agents.shift_lead import (
     check_option,
     decision_rows,
 )
-from resilimes.llm.base import LlmResult
+from resilimes.common.llm import LlmResult
 from resilimes.llm.mock import MockProvider
 from resilimes.smt.exceptions import KINDS, FabException, Impact, Lever, Option
 from resilimes.smt.fab import load_fab

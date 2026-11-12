@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from resilimes.agents.jsonutil import SchemaError
 from resilimes.agents.toolcall import EXAMPLE_INSERT_HOT_LOT, tool_call_from_payload
 from resilimes.api.app import create_app
+from resilimes.common.jsonutil import SchemaError
 from resilimes.config import HORIZON, Settings
 from resilimes.data.factory import build_source
 from resilimes.domain.models import Plant

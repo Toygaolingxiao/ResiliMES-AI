@@ -15,10 +15,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from resilimes.agents.facts import narrative_mismatches
 from resilimes.common.jsonutil import SchemaError, parse_model
+from resilimes.common.llm import Completer
+from resilimes.common.textfacts import narrative_mismatches
 from resilimes.domain.models import Critique, Plant, Schedule
-from resilimes.llm.base import Completer
 
 RoleName = Literal["process_equipment", "production_control", "risk"]
 VerdictName = Literal["approve", "approve-with-changes", "reject"]

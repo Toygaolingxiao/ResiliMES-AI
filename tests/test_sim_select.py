@@ -18,7 +18,7 @@ from resilimes.agents.sim_select import (
     pareto_pick,
     rule_trigger,
 )
-from resilimes.llm.base import LlmResult
+from resilimes.common.llm import LlmResult
 from resilimes.llm.mock import MockProvider
 from resilimes.smt.exceptions import FabException, Impact, Lever, Option
 from resilimes.smt.twin import ForkKpis, PlanScore, Twin, TwinConfig

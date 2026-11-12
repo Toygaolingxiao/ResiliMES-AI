@@ -26,13 +26,13 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from resilimes.common import deadline
 from resilimes.common.jsonutil import extract_json_object
+from resilimes.common.llm import Completer, LlmResult
 from resilimes.engines.contracts import ContractError, sign_body
 from resilimes.engines.markovian.engine import MarkovianEngine, compress
 from resilimes.evidence.toolkit import HOUR, RecordedRun
 from resilimes.explain.factcheck import FactRegistry, check
-from resilimes.llm import deadline
-from resilimes.llm.base import Completer, LlmResult
 
 LANE = "handover"
 LANGUAGES = {"en": "English", "zh": "Simplified Chinese", "ja": "Japanese"}

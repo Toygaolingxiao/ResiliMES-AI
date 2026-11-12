@@ -11,6 +11,7 @@ import pytest
 from openai import APITimeoutError
 from tests.test_investigator import PLAIN_FINAL, Scripted, _window_call
 
+from resilimes.common import deadline
 from resilimes.config import Settings
 from resilimes.evidence.toolkit import HOUR, Toolkit, record_run
 from resilimes.insight import handover as ho
@@ -28,7 +29,6 @@ from resilimes.insight.study import (
     summarize_investigator,
     time_stats,
 )
-from resilimes.llm import deadline
 from resilimes.llm.nightshift import NightshiftProvider, ttfb_ms
 from resilimes.smt.fab import load_fab
 
@@ -310,7 +310,7 @@ def run48(fab):
 
 
 def test_explainer_timeout_is_marked(run48, clock):
-    from resilimes.evidence.lateness import late_lots
+    from resilimes.explain.lateness import late_lots
 
     lot_id = run48.fab.lot_id[late_lots(run48.timeline)[0]]
     answer = explain(Toolkit(run48), lot_id, Slow(["not json"], clock, 100), deadline_s=180)

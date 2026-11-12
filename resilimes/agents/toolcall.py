@@ -13,8 +13,8 @@ from typing import Any, Literal, cast
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from resilimes.common.jsonutil import SchemaError, check_schema, extract_json_object
+from resilimes.common.llm import Completer
 from resilimes.domain.models import Plant
-from resilimes.llm.base import Completer
 
 IntentName = Literal[
     "insert_hot_lot",

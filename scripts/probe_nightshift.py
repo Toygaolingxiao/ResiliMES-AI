@@ -32,8 +32,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from resilimes.agents.jsonutil import extract_json_object
 from resilimes.agents.sim_select import PLAN_SYSTEM, SELECT_SYSTEM
+from resilimes.common.jsonutil import extract_json_object
 from resilimes.config import load_settings
 from resilimes.llm.nightshift import (
     _response_ids,

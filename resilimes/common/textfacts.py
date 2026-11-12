@@ -1,7 +1,7 @@
 """Ids and numbers in a text, checked against a fact table.
 
 Moved out of ``resilimes.agents.facts`` so the explain layer can use it without
-importing agents. ``agents.facts`` re-exports these names.
+importing agents. Callers import these names from here.
 """
 
 from __future__ import annotations

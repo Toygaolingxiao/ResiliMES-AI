@@ -6,7 +6,7 @@ NEMOTRON_MODEL.
 
 Retries: 429 and connection / 5xx, with exponential backoff. The token is never logged.
 
-Time budgets (resilimes.llm.deadline) apply to calls made inside an AI task deadline (the
+Time budgets (resilimes.common.deadline) apply to calls made inside an AI task deadline (the
 investigator, explainer and handover): one ``complete`` call is capped at AI_CALL_DEADLINE_S
 and by the task deadline, whichever is sooner; each request carries ``meterless-ttfb-ms`` so
 Nightshift stops a stuck lane server-side; a larger empty-reply budget rung is not started
@@ -22,9 +22,9 @@ from typing import Any
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI, RateLimitError
 
+from resilimes.common import deadline
+from resilimes.common.llm import LlmResult
 from resilimes.config import Settings
-from resilimes.llm import deadline
-from resilimes.llm.base import LlmResult
 from resilimes.llm.urls import assert_runtime_token, normalize_base_url
 from resilimes.logging_config import get_logger
 

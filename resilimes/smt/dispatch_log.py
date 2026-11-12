@@ -1,6 +1,6 @@
 """Dispatch-time gap reason log (Plan 4 v1.5).
 
-The gap classifier in ``resilimes.insight.gaps`` (v1) infers *after* a run
+The gap classifier in ``resilimes.explain.gaps`` (v1) infers *after* a run
 why a tool stood idle. Inference can be wrong, and the explainer has to say
 so. This module is the other half: a recorder the simulator feeds *at the
 decision moment*, when a start is refused by the hard Q-time gate, held to

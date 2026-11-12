@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from resilimes.config import Settings
-from resilimes.evidence.sqlguard import MAX_LIMIT, SqlRejected, allowlist, guard
 from resilimes.evidence.sqlrun import run_guarded
+from resilimes.explain.sqlguard import MAX_LIMIT, SqlRejected, allowlist, guard
 
 
 def test_allowlist_covers_four_datasources():
