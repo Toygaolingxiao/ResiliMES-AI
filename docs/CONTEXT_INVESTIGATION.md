@@ -185,7 +185,7 @@ are labelled as such.
 
 ## Open alignment points
 
-- Front end (`resilimes/demo/static/app.js`, `investigateContext` /
+- Front end (`resilimes/demo/static/workshop/console/console.js`, `investigateContext` /
   `renderCtxAnswer`): sends type/tool/family/lot/step/t1_min/t2_min/
   scenario_id/lang/question with absent values as `null` and numbers as
   numbers (the API also treats `""` as absent). It reads the answer at
