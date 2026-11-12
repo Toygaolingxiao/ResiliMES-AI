@@ -2025,7 +2025,7 @@
     "scoreSlack": "スラック",
     "scoreSetup": "段取り",
     "scoreQtime": "キュータイム",
-    "scorePending": "加重スコアはまだこの差し立てにありません。",
+    "scorePending": "この差し立てには、まだ加重スコアがありません。",
     "wipByStep": "工程別仕掛品",
     "wipNone": "このラインに滞留の上限はまだありません。",
     "wipOver": "{step} {lots}ロット · 上限 {limit}",

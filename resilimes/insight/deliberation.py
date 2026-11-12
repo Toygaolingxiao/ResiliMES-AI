@@ -44,8 +44,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from resilimes.agents.jsonutil import extract_json_object
-from resilimes.evidence.factcheck import FactRegistry, check
+from resilimes.common.jsonutil import extract_json_object
+from resilimes.explain.factcheck import FactRegistry, check
 from resilimes.llm.base import Completer
 
 LANE = "deliberation"

@@ -17,10 +17,10 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from resilimes.agents.jsonutil import extract_json_object
-from resilimes.evidence.factcheck import FactRegistry, check
-from resilimes.evidence.lateness import decompose
+from resilimes.common.jsonutil import extract_json_object
 from resilimes.evidence.toolkit import HOUR, RecordedRun, Toolkit, record_run
+from resilimes.explain.factcheck import FactRegistry, check
+from resilimes.explain.lateness import decompose
 from resilimes.llm import deadline
 from resilimes.llm.base import Completer, LlmResult
 

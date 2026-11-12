@@ -36,7 +36,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, TypeGuard
 
-from resilimes.agents.jsonutil import extract_json_object
+from resilimes.common.jsonutil import extract_json_object
 from resilimes.llm.base import Completer, LlmResult
 
 LANE = "notes_extract"

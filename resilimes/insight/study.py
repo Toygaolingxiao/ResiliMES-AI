@@ -270,7 +270,7 @@ def run_explainer(
     limit: int = 0,
     temperature: float = 0.2,
 ) -> dict[str, Any]:
-    from resilimes.evidence.lateness import late_lots
+    from resilimes.explain.lateness import late_lots
     from resilimes.insight import explainer as ex
 
     label = "mock" if provider is None else f"real:{provider.model_for(ex.LANE)}"

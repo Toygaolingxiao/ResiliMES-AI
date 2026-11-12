@@ -17,11 +17,11 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from resilimes.agents.jsonutil import extract_json_object
+from resilimes.common.jsonutil import extract_json_object
 from resilimes.config import Settings
-from resilimes.evidence.factcheck import FactRegistry, check
 from resilimes.evidence.sqlrun import run_guarded
 from resilimes.evidence.toolkit import HOUR, Toolkit
+from resilimes.explain.factcheck import FactRegistry, check
 from resilimes.insight.injector import CAUSE_TEXT, TAXONOMY, main_upstream
 from resilimes.insight.progress import redact
 from resilimes.llm import deadline

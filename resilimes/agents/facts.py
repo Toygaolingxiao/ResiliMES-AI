@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
+# Moved to resilimes.common.textfacts; re-exported here for old imports.
+from resilimes.common.textfacts import _ID, _NUMBER, _norm, _numbers, narrative_mismatches  # noqa: F401
 from resilimes.domain.models import JobOutcome, KpiReport, Plant
-
-_NUMBER = re.compile(r"\d+(?:\.\d+)?")
-_ID = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+\b")
 
 
 def fact_table(
@@ -38,34 +36,6 @@ def fact_table(
         ]
     )
     return {"ids": {item.upper() for item in ids}, "numbers": _numbers(blob)}
-
-
-def narrative_mismatches(text: str, facts: dict[str, set[str]]) -> list[str]:
-    """Ids and numbers in ``text`` that the fact table does not contain."""
-    misses: list[str] = []
-    seen: set[str] = set()
-    for token in _ID.findall(text):
-        if token.upper() in facts["ids"] or token.upper() in seen:
-            continue
-        seen.add(token.upper())
-        misses.append(f"unknown id {token}")
-    for raw in _NUMBER.findall(text):
-        number = _norm(raw)
-        if number in facts["numbers"] or number in seen:
-            continue
-        seen.add(number)
-        misses.append(f"unknown number {raw}")
-    return misses
-
-
-def _numbers(blob: str) -> set[str]:
-    return {_norm(item) for item in _NUMBER.findall(blob)}
-
-
-def _norm(raw: str) -> str:
-    if "." in raw:
-        return raw.rstrip("0").rstrip(".")
-    return raw
 
 
 def degraded_call(provider_name: str, mocked: bool, reason: str, **extra: Any) -> dict[str, Any]:

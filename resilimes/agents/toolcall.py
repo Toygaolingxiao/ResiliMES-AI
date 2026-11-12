@@ -12,7 +12,7 @@ from typing import Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from resilimes.agents.jsonutil import SchemaError, check_schema, extract_json_object
+from resilimes.common.jsonutil import SchemaError, check_schema, extract_json_object
 from resilimes.domain.models import Plant
 from resilimes.llm.base import Completer
 

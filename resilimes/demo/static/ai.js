@@ -124,7 +124,7 @@ AI_SECTIONS.push({
       AI.out.explainerLot = select.value;
       paintAi();
       try {
-        AI.out.explainer = await aiPost("/api/ai/explain", { lot_id: select.value, seed: 1, lang: state.lang || "en" });
+        AI.out.explainer = await aiPost("/api/ai/explain", { lot_id: select.value, seed: 1, lang: state.lang || "ja" });
       } catch (error) {
         AI.out.explainer = { error: String(error.message || error) };
       }
@@ -191,7 +191,7 @@ AI_SECTIONS.push({
       const [seed, start] = select.value.split(":");
       paintAi();
       try {
-        AI.out.handover = await aiPost("/api/ai/handover", { seed: Number(seed), start_h: Number(start), lang: state.lang || "en" });
+        AI.out.handover = await aiPost("/api/ai/handover", { seed: Number(seed), start_h: Number(start), lang: state.lang || "ja" });
       } catch (error) {
         AI.out.handover = { error: String(error.message || error) };
       }
