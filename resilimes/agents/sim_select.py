@@ -45,8 +45,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from resilimes.agents.jsonutil import extract_json_object
 from resilimes.agents.shift_lead import DecisionError, RuleDefault, ShiftLead
+from resilimes.common.jsonutil import extract_json_object
 from resilimes.llm.base import Completer, LlmResult
 from resilimes.smt.exceptions import (
     _BOOST,

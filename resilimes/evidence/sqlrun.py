@@ -17,7 +17,7 @@ from typing import Any
 
 from resilimes.config import Settings, get_settings
 from resilimes.data.zetaris_layout import DATASOURCE_FOR_DATABASE, split_sql
-from resilimes.evidence.sqlguard import SqlRejected, guard
+from resilimes.explain.sqlguard import SqlRejected, guard
 
 ROOT = Path(__file__).resolve().parents[2]
 SEED_FILES = ("seed.sql", "smt2020_seed.sql", "kernel.sql", "fab_ops_seed.sql")

@@ -60,7 +60,7 @@ const ALERT = {
 };
 
 const state = {
-  lang: localStorage.getItem("resilimes.lang") || "en",
+  lang: localStorage.getItem("resilimes.lang") || "ja",
   theme: localStorage.getItem("resilimes.theme") === "dark" ? "dark" : "light",
   view: "tool",
   tab: "recover",
@@ -155,7 +155,7 @@ function applyTheme() {
 }
 
 function t() {
-  return COPY[state.lang] || COPY.en;
+  return COPY[state.lang] || COPY.ja;
 }
 
 function taglineFor(copy) {
@@ -1203,7 +1203,7 @@ async function investigateContext(ctx) {
     t1_min: t1 !== null ? Math.max(0, Math.round(t1)) : null,
     t2_min: t2 !== null ? Math.max(0, Math.round(t2)) : null,
     scenario_id: str((state.report && state.report.scenario_id) || state.activeScenario),
-    lang: state.lang || "en",
+    lang: state.lang || "ja",
     question: str(ctx.question),
   };
   showCtxPanel((panel) => {
@@ -1833,7 +1833,7 @@ function paintVerify() {
   table.className = "checks";
   table.innerHTML = `<thead><tr><th>${escapeHtml(copy.check)}</th><th>${escapeHtml(copy.category)}</th><th>${escapeHtml(copy.checkStatus)}</th><th class="num">${escapeHtml(copy.violations)}</th><th>${escapeHtml(copy.reason)}</th></tr></thead>`;
   const body = document.createElement("tbody");
-  const lang = state.lang || "en";
+  const lang = state.lang || "ja";
   for (const row of validation.details) {
     const tr = document.createElement("tr");
     const name = (row.name && (row.name[lang] || row.name.en)) || row.id;
@@ -3288,7 +3288,7 @@ function formatFinding(item) {
   if (!item) return "";
   const template = item.code && t().messages && t().messages[item.code];
   if (template) return fill(template, item.params || {});
-  if ((state.lang || "en") === "en") return item.detail || "";
+  if (state.lang === "en") return item.detail || "";
   return "";
 }
 
@@ -3296,7 +3296,7 @@ function rationaleText(verdict) {
   if (!verdict) return "";
   const template = verdict.rationale_code && t().messages && t().messages[verdict.rationale_code];
   if (template) return fill(template, {});
-  if ((state.lang || "en") === "en") return verdict.rationale || "";
+  if (state.lang === "en") return verdict.rationale || "";
   return "";
 }
 

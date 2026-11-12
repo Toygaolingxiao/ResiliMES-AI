@@ -16,7 +16,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from resilimes.agents.facts import narrative_mismatches
-from resilimes.agents.jsonutil import SchemaError, parse_model
+from resilimes.common.jsonutil import SchemaError, parse_model
 from resilimes.domain.models import Critique, Plant, Schedule
 from resilimes.llm.base import Completer
 

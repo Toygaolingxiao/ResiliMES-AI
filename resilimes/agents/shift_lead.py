@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from resilimes.agents.jsonutil import extract_json_object
+from resilimes.common.jsonutil import extract_json_object
 from resilimes.llm.base import Completer, LlmResult
 from resilimes.smt.exceptions import (
     KINDS,

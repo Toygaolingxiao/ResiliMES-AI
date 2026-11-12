@@ -14,9 +14,9 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
-from resilimes.evidence.factcheck import FactRegistry
-from resilimes.evidence.lateness import decompose, late_lots, rounded_minutes, visit_waits
 from resilimes.evidence.timeline import BUSY, DOWN, IDLE, PM, RESERVED, Timeline, build_timeline
+from resilimes.explain.factcheck import FactRegistry
+from resilimes.explain.lateness import decompose, late_lots, rounded_minutes, visit_waits
 from resilimes.smt.fab import Fab
 from resilimes.smt.faults import FaultPlan
 from resilimes.smt.simulate import RunResult, pm_windows, run_policy, sample_downs

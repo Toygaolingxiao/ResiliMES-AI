@@ -244,7 +244,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `scoreSlack` | Slack | 松弛 | スラック |
 | `scoreSetup` | Setup | 换型 | 段取り |
 | `scoreQtime` | Q-time | 排队时限 | キュータイム |
-| `scorePending` | The weighted score is not on this dispatcher yet. | 加权评分还没接到这台调度上。 | 加重スコアはまだこの差し立てにありません。 |
+| `scorePending` | The weighted score is not on this dispatcher yet. | 加权评分还没接到这台调度上。 | この差し立てには、まだ加重スコアがありません。 |
 | `wipByStep` | WIP by step | 工序在制 | 工程別仕掛品 |
 | `wipNone` | No pile-up limit on this plant yet. | 这条线还没有积压上限。 | このラインに滞留の上限はまだありません。 |
 | `wipOver` | {step} {lots} lots · limit {limit} | {step} {lots} 批 · 上限 {limit} | {step} {lots}ロット · 上限 {limit} |
