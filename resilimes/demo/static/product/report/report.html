@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>説明報告書</title>
+    <link rel="stylesheet" href="/assets/product/report/report.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <a class="back" href="/">ResiliMES</a>
+      <div class="langs" role="group">
+        <button type="button" data-lang="ja">日本語</button>
+        <button type="button" data-lang="zh">中文</button>
+        <button type="button" data-lang="en">English</button>
+      </div>
+    </header>
+    <article class="sheet">
+      <h1 id="title">説明報告書</h1>
+      <p id="lead" class="lead"></p>
+      <form id="pick" class="pick">
+        <label><span id="seed-label"></span> <input id="seed" type="number" min="1" max="4" value="1"></label>
+        <label><span id="horizon-label"></span> <input id="horizon" type="number" min="1" max="168" value="48"> <span id="horizon-unit"></span></label>
+        <label><span id="lot-label"></span>
+          <select id="lot"></select>
+        </label>
+        <button id="show" type="submit"></button>
+        <button id="print" type="button"></button>
+      </form>
+      <p id="note" class="note"></p>
+      <p id="status" class="status" role="status"></p>
+      <div id="report" hidden></div>
+    </article>
+    <script src="/assets/product/report/report.js?v=2"></script>
+  </body>
+</html>

@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from resilimes import __version__
 from resilimes.agents.orchestrator import RecoverInput, run_recovery
+from resilimes.api.explain_pages import router as explain_router
 from resilimes.api.fab_views import router as fab_router
 from resilimes.api.fab_views import warm_on_start
 from resilimes.api.insight import router as insight_router
@@ -284,6 +285,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"llm": "nightshift", "skipped": False, **probe_nightshift(cfg)}
 
     app.include_router(insight_router)
+    app.include_router(explain_router)
 
     if _STATIC.exists():
         app.mount("/assets", StaticFiles(directory=_STATIC), name="assets")
@@ -291,6 +293,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         @app.get("/")
         def index() -> FileResponse:
             return FileResponse(_STATIC / "index.html")
+
+        @app.get("/report")
+        def report_page() -> FileResponse:
+            return FileResponse(_STATIC / "product" / "report" / "report.html")
 
     return app
 

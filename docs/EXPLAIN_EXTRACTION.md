@@ -96,6 +96,17 @@
 - 不要和主包装在同一个环境里，因为两边都带 `resilimes/__init__.py`。
 - 目前只做了 wheel。sdist 不行，因为 `force-include` 引用的是包目录外面的文件。真要拆仓时，把这些目录搬进包目录就行。
 
+## 第四步做了什么（报告页）
+
+报告页是只读的。它不改排程，也不改 KPI。
+
+- 页面：`/report`，文件在 `resilimes/demo/static/product/report/`。浅色，可以打印。控制台顶上有一个「報告書」链接，原来的 `/` 和各个 tab 不动。
+- 数据：`GET /api/explain/report` 用孪生侧的 `lot_evidence` 做出 Evidence Schema v0，再由 `explain/report.py` 的 `build_report` 排成一页。`explain` 仍然不 import 孪生。
+- 每一句都带 `tier`（記録 / 観測帰因 / 不明）和 `sources`。不明的句子带 `reason`。
+- 页上写出三个问题：发生了什么、为什么（观测归因，并写明这不是排程当时的意图）、哪些事确认不了。
+- `content_hash` 显示在页上。页面把同一份 bundle 再 POST 到 `/api/explain/report/verify`，用去掉 hash 之后的规范化 JSON 重算 SHA-256，一致才显示「再计算一致」。
+- 时间占比按三个 tier 的秒数算。第一版的对象是一个 lot。bundle 的 `subject.kind` 如果是 `window`，页面把它标成ケース。
+
 ## 模块归属
 
 **explain（产品侧）**：`record`、`schema`、`interfaces`、`toolkit`、`lateness`、`factcheck`、`sqlguard`、`gaps`、`gap_explainer`、`context_investigation`、`explainer`，第三步加上 `causes`、`investigator`。它们只读记录，再演只能通过 `ReplayService`。
@@ -124,7 +135,7 @@
 
 ## 剩下的清单
 
-1. Import 页和 Report 页直接读 Evidence Schema；Report 页显示 `content_hash`。
+1. Import 页直接读 Evidence Schema，校验后告诉用户数据能到哪一层，并转成运行记录。Report 页已经有了（`/report`，显示 `content_hash`）。
 2. 产品区页面和工房区页面分目录。
 3. 旧路径的转发模块：等外部引用都改完以后再删。现在测试还在用旧路径，所以先留着。
 4. 现在 explain 的版本号（`0.1.0`）和 Evidence Schema 的版本号是分开的，要定一下怎么对应。

@@ -170,6 +170,8 @@ function paint() {
   document.documentElement.lang = state.lang === "zh" ? "zh-Hans" : state.lang === "ja" ? "ja" : "en";
   $("#tagline").textContent = taglineFor(copy);
   $("#version").textContent = state.health && state.health.version ? state.health.version : "";
+  const reportLink = $("#report-link");
+  if (reportLink) reportLink.textContent = (copy.report && copy.report.link) || "";
   $("#note").textContent = copy.versionNote;
   $("#lang-label").textContent = copy.lang;
   $("#disruption-label").textContent = copy.disruption;
