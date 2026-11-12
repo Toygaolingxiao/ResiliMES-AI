@@ -121,6 +121,23 @@
 - 必填齐全时，`explain/ingest.py` 把行转成 `RunRecord`，再跑现有的延误拆分。没有 `due` 时不编造交期，延误这一行是不明，原因是日志里没有交期。
 - 事件类型：`ready` / `arrive` / `queue`，`start` / `track_in`，`end` / `track_out`，`hold_start` / `hold_end`，`down_start` / `down_end`，`pm_start` / `pm_end`，`decision`。认不出的类型会列出来，不拿去造访问记录。
 
+## 第六步做了什么（页面分目录）
+
+产品页和工房页分开放，路由没变。`/` 还是控制台，`/report` 和 `/import` 还在。没有新的构建步骤。
+
+| 页面 | 目录 |
+| --- | --- |
+| 运行控制台 | `demo/static/workshop/console/console.js` |
+| 概況 | `demo/static/workshop/overview/overview.js` |
+| 说明 | `demo/static/product/explanation/explanation.js` |
+| 依据 | `demo/static/product/evidence/evidence.js` |
+| 再演 | `demo/static/product/replay/replay.js` |
+| 指标和校验 | `demo/static/product/quality/quality.js` |
+| 导入 | `demo/static/product/import/` |
+| 报告 | `demo/static/product/report/` |
+
+交接和现场笔记还在 `demo/static/ai.js`，因为它是控制台里的一块，不是单独的产品页。旧地址 `/assets/app.js` 和 `/assets/fab.js` 仍返回现在的脚本。
+
 ## 模块归属
 
 **explain（产品侧）**：`record`、`schema`、`interfaces`、`toolkit`、`lateness`、`factcheck`、`sqlguard`、`gaps`、`gap_explainer`、`context_investigation`、`explainer`，第三步加上 `causes`、`investigator`，第四步加上 `report`，第五步加上 `ingest`。它们只读记录，再演只能通过 `ReplayService`。
@@ -150,7 +167,7 @@
 ## 剩下的清单
 
 1. Import 页和 Report 页都已经接上 Evidence Schema。Import 在 `/import`，Report 在 `/report`。
-2. 产品区页面和工房区页面分目录。
+2. 产品区页面和工房区页面已经分目录。见下面的第六步。
 3. 旧路径的转发模块：等外部引用都改完以后再删。现在测试还在用旧路径，所以先留着。
 4. 现在 explain 的版本号（`0.1.0`）和 Evidence Schema 的版本号是分开的，要定一下怎么对应。
 5. 拆仓时，把 `explain`、`common` 和 `data/zetaris_layout.py` 搬进包目录，去掉 `force-include` 里的 `../../`，sdist 就能用了。

@@ -288,6 +288,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(explain_router)
 
     if _STATIC.exists():
+        # Old script URLs keep working after the product / workshop split.
+        @app.get("/assets/app.js")
+        def legacy_console_script() -> FileResponse:
+            return FileResponse(
+                _STATIC / "workshop" / "console" / "console.js",
+                media_type="text/javascript",
+            )
+
+        @app.get("/assets/fab.js")
+        def legacy_overview_script() -> FileResponse:
+            return FileResponse(
+                _STATIC / "workshop" / "overview" / "overview.js",
+                media_type="text/javascript",
+            )
+
         app.mount("/assets", StaticFiles(directory=_STATIC), name="assets")
 
         @app.get("/")
