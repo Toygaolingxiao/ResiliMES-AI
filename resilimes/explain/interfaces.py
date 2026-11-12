@@ -69,3 +69,13 @@ class WindowInvestigator(Protocol):
         provider: Any,
         settings: Any,
     ) -> Any: ...
+
+
+class SqlRunner(Protocol):
+    """Runs one guarded, read-only SQL query and returns a JSON-ready result.
+
+    The workshop side passes ``resilimes.evidence.sqlrun.run_guarded``. Errors come
+    back as ``{"error": ...}``.
+    """
+
+    def __call__(self, sql: str, settings: Any) -> dict[str, Any]: ...

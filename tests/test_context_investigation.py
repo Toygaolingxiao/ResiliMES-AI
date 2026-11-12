@@ -383,9 +383,9 @@ def test_polish_timeout_is_labelled_timeout_not_provider_error(run24):
 
 
 def test_gap_classification_keeps_dict_evidence(run24, monkeypatch):
-    import sys
     from types import SimpleNamespace
 
+    from resilimes.explain import gaps
     from resilimes.insight.context_investigation import _gap_classification
 
     visit = _started_visit(run24)
@@ -393,18 +393,12 @@ def test_gap_classification_keeps_dict_evidence(run24, monkeypatch):
         tool=visit.tool,
         start=0.0,
         end=100.0,
-        tier="inferred",
+        tier=gaps.TIER_INFERRED,
         reason=SimpleNamespace(value="qtime_gate"),
         source="dispatch_log",
         evidence={"gate_blocks": 7, "blocked_lot": "Init_Lot_2_13"},
     )
-    fake_gaps = SimpleNamespace(
-        TIER_DECISION_RECORD="decision_record",
-        TIER_INFERRED="inferred",
-        TIER_UNKNOWN="unknown",
-        gaps_from_run=lambda run: [record],
-    )
-    monkeypatch.setitem(sys.modules, "resilimes.explain.gaps", fake_gaps)
+    monkeypatch.setattr(gaps, "gaps_from_run", lambda run: [record])
     reason, _tier, facts = _gap_classification(Toolkit(run24), visit.tool, 0.0, 24 * HOUR)
     assert reason == "qtime_gate"
     assert facts["classifier"] == "insight.gaps"

@@ -13,26 +13,12 @@ import random
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+# The cause taxonomy is shared with the investigator; it lives in explain.causes.
 from resilimes.evidence.toolkit import HOUR, RecordedRun, Toolkit, record_run
+from resilimes.explain.causes import CAUSE_TEXT, TAXONOMY, main_upstream  # noqa: F401
 from resilimes.smt.fab import Fab
 from resilimes.smt.faults import FaultPlan
 
-TAXONOMY: tuple[str, ...] = (
-    "tool_down",
-    "pm_in_peak",
-    "release_burst",
-    "setup_thrash",
-    "batch_cap",
-    "upstream_starvation",
-)
-CAUSE_TEXT = {
-    "tool_down": "unplanned tool down at the family (capacity lost)",
-    "pm_in_peak": "planned PM placed in the family's arrival peak (capacity lost to PM)",
-    "release_burst": "a burst of lots released / arriving at once",
-    "setup_thrash": "setup thrash: much more setup time per start (changeovers)",
-    "batch_cap": "batch size cap lowered: fewer lots per batch start",
-    "upstream_starvation": "the main upstream family stopped feeding (it is down), so WIP drains",
-}
 HORIZON_H = 16.0
 T0_H = 6.0
 T_END_H = 12.0
@@ -105,13 +91,6 @@ def _peak_start(kit: Toolkit, fam: int) -> float:
         if stats["arrivals"] > best:
             best, best_h = stats["arrivals"], start_h
     return best_h
-
-
-def main_upstream(kit: Toolkit, fam: int) -> int:
-    for src, _n in kit.route_upstream(fam).most_common():
-        if src != fam and src >= 0:
-            return src
-    return -1
 
 
 def build_injection(fault: str, kit: Toolkit, fam: int) -> Injection | None:

@@ -39,8 +39,8 @@ scripted answer is used and the result is marked ``degraded``. Offline
 evidence apart: ``run_record`` (visit / tool / queue records),
 ``decision_log`` (recorded displacements and AI decisions), ``rule``
 (the ranking itself), ``gap_classifier`` (the gap classification of
-``insight.gaps``, or a mirrored classification with the same taxonomy
-until that module is merged), ``investigator`` (the window tool loop),
+``explain.gaps``, or the same rules applied to the span when no gap
+record overlaps it), ``investigator`` (the window tool loop),
 and ``fab_notes`` (operator notes and their extracted events; notes are
 context claims, not run records, and are labelled as such).
 
@@ -60,6 +60,7 @@ from typing import Any
 from resilimes.common.jsonutil import extract_json_object
 from resilimes.common.llm import Completer
 from resilimes.common.progress import redact
+from resilimes.explain import gaps
 from resilimes.explain.factcheck import FactRegistry, check
 from resilimes.explain.interfaces import WindowInvestigator
 from resilimes.explain.lateness import visit_waits
@@ -367,39 +368,34 @@ def _gap_classification(
 ) -> tuple[str, str, dict[str, Any]]:
     """(reason, tier, facts) for one tool's idle span in [t1, t2) seconds.
 
-    Prefers ``insight.gaps`` (its GapRecord classification) when that module
-    is in the tree; otherwise mirrors its taxonomy and priority from the
-    same evidence. The mirrored path is labelled in the facts.
+    Uses the ``explain.gaps`` classification (its GapRecord) when a gap record
+    overlaps the span. When none does (the span is shorter than the gap
+    finder's minimum, or the tool was not idle for the whole span), the same
+    evidence rules are applied to the span directly. That path is labelled in
+    the facts.
     """
     fab, tl = kit.fab, kit.tl
-    try:
-        from importlib import import_module
-
-        gaps_module: Any = import_module("resilimes.explain.gaps")
-
-        for record in gaps_module.gaps_from_run(kit.run):
-            if record.tool == tool and record.start < t2 and record.end > t1:
-                tier = {
-                    gaps_module.TIER_DECISION_RECORD: TIER_DECISION_RECORD,
-                    gaps_module.TIER_INFERRED: TIER_RULE_EMERGENT,
-                    gaps_module.TIER_UNKNOWN: TIER_UNKNOWN,
-                }.get(record.tier, TIER_RULE_EMERGENT)
-                if record.reason.value == "unknown":
-                    tier = TIER_UNKNOWN
-                return (
-                    record.reason.value,
-                    tier,
-                    {
-                        "reason": record.reason.value,
-                        "classifier": "insight.gaps",
-                        "record_source": record.source,
-                        "evidence": _evidence_json(record.evidence),
-                    },
-                )
-    except ImportError:
-        pass
-    # Mirrored classification: the same evidence rules as
-    # insight.gaps._evidence_for_gap (batch / PM / CQT only; plan-band,
+    for record in gaps.gaps_from_run(kit.run):
+        if record.tool == tool and record.start < t2 and record.end > t1:
+            tier = {
+                gaps.TIER_DECISION_RECORD: TIER_DECISION_RECORD,
+                gaps.TIER_INFERRED: TIER_RULE_EMERGENT,
+                gaps.TIER_UNKNOWN: TIER_UNKNOWN,
+            }.get(record.tier, TIER_RULE_EMERGENT)
+            if record.reason.value == "unknown":
+                tier = TIER_UNKNOWN
+            return (
+                record.reason.value,
+                tier,
+                {
+                    "reason": record.reason.value,
+                    "classifier": "insight.gaps",
+                    "record_source": record.source,
+                    "evidence": _evidence_json(record.evidence),
+                },
+            )
+    # Span-level classification: the same evidence rules as
+    # explain.gaps._evidence_for_gap (batch / PM / CQT only; plan-band,
     # reserve, setup and downstream evidence is not recoverable from a
     # finished run's timeline, so those reasons stay unmatched here too).
     fam = fab.tool_family[tool]
@@ -427,7 +423,7 @@ def _gap_classification(
     reason = next((r for r in _GAP_REASON_PRIORITY if r in matched), "unknown")
     facts: dict[str, Any] = {
         "reason": reason,
-        "classifier": "mirrored insight.gaps taxonomy (module not in this tree)",
+        "classifier": "insight.gaps rules on this span (no gap record overlaps it)",
         "evidence": evidence,
         "not_checked": ["plan_wait", "capacity_reserve", "setup_saving", "downstream_blocked"],
     }

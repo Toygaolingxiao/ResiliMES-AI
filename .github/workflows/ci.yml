@@ -32,3 +32,19 @@ jobs:
         run: python smoke_test.py --mock
         env:
           RESILIMES_MODE: mock
+
+  explain-alone:
+    # The explain layer installed on its own, without the rest of the repository.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install explain only
+        run: python -m pip install ./packages/resilimes-explain pytest
+      - name: Test explain only
+        working-directory: packages/resilimes-explain
+        run: |
+          python -c "import resilimes.explain, sys; assert 'site-packages' in resilimes.explain.__file__, resilimes.explain.__file__"
+          python -m pytest
