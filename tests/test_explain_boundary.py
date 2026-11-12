@@ -100,3 +100,27 @@ def test_explain_imports_at_runtime():
 def test_common_does_not_import_upward():
     modules = ["resilimes.common." + p.stem for p in (PKG / "common").glob("*.py")]
     assert not _bad(list(_closure(modules)))
+
+
+PACKAGED = ("resilimes.explain", "resilimes.common", "resilimes.data.zetaris_layout")
+
+
+def test_explain_reaches_only_what_its_distribution_ships():
+    """Everything explain imports must be in packages/resilimes-explain (force-include)."""
+    import tomllib
+
+    config = tomllib.loads(
+        (ROOT / "packages" / "resilimes-explain" / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    shipped = set(config["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"].values())
+    for module in PACKAGED:
+        path = module.replace(".", "/")
+        assert path in shipped or f"{path}.py" in shipped, module
+    reach = _closure(["resilimes.explain", *EXPLAIN_MODULES])
+    outside = sorted(
+        name
+        for name in reach
+        if name not in ("resilimes", "resilimes.data")
+        and not any(name == p or name.startswith(p + ".") for p in PACKAGED)
+    )
+    assert not outside, {name: reach[name] for name in outside}

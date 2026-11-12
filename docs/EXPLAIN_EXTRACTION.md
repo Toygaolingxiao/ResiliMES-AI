@@ -71,20 +71,45 @@
 
 有一处测试改了：`test_gap_classification_keeps_dict_evidence` 原来替换的是 `sys.modules["resilimes.insight.gaps"]`，现在 `gaps` 在 explain 里，所以改成替换 `resilimes.explain.gaps`。断言没有动。
 
+## 第三步做了什么
+
+| 内容 | 之前 | 之后 | 原因 |
+| --- | --- | --- | --- |
+| 原因分类 `TAXONOMY`、`CAUSE_TEXT`、`main_upstream` | `insight/injector.py` | `explain/causes.py`，`injector` 转发 | investigator 和注入基准都要用。放在基准里，explain 就得依赖基准 |
+| 窗口调查 `investigator` | `insight/investigator.py` | `explain/investigator.py`（`investigate_window`、`run_call`） | 分析逻辑只读 `Toolkit`。SQL 改成注入：`SqlRunner` 协议，不传 runner 时，`sql` 调用会像其他失败的调用一样返回 error。`settings` 只用来读时间预算，不再 import `config` |
+| 旧入口 | — | `insight/investigator.py` 的 `investigate`、`execute` | 自动传入 `evidence.sqlrun.run_guarded`，行为和原来一样 |
+| `context_investigation` 对 gaps 的动态 import | `import_module` 加 `except ImportError` | 直接 `from resilimes.explain import gaps` | gaps 已经在同一个包里了 |
+| explain 单独打包 | 没有 | `packages/resilimes-explain/pyproject.toml` | 用 hatchling 打包，只带 `explain`、`common` 和 `data/zetaris_layout.py` |
+
+关于 gaps 的改动：原来的“镜像分类”分支不只在 import 失败时走。当时间段里没有 gap 记录重叠时，它也会走。这条路径保留了，只把标签从“module not in this tree”改成“no gap record overlaps it”，因为原来的说法已经不对了。`test_gap_classification_keeps_dict_evidence` 原来替换 `sys.modules`，现在改成用 monkeypatch 替换 `gaps.gaps_from_run`，断言没动。
+
+### 单独打包
+
+- 安装和测试（在一个干净的环境里）：
+  ```
+  python -m pip install ./packages/resilimes-explain pytest
+  cd packages/resilimes-explain && python -m pytest
+  ```
+- `packages/resilimes-explain/tests/` 是 explain 自己的测试。用的都是手工搭的小记录，不依赖孪生。
+- CI 里新加了一个 job：`explain-alone`。它只安装这个包，先确认 import 到的是 site-packages 里的那份，再跑测试。
+- 主仓的边界测试多了一条：explain 能 import 到的模块，必须都在这个包的 `force-include` 列表里。
+- 不要和主包装在同一个环境里，因为两边都带 `resilimes/__init__.py`。
+- 目前只做了 wheel。sdist 不行，因为 `force-include` 引用的是包目录外面的文件。真要拆仓时，把这些目录搬进包目录就行。
+
 ## 模块归属
 
-**explain（产品侧）**：`record`、`schema`、`interfaces`、`toolkit`、`lateness`、`factcheck`、`sqlguard`、`gaps`、`gap_explainer`、`context_investigation`、`explainer`。它们只读记录，再演只能通过 `ReplayService`。
+**explain（产品侧）**：`record`、`schema`、`interfaces`、`toolkit`、`lateness`、`factcheck`、`sqlguard`、`gaps`、`gap_explainer`、`context_investigation`、`explainer`，第三步加上 `causes`、`investigator`。它们只读记录，再演只能通过 `ReplayService`。
 
 **孪生侧适配器（`evidence/`）**：`timeline.build_timeline`、`toolkit.record_run` 和 `RecordedRun`、`adapters`。`fab_ops` 是把一次运行导出成 SQL 表，也留在这里。`sqlrun` 真正去执行 SQL，有 I/O 和配置，同样留在这里。
 
 **工房区（`insight/`）**：
-- `investigator`：会执行 guarded SQL，还用到注入基准里的原因分类（`injector.TAXONOMY`、`CAUSE_TEXT`）。
+- `investigator`：第三步之后只剩薄入口，负责注入 `run_guarded`。
 - `injector`、`hard_cases`、`notes_cases`、`notes_ab`、`notes_ab_live`、`study`：故障注入基准和实验，需要孪生给出真值，由它们去调用 explain。
 - `handover`：交接摘要，依赖 `engines.markovian` 压缩和 `engines.contracts` 签名，属于引擎和交接流程。
 - `deliberation`：三角色讨论，最后由 kernel 定，属于决策支持，不是解释。
 - `notes`：把现场笔记转成排程事件，属于输入侧（以后的 Import 页），不是解释。
 
-## 依赖现状（第二步之后）
+## 依赖现状（第三步之后）
 
 `explain/` 全部通过边界检查。依赖只有标准库、pydantic、`common`、`data.zetaris_layout` 和 explain 自己。下面是还依赖孪生或引擎的文件：
 
@@ -92,19 +117,19 @@
 | --- | --- | --- |
 | `evidence/timeline.py`、`toolkit.py`、`adapters.py` | `smt.*`，`toolkit` 还依赖 `kernel.score` | 孪生侧适配器 |
 | `evidence/sqlrun.py` | `config`、`agent.tools_zetaris` | SQL 执行，有 I/O |
-| `insight/investigator.py` | `evidence.sqlrun`、`insight.injector`、`llm` | 工房区 |
+| `insight/investigator.py` | `evidence.sqlrun` | 薄入口，注入 SQL |
 | `insight/handover.py` | `engines.contracts`、`engines.markovian` | 工房区 |
 | `insight/injector.py`、`hard_cases.py`、`notes_ab_live.py`、`study.py`、`notes_cases.py` | `smt.*` | 基准和实验 |
 | `smt/dispatch_log.py` | `explain.record` | 模拟器按 explain 的记录格式写数据，方向是对的 |
 
 ## 剩下的清单
 
-1. 把 `investigator` 拆成两半：纯分析部分搬进 explain；SQL 执行通过一个接口注入，类似 `WindowInvestigator`；原因分类从 `injector` 挪到 explain 或 common。
-2. `context_investigation` 里还有一段 `import_module("resilimes.explain.gaps")` 加兜底的写法，这是 gaps 还不在同一个包时留下的。现在可以直接 import，要连同对应测试一起改。
-3. explain 单独打包：自己的 `pyproject`（或 workspace 子包）、单独的测试目录和 CI 任务。
-4. Import 页和 Report 页直接读 Evidence Schema；Report 页显示 `content_hash`。
-5. 产品区页面和工房区页面分目录。
-6. 旧路径的转发模块：等外部引用都改完以后再删。现在测试还在用旧路径，所以先留着。
+1. Import 页和 Report 页直接读 Evidence Schema；Report 页显示 `content_hash`。
+2. 产品区页面和工房区页面分目录。
+3. 旧路径的转发模块：等外部引用都改完以后再删。现在测试还在用旧路径，所以先留着。
+4. 现在 explain 的版本号（`0.1.0`）和 Evidence Schema 的版本号是分开的，要定一下怎么对应。
+5. 拆仓时，把 `explain`、`common` 和 `data/zetaris_layout.py` 搬进包目录，去掉 `force-include` 里的 `../../`，sdist 就能用了。
+6. `smoke_test.py` 和根目录的 `pyproject.toml` 还是整包安装，主包里也还带着 explain。要不要让主包依赖 `resilimes-explain`，等拆仓时再定。
 
 ## 什么时候该拆仓
 

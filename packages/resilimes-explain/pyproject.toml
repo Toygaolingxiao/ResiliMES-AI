@@ -1,0 +1,39 @@
+# The explain layer as its own distribution.
+#
+# It ships resilimes.explain plus the small pieces it imports: resilimes.common and
+# resilimes.data.zetaris_layout (stdlib only, used by the SQL guard). It does not
+# ship the twin, engines, agents, kernel or domain. tests/test_explain_boundary.py
+# in the main tree checks that explain imports nothing outside this list.
+#
+# Install and test it alone (from the repository root):
+#   python -m pip install ./packages/resilimes-explain pytest
+#   cd packages/resilimes-explain && python -m pytest
+#
+# Install it into a clean environment, not next to the main package: both
+# provide resilimes/__init__.py.
+
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "resilimes-explain"
+version = "0.1.0"
+description = "ResiliMES explain layer: run record, Evidence Schema, lateness split and fact checks."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["pydantic>=2.9.0"]
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
+
+[tool.hatch.build.targets.wheel.force-include]
+"../../resilimes/__init__.py" = "resilimes/__init__.py"
+"../../resilimes/explain" = "resilimes/explain"
+"../../resilimes/common" = "resilimes/common"
+"../../resilimes/data/__init__.py" = "resilimes/data/__init__.py"
+"../../resilimes/data/zetaris_layout.py" = "resilimes/data/zetaris_layout.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
