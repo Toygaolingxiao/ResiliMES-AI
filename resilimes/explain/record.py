@@ -10,7 +10,7 @@ A *visit* is one queue entry of one lot at one step: ready -> start -> leave.
 from __future__ import annotations
 
 import bisect
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 # The fab description the record refers to. On the twin side this is
@@ -184,3 +184,59 @@ def _covers_sorted(spans: list[tuple[float, float]], moment: float) -> bool:
     """``spans`` sorted and disjoint (see ``_merge``)."""
     index = bisect.bisect_right(spans, (moment, float("inf"))) - 1
     return index >= 0 and spans[index][0] <= moment < spans[index][1]
+
+
+# ---- dispatch-time decision records ---------------------------------------------------
+# Written by the simulator at the decision moment (``resilimes.smt.dispatch_log``).
+REASON_QTIME_GATE = "qtime_gate"
+REASON_BATCH_WAIT = "batch_wait"
+REASON_PM_AVOIDANCE = "pm_avoidance"
+
+DISPATCH_REASONS = (REASON_QTIME_GATE, REASON_BATCH_WAIT, REASON_PM_AVOIDANCE)
+
+
+@dataclass
+class DispatchRecord:
+    """One deliberate-gap decision, recorded when it was made."""
+
+    reason: str  # one of DISPATCH_REASONS
+    lot: int | None  # head / refused lot (index into fab.lot_id)
+    lots: tuple[int, ...]  # every lot held by this decision
+    step: int  # the step the lot(s) were held at
+    tool: int  # the tool whose start was refused / held (-1 if not tool-bound)
+    family: int
+    t: float  # decision time, seconds after the snapshot
+    wake: float | None = None  # when the decision is next re-evaluated, if known
+    evidence: dict[str, Any] = field(default_factory=dict)
+    count: int = 1  # coalesced re-evaluations of this same decision
+
+    def to_json(self) -> dict[str, Any]:
+        out = asdict(self)
+        out["lots"] = list(self.lots)
+        return out
+
+
+# ---- one recorded run -------------------------------------------------------------------
+@dataclass
+class RunRecord:
+    """What the explain layer reads about one run. No simulator objects.
+
+    ``class_tiers`` maps an order class to its dispatch tier. The twin side
+    fills it from the priority rules (``resilimes.kernel.score``); classes not
+    in the map get ``default_class_tier``.
+    """
+
+    fab: FabView
+    seed: int
+    horizon: float
+    policy: str
+    downs: list[list[tuple[float, float]]]
+    pm: list[list[tuple[float, float]]]
+    timeline: Timeline
+    label: str = "baseline"
+    notes: dict[str, Any] = field(default_factory=dict)
+    class_tiers: dict[str, int] = field(default_factory=dict)
+    default_class_tier: int = 2
+
+    def class_tier(self, order_class: str) -> int:
+        return self.class_tiers.get(order_class, self.default_class_tier)

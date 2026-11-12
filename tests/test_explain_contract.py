@@ -125,3 +125,20 @@ def test_replay_without_change_matches_baseline(service):
     lot = late_lots(base.timeline)[0]
     again = service.replay(ReplayRequest(base=REF, label="baseline"))
     assert lot_evidence(again, lot).content_hash == lot_evidence(base, lot).content_hash
+
+
+def test_run_record_class_tier_comes_from_the_record(service):
+    record = service.baseline(REF).run
+    # Filled by the twin side from kernel.score; explain only reads it.
+    from resilimes.kernel.score import class_tier
+
+    for order_class in ("VIP", "hot", "regular", "anything"):
+        assert record.class_tier(order_class) == class_tier(order_class)
+
+
+def test_window_query_needs_an_injected_investigator(service):
+    from resilimes.explain.context_investigation import ContextError, ContextQuery, answer_context
+
+    query = ContextQuery(type="window", family="x", t1_h=1.0, t2_h=2.0)
+    with pytest.raises(ContextError):
+        answer_context(service.baseline(REF).run, query)
