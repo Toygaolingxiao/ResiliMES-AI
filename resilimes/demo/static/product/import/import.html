@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>イベントログの取り込み</title>
+    <link rel="stylesheet" href="/assets/product/report/report.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <a class="back" href="/report"></a>
+      <div class="langs" role="group">
+        <button type="button" data-lang="ja">日本語</button>
+        <button type="button" data-lang="zh">中文</button>
+        <button type="button" data-lang="en">English</button>
+      </div>
+    </header>
+    <article class="sheet">
+      <h1 id="title">イベントログの取り込み</h1>
+      <p id="lead" class="lead"></p>
+      <p id="format" class="note"></p>
+      <form id="form" class="pick">
+        <label><span id="file-label"></span> <input id="file" type="file" accept=".csv,.json,.jsonl,text/csv,application/json"></label>
+        <button id="submit" type="submit"></button>
+      </form>
+      <p id="status" class="status" role="status"></p>
+      <div id="result" hidden></div>
+    </article>
+    <script src="/assets/product/import/import.js?v=1"></script>
+  </body>
+</html>

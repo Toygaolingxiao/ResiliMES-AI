@@ -17,6 +17,7 @@ from pydantic import ValidationError
 import resilimes.explain as explain
 from resilimes.explain.factcheck import FactRegistry, check
 from resilimes.explain.gaps import find_gaps
+from resilimes.explain.ingest import ingest_text
 from resilimes.explain.investigator import run_call
 from resilimes.explain.lateness import decompose, late_lots
 from resilimes.explain.record import RunRecord, Timeline, Visit
@@ -100,6 +101,14 @@ def test_evidence_bundle_from_the_split():
     assert bundle.schema_version == SCHEMA_VERSION
     assert bundle.verify()
     assert bundle.tier_totals()["recorded"] == pytest.approx(400.0)  # lateness + processing
+
+
+def test_import_of_a_small_log_names_the_ceiling():
+    text = "lot,step,tool,event_type,timestamp\nL1,0,T0,start,0\nL1,0,T0,end,10\n"
+    result = ingest_text(text)
+    assert result.ceiling == "attributed"
+    assert result.record is not None
+    assert result.report is not None and result.report["verified"] is True
 
 
 def test_report_keeps_each_statement_tier_and_the_hash():

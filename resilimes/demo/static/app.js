@@ -172,6 +172,8 @@ function paint() {
   $("#version").textContent = state.health && state.health.version ? state.health.version : "";
   const reportLink = $("#report-link");
   if (reportLink) reportLink.textContent = (copy.report && copy.report.link) || "";
+  const importLink = $("#import-link");
+  if (importLink) importLink.textContent = (copy.import && copy.import.link) || "";
   $("#note").textContent = copy.versionNote;
   $("#lang-label").textContent = copy.lang;
   $("#disruption-label").textContent = copy.disruption;

@@ -825,6 +825,26 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `report.buckets.dispatch_other` | other dispatch | 其他派工原因 | その他の払い出し要因 |
 | `report.buckets.release_hold` | release hold | 投料保留 | 投入保留 |
 | `report.buckets.late_at_snapshot` | already late at the start | 开始时已迟交 | 開始時点で遅延 |
+| `import.link` | Import | 导入 | 取り込み |
+| `import.title` | Import an event log | 导入事件日志 | イベントログの取り込み |
+| `import.lead` | Read a MES-style event log (CSV or JSON lines). The page says whether the file can support a recorded decision, only observed attribution, or is missing required fields. It does not change the schedule. | 读取 MES 风格的事件日志（CSV 或 JSON 行）。页面会说明这份文件能支持记录层的判断、只能做到观测归因，还是缺了必填项。不会改动排程。 | MES 形式のイベントログ（CSV または JSON 行）を読みます。判断の記録があるか、出来事と時刻だけか、必須項目が足りないかを示します。スケジュールは変えません。 |
+| `import.format` | Required columns: lot, step, tool, event_type, timestamp. Optional: recipe, reason, decision, due. | 必填列：lot、step、tool、event_type、timestamp。可选：recipe、reason、decision、due。 | 必須の列は lot、step、tool、event_type、timestamp。任意は recipe、reason、decision、due。 |
+| `import.file` | File | 文件 | ファイル |
+| `import.submit` | Read | 读取 | 読み込む |
+| `import.ceiling` | Reachable tier | 能到达的层级 | 到達できる層 |
+| `import.ceilingRecorded` | A decision record is present, so an explanation can use the recorded tier. | 文件里有判断记录，说明可以到记录这一层。 | 判断の記録があるので、記録の層まで説明できます。 |
+| `import.ceilingAttributed` | The file has events and timestamps only, so the explanation stops at observed attribution. It does not say what the scheduler intended. | 文件里只有事件和时刻，说明最多到观测归因。不会把这说成排程当时的意图。 | 出来事と時刻だけなので、観測帰因までです。判断の意図は分かりません。 |
+| `import.ceilingUnknown` | A required field is missing, so this stays unknown. | 必填项缺失，所以结果是不明。 | 必須項目が足りないので、不明です。 |
+| `import.missing` | Missing | 缺少 | 不足 |
+| `import.rows` | Rows | 行数 | 行数 |
+| `import.decisions` | Decision rows | 判断行 | 判断の行 |
+| `import.unrecognised` | Unused event types | 未使用的事件类型 | 使わないイベント種別 |
+| `import.reportTitle` | Explanation from this log | 由这份日志得到的说明 | このログからの説明 |
+| `import.noDue` | The log has no due time. | 日志里没有交期。 | ログに納期がありません。 |
+| `import.loading` | Reading… | 读取中… | 読み込み中… |
+| `import.error` | Could not read: {msg} | 无法读取：{msg} | 読み込めませんでした：{msg} |
+| `import.back` | Back to the report | 返回报告 | 報告書に戻る |
+| `import.empty` | Choose a file. | 请选择文件。 | ファイルを選んでください。 |
 ## AI shift lead study progress (new, needs zh/ja review)
 
 The `shiftLead.*` keys label the study progress card in the console rail

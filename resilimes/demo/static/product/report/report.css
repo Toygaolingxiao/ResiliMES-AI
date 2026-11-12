@@ -36,7 +36,8 @@ body {
   margin: 0 auto;
   padding: 16px 20px 0;
 }
-.back { color: var(--ink); text-decoration: none; font-weight: 600; }
+.back, #import-link { color: var(--ink); text-decoration: none; font-weight: 600; }
+#import-link { font-weight: 400; font-size: 14px; }
 .langs { display: flex; gap: 4px; }
 .langs button, .pick button {
   font: inherit;
