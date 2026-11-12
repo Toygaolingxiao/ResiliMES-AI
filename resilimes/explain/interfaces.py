@@ -50,3 +50,22 @@ class ReplayService(Protocol):
     def baseline(self, ref: RunRef) -> RunRecordSource: ...
 
     def replay(self, request: ReplayRequest) -> RunRecordSource: ...
+
+
+class WindowInvestigator(Protocol):
+    """Answers "why did this family's WIP change in [t1_h, t2_h]?".
+
+    The implementation is on the workshop side (``insight.investigator.investigate``);
+    it may run guarded SQL. The explain layer only calls it.
+    """
+
+    def __call__(
+        self,
+        kit: Any,
+        question: str,
+        family: str,
+        t1_h: float,
+        t2_h: float,
+        provider: Any,
+        settings: Any,
+    ) -> Any: ...

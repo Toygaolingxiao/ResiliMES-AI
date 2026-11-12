@@ -26,35 +26,26 @@ decision point in the dispatcher and stay post-hoc inference (v1).
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
 from typing import Any
 
-REASON_QTIME_GATE = "qtime_gate"
-REASON_BATCH_WAIT = "batch_wait"
-REASON_PM_AVOIDANCE = "pm_avoidance"
+# The record types are part of the run record (``resilimes.explain.record``);
+# re-exported here for old imports.
+from resilimes.explain.record import (
+    DISPATCH_REASONS,
+    REASON_BATCH_WAIT,
+    REASON_PM_AVOIDANCE,
+    REASON_QTIME_GATE,
+    DispatchRecord,
+)
 
-DISPATCH_REASONS = (REASON_QTIME_GATE, REASON_BATCH_WAIT, REASON_PM_AVOIDANCE)
-
-
-@dataclass
-class DispatchRecord:
-    """One deliberate-gap decision, recorded when it was made."""
-
-    reason: str  # one of DISPATCH_REASONS
-    lot: int | None  # head / refused lot (index into fab.lot_id)
-    lots: tuple[int, ...]  # every lot held by this decision
-    step: int  # the step the lot(s) were held at
-    tool: int  # the tool whose start was refused / held (-1 if not tool-bound)
-    family: int
-    t: float  # decision time, seconds after the snapshot
-    wake: float | None = None  # when the decision is next re-evaluated, if known
-    evidence: dict[str, Any] = field(default_factory=dict)
-    count: int = 1  # coalesced re-evaluations of this same decision
-
-    def to_json(self) -> dict[str, Any]:
-        out = asdict(self)
-        out["lots"] = list(self.lots)
-        return out
+__all__ = [
+    "DISPATCH_REASONS",
+    "REASON_BATCH_WAIT",
+    "REASON_PM_AVOIDANCE",
+    "REASON_QTIME_GATE",
+    "DispatchRecord",
+    "GapRecorder",
+]
 
 
 class GapRecorder:

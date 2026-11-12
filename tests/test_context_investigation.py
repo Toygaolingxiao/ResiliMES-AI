@@ -404,7 +404,7 @@ def test_gap_classification_keeps_dict_evidence(run24, monkeypatch):
         TIER_UNKNOWN="unknown",
         gaps_from_run=lambda run: [record],
     )
-    monkeypatch.setitem(sys.modules, "resilimes.insight.gaps", fake_gaps)
+    monkeypatch.setitem(sys.modules, "resilimes.explain.gaps", fake_gaps)
     reason, _tier, facts = _gap_classification(Toolkit(run24), visit.tool, 0.0, 24 * HOUR)
     assert reason == "qtime_gate"
     assert facts["classifier"] == "insight.gaps"
