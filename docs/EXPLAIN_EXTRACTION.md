@@ -177,14 +177,31 @@
 | `insight/injector.py`、`hard_cases.py`、`notes_ab_live.py`、`study.py`、`notes_cases.py` | `smt.*` | 基准和实验 |
 | `smt/dispatch_log.py` | `explain.record` | 模拟器按 explain 的记录格式写数据，方向是对的 |
 
-## 剩下的清单
+## 版本：包和 Evidence Schema
 
-1. Import 页和 Report 页都已经接上 Evidence Schema。Import 在 `/import`，Report 在 `/report`。
-2. 产品区页面和工房区页面已经分目录。见下面的第六步。
-3. 纯转发的旧路径已经删了。工房区入口（`insight.explainer`、`insight.investigator`、`insight.context_investigation`）还在，因为它们负责注入孪生或 SQL，不是空转发。`evidence/timeline.py` 只留 `build_timeline`。
-4. 现在 explain 的版本号（`0.1.0`）和 Evidence Schema 的版本号是分开的，要定一下怎么对应。
-5. 拆仓时，把 `explain`、`common` 和 `data/zetaris_layout.py` 搬进包目录，去掉 `force-include` 里的 `../../`，sdist 就能用了。
-6. `smoke_test.py` 和根目录的 `pyproject.toml` 还是整包安装，主包里也还带着 explain。要不要让主包依赖 `resilimes-explain`，等拆仓时再定。
+两套版本号分开。读一份 bundle 时看里面的 `schema_version`，不看包装上的版本。
+
+包的版本在 `packages/resilimes-explain/pyproject.toml`，现在是 `0.1.0`。它跟着 explain 的 Python 接口走：
+
+- 修一个不改 schema、也不改调用方式的错误：补丁号加一。
+- 加可选行为或新函数，写出来的 schema 还是同一版：次版本号加一。
+- Python 接口不兼容：主版本号加一。
+
+schema 的版本在每份 bundle 的 `schema_version` 里，现在是 `evidence/v0`。字段规则写在 `explain/schema.py`：
+
+- 加一个可选字段，仍是 `evidence/v0`。
+- 改名、删字段，或改分层规则：换成新的 schema 版本（下一版是 `evidence/v1`），并在同一次改动里换契约测试。`tests/test_explain_contract.py` 有一条要改，schema 版本就必须升。
+
+schema 版本一升，包的版本也要升，因为写出新 schema 的代码是一次新发布。包的版本升了，schema 可以不变。
+
+| 包 | schema | 说明 |
+| --- | --- | --- |
+| 0.1.0 | evidence/v0 | 第一次单独打包。报告页和导入页读的就是这一版。 |
+
+## 还没做
+
+1. 拆仓时，把 `explain`、`common` 和 `data/zetaris_layout.py` 搬进包目录，去掉 `force-include` 里的 `../../`，sdist 就能用了。
+2. `smoke_test.py` 和根目录的 `pyproject.toml` 还是整包安装，主包里也还带着 explain。要不要让主包依赖 `resilimes-explain`，等拆仓时再定。
 
 ## 什么时候该拆仓
 
