@@ -116,6 +116,8 @@ h3 { font-size: var(--text-title); }
   background: var(--card);
 }
 .brand { display: flex; gap: 10px; align-items: center; min-width: 0; }
+a.report-link { color: var(--accent); font-size: var(--text-label); text-decoration: none; white-space: nowrap; }
+a.report-link:hover { text-decoration: underline; }
 .mark { display: flex; gap: 3px; align-items: flex-end; height: 16px; }
 .mark i { display: block; width: 4px; background: var(--accent); }
 .mark i:nth-child(2) { height: 10px; }

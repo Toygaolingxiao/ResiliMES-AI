@@ -20,6 +20,7 @@ from resilimes.explain.gaps import find_gaps
 from resilimes.explain.investigator import run_call
 from resilimes.explain.lateness import decompose, late_lots
 from resilimes.explain.record import RunRecord, Timeline, Visit
+from resilimes.explain.report import build_report
 from resilimes.explain.schema import (
     SCHEMA_VERSION,
     EvidenceBundle,
@@ -99,6 +100,17 @@ def test_evidence_bundle_from_the_split():
     assert bundle.schema_version == SCHEMA_VERSION
     assert bundle.verify()
     assert bundle.tier_totals()["recorded"] == pytest.approx(400.0)  # lateness + processing
+
+
+def test_report_keeps_each_statement_tier_and_the_hash():
+    record = _record()
+    ref = RunRef(seed=record.seed, horizon_sec=record.horizon, policy=record.policy)
+    bundle = lateness_bundle(decompose(record.timeline, 0), ref)
+    report = build_report(bundle)
+    assert report["verified"] is True
+    assert report["content_hash"] == bundle.content_hash
+    assert {row["tier"] for row in report["statements"]}
+    assert all(row["sources"] or row["tier"] == "unknown" for row in report["statements"])
 
 
 def test_schema_rules():

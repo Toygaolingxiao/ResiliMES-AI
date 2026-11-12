@@ -772,7 +772,59 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `gantt.ctxTiers.rule_emergent` | result of the dispatch rule | 派工规则的结果 | ディスパッチ規則の結果 |
 | `gantt.ctxTiers.unknown` | unknown (no evidence) | 未知（无证据） | 不明（根拠なし） |
 | `gantt.ctxTimeout` | AI timed out: showing the rule-based answer | AI 超时：显示规则结果 | AI タイムアウト：ルールの結果を表示 |
-
+| `report.link` | Report | 报告 | 報告書 |
+| `report.title` | Explanation report | 说明报告 | 説明報告書 |
+| `report.lead` | Read-only. One lot or case. Each sentence shows its tier and its sources. The content_hash can be checked again later. | 只读。一次看一个批次或案例。每句话标出依据层级和来源。content_hash 可以事后再核对。 | 読み取り専用です。ロットまたはケースを1件ずつ示します。各文に根拠の層と出典を付けます。content_hash で後から照合できます。 |
+| `report.lot` | Lot | 批次 | ロット |
+| `report.seed` | Seed | 种子 | シード |
+| `report.horizon` | Run length | 运行时长 | 対象時間 |
+| `report.horizonUnit` | h | 小时 | 時間 |
+| `report.show` | Show | 显示 | 表示 |
+| `report.print` | Print | 打印 | 印刷 |
+| `report.loading` | Loading… | 读取中… | 読み込み中… |
+| `report.empty` | No late lot in this run. | 这次运行没有延误的批次。 | このランに遅れロットはありません。 |
+| `report.error` | Could not load: {msg} | 无法读取：{msg} | 読み込めませんでした：{msg} |
+| `report.back` | Back to the console | 返回控制台 | コンソールに戻る |
+| `report.schema` | Schema | 格式 | 形式 |
+| `report.hashLabel` | content_hash | content_hash | content_hash |
+| `report.verified` | Recomputed hash matches. | 重新计算的哈希一致。 | 再計算したハッシュと一致しました。 |
+| `report.mismatch` | Recomputed hash does not match. | 重新计算的哈希不一致。 | 再計算したハッシュと一致しません。 |
+| `report.checking` | Checking the hash… | 正在核对哈希… | ハッシュを照合しています… |
+| `report.coverage` | Share of the timed statements | 计时语句的占比 | 時間のある文の割合 |
+| `report.recorded` | Recorded | 记录 | 記録 |
+| `report.attributed` | Observed attribution | 观测归因 | 観測帰因 |
+| `report.unknown` | Unknown | 不明 | 不明 |
+| `report.what` | What happened | 发生了什么 | 何が起きたか |
+| `report.why` | Why | 为什么 | なぜか |
+| `report.whyNote` | Observed attribution splits recorded time by a fixed rule. It is not what the scheduler intended. | 观测归因是按固定规则把记录里的时间拆开。它不是排程当时的意图。 | 観測帰因は、記録された時間を決まった規則で分けたものです。当時の判断の意図ではありません。 |
+| `report.unconfirmed` | Not confirmed | 无法确认 | 確認できないこと |
+| `report.unconfirmedNote` | Where the record has no cause, the line stays unknown and names what is missing. | 记录里没有原因的，标为不明，并写明缺什么。 | 記録に理由がないものは不明とし、何が足りないかを書きます。 |
+| `report.sources` | Sources | 来源 | 出典 |
+| `report.missing` | Missing | 缺少 | 不足 |
+| `report.none` | None | 无 | なし |
+| `report.run` | Run | 运行 | ラン |
+| `report.subject` | Subject | 对象 | 対象 |
+| `report.kinds.lot` | Lot | 批次 | ロット |
+| `report.kinds.tool` | Tool | 设备 | 装置 |
+| `report.kinds.window` | Case | 案例 | ケース |
+| `report.seconds` | s | 秒 | 秒 |
+| `report.canonical` | JSON covered by the hash | 参与哈希的 JSON | ハッシュの対象 JSON |
+| `report.pick` | Choose a lot to show its report. | 选择一个批次后显示报告。 | ロットを選ぶと報告書を表示します。 |
+| `report.slow` | The first view records the run, so it can take a while. | 第一次显示要先记录这次运行，可能需要一些时间。 | 最初の表示は、ランを記録するため時間がかかります。 |
+| `report.lateness` | Lateness | 延误 | 遅れ |
+| `report.reasons.idleNoCause` | A tool was idle and the record has no cause (pin, gate, or wake latency). | 有空闲设备，但记录里没有原因（专用限制、门控或唤醒延迟）。 | 空いている装置はあったが、記録に理由がない（ピン、ゲート、または起動待ち）。 |
+| `report.buckets.processing` | processing | 加工 | 処理 |
+| `report.buckets.setup` | setup | 换线 | 段取り |
+| `report.buckets.transport` | transport | 搬送 | 搬送 |
+| `report.buckets.down` | tool down | 机台宕机 | 装置ダウン |
+| `report.buckets.pm` | PM | PM | PM |
+| `report.buckets.batch_wait` | waiting for a batch | 等待凑批 | バッチ待ち |
+| `report.buckets.lots_ahead` | lots ahead | 前方排队批次 | 先行ロット |
+| `report.buckets.qtime` | Q-time | Q-time | Q-time |
+| `report.buckets.ai_decision` | AI decision | AI 决策 | AI の判断 |
+| `report.buckets.dispatch_other` | other dispatch | 其他派工原因 | その他の払い出し要因 |
+| `report.buckets.release_hold` | release hold | 投料保留 | 投入保留 |
+| `report.buckets.late_at_snapshot` | already late at the start | 开始时已迟交 | 開始時点で遅延 |
 ## AI shift lead study progress (new, needs zh/ja review)
 
 The `shiftLead.*` keys label the study progress card in the console rail
