@@ -14,9 +14,9 @@ from dataclasses import asdict
 
 import pytest
 
-from resilimes.evidence.timeline import Timeline
-from resilimes.insight.gap_explainer import explain_gap
-from resilimes.insight.gaps import gaps_from_run
+from resilimes.explain.gap_explainer import explain_gap
+from resilimes.explain.gaps import gaps_from_run
+from resilimes.explain.record import Timeline
 from resilimes.smt.dispatch_log import DispatchRecord, GapRecorder
 from resilimes.smt.fab import Fab, load_fab
 from resilimes.smt.simulate import RunResult, make_sim, pm_windows, sample_downs

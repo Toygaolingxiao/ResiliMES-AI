@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-# Moved to resilimes.common.textfacts; re-exported here for old imports.
-from resilimes.common.textfacts import _ID, _NUMBER, _norm, _numbers, narrative_mismatches  # noqa: F401
+from resilimes.common.textfacts import _numbers
 from resilimes.domain.models import JobOutcome, KpiReport, Plant
 
 

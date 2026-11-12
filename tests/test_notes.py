@@ -191,7 +191,7 @@ def test_llm_output_with_hallucinated_name_is_caught_by_validation() -> None:
             return "test-fake"
 
         def complete(self, messages, *, lane, temperature=0.0):
-            from resilimes.llm.base import LlmResult
+            from resilimes.common.llm import LlmResult
 
             return LlmResult(
                 content=(

@@ -6,9 +6,9 @@ import json
 
 import pytest
 
-from resilimes.evidence.timeline import Timeline, Visit
-from resilimes.insight.gap_explainer import explain_gap
-from resilimes.insight.gaps import (
+from resilimes.common.llm import LlmResult
+from resilimes.explain.gap_explainer import explain_gap
+from resilimes.explain.gaps import (
     GapEvidence,
     GapReason,
     GapRecord,
@@ -16,7 +16,7 @@ from resilimes.insight.gaps import (
     find_gaps,
     gaps_from_run,
 )
-from resilimes.llm.base import LlmResult
+from resilimes.explain.record import Timeline, Visit
 from resilimes.smt.fab import Fab, load_fab
 
 

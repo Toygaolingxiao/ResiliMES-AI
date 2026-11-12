@@ -36,9 +36,9 @@ from typing import Any
 os.environ.setdefault("RESILIMES_SCHED_MODE", "strict_qtime")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from resilimes.common.llm import Completer, LlmResult
 from resilimes.evidence.toolkit import HOUR, Toolkit, record_run
 from resilimes.insight.context_investigation import ContextQuery, investigate_context
-from resilimes.llm.base import Completer, LlmResult
 
 FIXTURE = Path(__file__).resolve().parents[1] / "eval" / "context_questions.json"
 

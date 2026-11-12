@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from resilimes.agents.facts import fact_table, narrative_mismatches
+from resilimes.agents.facts import fact_table
 from resilimes.common.jsonutil import SchemaError, extract_json_object
+from resilimes.common.llm import Completer, LlmResult
+from resilimes.common.textfacts import narrative_mismatches
 from resilimes.domain.kpis import KpiReport
 from resilimes.domain.models import Plant
-from resilimes.llm.base import Completer, LlmResult
 
 _LANE = "feedback"
 

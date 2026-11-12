@@ -10,11 +10,12 @@ from typing import Any, cast
 from pydantic import BaseModel, Field
 
 from resilimes.agents.brief import refusal_brief, schedule_brief, status_brief
-from resilimes.agents.facts import degraded_call, fact_table, narrative_mismatches
+from resilimes.agents.facts import degraded_call, fact_table
 from resilimes.agents.narrative import narrate
 from resilimes.agents.planner import naive_alternative, reject_alternative
 from resilimes.agents.review_panel import run_review_panel
 from resilimes.agents.specialist import gather
+from resilimes.common.textfacts import narrative_mismatches
 from resilimes.config import Settings
 from resilimes.data.factory import build_source
 from resilimes.domain.checks import validate

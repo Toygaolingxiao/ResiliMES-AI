@@ -7,7 +7,7 @@ import json
 import re
 from typing import Any
 
-from resilimes.llm.base import LlmResult
+from resilimes.common.llm import LlmResult
 
 
 class MockProvider:

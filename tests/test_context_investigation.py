@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from resilimes.api.app import create_app
+from resilimes.common.llm import LlmResult
 from resilimes.config import HORIZON, Settings
 from resilimes.evidence.toolkit import HOUR, Toolkit, record_run
 from resilimes.insight.context_investigation import (
@@ -18,7 +19,6 @@ from resilimes.insight.context_investigation import (
 from resilimes.insight.injector import rebuild
 from resilimes.insight.investigator import TAXONOMY
 from resilimes.insight.study import load_cases
-from resilimes.llm.base import LlmResult
 from resilimes.smt.fab import load_fab
 
 

@@ -12,8 +12,8 @@ from openai import APIStatusError
 
 from resilimes.agents.orchestrator import _narrative_from_model
 from resilimes.api.app import create_app
+from resilimes.common.llm import LlmResult
 from resilimes.config import HORIZON, Settings
-from resilimes.llm.base import LlmResult
 from resilimes.llm.nightshift import NightshiftProvider, call_summary, strip_reasoning
 
 

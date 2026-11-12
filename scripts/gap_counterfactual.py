@@ -48,7 +48,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from resilimes.evidence.timeline import Timeline, build_timeline  # noqa: E402
+from resilimes.evidence.timeline import build_timeline  # noqa: E402
+from resilimes.explain.record import Timeline  # noqa: E402
 from resilimes.smt.dispatch_log import REASON_BATCH_WAIT, REASON_QTIME_GATE, GapRecorder  # noqa: E402
 from resilimes.smt.fab import Fab, load_fab  # noqa: E402
 from resilimes.smt.simulate import RunResult, make_sim, pm_windows, sample_downs  # noqa: E402

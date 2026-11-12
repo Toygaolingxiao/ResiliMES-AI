@@ -7,8 +7,8 @@ import json
 import pytest
 from tests.test_investigator import Scripted
 
-from resilimes.evidence.lateness import late_lots
 from resilimes.evidence.toolkit import HOUR, Toolkit, record_run
+from resilimes.explain.lateness import late_lots
 from resilimes.insight.explainer import exact_split, explain, verify
 from resilimes.insight.study import summarize_explainer
 from resilimes.smt.fab import load_fab

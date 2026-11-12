@@ -21,11 +21,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from resilimes.common.llm import Completer
+from resilimes.common.progress import Progress, redact
 from resilimes.config import ROOT, Settings, get_settings
 from resilimes.evidence.toolkit import HOUR, RecordedRun, Toolkit, record_run
 from resilimes.insight.injector import HORIZON_H, SEEDS, TAXONOMY, Case, make_case, rebuild
-from resilimes.insight.progress import Progress, redact
-from resilimes.llm.base import Completer
 from resilimes.smt.fab import Fab, load_fab
 
 CASES_PATH = ROOT / "eval" / "investigator_cases.json"
