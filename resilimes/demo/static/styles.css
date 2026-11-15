@@ -952,6 +952,15 @@ textarea:focus-visible { outline-offset: -2px; }
   align-items: start;
 }
 .analyze .wide { grid-column: 1 / -1; }
+.quality-view-toggle { margin-bottom: var(--s3); }
+.quality-report { display: grid; gap: 12px; align-content: start; }
+.quality-report .file-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.quality-report .file-row label { font-size: var(--text-label); font-weight: 600; }
+.quality-report .file-row input[type="file"] { font: inherit; font-size: var(--text-label); }
+.quality-report .quality-errors { color: var(--alarm-ink); }
+.quality-report .quality-errors li { overflow-wrap: anywhere; }
+.quality-report .rate-big { font-size: var(--text-kpi); font-weight: 300; line-height: 1.2; font-variant-numeric: tabular-nums; margin: 4px 0; }
+.quality-report .rate-den { color: var(--muted); font-size: var(--text-label); font-variant-numeric: tabular-nums; margin: 0; }
 .qtime-grid { display: grid; gap: 6px; }
 .qtime-row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-size: var(--text-body); }
 .qtime-list { margin: 8px 0 0; padding-left: 1.1em; color: var(--muted); font-size: var(--text-label); }
