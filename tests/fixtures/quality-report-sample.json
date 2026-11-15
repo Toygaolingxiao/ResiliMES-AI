@@ -1,0 +1,2927 @@
+{
+  "samples": [
+    {
+      "sample_id": "s01",
+      "tier": "recorded",
+      "predicted_cause": "litho_down",
+      "true_cause": "litho_down",
+      "confidence": 0.9
+    },
+    {
+      "sample_id": "s02",
+      "tier": "attributed",
+      "predicted_cause": "litho_down",
+      "true_cause": "litho_down",
+      "confidence": 0.8
+    },
+    {
+      "sample_id": "s03",
+      "tier": "attributed",
+      "predicted_cause": "etch_down",
+      "true_cause": "litho_down",
+      "confidence": 0.7
+    },
+    {
+      "sample_id": "s04",
+      "tier": "recorded",
+      "predicted_cause": "pm",
+      "true_cause": "pm",
+      "confidence": 0.95
+    },
+    {
+      "sample_id": "s05",
+      "tier": "attributed",
+      "predicted_cause": "material",
+      "true_cause": "material",
+      "confidence": 0.6
+    },
+    {
+      "sample_id": "s06",
+      "tier": "attributed",
+      "predicted_cause": "litho_down",
+      "true_cause": "queue_time",
+      "confidence": 0.55
+    },
+    {
+      "sample_id": "s07",
+      "tier": "unknown",
+      "predicted_cause": null,
+      "true_cause": "litho_down",
+      "confidence": null
+    },
+    {
+      "sample_id": "s08",
+      "tier": "unknown",
+      "predicted_cause": null,
+      "true_cause": "pm",
+      "confidence": null
+    },
+    {
+      "sample_id": "s09",
+      "tier": "unknown",
+      "predicted_cause": null,
+      "true_cause": "material",
+      "confidence": null
+    },
+    {
+      "sample_id": "s10",
+      "tier": "unknown",
+      "predicted_cause": null,
+      "true_cause": null,
+      "confidence": null
+    },
+    {
+      "sample_id": "s11",
+      "tier": "attributed",
+      "predicted_cause": "litho_down",
+      "true_cause": null,
+      "confidence": 0.75
+    },
+    {
+      "sample_id": "s12",
+      "tier": "recorded",
+      "predicted_cause": "pm",
+      "true_cause": "pm",
+      "confidence": null
+    }
+  ],
+  "valid": {
+    "metrics_version": "quality/v0",
+    "total_samples": 12,
+    "answered": 8,
+    "unknown_answers": 4,
+    "truth_known": 10,
+    "misattribution": {
+      "numerator": 2,
+      "denominator": 7,
+      "value": 0.2857142857142857
+    },
+    "over_unknown": {
+      "numerator": 3,
+      "denominator": 10,
+      "value": 0.3
+    },
+    "unknown_share": {
+      "numerator": 4,
+      "denominator": 12,
+      "value": 0.3333333333333333
+    },
+    "calibration_samples": 6,
+    "calibration_excluded_no_confidence": 1,
+    "calibration_bins": [
+      {
+        "lower": 0.0,
+        "upper": 0.1,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "lower": 0.1,
+        "upper": 0.2,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "lower": 0.2,
+        "upper": 0.3,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "lower": 0.3,
+        "upper": 0.4,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "lower": 0.4,
+        "upper": 0.5,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "lower": 0.5,
+        "upper": 0.6,
+        "count": 1,
+        "mean_confidence": 0.55,
+        "accuracy": 0.0
+      },
+      {
+        "lower": 0.6,
+        "upper": 0.7,
+        "count": 1,
+        "mean_confidence": 0.6,
+        "accuracy": 1.0
+      },
+      {
+        "lower": 0.7,
+        "upper": 0.8,
+        "count": 1,
+        "mean_confidence": 0.7,
+        "accuracy": 0.0
+      },
+      {
+        "lower": 0.8,
+        "upper": 0.9,
+        "count": 1,
+        "mean_confidence": 0.8,
+        "accuracy": 1.0
+      },
+      {
+        "lower": 0.9,
+        "upper": 1.0,
+        "count": 2,
+        "mean_confidence": 0.925,
+        "accuracy": 1.0
+      }
+    ],
+    "expected_calibration_error": 0.33333333333333326
+  },
+  "expected": {
+    "total_samples": 12,
+    "answered": 8,
+    "unknown_answers": 4,
+    "truth_known": 10,
+    "misattribution": {
+      "numerator": 2,
+      "denominator": 7,
+      "value": 0.2857142857142857
+    },
+    "over_unknown": {
+      "numerator": 3,
+      "denominator": 10,
+      "value": 0.3
+    },
+    "unknown_share": {
+      "numerator": 4,
+      "denominator": 12,
+      "value": 0.3333333333333333
+    },
+    "calibration_samples": 6,
+    "calibration_excluded_no_confidence": 1,
+    "expected_calibration_error": 0.33333333333333326,
+    "bin_counts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      2
+    ]
+  },
+  "edge": {
+    "wrong_version": {
+      "payload": {
+        "metrics_version": "quality/v1",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "numerator_exceeds": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 7,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "zero_denominator_with_value": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": 0.0
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "value_mismatch": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.5
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "missing_rate": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "bins_not_array": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": "x",
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "bin_count_negative": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": -1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "bin_accuracy_without_count": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": 0.5
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "bin_mean_without_count": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": 0.5,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "unknown_key": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326,
+        "extra_field": 1
+      },
+      "valid": false
+    },
+    "numeric_strings": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": "12",
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": "2",
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "empty_report": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 0,
+        "answered": 0,
+        "unknown_answers": 0,
+        "truth_known": 0,
+        "misattribution": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null
+        },
+        "over_unknown": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null
+        },
+        "unknown_share": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null
+        },
+        "calibration_samples": 0,
+        "calibration_excluded_no_confidence": 0,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          }
+        ],
+        "expected_calibration_error": null
+      },
+      "valid": true
+    },
+    "missing_bins": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "missing_version": {
+      "payload": {
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "ece_out_of_range": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 1.5
+      },
+      "valid": true
+    },
+    "bin_mean_out_of_range": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 1.5,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "float_count": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12.5,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "bins_short": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.5,
+            "count": 2,
+            "mean_confidence": 0.2,
+            "accuracy": 0.5
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.9,
+            "count": 3,
+            "mean_confidence": 0.7,
+            "accuracy": 0.6666666666666666
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 1,
+            "mean_confidence": 0.95,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "inconsistent_counts": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 2,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "inconsistent_bins": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 600,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "inconsistent_denominators": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 3,
+          "value": 1.0
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "bin_geometry": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.9,
+            "upper": 0.2,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": true
+    },
+    "top_level_array": {
+      "payload": [
+        1,
+        2,
+        3
+      ],
+      "valid": false
+    },
+    "missing_count": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "rate_not_object": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": "x",
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "mean_not_number": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": "abc",
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "zero_denominator_nonzero_numerator": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 3,
+          "denominator": 0,
+          "value": null
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    },
+    "missing_ece": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 12,
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ]
+      },
+      "valid": true
+    },
+    "missing_rate_value_zero_denominator": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": 0,
+        "answered": 0,
+        "unknown_answers": 0,
+        "truth_known": 0,
+        "misattribution": {
+          "numerator": 0,
+          "denominator": 0
+        },
+        "over_unknown": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null
+        },
+        "unknown_share": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null
+        },
+        "calibration_samples": 0,
+        "calibration_excluded_no_confidence": 0,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          }
+        ],
+        "expected_calibration_error": null
+      },
+      "valid": true
+    },
+    "exponent_int_string": {
+      "payload": {
+        "metrics_version": "quality/v0",
+        "total_samples": "1e3",
+        "answered": 8,
+        "unknown_answers": 4,
+        "truth_known": 10,
+        "misattribution": {
+          "numerator": 2,
+          "denominator": 7,
+          "value": 0.2857142857142857
+        },
+        "over_unknown": {
+          "numerator": 3,
+          "denominator": 10,
+          "value": 0.3
+        },
+        "unknown_share": {
+          "numerator": 4,
+          "denominator": 12,
+          "value": 0.3333333333333333
+        },
+        "calibration_samples": 6,
+        "calibration_excluded_no_confidence": 1,
+        "calibration_bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.1,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 0,
+            "mean_confidence": null,
+            "accuracy": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "count": 1,
+            "mean_confidence": 0.55,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "count": 1,
+            "mean_confidence": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "count": 1,
+            "mean_confidence": 0.7,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 1,
+            "mean_confidence": 0.8,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 2,
+            "mean_confidence": 0.925,
+            "accuracy": 1.0
+          }
+        ],
+        "expected_calibration_error": 0.33333333333333326
+      },
+      "valid": false
+    }
+  }
+}
