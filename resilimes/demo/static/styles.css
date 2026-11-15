@@ -28,6 +28,10 @@
   --amber-wash: #fcf4d6;
   --good: #198038;           /* up, on time, pass */
   --good-wash: #defbe6;
+  --recorded: #edf5ff;       /* evidence tier: recorded (same pair as report.css) */
+  --recorded-ink: #0043ce;
+  --unknown: #f4f4f4;        /* evidence tier: unknown */
+  --unknown-ink: #525252;
   --pm: #6f6f6f;             /* planned maintenance */
   --hot: #9f1853;            /* hot lot (magenta-70) */
   --hot-fill: #d02670;
@@ -1059,6 +1063,10 @@ html[data-theme="dark"] {
   --amber-wash: #302400;
   --good: #42be65;
   --good-wash: #071908;
+  --recorded: #001d6c;
+  --recorded-ink: #a6c8ff;
+  --unknown: #262626;
+  --unknown-ink: #c6c6c6;
   --pm: #a8a8a8;
   --hot: #ff7eb6;
   --hot-wash: #3a0a22;
@@ -1283,3 +1291,32 @@ details[open]::details-content { block-size: auto; }
 }
 .nt-rejected { margin: 6px 0; }
 .nt-gold li { color: var(--muted); }
+
+/* Cases page (ResiliTrace): lot-first follow-up list.
+   Severity badges reuse the DESIGN_SYSTEM §2.4 pairs; the non-colour
+   dimension is the 3px left edge, and severity always sits in the first
+   column while the evidence tier stays in the evidence column. Status
+   is plain text by design — never coloured red/green. */
+.cases { display: grid; gap: 12px; align-content: start; }
+.cases .file-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cases .file-row label { font-size: var(--text-label); font-weight: 600; }
+.cases .file-row input[type="file"] { font: inherit; font-size: var(--text-label); }
+.sev {
+  display: inline-block; padding: 0 6px; font-size: var(--text-micro);
+  border-left: 3px solid; white-space: nowrap;
+}
+.sev-critical { background: var(--alarm-wash); color: var(--alarm-ink); border-left-color: var(--alarm-ink); }
+.sev-major { background: var(--amber-wash); color: var(--amber); border-left-color: var(--amber); }
+.sev-minor { background: var(--recorded); color: var(--recorded-ink); border-left-color: var(--recorded-ink); }
+.sev-info { background: var(--unknown); color: var(--unknown-ink); border-left-color: var(--unknown-ink); }
+.cases .case-errors { color: var(--alarm-ink); }
+.cases .case-errors li { overflow-wrap: anywhere; }
+.cases .case-subhead { font-weight: 600; margin: 8px 0 0; font-size: var(--text-label); }
+.cases .case-notes, .cases .case-history { margin: 4px 0; padding-left: 1.3em; }
+.cases .case-notes li, .cases .case-history li { font-size: var(--text-label); }
+.cases tr.lot-detail > td, .cases tr.case-detail > td { background: var(--sheet); }
+.cases .filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cases .filter-row > span { font-size: var(--text-label); font-weight: 600; }
+.cases .case-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 8px 0; }
+.cases .case-facts dt { font-size: var(--text-label); font-weight: 600; }
+.cases .case-facts dd { margin: 0; overflow-wrap: anywhere; }
