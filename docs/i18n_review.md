@@ -29,6 +29,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `tabRecover` | Plan | 排程 | 計画 |
 | `tabAnalyze` | Metrics | 指标 | 指標 |
 | `tabVerify` | Checks | 校验 | 検証 |
+| `tabCases` | Cases | 案件 | 案件 |
 | `details` | Details | 详情 | 詳細 |
 | `now` | Now | 现在 | 現在 |
 | `due` | Due | 交期 | 納期 |
@@ -269,6 +270,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `tabRecoverTip` | The recovery for this shift | 本班怎么排 | 当直の計画 |
 | `tabAnalyzeTip` | On-time delivery and the other numbers | 准时率和其余数字 | 納期とその他の数字 |
 | `tabVerifyTip` | Every constraint on the plan | 这版计划的每条约束 | 計画が満たす制約 |
+| `tabCasesTip` | Late lots waiting for follow-up, worst first | 等跟进的迟交 lot，最重的在前 | フォロー待ちの遅れロット、重い順 |
 | `stepDetect` | Detect | 发现 | 検知 |
 | `stepData` | Read data | 读数 | データ参照 |
 | `stepPlan` | Plan | 排程 | 計画 |
@@ -845,6 +847,57 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `import.error` | Could not read: {msg} | 无法读取：{msg} | 読み込めませんでした：{msg} |
 | `import.back` | Back to the report | 返回报告 | 報告書に戻る |
 | `import.empty` | Choose a file. | 请选择文件。 | ファイルを選んでください。 |
+| `cases.title` | Cases | 案件 | 案件 |
+| `cases.lead` | One row per lot that has cases. Worst open severity first; a lot with no open case sorts last. | 每个有案件的 lot 一行。未关闭的最重严重度在前；没有未关闭案件的 lot 排最后。 | 案件のあるロットごと1行。未完了で最も重い深刻度が先、未完了案件のないロットは最後。 |
+| `cases.empty` | No case book loaded. | 尚未加载案件台账。 | 案件台帳は未読込です。 |
+| `cases.emptyWhy` | This page has no server data yet: load a CaseBook JSON file exported by cases.py (to_json). The book stays in memory only; reloading the page unloads it. | 本页尚无服务端数据：请加载 cases.py 导出的 CaseBook JSON 文件（to_json）。台账只保留在内存中，刷新页面即卸载。 | この画面にサーバーのデータはまだありません。cases.py が出す CaseBook JSON（to_json）を読み込んでください。台帳はメモリのみで、再読込すると消えます。 |
+| `cases.loadFile` | Load a CaseBook JSON file | 加载 CaseBook JSON 文件 | CaseBook JSON を読み込む |
+| `cases.loadHint` | The file must be a cases/v0 book: book_version, cases, next_seq. Invalid files are rejected with reasons, nothing is loaded. | 文件须为 cases/v0 台账：含 book_version、cases、next_seq。无效文件会列出原因并拒绝加载。 | cases/v0 の台帳であること（book_version、cases、next_seq）。無効なファイルは理由を示して読み込みません。 |
+| `cases.unload` | Unload | 取消加载 | 読込解除 |
+| `cases.loaded` | Loaded {name}: {total} cases, {lots} lots. | 已加载 {name}：{total} 个案件，{lots} 个 lot。 | {name} を読込：{total} 件、{lots} ロット。 |
+| `cases.fileError` | This file is not a valid cases/v0 book. Nothing was loaded. | 该文件不是有效的 cases/v0 台账，未加载任何内容。 | このファイルは有効な cases/v0 台帳ではありません。何も読み込みませんでした。 |
+| `cases.invalidJson` | Not valid JSON: {reason} | 不是有效的 JSON：{reason} | JSON として読めません：{reason} |
+| `cases.moreErrors` | {n} more errors | 另有 {n} 个错误 | 他に {n} 件の誤り |
+| `cases.summary` | {total} cases · {lots} lots · {open} unclosed | {total} 个案件 · {lots} 个 lot · {open} 个未关闭 | {total} 件 · {lots} ロット · 未完了 {open} 件 |
+| `cases.caseCount` | {n} cases | {n} 个案件 | {n} 件 |
+| `cases.colLot` | Lot | Lot | ロット |
+| `cases.colWorstOpen` | Worst open | 最重未关闭 | 未完了の最重 |
+| `cases.colOpen` | Unclosed | 未关闭 | 未完了 |
+| `cases.colTotal` | Cases | 案件数 | 件数 |
+| `cases.colUpdated` | Updated | 更新 | 更新 |
+| `cases.colCase` | Case | 案件 | 案件 |
+| `cases.colTitle` | Title | 标题 | 件名 |
+| `cases.colSeverity` | Severity | 严重度 | 深刻度 |
+| `cases.colStatus` | Status | 状态 | 状態 |
+| `cases.colLateness` | Late by | 迟到时长 | 遅れ |
+| `cases.colEvidence` | Evidence hash | 证据哈希 | 証拠ハッシュ |
+| `cases.colRun` | Run | Run | Run |
+| `cases.colNotes` | Notes | 备注 | 備考 |
+| `cases.colHistory` | History | 变迁 | 履歴 |
+| `cases.noHash` | no evidence hash | 无证据哈希 | 証拠ハッシュなし |
+| `cases.sealNote` | Evidence hashes and case seals are shown, not verified on this page. Seal checks run in cases.py (verify_all); a server endpoint is still missing. | 证据哈希与案件封印只展示、不在本页校验。封存校验在 cases.py（verify_all）中进行；服务端接口尚未接入。 | 証拠ハッシュと案件の封印は表示のみで、この画面では検証しません。封印確認は cases.py（verify_all）で行います。サーバー側エンドポイントは未整備です。 |
+| `cases.noNotes` | No notes. | 无备注。 | 備考なし。 |
+| `cases.noHistory` | No history recorded. | 无变迁记录。 | 履歴なし。 |
+| `cases.latenessUnknown` | unknown | 未知 | 不明 |
+| `cases.sortNote` | Lots sort by worst open severity, then open count, then lot id. Resolved or dismissed cases never drive the order. | 按最重未关闭严重度排序，其次按未关闭数，再按 lot id。已解决或已驳回的案件不参与排序。 | 未完了で最も重い深刻度、次に未完了件数、次にロットIDの順。解決・却下済みの案件は順序に影響しません。 |
+| `cases.severity.critical` | Critical | 紧急 | 緊急 |
+| `cases.severity.major` | Major | 重大 | 重大 |
+| `cases.severity.minor` | Minor | 轻微 | 軽微 |
+| `cases.severity.info` | Info | 信息 | 情報 |
+| `cases.status.open` | Open | 未处理 | 未対応 |
+| `cases.status.investigating` | Investigating | 调查中 | 調査中 |
+| `cases.status.resolved` | Resolved | 已解决 | 解決済み |
+| `cases.status.dismissed` | Dismissed | 已驳回 | 却下 |
+| `cases.colSeal` | Case seal | 案件封印 | 案件の封印 |
+| `cases.colCreated` | Opened | 建案 | 作成 |
+| `cases.unverified` | Unverified file: contents are shown as loaded; seals are not checked. | 未验证文件：内容按加载原样展示，未校验封印。 | 未検証のファイル：内容は読み込んだまま表示し、封印は確認していません。 |
+| `cases.filterBy` | Status: | 状态： | 状態： |
+| `cases.filterAll` | All | 全部 | すべて |
+| `cases.filterNote` | Showing lots with {status} cases. | 仅显示有{status}案件的 lot。 | {status} の案件があるロットのみ表示。 |
+| `cases.lessThanMinute` | < 1 min | < 1 分钟 | < 1分 |
+| `cases.emptyLots` | This book has no cases. | 该台账没有案件。 | この台帳に案件はありません。 |
+| `cases.capped` | Showing the first {shown} of {total} cases in this lot. | 本 lot 仅显示前 {shown} 个案件，共 {total} 个。 | このロットは {total} 件中先頭 {shown} 件のみ表示。 |
+| `cases.fileTooLarge` | File is too large ({mb} MB). CaseBook files must be under 5 MB. | 文件过大（{mb} MB），CaseBook 文件须小于 5 MB。 | ファイルが大きすぎます（{mb} MB）。CaseBook は 5 MB 未満にしてください。 |
 ## AI shift lead study progress (new, needs zh/ja review)
 
 The `shiftLead.*` keys label the study progress card in the console rail
