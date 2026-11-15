@@ -827,6 +827,47 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `report.buckets.dispatch_other` | other dispatch | 其他派工原因 | その他の払い出し要因 |
 | `report.buckets.release_hold` | release hold | 投料保留 | 投入保留 |
 | `report.buckets.late_at_snapshot` | already late at the start | 开始时已迟交 | 開始時点で遅延 |
+| `quality.viewKpi` | Scheduler KPIs | 排程 KPI | 排程KPI |
+| `quality.viewTrust` | Trust metrics | 信任度量 | 信頼度量 |
+| `quality.trustTitle` | Trust metrics (quality/v0) | 信任度量（quality/v0） | 信頼度量（quality/v0） |
+| `quality.trustLead` | How often the explainer is wrong, how often it says unknown, and whether its confidence means what it says. Every rate carries its own denominator. | 解释器说错的频率、说不知道的频率、置信是否名副其实。每个比率都带着自己的分母。 | 説明器の誤り頻度、不明と答えた頻度、確信度がどれだけ当てになるか。すべての比率は分母付きです。 |
+| `quality.loadFile` | Load a QualityReport JSON file | 加载 QualityReport JSON 文件 | QualityReport JSON を読み込む |
+| `quality.loadHint` | The file must be a quality/v0 report: metrics_version, totals, the three rates, calibration bins. Invalid files are rejected with reasons, nothing is loaded. | 文件须为 quality/v0 报告：含 metrics_version、合计、三项比率、校准分箱。无效文件会列出原因并拒绝加载。 | quality/v0 のレポートであること（metrics_version、合計、3つの比率、較正ビン）。無効なファイルは理由を示して読み込みを拒否します。 |
+| `quality.unload` | Unload | 取消加载 | 読み込みを解除 |
+| `quality.loaded` | Loaded {name}: {total} samples, {truth} with known truth. | 已加载 {name}：{total} 个样本，{truth} 个真值已知。 | {name} を読込：{total} サンプル、真値あり {truth} 件。 |
+| `quality.fileError` | This file is not a valid quality/v0 report. Nothing was loaded. | 该文件不是有效的 quality/v0 报告，未加载任何内容。 | このファイルは有効な quality/v0 レポートではありません。何も読み込みませんでした。 |
+| `quality.fileErrorNext` | Next step: re-export with resilimes.explain.quality.evaluate() and check metrics_version is quality/v0. | 下一步：用 resilimes.explain.quality.evaluate() 重新导出，并确认 metrics_version 为 quality/v0。 | 次の手順：resilimes.explain.quality.evaluate() で再出力し、metrics_version が quality/v0 であることを確認してください。 |
+| `quality.invalidJson` | Not valid JSON: {reason} | 不是有效的 JSON：{reason} | JSON として読めません：{reason} |
+| `quality.fileTooLarge` | File is too large ({mb} MB). The limit is 5 MB. | 文件过大（{mb} MB），上限为 5 MB。 | ファイルが大きすぎます（{mb} MB）。上限は 5 MB です。 |
+| `quality.moreErrors` | {n} more errors. | 另有 {n} 条错误。 | 他に {n} 件のエラーがあります。 |
+| `quality.empty` | No quality report loaded. | 尚未加载品质报告。 | 品質レポートは未読込です。 |
+| `quality.emptyWhy` | This view has no server data yet: export a QualityReport with resilimes.explain.quality.evaluate() and load the JSON here. The report stays in memory only; reloading the page unloads it. No measured report exists yet — the fault-injection benchmark adapter is a later increment (dev-queue item 1). The quality/v0 implementation lands with PR #88; see docs/QUALITY_METRICS.md for what each rate means. | 本视图尚无服务端数据：用 resilimes.explain.quality.evaluate() 导出 QualityReport 后在此加载 JSON。报告只保留在内存中，刷新页面即卸载。目前尚无实测报告——故障注入基准适配是后续增量（开发队列第 1 项）。quality/v0 实现随 PR #88 合入；各比率含义见 docs/QUALITY_METRICS.md。 | この表示にサーバーのデータはまだありません。resilimes.explain.quality.evaluate() で QualityReport を出し、JSON をここで読み込んでください。レポートはメモリのみで、再読込すると消えます。実測レポートはまだありません。故障注入ベンチマークのアダプタは後の増分です（開発キュー第1項）。quality/v0 の実装は PR #88 とともに入ります。各比率の意味は docs/QUALITY_METRICS.md を参照してください。 |
+| `quality.unverified` | Unverified file: the numbers are shown exactly as the file reports them. This page does not recompute them, and a hand-written file is indistinguishable from a real export. | 未验证文件：数字按文件所报原样展示，本页不重算；手写文件与真实导出无法区分。 | 未検証ファイル：数字はファイルの報告どおりに表示します。この画面では再計算しません。手書きのファイルと本物のエクスポートは区別できません。 |
+| `quality.unverifiedShort` | Unverified file — shown as reported. | 未验证文件——按所报展示。 | 未検証ファイル——報告どおり表示。 |
+| `quality.misattribution` | Misattribution rate | 误归因率 | 誤帰因率 |
+| `quality.misattributionNote` | Of the answers that named a cause and whose truth is known, how many named the wrong cause. | 在给出归因且真值已知的回答中，说错原因的比例。 | 原因を挙げ、真値が判明している回答のうち、原因を間違えた割合。 |
+| `quality.overUnknown` | Over-unknown rate | 过度不明率 | 過度不明率 |
+| `quality.overUnknownNote` | Of the samples whose truth is known, how many the system still answered unknown. | 在真值已知的样本中，系统仍答不知道的比例。 | 真値が判明しているサンプルのうち、システムが不明と答えた割合。 |
+| `quality.unknownShare` | Unknown share | 不明占比 | 不明の割合 |
+| `quality.unknownShareNote` | Of all samples, how many were answered unknown. A description, not a quality verdict. | 在全部样本中，答不知道的占比。这是描述统计，不是质量结论。 | 全サンプルのうち、不明と答えた割合。説明統計であり、品質の判定ではありません。 |
+| `quality.calibrationTitle` | Confidence calibration | 置信校准 | 確信度較正 |
+| `quality.ece` | Expected calibration error | 期望校准误差 | 期待較正誤差 |
+| `quality.eceDef` | Mean of \|accuracy − mean confidence\| across bins, weighted by bin size. Smaller means confidence means what it says; there is no pass/fail threshold yet. | 各箱 \|准确率 − 平均置信\| 按样本量加权平均。越小表示置信越名副其实；暂无通过/不通过阈值。 | 各ビンの \|正解率 − 平均確信度\| を件数で加重平均したもの。小さいほど確信度が当てになることを示します。合否のしきい値はまだありません。 |
+| `quality.noSamples` | No samples | 无样本 | サンプルなし |
+| `quality.binRange` | Confidence bin | 置信区间 | 確信度ビン |
+| `quality.binCount` | Samples | 样本件数 | サンプル件数 |
+| `quality.binMean` | Mean confidence | 平均置信 | 平均確信度 |
+| `quality.binAccuracy` | Accuracy | 准确率 | 正解率 |
+| `quality.countsTitle` | Sample counts | 样本计数 | サンプル数 |
+| `quality.totalSamples` | Total samples | 样本总数 | 総サンプル |
+| `quality.answered` | Answered | 已回答 | 回答あり |
+| `quality.unknownAnswers` | Unknown answers | 不明回答 | 不明回答 |
+| `quality.truthKnown` | Truth known | 真值已知 | 真値あり |
+| `quality.noBins` | No calibration bins in this report. | 本报告无校准分箱。 | このレポートに較正ビンはありません。 |
+| `quality.misattributionDen` | {num} of {den} answers that named a cause, with known truth | {den} 个给出归因且真值已知的回答中有 {num} 个 | 原因を挙げ、真値が判明している {den} 件のうち {num} 件 |
+| `quality.overUnknownDen` | {num} of {den} with known truth | {den} 个真值已知样本中有 {num} 个 | 真値あり {den} 件のうち {num} 件 |
+| `quality.unknownShareDen` | {num} of {den} samples | {den} 个样本中有 {num} 个 | {den} 件のうち {num} 件 |
+| `quality.calibrationNote` | {n} calibration samples · {excluded} judged answers without confidence were excluded from the bins. | 共 {n} 个校准样本 · {excluded} 个有判定无置信的回答未进分箱。 | 較正サンプル {n} 件 · 確信度なしの判定済み回答 {excluded} 件はビン対象外。 |
 | `import.link` | Import | 导入 | 取り込み |
 | `import.title` | Import an event log | 导入事件日志 | イベントログの取り込み |
 | `import.lead` | Read a MES-style event log (CSV or JSON lines). The page says whether the file can support a recorded decision, only observed attribution, or is missing required fields. It does not change the schedule. | 读取 MES 风格的事件日志（CSV 或 JSON 行）。页面会说明这份文件能支持记录层的判断、只能做到观测归因，还是缺了必填项。不会改动排程。 | MES 形式のイベントログ（CSV または JSON 行）を読みます。判断の記録があるか、出来事と時刻だけか、必須項目が足りないかを示します。スケジュールは変えません。 |
