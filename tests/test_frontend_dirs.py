@@ -5,6 +5,7 @@ The console route and the old script URLs still respond.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -65,3 +66,50 @@ def test_pages_are_split_and_the_console_route_still_works() -> None:
     assert "window.Fab" in overview.text
     assert client.get("/report").status_code == 200
     assert client.get("/import").status_code == 200
+
+
+def test_quality_report_page_wiring() -> None:
+    index = (STATIC / "index.html").read_text(encoding="utf-8")
+    assert "/assets/product/quality/quality-report.js" in index
+    # The trust view loads before quality.js, which calls into it.
+    assert index.index("/assets/product/quality/quality-report.js") < index.index(
+        "/assets/product/quality/quality.js"
+    )
+    report_js = (STATIC / "product/quality/quality-report.js").read_text(encoding="utf-8")
+    assert "function validateQualityReport" in report_js
+    assert "function normalizeQualityReport" in report_js
+    assert "function paintQualityReport" in report_js
+    assert "function qualityViewToggle" in report_js
+    quality_js = (STATIC / "product/quality/quality.js").read_text(encoding="utf-8")
+    assert "state.qualityView" in quality_js
+    assert "paintQualityReport()" in quality_js
+    assert "qualityViewToggle()" in quality_js
+    client = TestClient(
+        create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="x"))
+    )
+    served = client.get("/assets/product/quality/quality-report.js")
+    assert served.status_code == 200
+    assert "function validateQualityReport" in served.text
+    served_quality = client.get("/assets/product/quality/quality.js")
+    assert served_quality.status_code == 200
+    assert "function paintAnalyze" in served_quality.text
+    page = client.get("/")
+    assert page.status_code == 200
+    assert "/assets/product/quality/quality-report.js" in page.text
+    # The trust view's strings and styles exist in all three languages.
+    i18n = json.loads((STATIC / "i18n.json").read_text(encoding="utf-8"))
+    for lang in ("en", "zh", "ja"):
+        quality = i18n[lang]["quality"]
+        for key in (
+            "viewKpi",
+            "viewTrust",
+            "ece",
+            "eceDef",
+            "unverifiedShort",
+            "fileErrorNext",
+            "misattributionDen",
+        ):
+            assert quality[key]
+    styles = (STATIC / "styles.css").read_text(encoding="utf-8")
+    assert ".quality-report" in styles
+    assert ".rate-big" in styles
