@@ -168,3 +168,13 @@ def test_fact_check_and_sql_guard():
     assert check("Init_Lot_9_99 waited 43 min.", registry)
     with pytest.raises(SqlRejected):
         guard("DELETE FROM x")
+
+
+def test_fact_registry_provenance_round_trip():
+    registry = FactRegistry()
+    registry.add({"lot": "Init_Lot_3_17", "wait_min": 42}, source="tool:investigator row 3")
+    assert registry.sources("id", "Init_Lot_3_17") == ("tool:investigator row 3",)
+    assert registry.sources("number", "42") == ("tool:investigator row 3",)
+    assert check("Init_Lot_3_17 waited 42 min.", registry) == []
+    snapshot = registry.provenance()
+    assert snapshot["ids"]["INIT_LOT_3_17"] == ["tool:investigator row 3"]
