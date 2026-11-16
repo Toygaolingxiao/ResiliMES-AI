@@ -28,7 +28,8 @@ rule or the bin edges is a new version, not an edit.
 
 from __future__ import annotations
 
-from typing import Iterable, Literal
+from collections.abc import Iterable
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -55,13 +56,9 @@ class AttributionSample(BaseModel):
     @model_validator(mode="after")
     def _tier_matches_prediction(self) -> AttributionSample:
         if self.tier == "unknown" and self.predicted_cause is not None:
-            raise ValueError(
-                f"{self.sample_id}: an unknown answer cannot carry a predicted cause"
-            )
+            raise ValueError(f"{self.sample_id}: an unknown answer cannot carry a predicted cause")
         if self.tier != "unknown" and self.predicted_cause is None:
-            raise ValueError(
-                f"{self.sample_id}: a {self.tier} answer needs a predicted cause"
-            )
+            raise ValueError(f"{self.sample_id}: a {self.tier} answer needs a predicted cause")
         return self
 
     @property
@@ -159,13 +156,18 @@ def evaluate(samples: Iterable[AttributionSample]) -> QualityReport:
     bins: list[CalibrationBin] = []
     ece = 0.0
     for idx in range(BIN_COUNT):
-        members = [s for s in calib_rows if _bin_index(s.confidence) == idx]  # type: ignore[arg-type]
+        members = [
+            s for s in calib_rows if s.confidence is not None and _bin_index(s.confidence) == idx
+        ]
         lower = idx / BIN_COUNT
         upper = (idx + 1) / BIN_COUNT
         if not members:
             bins.append(CalibrationBin(lower=lower, upper=upper, count=0))
             continue
-        mean_conf = sum(s.confidence for s in members) / len(members)  # type: ignore[arg-type]
+        # start=0.0 selects the float overload; the default start is an int.
+        mean_conf = sum((s.confidence for s in members if s.confidence is not None), 0.0) / len(
+            members
+        )
         accuracy = sum(1 for s in members if s.correct) / len(members)
         bins.append(
             CalibrationBin(

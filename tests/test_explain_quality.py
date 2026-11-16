@@ -17,8 +17,13 @@ from resilimes.explain.quality import (
 
 
 def _sample(**kw) -> AttributionSample:
-    base = dict(sample_id="s", tier="attributed", predicted_cause="tool_down",
-                true_cause="tool_down", confidence=None)
+    base = dict(
+        sample_id="s",
+        tier="attributed",
+        predicted_cause="tool_down",
+        true_cause="tool_down",
+        confidence=None,
+    )
     base.update(kw)
     return AttributionSample(**base)
 
@@ -82,14 +87,28 @@ def test_tier_prediction_contradiction_is_rejected():
 def test_calibration_bins_and_ece_match_hand_computation():
     samples = [
         # bin [0.9, 1.0]: confidence 0.9, one right one wrong
-        _sample(sample_id="c1", predicted_cause="tool_down", true_cause="tool_down", confidence=0.9),
-        _sample(sample_id="c2", predicted_cause="pm_in_peak", true_cause="tool_down", confidence=0.9),
+        _sample(
+            sample_id="c1", predicted_cause="tool_down", true_cause="tool_down", confidence=0.9
+        ),
+        _sample(
+            sample_id="c2", predicted_cause="pm_in_peak", true_cause="tool_down", confidence=0.9
+        ),
         # confidence exactly 1.0 lands in the last bin too
-        _sample(sample_id="c3", predicted_cause="tool_down", true_cause="tool_down", confidence=1.0),
+        _sample(
+            sample_id="c3", predicted_cause="tool_down", true_cause="tool_down", confidence=1.0
+        ),
         # no confidence: excluded from calibration, counted apart
-        _sample(sample_id="c4", predicted_cause="tool_down", true_cause="tool_down", confidence=None),
+        _sample(
+            sample_id="c4", predicted_cause="tool_down", true_cause="tool_down", confidence=None
+        ),
         # unknown answer with a confidence is not a calibration sample
-        _sample(sample_id="c5", tier="unknown", predicted_cause=None, true_cause="tool_down", confidence=0.3),
+        _sample(
+            sample_id="c5",
+            tier="unknown",
+            predicted_cause=None,
+            true_cause="tool_down",
+            confidence=0.3,
+        ),
     ]
     report = evaluate(samples)
     assert report.calibration_samples == 3
@@ -105,8 +124,12 @@ def test_calibration_bins_and_ece_match_hand_computation():
 
 def test_calibration_spans_bins_and_weights_by_count():
     samples = [
-        _sample(sample_id="lo", predicted_cause="tool_down", true_cause="tool_down", confidence=0.15),
-        _sample(sample_id="hi", predicted_cause="pm_in_peak", true_cause="tool_down", confidence=0.85),
+        _sample(
+            sample_id="lo", predicted_cause="tool_down", true_cause="tool_down", confidence=0.15
+        ),
+        _sample(
+            sample_id="hi", predicted_cause="pm_in_peak", true_cause="tool_down", confidence=0.85
+        ),
     ]
     report = evaluate(samples)
     low_bin = report.calibration_bins[1]
