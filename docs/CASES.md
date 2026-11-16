@@ -62,9 +62,11 @@ open ──► investigating ──► resolved ──► open（重开）
 不是终态：任何案件都可重开，重开同样记入 `history`。
 
 `history` 自创建事件起是一条链：首条 `previous` 为 `None`、状态为
-`open`，后续每条的 `previous` 等于上一条的状态，末条状态等于案件
-当前状态。直接构造或 `from_json` 导入不满足该链的数据会被拒绝；
-`transition` 只在 API 路径上 enforce，模型层同样校验。
+`open`，后续每条的 `previous` 等于上一条的状态，且该步必须是上表允许的
+变迁，末条状态等于案件当前状态。链是连续的但走了非法边（例如
+`resolved → investigating`）同样拒绝。直接构造或 `from_json` 导入
+不满足该链的数据会被拒绝。尚无 history 的 `open` 案件在第一次
+`transition` 时补上创建事件，补完后的记录同样通过这条校验。
 
 ## lot-first 列表接口（`CaseBook`）
 

@@ -87,12 +87,20 @@ def test_suggest_severity_thresholds() -> None:
 def test_add_case_assigns_sequential_ids_and_seals() -> None:
     book = CaseBook()
     book, first = book.add_case(
-        lot="LOT-1", run=RUN, title="late", severity="major",
-        severity_reason="120 min late blocks the next step", created_at=T0,
+        lot="LOT-1",
+        run=RUN,
+        title="late",
+        severity="major",
+        severity_reason="120 min late blocks the next step",
+        created_at=T0,
     )
     book, second = book.add_case(
-        lot="LOT-1", run=RUN, title="late again", severity="minor",
-        severity_reason="5 min late", created_at=T0,
+        lot="LOT-1",
+        run=RUN,
+        title="late again",
+        severity="minor",
+        severity_reason="5 min late",
+        created_at=T0,
     )
     assert first.case_id == "case-0001"
     assert second.case_id == "case-0002"
@@ -100,15 +108,17 @@ def test_add_case_assigns_sequential_ids_and_seals() -> None:
     assert first.verify() and second.verify()
     assert first.status == "open"
     assert len(first.history) == 1
-    assert first.history[0] == StatusEvent(
-        previous=None, status="open", at=T0, note="created"
-    )
+    assert first.history[0] == StatusEvent(previous=None, status="open", at=T0, note="created")
 
 
 def test_add_case_auto_reason_from_suggestion() -> None:
-    book, case = CaseBook().add_case(
-        lot="LOT-1", run=RUN, title="late", severity="critical",
-        lateness_min=150.0, created_at=T0,
+    _book, case = CaseBook().add_case(
+        lot="LOT-1",
+        run=RUN,
+        title="late",
+        severity="critical",
+        lateness_min=150.0,
+        created_at=T0,
     )
     assert case.severity_reason == "suggested from lateness 150 min -> critical"
     assert case.verify()
@@ -119,18 +129,30 @@ def test_add_case_auto_reason_refuses_mismatch() -> None:
     # contradiction, not an audit trail: it must be an explicit reason.
     with pytest.raises(ValueError, match="differs from the suggestion"):
         CaseBook().add_case(
-            lot="LOT-1", run=RUN, title="late", severity="minor",
-            lateness_min=150.0, created_at=T0,
+            lot="LOT-1",
+            run=RUN,
+            title="late",
+            severity="minor",
+            lateness_min=150.0,
+            created_at=T0,
         )
     with pytest.raises(ValueError, match="differs from the suggestion"):
         CaseBook().add_case(
-            lot="LOT-1", run=RUN, title="late", severity="critical",
-            lateness_min=5.0, created_at=T0,
+            lot="LOT-1",
+            run=RUN,
+            title="late",
+            severity="critical",
+            lateness_min=5.0,
+            created_at=T0,
         )
-    book, case = CaseBook().add_case(
-        lot="LOT-1", run=RUN, title="late", severity="minor",
+    _book, case = CaseBook().add_case(
+        lot="LOT-1",
+        run=RUN,
+        title="late",
+        severity="minor",
         severity_reason="human override: 150 min but the lot recovered",
-        lateness_min=150.0, created_at=T0,
+        lateness_min=150.0,
+        created_at=T0,
     )
     assert case.severity == "minor"
     assert case.verify()
@@ -138,9 +160,7 @@ def test_add_case_auto_reason_refuses_mismatch() -> None:
 
 def test_add_case_requires_reason_when_lateness_unknown() -> None:
     with pytest.raises(ValueError, match="severity_reason is required"):
-        CaseBook().add_case(
-            lot="LOT-1", run=RUN, title="watch", severity="info", created_at=T0
-        )
+        CaseBook().add_case(lot="LOT-1", run=RUN, title="watch", severity="info", created_at=T0)
 
 
 def test_add_case_rejects_empty_fields_and_multiline_title() -> None:
@@ -156,8 +176,13 @@ def test_add_case_rejects_empty_fields_and_multiline_title() -> None:
 
 def test_add_case_normalises_lot_whitespace() -> None:
     book, case = CaseBook().add_case(
-        lot=" LOT-1 ", run=RUN, title="t", severity="minor",
-        severity_reason="r", lateness_min=5.0, created_at=T0,
+        lot=" LOT-1 ",
+        run=RUN,
+        title="t",
+        severity="minor",
+        severity_reason="r",
+        lateness_min=5.0,
+        created_at=T0,
     )
     assert case.lot == "LOT-1"
     assert book.cases_for_lot("LOT-1") == (case,)
@@ -168,28 +193,53 @@ def test_add_case_rejects_negative_and_nonfinite_lateness_and_bad_hash() -> None
     for bad in (-5.0, math.nan, math.inf):
         with pytest.raises(ValidationError):
             CaseBook().add_case(
-                lot="LOT-1", run=RUN, title="t", severity="minor",
-                severity_reason="r", lateness_min=bad, created_at=T0,
+                lot="LOT-1",
+                run=RUN,
+                title="t",
+                severity="minor",
+                severity_reason="r",
+                lateness_min=bad,
+                created_at=T0,
             )
     with pytest.raises(ValidationError, match="evidence_hash"):
         CaseBook().add_case(
-            lot="LOT-1", run=RUN, title="t", severity="minor",
-            severity_reason="r", evidence_hash="not-a-hash", created_at=T0,
+            lot="LOT-1",
+            run=RUN,
+            title="t",
+            severity="minor",
+            severity_reason="r",
+            evidence_hash="not-a-hash",
+            created_at=T0,
         )
     with pytest.raises(ValidationError, match="evidence_hash"):
         CaseBook().add_case(
-            lot="LOT-1", run=RUN, title="t", severity="minor",
-            severity_reason="r", evidence_hash="sha256:xyz", created_at=T0,
+            lot="LOT-1",
+            run=RUN,
+            title="t",
+            severity="minor",
+            severity_reason="r",
+            evidence_hash="sha256:xyz",
+            created_at=T0,
         )
     with pytest.raises(ValidationError, match="evidence_hash"):
         # Uppercase hex is rejected; EvidenceBundle produces lowercase.
         CaseBook().add_case(
-            lot="LOT-1", run=RUN, title="t", severity="minor",
-            severity_reason="r", evidence_hash="sha256:" + "A" * 64, created_at=T0,
+            lot="LOT-1",
+            run=RUN,
+            title="t",
+            severity="minor",
+            severity_reason="r",
+            evidence_hash="sha256:" + "A" * 64,
+            created_at=T0,
         )
-    book, case = CaseBook().add_case(
-        lot="LOT-1", run=RUN, title="t", severity="minor",
-        severity_reason="r", evidence_hash=GOOD_HASH, created_at=T0,
+    _book, case = CaseBook().add_case(
+        lot="LOT-1",
+        run=RUN,
+        title="t",
+        severity="minor",
+        severity_reason="r",
+        evidence_hash=GOOD_HASH,
+        created_at=T0,
     )
     assert case.evidence_hash == GOOD_HASH
 
@@ -197,16 +247,25 @@ def test_add_case_rejects_negative_and_nonfinite_lateness_and_bad_hash() -> None
 def test_add_case_rejects_string_notes() -> None:
     with pytest.raises(TypeError, match="tuple of strings"):
         CaseBook().add_case(
-            lot="LOT-1", run=RUN, title="t", severity="minor",
-            severity_reason="r", lateness_min=5.0,
+            lot="LOT-1",
+            run=RUN,
+            title="t",
+            severity="minor",
+            severity_reason="r",
+            lateness_min=5.0,
             notes="check pump",  # type: ignore[arg-type]
             created_at=T0,
         )
     with pytest.raises(ValidationError):
         CaseBook().add_case(
-            lot="LOT-1", run=RUN, title="t", severity="minor",
-            severity_reason="r", lateness_min=5.0,
-            notes=("",), created_at=T0,
+            lot="LOT-1",
+            run=RUN,
+            title="t",
+            severity="minor",
+            severity_reason="r",
+            lateness_min=5.0,
+            notes=("",),
+            created_at=T0,
         )
 
 
@@ -221,7 +280,7 @@ def test_timestamps_must_carry_a_timezone() -> None:
 
 
 def test_case_hash_stable_and_tamper_evident() -> None:
-    book, (case,) = _book_with(("LOT-1", "major", 45.0))
+    _book, (case,) = _book_with(("LOT-1", "major", 45.0))
     again = Case.model_validate(case.model_dump(mode="json"))
     assert again.content_hash == case.content_hash
     assert again.verify()
@@ -284,8 +343,11 @@ def test_resolved_can_be_dismissed_and_dismissed_can_be_investigated() -> None:
 )
 def test_transitions_illegal_are_rejected(from_status: str, to_status: str) -> None:
     book, (case,) = _book_with(("LOT-1", "major", 45.0))
-    path = {"investigating": ["investigating"], "resolved": ["resolved"],
-            "dismissed": ["dismissed"]}.get(from_status, [])
+    path = {
+        "investigating": ["investigating"],
+        "resolved": ["resolved"],
+        "dismissed": ["dismissed"],
+    }.get(from_status, [])
     for step in path:
         book = book.transition(case.case_id, step, at=T1)  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="cannot move"):
@@ -319,19 +381,36 @@ def test_add_note_appends_without_status_change() -> None:
 def test_cases_for_lot_orders_by_severity_then_age() -> None:
     book = CaseBook()
     book, minor = book.add_case(
-        lot="LOT-1", run=RUN, title="m", severity="minor",
-        severity_reason="r", lateness_min=5.0, created_at=T0,
+        lot="LOT-1",
+        run=RUN,
+        title="m",
+        severity="minor",
+        severity_reason="r",
+        lateness_min=5.0,
+        created_at=T0,
     )
     book, critical = book.add_case(
-        lot="LOT-1", run=RUN, title="c", severity="critical",
-        severity_reason="r", lateness_min=200.0, created_at=T1,
+        lot="LOT-1",
+        run=RUN,
+        title="c",
+        severity="critical",
+        severity_reason="r",
+        lateness_min=200.0,
+        created_at=T1,
     )
     book, major = book.add_case(
-        lot="LOT-1", run=RUN, title="j", severity="major",
-        severity_reason="r", lateness_min=45.0, created_at=T2,
+        lot="LOT-1",
+        run=RUN,
+        title="j",
+        severity="major",
+        severity_reason="r",
+        lateness_min=45.0,
+        created_at=T2,
     )
     assert [c.case_id for c in book.cases_for_lot("LOT-1")] == [
-        critical.case_id, major.case_id, minor.case_id,
+        critical.case_id,
+        major.case_id,
+        minor.case_id,
     ]
     assert book.cases_for_lot("LOT-9") == ()
 
@@ -339,15 +418,26 @@ def test_cases_for_lot_orders_by_severity_then_age() -> None:
 def test_cases_for_lot_same_severity_orders_by_created_time() -> None:
     book = CaseBook()
     book, late = book.add_case(
-        lot="LOT-1", run=RUN, title="late", severity="major",
-        severity_reason="r", lateness_min=45.0, created_at=T1,
+        lot="LOT-1",
+        run=RUN,
+        title="late",
+        severity="major",
+        severity_reason="r",
+        lateness_min=45.0,
+        created_at=T1,
     )
     book, early = book.add_case(
-        lot="LOT-1", run=RUN, title="early", severity="major",
-        severity_reason="r", lateness_min=50.0, created_at=T0,
+        lot="LOT-1",
+        run=RUN,
+        title="early",
+        severity="major",
+        severity_reason="r",
+        lateness_min=50.0,
+        created_at=T0,
     )
     assert [c.case_id for c in book.cases_for_lot("LOT-1")] == [
-        early.case_id, late.case_id,
+        early.case_id,
+        late.case_id,
     ]
 
 
@@ -356,16 +446,30 @@ def test_lots_orders_worst_open_severity_first() -> None:
     # with open major cases: the queue is for work still waiting.
     book = CaseBook()
     book, _ = book.add_case(
-        lot="LOT-B", run=RUN, title="b", severity="major",
-        severity_reason="r", lateness_min=45.0, created_at=T0,
+        lot="LOT-B",
+        run=RUN,
+        title="b",
+        severity="major",
+        severity_reason="r",
+        lateness_min=45.0,
+        created_at=T0,
     )
     book, _ = book.add_case(
-        lot="LOT-A", run=RUN, title="a", severity="info",
-        severity_reason="watch", created_at=T0,
+        lot="LOT-A",
+        run=RUN,
+        title="a",
+        severity="info",
+        severity_reason="watch",
+        created_at=T0,
     )
     book, resolved_critical = book.add_case(
-        lot="LOT-C", run=RUN, title="c", severity="critical",
-        severity_reason="r", lateness_min=200.0, created_at=T0,
+        lot="LOT-C",
+        run=RUN,
+        title="c",
+        severity="critical",
+        severity_reason="r",
+        lateness_min=200.0,
+        created_at=T0,
     )
     book = book.transition(resolved_critical.case_id, "resolved", at=T1)
     rows = book.lots()
@@ -383,12 +487,22 @@ def test_lots_tiebreak_is_open_count_then_lot_id() -> None:
     book = CaseBook()
     for lot in ("LOT-Z", "LOT-Y"):
         book, _ = book.add_case(
-            lot=lot, run=RUN, title="t", severity="major",
-            severity_reason="r", lateness_min=45.0, created_at=T0,
+            lot=lot,
+            run=RUN,
+            title="t",
+            severity="major",
+            severity_reason="r",
+            lateness_min=45.0,
+            created_at=T0,
         )
     book, _ = book.add_case(
-        lot="LOT-Y", run=RUN, title="t2", severity="major",
-        severity_reason="r", lateness_min=50.0, created_at=T0,
+        lot="LOT-Y",
+        run=RUN,
+        title="t2",
+        severity="major",
+        severity_reason="r",
+        lateness_min=50.0,
+        created_at=T0,
     )
     rows = book.lots()
     assert [r.lot for r in rows] == ["LOT-Y", "LOT-Z"]  # more open first
@@ -398,12 +512,22 @@ def test_lots_tiebreak_is_open_count_then_lot_id() -> None:
 def test_for_run_filters_and_lots_accepts_run() -> None:
     book = CaseBook()
     book, _ = book.add_case(
-        lot="LOT-1", run=RUN, title="seed1", severity="major",
-        severity_reason="r", lateness_min=45.0, created_at=T0,
+        lot="LOT-1",
+        run=RUN,
+        title="seed1",
+        severity="major",
+        severity_reason="r",
+        lateness_min=45.0,
+        created_at=T0,
     )
     book, second = book.add_case(
-        lot="LOT-1", run=RUN2, title="seed2", severity="minor",
-        severity_reason="r", lateness_min=5.0, created_at=T0,
+        lot="LOT-1",
+        run=RUN2,
+        title="seed2",
+        severity="minor",
+        severity_reason="r",
+        lateness_min=5.0,
+        created_at=T0,
     )
     assert [c.case_id for c in book.for_run(RUN2)] == [second.case_id]
     assert len(book.cases_for_lot("LOT-1")) == 2
@@ -413,7 +537,9 @@ def test_for_run_filters_and_lots_accepts_run() -> None:
 
 def test_summary_counts_only() -> None:
     book, made = _book_with(
-        ("LOT-1", "critical", 200.0), ("LOT-1", "minor", 5.0), ("LOT-2", "major", 45.0),
+        ("LOT-1", "critical", 200.0),
+        ("LOT-1", "minor", 5.0),
+        ("LOT-2", "major", 45.0),
     )
     book = book.transition(made[1].case_id, "dismissed", at=T1)
     summary = book.summary()
@@ -422,10 +548,16 @@ def test_summary_counts_only() -> None:
     assert summary.lots == 2
     assert summary.open_total == 2
     assert summary.by_status == {
-        "open": 2, "investigating": 0, "resolved": 0, "dismissed": 1,
+        "open": 2,
+        "investigating": 0,
+        "resolved": 0,
+        "dismissed": 1,
     }
     assert summary.by_severity == {
-        "critical": 1, "major": 1, "minor": 1, "info": 0,
+        "critical": 1,
+        "major": 1,
+        "minor": 1,
+        "info": 0,
     }
 
 
@@ -437,7 +569,10 @@ def test_empty_book_behaviour() -> None:
     summary = book.summary()
     assert summary.total == 0 and summary.lots == 0 and summary.open_total == 0
     assert summary.by_status == {
-        "open": 0, "investigating": 0, "resolved": 0, "dismissed": 0,
+        "open": 0,
+        "investigating": 0,
+        "resolved": 0,
+        "dismissed": 0,
     }
     assert book.verify_all() == []
 
@@ -452,7 +587,10 @@ def test_verify_all_finds_tampered_case() -> None:
 def test_case_id_key_orders_numerically() -> None:
     ids = ["case-10000", "case-9999", "case-0002", "other"]
     assert sorted(ids, key=_case_id_key) == [
-        "case-0002", "case-9999", "case-10000", "other",
+        "case-0002",
+        "case-9999",
+        "case-10000",
+        "other",
     ]
 
 
@@ -473,7 +611,7 @@ def test_from_json_rejects_duplicate_ids_and_rewound_seq() -> None:
 
 
 def test_from_json_rejects_illegal_history() -> None:
-    book, (case,) = _book_with(("LOT-1", "major", 45.0))
+    book, (_case,) = _book_with(("LOT-1", "major", 45.0))
     payload = book.to_json()
     # resolved with no history: the state machine was bypassed.
     payload["cases"][0]["status"] = "resolved"
@@ -495,6 +633,28 @@ def test_from_json_rejects_illegal_history() -> None:
     payload["cases"][0]["status"] = "dismissed"
     with pytest.raises(ValidationError):
         CaseBook.from_json(payload)
+    payload = book.to_json()
+    # Continuous chain, forbidden edge: resolved cannot go to investigating.
+    payload["cases"][0]["history"] = [
+        {"previous": None, "status": "open", "at": T0, "note": "created"},
+        {"previous": "open", "status": "resolved", "at": T1, "note": "done"},
+        {"previous": "resolved", "status": "investigating", "at": T2, "note": "not allowed"},
+    ]
+    payload["cases"][0]["status"] = "investigating"
+    with pytest.raises(ValidationError, match="illegal transition"):
+        CaseBook.from_json(payload)
+
+
+def test_transition_backfills_creation_when_history_is_empty() -> None:
+    case = Case(**_case_kwargs()).sealed()
+    book = CaseBook(cases=(case,), next_seq=2)
+    book = book.transition(case.case_id, "resolved", "duplicate", at=T1)
+    moved = book.get(case.case_id)
+    assert [event.status for event in moved.history] == ["open", "resolved"]
+    assert moved.history[0].previous is None
+    assert moved.history[1].previous == "open"
+    assert moved.verify()
+    assert CaseBook.from_json(book.to_json()) == book
 
 
 def test_direct_construction_cannot_bypass_the_machine() -> None:

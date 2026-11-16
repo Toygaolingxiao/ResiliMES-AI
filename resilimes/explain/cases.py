@@ -108,7 +108,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -140,7 +140,7 @@ _CASE_ID_RE = re.compile(r"^case-(\d+)$")
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _parse_iso(value: str) -> datetime:
@@ -156,8 +156,10 @@ def _parse_iso(value: str) -> datetime:
 def _check_iso(value: str, field: str) -> str:
     try:
         _parse_iso(value)
-    except ValueError:
-        raise ValueError(f"{field} must be an ISO 8601 timestamp with a timezone, got {value!r}")
+    except ValueError as err:
+        raise ValueError(
+            f"{field} must be an ISO 8601 timestamp with a timezone, got {value!r}"
+        ) from err
     return value
 
 
@@ -271,12 +273,16 @@ class Case(BaseModel):
         return self
 
     def _check_history(self) -> None:
-        """History is a chain from the creation event to the current status."""
+        """History is a chain of legal transitions from the creation event.
+
+        An open case may be stored with no history yet (nothing has moved).
+        Any recorded history must start at creation and every later step
+        must be one of ``TRANSITIONS``. A chain that is continuous but
+        uses a forbidden edge is still rejected.
+        """
         if not self.history:
             if self.status != "open":
-                raise ValueError(
-                    f"a case with no history must be open, got status {self.status!r}"
-                )
+                raise ValueError(f"a case with no history must be open, got status {self.status!r}")
             return
         first = self.history[0]
         if first.previous is not None or first.status != "open":
@@ -286,6 +292,10 @@ class Case(BaseModel):
             if event.previous != previous:
                 raise ValueError(
                     f"history is not a chain: {event.previous!r} does not follow {previous!r}"
+                )
+            if previous is not None and event.status not in TRANSITIONS[previous]:
+                raise ValueError(
+                    f"history contains an illegal transition {previous} -> {event.status}"
                 )
             previous = event.status
         if self.history[-1].status != self.status:
@@ -308,20 +318,33 @@ class Case(BaseModel):
             "evidence_hash": self.evidence_hash,
             "notes": list(self.notes),
             "history": [
-                {"previous": e.previous, "status": e.status, "note": e.note}
-                for e in self.history
+                {"previous": e.previous, "status": e.status, "note": e.note} for e in self.history
             ],
         }
 
     def sealed(self) -> Case:
         return self.model_copy(
-            update={"content_hash": "sha256:" + hashlib.sha256(canonical_json(self.body()).encode("utf-8")).hexdigest()}
+            update={
+                "content_hash": "sha256:"
+                + hashlib.sha256(canonical_json(self.body()).encode("utf-8")).hexdigest()
+            }
         )
 
     def verify(self) -> bool:
         return bool(self.content_hash) and self.content_hash == (
             "sha256:" + hashlib.sha256(canonical_json(self.body()).encode("utf-8")).hexdigest()
         )
+
+
+def _commit_case(case: Case) -> Case:
+    """Seal ``case`` and re-run validation.
+
+    ``model_copy`` does not run validators. A transition or note built that
+    way would otherwise sit in the book until the next ``from_json``.
+    """
+    sealed = case.sealed()
+    Case.model_validate(sealed.model_dump(mode="json"))
+    return sealed
 
 
 class LotSummary(BaseModel):
@@ -371,11 +394,7 @@ class CaseBook(BaseModel):
             if case.case_id in seen:
                 raise ValueError(f"duplicate case_id in book: {case.case_id!r}")
             seen.add(case.case_id)
-        seqs = [
-            int(m.group(1))
-            for case in self.cases
-            if (m := _CASE_ID_RE.match(case.case_id))
-        ]
+        seqs = [int(m.group(1)) for case in self.cases if (m := _CASE_ID_RE.match(case.case_id))]
         if seqs and self.next_seq <= max(seqs):
             raise ValueError(
                 f"next_seq {self.next_seq} must be above the highest case number {max(seqs)}"
@@ -424,9 +443,7 @@ class CaseBook(BaseModel):
                     f"{suggested!r} for lateness {lateness_min:g} min: "
                     "give an explicit severity_reason"
                 )
-            severity_reason = (
-                f"suggested from lateness {lateness_min:g} min -> {suggested}"
-            )
+            severity_reason = f"suggested from lateness {lateness_min:g} min -> {suggested}"
         now = created_at or _now_iso()
         case = Case(
             case_id=f"case-{self.next_seq:04d}",
@@ -463,14 +480,23 @@ class CaseBook(BaseModel):
                 f"allowed from {case.status}: {', '.join(allowed) or 'none'}"
             )
         stamp = at or _now_iso()
+        # An open case may have no history yet. The first move records the
+        # creation event so the stored chain still starts there.
+        history = case.history
+        if not history:
+            history = (
+                StatusEvent(previous=None, status="open", at=case.created_at, note="created"),
+            )
         event = StatusEvent(previous=case.status, status=to, at=stamp, note=note)
-        updated = case.model_copy(
-            update={
-                "status": to,
-                "history": (*case.history, event),
-                "updated_at": stamp,
-            }
-        ).sealed()
+        updated = _commit_case(
+            case.model_copy(
+                update={
+                    "status": to,
+                    "history": (*history, event),
+                    "updated_at": stamp,
+                }
+            )
+        )
         return self.model_copy(
             update={"cases": tuple(updated if c.case_id == case_id else c for c in self.cases)}
         )
@@ -481,12 +507,14 @@ class CaseBook(BaseModel):
             raise ValueError("note must not be empty")
         case = self.get(case_id)
         stamp = at or _now_iso()
-        updated = case.model_copy(
-            update={
-                "notes": (*case.notes, note.strip()),
-                "updated_at": stamp,
-            }
-        ).sealed()
+        updated = _commit_case(
+            case.model_copy(
+                update={
+                    "notes": (*case.notes, note.strip()),
+                    "updated_at": stamp,
+                }
+            )
+        )
         return self.model_copy(
             update={"cases": tuple(updated if c.case_id == case_id else c for c in self.cases)}
         )
@@ -494,7 +522,13 @@ class CaseBook(BaseModel):
     def for_run(self, run: RunRef) -> tuple[Case, ...]:
         """Cases of one run, worst severity first, then oldest first."""
         rows = [c for c in self.cases if c.run == run]
-        rows.sort(key=lambda c: (SEVERITY_ORDER[c.severity], _parse_iso(c.created_at), _case_id_key(c.case_id)))
+        rows.sort(
+            key=lambda c: (
+                SEVERITY_ORDER[c.severity],
+                _parse_iso(c.created_at),
+                _case_id_key(c.case_id),
+            )
+        )
         return tuple(rows)
 
     def cases_for_lot(self, lot: str, run: RunRef | None = None) -> tuple[Case, ...]:
@@ -504,7 +538,13 @@ class CaseBook(BaseModel):
         at one run only.
         """
         rows = [c for c in self.cases if c.lot == lot and (run is None or c.run == run)]
-        rows.sort(key=lambda c: (SEVERITY_ORDER[c.severity], _parse_iso(c.created_at), _case_id_key(c.case_id)))
+        rows.sort(
+            key=lambda c: (
+                SEVERITY_ORDER[c.severity],
+                _parse_iso(c.created_at),
+                _case_id_key(c.case_id),
+            )
+        )
         return tuple(rows)
 
     def lots(self, run: RunRef | None = None) -> tuple[LotSummary, ...]:
