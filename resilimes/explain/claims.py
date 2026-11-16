@@ -46,10 +46,10 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from resilimes.common.textfacts import _norm
 from resilimes.explain.factcheck import FactRegistry, check
@@ -87,9 +87,7 @@ def _restore_abbreviations(text: str) -> str:
 
 
 def _claim_id(kind: str, value: str, statement: str) -> str:
-    digest = hashlib.sha256(
-        f"{kind}|{value}|{statement}".encode("utf-8")
-    ).hexdigest()[:12]
+    digest = hashlib.sha256(f"{kind}|{value}|{statement}".encode()).hexdigest()[:12]
     return f"claim-{digest}"
 
 
@@ -121,9 +119,14 @@ class Claim(BaseModel):
         if self.result == "unchecked" and not self.reason:
             raise ValueError("an unchecked claim needs a reason")
         try:
-            datetime.fromisoformat(self.checked_at)
-        except ValueError:
-            raise ValueError(f"checked_at must be an ISO 8601 timestamp: {self.checked_at!r}")
+            parsed = datetime.fromisoformat(self.checked_at.replace("Z", "+00:00"))
+        except ValueError as err:
+            raise ValueError(
+                f"checked_at must be an ISO 8601 UTC timestamp: {self.checked_at!r}"
+            ) from err
+        # Date-only and naive values parse, but they are not UTC timestamps.
+        if parsed.utcoffset() != timedelta(0):
+            raise ValueError(f"checked_at must be an ISO 8601 UTC timestamp: {self.checked_at!r}")
         return self
 
 
@@ -162,8 +165,7 @@ class ClaimLedger(BaseModel):
 
     def verify(self) -> bool:
         return bool(self.content_hash) and self.content_hash == (
-            "sha256:"
-            + hashlib.sha256(canonical_json(self.body()).encode("utf-8")).hexdigest()
+            "sha256:" + hashlib.sha256(canonical_json(self.body()).encode("utf-8")).hexdigest()
         )
 
     def failed(self) -> tuple[Claim, ...]:
@@ -229,7 +231,7 @@ def build_ledger(
     claim's result comes from the gate's own misses, so the ledger can never
     disagree with ``factcheck.check`` on the same text and the same registry.
     """
-    stamp = checked_at or datetime.now(timezone.utc).isoformat()
+    stamp = checked_at or datetime.now(UTC).isoformat()
     failed_numbers, failed_ids = _misses_by_kind(text, registry)
 
     # One claim per quotation, not per distinct value: the same number quoted
@@ -282,9 +284,7 @@ def build_ledger(
                     reason=f"unknown id {ids[upper]}" if upper in failed_ids else None,
                 )
             )
-    return ClaimLedger(
-        subject=subject, source=source, claims=tuple(claims)
-    ).sealed()
+    return ClaimLedger(subject=subject, source=source, claims=tuple(claims)).sealed()
 
 
 def ledger_for_explanation(

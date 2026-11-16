@@ -31,7 +31,8 @@ contained at check time (see Limits).
     `reason`. A `failed` claim carries the gate's miss text as its `reason`
     (e.g. `unknown number 999`).
   - `checked_at`: ISO 8601 UTC timestamp of the check (validated on
-    construction).
+    construction). A naive value, a date-only value, or a non-UTC offset
+    is rejected; `Z` and `+00:00` are accepted.
   - `reason`: why unchecked, or the gate's miss text on a failure.
 - `ClaimLedger`: `ledger_version` (`claim/v0`, locked with `Literal`),
   `subject` (e.g. the lot id), `source` (what produced the text, e.g.

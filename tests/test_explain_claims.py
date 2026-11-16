@@ -12,7 +12,6 @@ import pytest
 from pydantic import ValidationError
 
 from resilimes.common.textfacts import _norm
-
 from resilimes.explain.claims import (
     KINDS,
     LEDGER_VERSION,
@@ -92,9 +91,9 @@ def test_unknown_number_and_id_fail():
     assert ledger.summary() == {"total": 6, "passed": 4, "failed": 2, "unchecked": 0}
     failed = {c.value for c in ledger.failed()}
     assert failed == {"999", "ETCH_X_9"}
-    assert {m for m in check(
-        "Lot-1 finished 120 min late, 999 min of it at Etch_X_9.", registry
-    )} == {"unknown number 999", "unknown id Etch_X_9"}
+    assert {
+        m for m in check("Lot-1 finished 120 min late, 999 min of it at Etch_X_9.", registry)
+    } == {"unknown number 999", "unknown id Etch_X_9"}
 
 
 def test_small_counting_numbers_pass_without_being_registered():
@@ -126,7 +125,9 @@ def test_hash_is_stable_and_tamper_evident():
     unpinned_second = build_ledger(TEXT, _registry())
     assert unpinned_first.content_hash == unpinned_second.content_hash
     tampered = first.model_copy(
-        update={"claims": (first.claims[0].model_copy(update={"result": "failed"}), *first.claims[1:])}
+        update={
+            "claims": (first.claims[0].model_copy(update={"result": "failed"}), *first.claims[1:])
+        }
     )
     assert not tampered.verify()
     tampered_subject = first.model_copy(update={"subject": "Lot-2"})
@@ -176,12 +177,8 @@ def test_ledger_for_explanation_reproduces_the_gate_registry():
     # The caller's registry is not mutated by the augmentation.
     assert "25" not in registry.numbers
     # With a fixed timestamp the same explanation builds the same hash.
-    first = ledger_for_explanation(
-        explanation, registry, checked_at="2026-11-13T12:00:00+00:00"
-    )
-    second = ledger_for_explanation(
-        explanation, registry, checked_at="2026-11-13T12:00:00+00:00"
-    )
+    first = ledger_for_explanation(explanation, registry, checked_at="2026-11-13T12:00:00+00:00")
+    second = ledger_for_explanation(explanation, registry, checked_at="2026-11-13T12:00:00+00:00")
     assert first.content_hash == second.content_hash
 
 
@@ -189,9 +186,7 @@ def test_bogus_ledger_version_is_rejected():
     with pytest.raises(ValidationError):
         ClaimLedger(ledger_version="bogus/v9")
     with pytest.raises(ValidationError):
-        ClaimLedger.model_validate(
-            {"ledger_version": "bogus/v9", "claims": []}
-        )
+        ClaimLedger.model_validate({"ledger_version": "bogus/v9", "claims": []})
 
 
 def test_by_value_normalises_the_query():
@@ -233,6 +228,25 @@ def test_unchecked_requires_a_reason_and_checked_at_must_parse():
             result="passed",
             checked_at="not-a-date",
         )
+    # The field is a UTC timestamp: date-only, naive, and other offsets are not.
+    for bad in ("2026-11-13", "2026-11-13T12:00:00", "2026-11-13T12:00:00+09:00"):
+        with pytest.raises(ValidationError):
+            Claim(
+                claim_id="claim-x",
+                kind="id",
+                value="LOT-9",
+                statement="Lot-9 was mentioned in a note.",
+                result="passed",
+                checked_at=bad,
+            )
+    Claim(
+        claim_id="claim-x",
+        kind="id",
+        value="LOT-9",
+        statement="Lot-9 was mentioned in a note.",
+        result="passed",
+        checked_at="2026-11-13T12:00:00Z",
+    )
 
 
 def test_abbreviations_do_not_split_sentences():
@@ -284,18 +298,12 @@ def test_ledger_failed_set_matches_the_gate(text):
     ledger = build_ledger(text, registry)
     misses = check(text, registry)
     expected_failed_numbers = {
-        miss[len("unknown number ") :]
-        for miss in misses
-        if miss.startswith("unknown number ")
+        miss[len("unknown number ") :] for miss in misses if miss.startswith("unknown number ")
     }
     expected_failed_ids = {
-        miss[len("unknown id ") :].upper()
-        for miss in misses
-        if miss.startswith("unknown id ")
+        miss[len("unknown id ") :].upper() for miss in misses if miss.startswith("unknown id ")
     }
-    actual_failed_numbers = {
-        c.value for c in ledger.failed() if c.kind == "number"
-    }
+    actual_failed_numbers = {c.value for c in ledger.failed() if c.kind == "number"}
     actual_failed_ids = {c.value for c in ledger.failed() if c.kind == "id"}
     # Numbers are normalised in the ledger, raw in the gate's misses.
     assert actual_failed_numbers == {_norm(v) for v in expected_failed_numbers}
@@ -303,13 +311,8 @@ def test_ledger_failed_set_matches_the_gate(text):
 
 
 def test_sources_are_recorded_ledger_wide():
-    ledger = build_ledger(
-        TEXT, _registry(), sources=("lateness.while_late_min", "waits[0].family")
-    )
-    assert all(
-        c.sources == ("lateness.while_late_min", "waits[0].family")
-        for c in ledger.claims
-    )
+    ledger = build_ledger(TEXT, _registry(), sources=("lateness.while_late_min", "waits[0].family"))
+    assert all(c.sources == ("lateness.while_late_min", "waits[0].family") for c in ledger.claims)
 
 
 def test_unchecked_claims_can_be_recorded_manually():
