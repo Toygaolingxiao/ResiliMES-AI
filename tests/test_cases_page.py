@@ -16,11 +16,15 @@ embedded here so the check needs no extra file in the static tree.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+
+from resilimes.explain.cases import Case, CaseBook, StatusEvent
+from resilimes.explain.schema import RunRef
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES_JS = ROOT / "resilimes" / "demo" / "static" / "product" / "cases" / "cases.js"
@@ -62,6 +66,21 @@ for (const [name, item] of Object.entries(data.edge)) {
 const norm = F.normalizeCaseBook(data.edge.padded_lot.payload);
 check("padded lot trimmed", norm.cases[0].lot === "LOT-1004");
 check("normalized book has one lot", F.casesSummary(norm).lots === 1);
+const v1 = JSON.parse(JSON.stringify(data.valid));
+v1.book_version = "cases/v1";
+v1.cases[0].cases_version = "cases/v1";
+v1.cases[0].owner = "Ada";
+check("v1 owner book passes", F.validateCaseBook(v1).length === 0, F.validateCaseBook(v1));
+const v0owner = JSON.parse(JSON.stringify(data.valid));
+v0owner.cases[0].owner = "Ada";
+check("v0 named owner rejected", F.validateCaseBook(v0owner).some((e) => e.includes("owner")));
+const v0null = JSON.parse(JSON.stringify(data.valid));
+v0null.cases[0].owner = null;
+check("v0 null owner passes", F.validateCaseBook(v0null).length === 0, F.validateCaseBook(v0null));
+const trimmed = F.normalizeCaseBook({ book_version: "cases/v1", cases: [{ owner: " Ada ", lot: " x " }] });
+check("owner trimmed", trimmed.cases[0].owner === "Ada" && trimmed.cases[0].lot === "x");
+const omitted = F.normalizeCaseBook({ cases: [{}] });
+check("omitted version stays v0", omitted.book_version === "cases/v0" && omitted.cases[0].cases_version === "cases/v0" && omitted.cases[0].owner === null);
 const normNum = F.normalizeCaseBook(data.edge.numeric_strings.payload);
 check("numeric strings coerced", normNum.cases[0].lateness_min === 45 && normNum.cases[0].run.seed === 1);
 const ordRows = F.casesLotRows(data.ordering);
@@ -90,6 +109,20 @@ def test_cases_page_parity_with_cases_py(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr or result.stdout
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert report["failures"] == []
+
+
+def _js_string_list(name: str) -> list[str]:
+    text = CASES_JS.read_text(encoding="utf-8")
+    match = re.search(rf"const {name} = \[(.*?)\];", text, re.S)
+    assert match, name
+    return re.findall(r'"([^"]+)"', match.group(1))
+
+
+def test_cases_page_keys_match_the_model() -> None:
+    assert set(_js_string_list("CASES_CASE_KEYS")) == set(Case.model_fields)
+    assert set(_js_string_list("CASES_BOOK_KEYS")) == set(CaseBook.model_fields)
+    assert set(_js_string_list("CASES_RUN_KEYS")) == set(RunRef.model_fields)
+    assert set(_js_string_list("CASES_EVENT_KEYS")) == set(StatusEvent.model_fields)
 
 
 def test_cases_page_fixture_is_valid_json() -> None:

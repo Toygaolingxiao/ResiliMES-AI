@@ -22,9 +22,16 @@ contained at check time (see Limits).
   - `statement`: the sentence the value was quoted in. One claim per
     quotation: the same number in two sentences is two claims; twice in one
     sentence is one claim.
-  - `sources`: evidence row references (e.g. `lateness.while_late_min`),
-    supplied by the caller, ledger-wide for now (see limits). When the text
-    yields no claims, `sources` has nowhere to be recorded.
+  - `sources`: reported provenance labels for that value, first-seen
+    order, then any ledger-wide labels the caller passed to
+    `build_ledger` (a label already on the value is not repeated). A
+    label is what the registering call site reported
+    (`tool:lot_lateness`, `explainer:lot`), not a proof of which row
+    inside a payload held the value. A value with no recorded
+    provenance — including a digit that only occurred inside an id
+    (`1` in `Lot-1`) — carries only the caller-wide labels, or `()`
+    when the caller passed none. When the text yields no claims,
+    `sources` has nowhere to be recorded.
   - `result`: `passed` | `failed` | `unchecked`. `unchecked` is only for
     claims recorded by hand when no registry was available at audit time;
     `build_ledger` never produces it, and an `unchecked` claim must carry a
@@ -46,17 +53,20 @@ contained at check time (see Limits).
   extracts every claimed number and id from plain text and checks each one.
   The result of every claim is derived from the gate's own misses
   (`factcheck.check`), so the ledger can never disagree with the gate on the
-  same text.
+  same text. Each claim's `sources` are `registry.sources(kind, value)`,
+  then the caller's `sources` argument.
 - `ledger_for_explanation(explanation, registry, *, sources, checked_at)`:
   builds a ledger for an `Explanation` (explanation text plus its claim
   sentence), with the lot id as subject and `explainer` as source. It
-  reproduces the registry the gate actually used: the explainer adds the
-  counterfactual's `expected_saving_min` and the lot id to its registry copy
-  before checking, so a claim sentence quoting the saving passes here exactly
-  as it passed the gate. The saving itself is the model's own estimate and is
-  never quoted as a claim unless the text says it; verifying it is
+  reproduces the registry the gate actually used: `copy()` keeps
+  provenance, then the expected saving is labelled
+  `explainer:expected_saving_min` and the lot id `explainer:lot`
+  (`explainer._explain` does the same before `check`). The caller's
+  registry is not mutated. The saving itself is the model's own estimate
+  and is never quoted as a claim unless the text says it; verifying it is
   `verify_counterfactual`'s job, and the re-run result is not part of this
-  ledger.
+  ledger. The caller's `sources` are extra labels on every claim, after
+  that claim's own provenance.
 
 Extraction follows the gate's own rule for what counts as a claim: an
 id-shaped token only counts when it carries a digit (`Diffusion_FE_120`,
@@ -79,9 +89,14 @@ for a rate without accounting for that.
 
 ## Limits of v0 (declared, not hidden)
 
-- `sources` are ledger-level. Per-claim source attribution (which evidence
-  row a value came from) needs `FactRegistry` to record provenance, which it
-  does not do yet. That is a later increment.
+- `sources` are reported labels, not row proofs and not a verified
+  fact. Multi-source values keep every label. Digits that only occur
+  inside an id token stay unattributed, because the registry records no
+  number source for them. Counting words 0–10 are not dropped: if a
+  payload registered one, that label is quoted. A registry with no
+  provenance still puts the caller-wide `sources` tuple on every claim,
+  so those ledgers keep the same hash. The field set is unchanged, so
+  this stays `claim/v0`.
 - The ledger records what was quoted and whether it checked out. It does not
   record which run produced the explanation (no seed / horizon / policy /
   label), which provider or model said it, when the explanation was

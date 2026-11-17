@@ -1,9 +1,12 @@
 # ResiliTrace Cases ページ（cases-page/v0）
 
 Cases ページは「一 lot 遅れた後、誰が何をどの順番で片付けるか」を
-見せる一等分区。データ契約は `cases/v0`（`docs/CASES.md`、
-`resilimes/explain/cases.py`、PR #90）で、本ページはその
-`to_json` 出力を読む読み取り専用ビューである。
+見せる一等分区。データ契約は `cases/v0` と `cases/v1`
+（`docs/CASES.md`、`resilimes/explain/cases.py`）で、本ページはその
+`to_json` 出力を読む読み取り専用ビューである。v1 は `owner` と
+`waiting` を足す。v0 の封印は `owner` を覆わないので、v0 案件に
+名前付きの `owner` を付けると拒否する。`owner` が無い、または
+`null` のときは未指定。
 
 ## 構成（現状との差分と取捨）
 
@@ -67,14 +70,18 @@ Cases ページは「一 lot 遅れた後、誰が何をどの順番で片付け
 - ページは読み込み時にこの契約をブラウザ側で検証する
   （`validateCaseBook`）。検証内容は `cases.py` の `from_json`
   （`_case_rules` / `_book_rules` / `_check_history`）の反映：
-  必須フィールド・列挙値（深刻度 4 档・状態 4 档）・`case_id` の
+  必須フィールド・列挙値（深刻度 4 档・状態 5 档。`waiting` を
+  含む）・`case_id` の
   一意性・`next_seq` の下限・history の鎖（初回は previous null +
   open、末尾が現状態と一致）・ISO 8601（タイムゾーン付き）・
   `evidence_hash` の `sha256:<64 小写 hex>` 形・未知キーの拒否。
   検証後に `normalizeCaseBook` で pydantic と同じ既定値・型強制を
   かける（`book_version` / `cases` / `next_seq` / `status` /
   `notes` / `history` / `label` の省略は既定値、数値文字列は数値
-  へ、`lot` / `title` / `severity_reason` は前後空白を除去）。
+  へ、`lot` / `title` / `severity_reason` / `owner` は前後空白を
+  除去）。省略された `book_version` は `cases/v0`（古いファイルの
+  既定）。省略された `cases_version` は台帳の版に従う。省略された
+  `owner` は `null`。
   Python モデルが最終的な正しさの基準。ブラウザ検証は
   `from_json` の代替ではない。意図的な乖離は下記の「意図的な乖離」
   に列挙する。
@@ -117,7 +124,7 @@ history の遷移合法性は乖離ではない。`from_json` と同じく、鎖
   `case-10000` より先）。解決・却下済み案件は順序を動かさない。
 - **状態フィルタ**：基線 §2.4 の「状態固定一列＋分组/筛选」の
   補償として、状態での絞り込みボタンを置く（全部／未対応／調査
-  中／解決済み／却下）。絞り込むと、その状態の案件を持つ lot
+  中／待機中／解決済み／却下）。絞り込むと、その状態の案件を持つ lot
   だけを表示し、lot 行の计数・並びは絞り込んだ集合で再計算する。
   台帳全体の合計行は絞り込みの影響を受けない。グルーピング
   （状態ごとの見出し分け）は本増量ではやらない。
@@ -127,15 +134,18 @@ history の遷移合法性は乖離ではない。`from_json` と同じく、鎖
   （`created_at`）を出し、鮮度を判断できるようにする。
 - **数値は件数のみ**：合計・lot 数・未完了数は `summary()` と同じ
   件数だけ。比率は出さない（比率は品質モジュールの仕事で、分母が
-  要る）。未完了数は `open` + `investigating` の合計で、英語表記
+  要る）。未完了数は `open` + `investigating` + `waiting` の合計で、英語表記
   は「Unclosed」とし、status `open` のみと誤読されないようにする。
 - **深刻度徽标**：`DESIGN_SYSTEM.md` §2.4 の色対をそのまま使う
   （`.sev-critical` 等、`styles.css`）。非色の区別は 3px の左実線
   ＋深刻度を先頭列に固定。`minor` と `recorded` が青対を共有する
   のは意図した再利用で、同一セルに並べない。
-- **状態は文字のみ**：open / investigating / resolved / dismissed
+- **状態は文字のみ**：open / investigating / waiting / resolved / dismissed
   に色を付けない（赤/緑で良し悪しを暗示しない）。状態は専用列に
   固定し、history に変遷を逐条出す。
+- **担当**：詳細行に `owner` を出す。空白だけの値と `null` と
+  欠鍵は「未指定」（`cases.ownerUnassigned`）。v0 の `to_json` が
+  `owner: null` を付けても読む。
 - **遅刻**：`lateness_min` は `formatDuration` で表示。
   `null` は「不明」と表示し、0 と混同しない。
 - **ハッシュ**：証拠ハッシュは表で先頭 14 文字＋全文を詳細行に

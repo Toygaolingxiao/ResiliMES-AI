@@ -284,9 +284,11 @@ def _explain(
             break
         cf = candidate["counterfactual"]
         text = f"{candidate.get('explanation', '')} {cf.get('claim', '')}"
-        registry = FactRegistry()
-        registry.ids, registry.numbers = set(kit.registry.ids), set(kit.registry.numbers)
-        registry.add_text(f"{cf.get('expected_saving_min')} {lot_id}")
+        registry = kit.registry.copy()
+        registry.add_text(
+            str(cf.get("expected_saving_min")), source="explainer:expected_saving_min"
+        )
+        registry.add_text(lot_id, source="explainer:lot")
         misses = check(text, registry)
         if misses and not out.repaired:
             out.repaired = True

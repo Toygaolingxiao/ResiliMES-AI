@@ -141,7 +141,7 @@ def run_call(
             if sql_runner is None:
                 return {"error": "sql is not available (no SqlRunner)"}
             out = sql_runner(str(args.get("sql", "")), settings)
-            kit.registry.add(out)
+            kit.registry.add(out, source="tool:sql")
             kit.calls.append({"tool": "sql", "args": {"sql": out.get("sql")}})
             return out
         family = args.get("family")
@@ -563,8 +563,8 @@ def _investigate(
     if provider is None or provider.mocked:
         provider = ScriptedCompleter(kit, family, t1_h, t2_h)
     kit.registry = kit.registry or FactRegistry()
-    kit.registry.add_text(question)
-    kit.registry.add_text(f"{family} {t1_h:g} {t2_h:g} {max_calls}")
+    kit.registry.add_text(question, source="question")
+    kit.registry.add_text(f"{family} {t1_h:g} {t2_h:g} {max_calls}", source="question")
     out = Investigation(
         question=question,
         family=family,

@@ -927,8 +927,11 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `cases.severity.info` | Info | 信息 | 情報 |
 | `cases.status.open` | Open | 未处理 | 未対応 |
 | `cases.status.investigating` | Investigating | 调查中 | 調査中 |
+| `cases.status.waiting` | Waiting | 等待中 | 待機中 |
 | `cases.status.resolved` | Resolved | 已解决 | 解決済み |
 | `cases.status.dismissed` | Dismissed | 已驳回 | 却下 |
+| `cases.ownerLabel` | Owner: | 负责人： | 担当： |
+| `cases.ownerUnassigned` | Unassigned | 未指定 | 未指定 |
 | `cases.colSeal` | Case seal | 案件封印 | 案件の封印 |
 | `cases.colCreated` | Opened | 建案 | 作成 |
 | `cases.unverified` | Unverified file: contents are shown as loaded; seals are not checked. | 未验证文件：内容按加载原样展示，未校验封印。 | 未検証のファイル：内容は読み込んだまま表示し、封印は確認していません。 |

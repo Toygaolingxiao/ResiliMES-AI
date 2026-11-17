@@ -513,7 +513,7 @@ def _handover(
         provider = ScriptedHandover(language)
     lang = LANGUAGES.get(language, "English")
     registry = FactRegistry()
-    registry.add_text(f"{start_h} {end_h} {SHIFT_H} {CHUNK_H}")
+    registry.add_text(f"{start_h} {end_h} {SHIFT_H} {CHUNK_H}", source="handover:window")
     bundle: dict[str, Any] = {"calls": 0, "models": [], "chunk_notes": [], "errors": []}
     started = time.perf_counter()
     t_start = deadline.now()
@@ -557,7 +557,7 @@ def _handover(
 
         def step(carry: dict[str, Any]) -> dict[str, Any]:
             facts = chunk_facts(run, a, b)
-            registry.add(facts)
+            registry.add(facts, source="handover:chunk")
             reply, _messages = ask(CHUNK_SYSTEM, {"CHECKPOINT": carry, "FACTS": facts})
             if reply is None:
                 raise ValueError("chunk reply was not JSON")
@@ -590,7 +590,7 @@ def _handover(
 
     def compose(carry: dict[str, Any]) -> dict[str, Any]:
         end = end_facts(run, start_h, end_h)
-        registry.add(end)
+        registry.add(end, source="handover:end")
         report, messages = ask(COMPOSE_SYSTEM, {"CHECKPOINT": carry, "END_FACTS": end})
         bundle["end"] = end
         fixes = 0

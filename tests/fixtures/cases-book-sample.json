@@ -146,6 +146,7 @@
     "by_status": {
       "open": 3,
       "investigating": 0,
+      "waiting": 0,
       "resolved": 1,
       "dismissed": 0
     },

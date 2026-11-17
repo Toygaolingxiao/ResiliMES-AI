@@ -37,7 +37,7 @@ class Toolkit:
 
     # ---- plumbing -----------------------------------------------------------------------
     def _out(self, name: str, args: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
-        self.registry.add(result)
+        self.registry.add(result, source=f"tool:{name}")
         self.calls.append({"tool": name, "args": args})
         return result
 
