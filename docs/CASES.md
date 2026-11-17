@@ -1,14 +1,16 @@
-# ResiliTrace 案件体系（cases/v0）
+# ResiliTrace 案件体系（cases/v1，v0 仍可加载）
 
 案件是「一 lot 迟到之后怎么办」的跟进记录。解释层回答一 lot 为什么迟到；
 案件回答：哪些 lot 还在等人工处理、按什么顺序处理、每 lot 决定了什么。
 
-本增量只落数据模型与 lot-first 列表接口。Cases 页面是后续增量（页面增量
-须按执行标准第四节先定义设计系统基线）；`explain()` 不自动建案件。
+新案件是 `cases/v1`。`cases/v0` 台账仍可加载，其封印不覆盖 `owner`。
+`explain()` 不自动建案件。Cases 页面读 v0 和 v1，不改状态、不落盘。
 
 ## 模型
 
-`resilimes/explain/cases.py`，版本 `cases/v0`。与 `insight/notes_cases.py`
+`resilimes/explain/cases.py`。代码里新建的台账是 `cases/v1`；文件省略
+`book_version` 时按 `cases/v0` 读（与页面 `normalizeCaseBook` 一致），
+案件省略 `cases_version` 时跟台账版本走。与 `insight/notes_cases.py`
 的 `NotesCase` 无关——那是 investigator 评测用的注记难例，本模块是
 ResiliTrace 的跟进案件。
 
@@ -20,6 +22,7 @@ ResiliTrace 的跟进案件。
 | `title` | 一句话标题（非空、单行） |
 | `severity` | 严重度（下表），人工指定，须附 `severity_reason` |
 | `severity_reason` | 为什么是这个严重度（非空）。省略时仅当指定值与建议值一致才自动记为建议来源；不一致须显式写理由 |
+| `owner` | 负责人。仅 `cases/v1`。空（`None`）表示未指定；v0 案件带了名字会被拒绝 |
 | `status` | 状态（下表），初始 `open` |
 | `lateness_min` | 迟到分钟数（≥ 0 且有限，未知为 `None`） |
 | `evidence_hash` | 所据证据包的 `content_hash`（`sha256:<64 小写 hex>` 格式，未知为 `None`） |
@@ -49,10 +52,17 @@ open ──► investigating ──► resolved ──► open（重开）
  └────► resolved / dismissed ──┘
 ```
 
-- `open` → `investigating`、`resolved`、`dismissed`
-- `investigating` → `open`、`resolved`、`dismissed`
+上图是主干。`waiting` 与 `open` / `investigating` 互通，也可以直接到
+`resolved` / `dismissed`。完整边见下列。
+
+- `open` → `investigating`、`waiting`、`resolved`、`dismissed`
+- `investigating` → `open`、`waiting`、`resolved`、`dismissed`
+- `waiting` → `open`、`investigating`、`resolved`、`dismissed`
 - `resolved` → `open`、`dismissed`
-- `dismissed` → `open`、`investigating`
+- `dismissed` → `open`、`investigating`、`waiting`
+
+`waiting` 是阻塞态：等维修、等 PM 窗口、等别人决定。仍算未关闭。
+`investigating` 是有人在查，`waiting` 是下一步不在本案里。
 
 `open → resolved` 是有意放开的：分诊时直接解决（重复、lot 已恢复、
 无需处理）是真实路径，逼着先走一次假 `investigating` 会让 history
@@ -86,7 +96,7 @@ open ──► investigating ──► resolved ──► open（重开）
   严重度、**最重未关闭严重度**（无未关闭案件时为 `None`）、最新更新时间、案件 id 列表）。
   排序按最重**未关闭**严重度（已解决的 critical 不驱动待办队列），无未关闭
   案件的 lot 排在最后；同级按未关闭数多在前，再按 lot id。`open_count`
-  计 `open` + `investigating`。
+  计 `open` + `investigating` + `waiting`。
 - `summary()`：只给计数——总数、lot 数、未关闭总数、按状态计数、按严重度
   计数。不给比率；比率是品质模块的事，且须带分母。
 - `verify_all()`：封存与内容不符的 `case_id` 列表（逐案检查，无台账级封存：
@@ -106,17 +116,14 @@ open ──► investigating ──► resolved ──► open（重开）
   举证若需可信时间，须另有来源。
 - 时间戳须为带时区信息的 ISO 8601（`Z` 或 `±hh:mm`）；无时区与纯日期
   会被拒绝。排序按解析后的时刻，不按字符串。
-- `cases/v0`：改严重度定义、状态变迁、建议阈值或字段，即升版本，不静默改。
+- 新案件是 `cases/v1`。`cases/v0` 仍可加载，封印不覆盖 `owner`。改严重度定义、状态变迁、建议阈值或字段，即升版本，不静默改。`owner` 与 `waiting` 就是这次升版。v1 的 `content_hash` 覆盖 `owner`（未指定为 `null`）。
 
 ## v0 局限
 
 - 无持久化：台账只在内存，`to_json` / `from_json` 是唯一导出。带保留策略
   的存储是后续增量。
-- 无负责人字段：台账回答不了「谁在跟进」，只能证明状态被置为 `investigating`；
-  举证场景中的「谁」须另有记录。
-- 无等待/阻塞态：等维修、等 PM 窗口、等客户决定的案件只能挂在
-  `investigating` 下，「在查」与「在等」无法区分。
-- 无 Cases 页面：本增量只给数据接口。
+- 负责人只是一个名字，没有账号、移交或通知。
+- Cases 页面只读：不在浏览器里改状态，也不把台账存下来。
 - `case_id` 只在台账内唯一，不作跨台账键。
 - `evidence_hash` 只校验格式，不校验该证据包是否存在；悬空链接是录入
   错误，不是校验错误；只接受小写 hex（与 `EvidenceBundle` 自身输出一致）。

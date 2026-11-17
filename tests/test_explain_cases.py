@@ -70,6 +70,39 @@ def test_version_is_locked() -> None:
         Case(**_case_kwargs(cases_version="cases/v0", owner="Ada"))
 
 
+def test_omitted_version_on_load_stays_v0() -> None:
+    assert CaseBook().book_version == "cases/v1"
+    book, _case = CaseBook().add_case(
+        lot="LOT-1",
+        run=RUN,
+        title="late",
+        severity="major",
+        severity_reason="r",
+        lateness_min=45.0,
+        created_at=T0,
+    )
+    payload = book.to_json()
+    assert payload["book_version"] == "cases/v1"
+    assert payload["cases"][0]["cases_version"] == "cases/v1"
+    assert payload["cases"][0]["owner"] is None
+    assert payload["cases"][0]["status"] == "open"
+    del payload["book_version"]
+    del payload["cases"][0]["cases_version"]
+    del payload["cases"][0]["owner"]
+    loaded = CaseBook.from_json(payload)
+    assert loaded.book_version == "cases/v0"
+    assert loaded.cases[0].cases_version == "cases/v0"
+    assert loaded.cases[0].owner is None
+    # A v0 seal does not cover owner, so dropping it and the version
+    # changes the body. The explicit v0 case below still verifies.
+    legacy = Case(**_case_kwargs(cases_version="cases/v0")).sealed()
+    assert legacy.verify()
+    again = CaseBook.from_json(
+        {"book_version": "cases/v0", "next_seq": 2, "cases": [legacy.model_dump(mode="json")]}
+    )
+    assert again.cases[0].verify()
+
+
 def test_owner_is_sealed_on_v1_and_waiting_stays_open() -> None:
     book, case = CaseBook().add_case(
         lot="LOT-1",

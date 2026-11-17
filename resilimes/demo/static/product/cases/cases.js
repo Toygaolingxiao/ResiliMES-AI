@@ -43,7 +43,7 @@ const CASES_MAX_CASES_PER_LOT = 200;
 const CASES_BOOK_KEYS = ["book_version", "cases", "next_seq"];
 const CASES_CASE_KEYS = [
   "cases_version", "case_id", "lot", "run", "title", "severity",
-  "severity_reason", "status", "lateness_min", "evidence_hash",
+  "severity_reason", "owner", "status", "lateness_min", "evidence_hash",
   "notes", "history", "created_at", "updated_at", "content_hash",
 ];
 const CASES_RUN_KEYS = ["seed", "horizon_sec", "policy", "label", "sched_mode"];
@@ -334,8 +334,10 @@ function validateCaseBook(payload) {
 }
 
 // Normalize a validated payload the way pydantic does: fill defaults,
-// coerce numeric strings, trim the three stripped text fields. Returns
-// a new object; the caller's payload is untouched.
+// coerce numeric strings, trim the stripped text fields. Returns a new
+// object; the caller's payload is untouched. A missing book version
+// stays cases/v0 so an older file still loads; a missing case version
+// follows the book.
 function normalizeCaseBook(payload) {
   const book = JSON.parse(JSON.stringify(payload));
   if (book.book_version === undefined) book.book_version = "cases/v0";
@@ -346,6 +348,8 @@ function normalizeCaseBook(payload) {
     if (typeof item.lot === "string") item.lot = item.lot.trim();
     if (typeof item.title === "string") item.title = item.title.trim();
     if (typeof item.severity_reason === "string") item.severity_reason = item.severity_reason.trim();
+    if (typeof item.owner === "string") item.owner = item.owner.trim();
+    if (item.owner === undefined) item.owner = null;
     if (item.status === undefined) item.status = "open";
     if (item.lateness_min !== undefined && item.lateness_min !== null) {
       item.lateness_min = casesToNumber(item.lateness_min);

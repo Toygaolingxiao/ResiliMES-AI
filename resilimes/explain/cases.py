@@ -1,4 +1,6 @@
-"""ResiliTrace case system v0: one case per late lot that needs follow-up.
+"""ResiliTrace case system: one case per late lot that needs follow-up.
+
+New cases are ``cases/v1``. ``cases/v0`` books still load.
 
 The explain layer answers, for one lot, why it is late. It does not answer
 what happens next: which lots are still waiting for a human, in what order,
@@ -32,11 +34,14 @@ without touching the model.
 
 Status is a small state machine:
 
-* ``open`` -> ``investigating`` | ``resolved`` | ``dismissed``
-* ``investigating`` -> ``open`` | ``resolved`` | ``dismissed``
+* ``open`` -> ``investigating`` | ``waiting`` | ``resolved`` | ``dismissed``
+* ``investigating`` -> ``open`` | ``waiting`` | ``resolved`` | ``dismissed``
+* ``waiting`` -> ``open`` | ``investigating`` | ``resolved`` | ``dismissed``
 * ``resolved`` -> ``open`` | ``dismissed``
-* ``dismissed`` -> ``open`` | ``investigating``
+* ``dismissed`` -> ``open`` | ``investigating`` | ``waiting``
 
+``waiting`` means the next move is outside this case (repair, a PM
+window, someone else's decision). It still counts as open work.
 ``open -> resolved`` is allowed on purpose: triage often resolves a case
 outright (duplicate, lot already recovered, no action needed), and
 forcing a fake ``investigating`` step would put a lie in the history.
@@ -60,7 +65,9 @@ A case carries ``content_hash`` (SHA-256, same pattern as
 ``EvidenceBundle`` and the claim ledger). The hash covers the case's
 content — id, lot, run, title, severity and its reason, status,
 lateness, evidence link, notes, and the status history without
-timestamps — but not ``created_at`` / ``updated_at`` or the history
+timestamps. ``cases/v1`` also covers ``owner`` (``None`` when
+unassigned). ``cases/v0`` seals predate ``owner`` and do not. The hash
+does not cover ``created_at`` / ``updated_at`` or the history
 timestamps, so re-stamping a case does not change its hash. The hash is
 a content self-consistency check, not a signature and not a proof that
 the record was never edited: timestamps can be rewritten without
@@ -69,7 +76,7 @@ them from another source. There is no book-level seal: ``verify_all()``
 checks each case, but deleting a case or reordering the book is not
 detected.
 
-Known limits of v0 (not hidden, just not built yet):
+Known limits (not hidden, just not built yet):
 
 * No persistence: a book lives in memory; ``to_json`` / ``from_json``
   is the only export. A store with retention policy is a later increment.
@@ -79,9 +86,9 @@ Known limits of v0 (not hidden, just not built yet):
   window, or someone else's decision. It still counts as open work.
   ``investigating`` means somebody is looking; ``waiting`` means the
   next move is outside this case.
-* No frontend page: the lot-first listing is a data interface only; the
-  Cases page (with the design-system baseline the standards require for
-  the first page increment) comes later.
+* The Cases page reads v0 and v1. It shows the owner, or unassigned,
+  and lists ``waiting`` with the other statuses. It does not transition
+  a case and it does not store the book.
 * ``case_id`` is book-local: the same lot in another book gets another
   id. Do not use it as a cross-book key.
 * ``evidence_hash`` links a case to one evidence bundle by hash, but the
@@ -98,9 +105,10 @@ Known limits of v0 (not hidden, just not built yet):
   it cannot say how many late lots have no case at all. That ratio
   needs the explain side to supply the denominator.
 
-Version rule: ``cases/v0``. Changing a severity definition, a status
-transition, the suggestion thresholds or a field is a new version,
-not an edit.
+Version rule: new cases are ``cases/v1``. ``cases/v0`` books still
+load. Changing a severity definition, a status transition, the
+suggestion thresholds or a field is a new version, not an edit.
+``owner`` and ``waiting`` are that change.
 """
 
 from __future__ import annotations
@@ -633,4 +641,24 @@ class CaseBook(BaseModel):
 
     @classmethod
     def from_json(cls, payload: dict[str, Any]) -> CaseBook:
-        return cls.model_validate(payload)
+        """Load a book. A missing version stays ``cases/v0``.
+
+        ``CaseBook()`` in code is ``cases/v1``. A file that omits
+        ``book_version`` was written when the default was v0, and a case
+        that omits ``cases_version`` follows its book. That matches
+        ``normalizeCaseBook`` on the Cases page.
+        """
+        if not isinstance(payload, dict):
+            return cls.model_validate(payload)
+        data = dict(payload)
+        data.setdefault("book_version", "cases/v0")
+        cases = data.get("cases")
+        if isinstance(cases, list):
+            filled: list[Any] = []
+            for item in cases:
+                if isinstance(item, dict) and "cases_version" not in item:
+                    filled.append({**item, "cases_version": data["book_version"]})
+                else:
+                    filled.append(item)
+            data["cases"] = filled
+        return cls.model_validate(data)
