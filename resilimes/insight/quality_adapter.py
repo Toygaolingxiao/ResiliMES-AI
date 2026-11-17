@@ -7,13 +7,16 @@ the injected fault is the answer key -- into sample dicts in the quality/v0
 JSON shape (``sample_id``, ``tier``, ``predicted_cause``, ``true_cause``,
 ``confidence``).
 
-The adapter computes no rates. Rates are ``quality.evaluate``'s job, and this
-module deliberately does not import it: the metrics module lives in an
-unmerged PR (#88) while this adapter is based on main, so the adapter only
-consumes the quality/v0 *contract* (field names and the tier/prediction
-consistency rule, re-stated in :func:`_validate_sample`). Merge order:
-#88 -> this PR. The first real measurement, run locally against the #88
-content, is recorded in ``docs/QUALITY_ADAPTER.md``.
+The adapter computes no rates. Rates are ``quality.evaluate``'s job, and
+this module wires it in: :func:`evaluate_adapted` validates each sample
+dict as a real ``AttributionSample`` and runs ``evaluate()`` over it
+(#88 merged, so the import is real now). The mirror validator
+:func:`_validate_sample` stays as a drift guard -- it re-states the
+quality/v0 field rules, and the cross-check test pins the two validators
+to agree. Merge order: #88 -> this PR. The first real measurement, run
+locally against the #88 content, is recorded in
+``docs/QUALITY_ADAPTER.md``; the wiring test re-runs it through the real
+``evaluate()`` pipeline, so the measurement is reproducible in CI.
 
 Mapping rules (adapter/v0). Changing any of them is a new adapter version,
 not an edit:
@@ -95,6 +98,7 @@ from pathlib import Path
 from typing import Any, get_args
 
 from resilimes.explain.causes import TAXONOMY
+from resilimes.explain.quality import AttributionSample, QualityReport, evaluate
 from resilimes.explain.schema import Tier
 
 ADAPTER_VERSION: str = "adapter/v0"
@@ -317,23 +321,68 @@ def adapt_investigator_file(path: str | Path, *, source: str | None = None) -> A
     return adapt_investigator_rows(payload["rows"], source=source or path.stem)
 
 
+def evaluate_adapted(adapted: AdaptedSet) -> QualityReport:
+    """Run the quality/v0 evaluation over an adapted set.
+
+    Every sample dict is validated as a real ``AttributionSample`` first,
+    so a dict that passed only the mirror validator cannot reach
+    ``evaluate()``. Pure function of its input: no I/O, the adapted set
+    is not mutated. An empty set evaluates to a report whose rates are
+    all ``None`` (denominator 0: not enough data, never 0.0).
+    """
+    samples = [AttributionSample(**sample) for sample in adapted.samples]
+    return evaluate(samples)
+
+
+def evaluate_file(
+    path: str | Path, *, source: str | None = None
+) -> tuple[AdaptedSet, QualityReport]:
+    """Adapt one saved investigator file and evaluate it in one step.
+
+    Adapt -> evaluate -> report, with nothing in between: the report a
+    caller gets is the report of exactly the samples the adapter
+    produced from this file, skips included in the summary.
+    """
+    adapted = adapt_investigator_file(path, source=source)
+    return adapted, evaluate_adapted(adapted)
+
+
+def _report_summary(report: QualityReport) -> dict[str, Any]:
+    """The report's headline numbers, denominators attached, for stdout."""
+    return {
+        "total_samples": report.total_samples,
+        "truth_known": report.truth_known,
+        "misattribution": report.misattribution.model_dump(mode="json"),
+        "over_unknown": report.over_unknown.model_dump(mode="json"),
+        "unknown_share": report.unknown_share.model_dump(mode="json"),
+        "calibration_samples": report.calibration_samples,
+        "expected_calibration_error": report.expected_calibration_error,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI: adapt a saved investigator file, print the summary as JSON.
 
-    ``python -m resilimes.insight.quality_adapter <file> [--out samples.json]``
+    ``python -m resilimes.insight.quality_adapter <file> [--out samples.json] [--report report.json]``
 
     Run from the repository root with the project venv. ``--out`` writes a
     self-describing object: the sample list plus the summary metadata, so a
     downstream holder of only that file can still recover the skips and
-    provenance.
+    provenance. ``--report`` writes a self-describing object: the full
+    quality/v0 report plus the same summary, so a holder of only that file
+    can still recover what was measured and what was skipped. The stdout
+    summary always carries the report's headline rates (with denominators),
+    whether or not ``--report`` is given.
     """
     parser = argparse.ArgumentParser(prog="quality_adapter", description=__doc__)
     parser.add_argument("file", help="saved run_investigator JSON file")
     parser.add_argument("--out", help="write samples plus summary metadata as JSON here")
+    parser.add_argument("--report", help="write the quality/v0 report plus summary as JSON here")
     args = parser.parse_args(argv)
 
     try:
         adapted = adapt_investigator_file(args.file)
+        report = evaluate_adapted(adapted)
         summary = {
             "adapter_version": ADAPTER_VERSION,
             "source": adapted.source,
@@ -344,11 +393,27 @@ def main(argv: list[str] | None = None) -> int:
             "system_answer_sample_ids": list(adapted.system_answer_sample_ids),
             "out_of_taxonomy_predicted": adapted.out_of_taxonomy_predicted,
             "out_of_taxonomy_truth": adapted.out_of_taxonomy_truth,
+            "report": _report_summary(report),
         }
         if args.out:
             Path(args.out).write_text(
                 json.dumps(
                     {"samples": list(adapted.samples), "summary": summary},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        if args.report:
+            Path(args.report).write_text(
+                json.dumps(
+                    {
+                        "report": report.model_dump(mode="json"),
+                        "summary": summary,
+                        "adapter_version": ADAPTER_VERSION,
+                        "metrics_version": report.metrics_version,
+                    },
                     ensure_ascii=False,
                     indent=2,
                 )
