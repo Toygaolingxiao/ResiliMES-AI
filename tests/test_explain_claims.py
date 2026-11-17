@@ -325,6 +325,17 @@ def test_claim_sources_follow_registry_provenance():
     assert lot.sources == ("tool:lot_lateness", "caller:extra")
     # Counting word 1 inside Lot-1 has no number provenance of its own.
     assert ledger.by_value("1", kind="number")[0].sources == ("caller:extra",)
+    registry.add_text("120 min", source="tool:lot_waits")
+    again = build_ledger(
+        "Lot-1 finished 120 min late.",
+        registry,
+        sources=("tool:lot_lateness", "caller:extra"),
+    )
+    assert again.by_value("120", kind="number")[0].sources == (
+        "tool:lot_lateness",
+        "tool:lot_waits",
+        "caller:extra",
+    )
 
 
 def test_ledger_for_explanation_keeps_provenance():

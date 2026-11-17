@@ -110,7 +110,7 @@ class Claim(BaseModel):
     kind: Literal["number", "id"]
     value: str  # normalised: numbers via _norm, ids upper-cased
     statement: str  # the sentence the value was quoted in
-    sources: tuple[str, ...] = ()  # evidence row references, ledger-level for now
+    sources: tuple[str, ...] = ()  # reported provenance, then caller-wide labels
     result: Literal["passed", "failed", "unchecked"]
     checked_at: str  # ISO 8601 UTC timestamp of the check
     reason: str | None = None  # why unchecked, or the gate's miss text on failure
