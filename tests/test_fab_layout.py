@@ -154,7 +154,9 @@ def test_resolve_switch(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize("policy", ["resilimes", "edd"])
-def test_off_is_identical_to_main(fab: Fab, policy: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_off_is_identical_to_main(
+    fab: Fab, policy: str, monkeypatch: pytest.MonkeyPatch, strict_qtime: None
+) -> None:
     default = _run(fab, policy)
     assert _digest(default) == MAIN_GOLDEN[policy]
     explicit = _run(fab, policy, layout=False)

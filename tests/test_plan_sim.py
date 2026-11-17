@@ -119,7 +119,7 @@ def _equal_due_fab(others: int = 6) -> Fab:
     return fab
 
 
-def test_schedule_head_is_the_rank_1_lot_and_dispatch_follows_it() -> None:
+def test_schedule_head_is_the_rank_1_lot_and_dispatch_follows_it(strict_qtime: None) -> None:
     fab = _equal_due_fab()
     # Plan ranks reverse the lot order: the last lot is rank 1.
     ranks = {name: len(fab.lot_id) - lot for lot, name in enumerate(fab.lot_id)}
@@ -155,7 +155,7 @@ def test_schedule_never_changes_a_policy_that_ignores_the_plan() -> None:
         assert planned.on_time_pct == plain.on_time_pct
 
 
-def test_no_plan_is_the_qtime_r2_path() -> None:
+def test_no_plan_is_the_qtime_r2_path(strict_qtime: None) -> None:
     fab = _crowded_b_fab(others=12)
     default = _run(fab, policy="resilimes", horizon=20_000.0)
     explicit = _run(fab, policy="resilimes", horizon=20_000.0, plan=None)

@@ -63,7 +63,9 @@ def _digest(result: RunResult) -> str:
 
 
 @pytest.mark.parametrize("policy", ["resilimes", "edd"])
-def test_off_is_main(fab: Fab, policy: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_off_is_main(
+    fab: Fab, policy: str, monkeypatch: pytest.MonkeyPatch, strict_qtime: None
+) -> None:
     default = _run(fab, policy)
     off = _run(fab, policy, hard_qtime=False)
     monkeypatch.setenv("RESILIMES_HARD_QTIME", "0")
@@ -79,7 +81,9 @@ def test_off_is_main(fab: Fab, policy: str, monkeypatch: pytest.MonkeyPatch) -> 
 
 
 @pytest.mark.parametrize("policy", ["resilimes", "edd"])
-def test_on_gates_and_expedites(fab: Fab, policy: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_on_gates_and_expedites(
+    fab: Fab, policy: str, monkeypatch: pytest.MonkeyPatch, strict_qtime: None
+) -> None:
     off = _run(fab, policy)
     on = _run(fab, policy, hard_qtime=True)
     monkeypatch.setenv("RESILIMES_HARD_QTIME", "1")
