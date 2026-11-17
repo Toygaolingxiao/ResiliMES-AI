@@ -60,9 +60,38 @@ def _case_kwargs(**overrides):
 
 
 def test_version_is_locked() -> None:
-    assert CASES_VERSION == "cases/v0"
+    assert CASES_VERSION == "cases/v1"
     with pytest.raises(ValidationError):
-        Case(**_case_kwargs(cases_version="cases/v1"))  # type: ignore[arg-type]
+        Case(**_case_kwargs(cases_version="cases/v9"))  # type: ignore[arg-type]
+    # Older books still load. They cannot carry an owner.
+    legacy = Case(**_case_kwargs(cases_version="cases/v0"))
+    assert legacy.owner is None
+    with pytest.raises(ValidationError, match="owner requires"):
+        Case(**_case_kwargs(cases_version="cases/v0", owner="Ada"))
+
+
+def test_owner_is_sealed_on_v1_and_waiting_stays_open() -> None:
+    book, case = CaseBook().add_case(
+        lot="LOT-1",
+        run=RUN,
+        title="late",
+        severity="major",
+        severity_reason="r",
+        owner=" Ada ",
+        lateness_min=45.0,
+        created_at=T0,
+    )
+    assert case.cases_version == "cases/v1"
+    assert case.owner == "Ada"
+    assert case.verify()
+    without = case.model_copy(update={"owner": None}).sealed()
+    assert without.content_hash != case.content_hash
+    book = book.transition(case.case_id, "waiting", "blocked on the etch bay", at=T1)
+    moved = book.get(case.case_id)
+    assert moved.status == "waiting"
+    assert book.summary().open_total == 1
+    assert book.lots()[0].open_count == 1
+    assert book.lots()[0].worst_open_severity == "major"
 
 
 def test_suggest_severity_thresholds() -> None:
@@ -550,6 +579,7 @@ def test_summary_counts_only() -> None:
     assert summary.by_status == {
         "open": 2,
         "investigating": 0,
+        "waiting": 0,
         "resolved": 0,
         "dismissed": 1,
     }
@@ -571,6 +601,7 @@ def test_empty_book_behaviour() -> None:
     assert summary.by_status == {
         "open": 0,
         "investigating": 0,
+        "waiting": 0,
         "resolved": 0,
         "dismissed": 0,
     }
@@ -605,7 +636,7 @@ def test_from_json_rejects_duplicate_ids_and_rewound_seq() -> None:
     with pytest.raises(ValidationError, match="next_seq"):
         CaseBook.from_json(payload)
     payload = book.to_json()
-    payload["book_version"] = "cases/v1"
+    payload["book_version"] = "cases/v9"
     with pytest.raises(ValidationError):
         CaseBook.from_json(payload)
 

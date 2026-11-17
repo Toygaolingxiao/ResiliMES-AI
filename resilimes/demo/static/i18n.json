@@ -1050,9 +1050,12 @@
       "status": {
         "open": "Open",
         "investigating": "Investigating",
+        "waiting": "Waiting",
         "resolved": "Resolved",
         "dismissed": "Dismissed"
       },
+      "ownerLabel": "Owner:",
+      "ownerUnassigned": "Unassigned",
       "colSeal": "Case seal",
       "colCreated": "Opened",
       "unverified": "Unverified file: contents are shown as loaded; seals are not checked.",
@@ -2116,9 +2119,12 @@
       "status": {
         "open": "未处理",
         "investigating": "调查中",
+        "waiting": "等待中",
         "resolved": "已解决",
         "dismissed": "已驳回"
       },
+      "ownerLabel": "负责人：",
+      "ownerUnassigned": "未指定",
       "colSeal": "案件封印",
       "colCreated": "建案",
       "unverified": "未验证文件：内容按加载原样展示，未校验封印。",
@@ -3182,9 +3188,12 @@
       "status": {
         "open": "未対応",
         "investigating": "調査中",
+        "waiting": "待機中",
         "resolved": "解決済み",
         "dismissed": "却下"
       },
+      "ownerLabel": "担当：",
+      "ownerUnassigned": "未指定",
       "colSeal": "案件の封印",
       "colCreated": "作成",
       "unverified": "未検証のファイル：内容は読み込んだまま表示し、封印は確認していません。",
