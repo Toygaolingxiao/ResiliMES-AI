@@ -4,10 +4,39 @@
 function paintAnalyze() {
   const host = $("#panel-analyze");
   const copy = t();
+  // Rebuilding the panel drops scroll and focus; keep both so loading
+  // a report far down the list does not throw the reader back to the top.
+  const savedScroll = host.scrollTop;
+  const active = document.activeElement;
+  const hadFileFocus = active && host.contains(active) && active.id === "quality-file";
+  const hadToggleFocus = active && host.contains(active)
+    && typeof active.id === "string" && active.id.indexOf("quality-view-") === 0;
   host.innerHTML = "";
+  // The Metrics panel holds two parallel views (docs/QUALITY_PAGE.md):
+  // the old scheduler KPI view (default) and the ResiliTrace trust
+  // view, which renders a file-loaded QualityReport (quality/v0).
+  // The trust view lives in quality-report.js; if that script failed
+  // to load, the panel falls back to the KPI view instead of taking
+  // the whole console paint down with a ReferenceError.
+  const trustAvailable = typeof qualityViewToggle === "function"
+    && typeof paintQualityReport === "function";
+  if (trustAvailable) host.appendChild(qualityViewToggle());
+  if (trustAvailable && (state.qualityView || "kpi") === "trust") {
+    paintQualityReport();
+    host.scrollTop = savedScroll;
+    if (hadFileFocus) {
+      const picker = document.getElementById("quality-file");
+      if (picker) picker.focus();
+    } else if (hadToggleFocus) {
+      const toggle = document.getElementById(`quality-view-${state.qualityView || "kpi"}`);
+      if (toggle) toggle.focus();
+    }
+    return;
+  }
   const report = state.report;
   if (!report || !report.kpis) {
     host.appendChild(emptyLine(copy.analyzeEmpty));
+    host.scrollTop = savedScroll;
     return;
   }
   const wrap = document.createElement("div");
@@ -17,6 +46,11 @@ function paintAnalyze() {
   if (gap) parts.unshift(gap);
   wrap.append(...parts);
   host.appendChild(wrap);
+  host.scrollTop = savedScroll;
+  if (hadToggleFocus) {
+    const toggle = document.getElementById(`quality-view-${state.qualityView || "kpi"}`);
+    if (toggle) toggle.focus();
+  }
 }
 
 function optimalityCard(report) {
