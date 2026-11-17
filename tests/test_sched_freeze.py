@@ -103,14 +103,14 @@ def _digest(result: RunResult, *, freeze_events: bool = True) -> str:
 
 
 @pytest.mark.parametrize("policy", ["resilimes", "edd"])
-def test_off_is_byte_identical_to_main(fab: Fab, policy: str) -> None:
+def test_off_is_byte_identical_to_main(fab: Fab, policy: str, strict_qtime: None) -> None:
     result = _run(fab, policy, None)
     assert result.sched_freeze == {}
     assert _digest(result) == MAIN_GOLDEN[policy]
 
 
 @pytest.mark.parametrize("policy", ["resilimes", "edd"])
-def test_tracking_only_does_not_change_dispatch(fab: Fab, policy: str) -> None:
+def test_tracking_only_does_not_change_dispatch(fab: Fab, policy: str, strict_qtime: None) -> None:
     tracked = _run(fab, policy, FreezeConfig(track=True))
     assert any(event[0] == "sched_tick" for event in tracked.events)
     assert _digest(tracked, freeze_events=False) == MAIN_GOLDEN[policy]

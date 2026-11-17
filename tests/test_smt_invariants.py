@@ -257,7 +257,7 @@ def _b_order(fab: Fab, policy: str) -> tuple[list[str], Any]:
     return order, result
 
 
-def test_qtime_urgent_normal_lot_jumps_a_waiting_vip() -> None:
+def test_qtime_urgent_normal_lot_jumps_a_waiting_vip(strict_qtime: None) -> None:
     fab = _qtime_fab(cqt_limit=700.0, second="VIP")
     order, result = _b_order(fab, "resilimes")
     assert order == ["L_V1", "L_Q", "L_2"]
@@ -289,7 +289,7 @@ def test_no_override_on_a_step_without_dataset_cqt() -> None:
     assert not [e for e in result.events if e[0] == "override"]
 
 
-def test_late_hot_lot_stays_ahead_of_a_qtime_urgent_lot() -> None:
+def test_late_hot_lot_stays_ahead_of_a_qtime_urgent_lot(strict_qtime: None) -> None:
     fab = _qtime_fab(cqt_limit=700.0, second="hot", second_due=0.0)
     order, result = _b_order(fab, "resilimes")
     # The late hot lot leads at 0 s (band 0), the urgent normal lot then jumps

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 from tests.test_investigator import Scripted
@@ -21,7 +22,17 @@ def fab():
 
 @pytest.fixture(scope="module")
 def run24(fab):
-    return record_run(fab, seed=1, horizon=24 * HOUR)
+    # The split was recorded on the strict Q-time path. Restore the suite mode
+    # after the run so later tests still see plan when CI starts that way.
+    previous = os.environ.get("RESILIMES_SCHED_MODE")
+    os.environ["RESILIMES_SCHED_MODE"] = "strict_qtime"
+    try:
+        return record_run(fab, seed=1, horizon=24 * HOUR)
+    finally:
+        if previous is None:
+            os.environ.pop("RESILIMES_SCHED_MODE", None)
+        else:
+            os.environ["RESILIMES_SCHED_MODE"] = previous
 
 
 def test_every_late_lot_splits_exactly(run24):

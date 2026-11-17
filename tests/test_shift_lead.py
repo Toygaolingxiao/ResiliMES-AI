@@ -127,7 +127,7 @@ def test_shift_lead_needs_the_resilimes_policy() -> None:
     ],
 )
 def test_detects_exceptions_with_legal_options(
-    book: str, seed: int, hours: str, kind: str, monkeypatch: pytest.MonkeyPatch
+    book: str, seed: int, hours: str, kind: str, monkeypatch: pytest.MonkeyPatch, strict_qtime: None
 ) -> None:
     lead = ShiftLead(RuleDefault())
     result, (plant, kwargs) = _run(book, lead, monkeypatch, seed, hours)
@@ -144,7 +144,9 @@ def test_detects_exceptions_with_legal_options(
     assert report["total"] == 0, report
 
 
-def test_breakdown_options_reroute_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_breakdown_options_reroute_by_default(
+    monkeypatch: pytest.MonkeyPatch, strict_qtime: None
+) -> None:
     lead = ShiftLead(RuleDefault())
     _run("published", lead, monkeypatch, hours="6")
     entry = next(entry for entry in lead.log if entry["type"] == "breakdown")

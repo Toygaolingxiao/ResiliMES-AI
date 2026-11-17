@@ -146,7 +146,7 @@ def test_tight_book_is_a_constructed_due_stress() -> None:
     assert read["row_counts"]["lots"] == 2156
 
 
-def test_tight_vip_dues_make_edd_lose_on_seed_one() -> None:
+def test_tight_vip_dues_make_edd_lose_on_seed_one(strict_qtime: None) -> None:
     fab = load_fab()
     scenario = SCENARIOS["tight_p1"]
     report = simulate_pair(fab, scenario, seed=1, horizon=TIGHT_HORIZON_SEC)

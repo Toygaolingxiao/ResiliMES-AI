@@ -26,8 +26,14 @@ jobs:
         run: python -m mypy
       - name: Explain boundary
         run: python -m pytest -q tests/test_explain_boundary.py tests/test_explain_contract.py
-      - name: Test
+      - name: Test (strict_qtime)
         run: python -m pytest
+        env:
+          RESILIMES_SCHED_MODE: strict_qtime
+      - name: Test (plan)
+        run: python -m pytest
+        env:
+          RESILIMES_SCHED_MODE: plan
       - name: Offline smoke
         run: python smoke_test.py --mock
         env:

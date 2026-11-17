@@ -34,10 +34,23 @@ REASONS = {
 
 @pytest.fixture(scope="module")
 def client() -> Iterator[TestClient]:
+    # Overview and what-if numbers were recorded on strict Q-time.
+    # Replay caches the baseline by book key and ignores sched mode, so a
+    # plan-mode test earlier in the process would otherwise be reused here.
+    previous = os.environ.get("RESILIMES_SCHED_MODE")
+    os.environ["RESILIMES_SCHED_MODE"] = "strict_qtime"
     os.environ["RESILIMES_NO_WARM"] = "1"
-    app = create_app(Settings(mode="mock", fab="smt2020"))
-    with TestClient(app) as test_client:
-        yield test_client
+    replay._CACHE.clear()
+    try:
+        app = create_app(Settings(mode="mock", fab="smt2020"))
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        replay._CACHE.clear()
+        if previous is None:
+            os.environ.pop("RESILIMES_SCHED_MODE", None)
+        else:
+            os.environ["RESILIMES_SCHED_MODE"] = previous
 
 
 def get(client: TestClient, path: str, **params: Any) -> dict[str, Any]:

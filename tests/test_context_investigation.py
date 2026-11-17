@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,7 +30,15 @@ def fab():
 
 @pytest.fixture(scope="module")
 def run24(fab):
-    return record_run(fab, seed=1, horizon=24 * HOUR)
+    previous = os.environ.get("RESILIMES_SCHED_MODE")
+    os.environ["RESILIMES_SCHED_MODE"] = "strict_qtime"
+    try:
+        return record_run(fab, seed=1, horizon=24 * HOUR)
+    finally:
+        if previous is None:
+            os.environ.pop("RESILIMES_SCHED_MODE", None)
+        else:
+            os.environ["RESILIMES_SCHED_MODE"] = previous
 
 
 def _started_visit(run):

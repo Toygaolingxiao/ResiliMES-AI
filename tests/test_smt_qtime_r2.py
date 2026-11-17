@@ -239,7 +239,7 @@ def _b_position(result, lot: int = 0) -> int:
     return order.index(lot)
 
 
-def test_open_window_lot_is_admitted_to_a_capped_shortlist() -> None:
+def test_open_window_lot_is_admitted_to_a_capped_shortlist(strict_qtime: None) -> None:
     fab = _crowded_b_fab()
     after = _run(fab, policy="resilimes", horizon=25_000.0, r2_fixes=(1, 2, 3))
     before = _run(fab, policy="resilimes", horizon=25_000.0, r2_policy=False)
@@ -462,7 +462,7 @@ def _run_reserve(fab, *, pm=NO_DOWNS, downs=None, **kwargs):
 RES_DOWNS = [[], list(B_DOWN)]
 
 
-def test_reservation_holds_one_tool_for_the_inbound_qtime_lot() -> None:
+def test_reservation_holds_one_tool_for_the_inbound_qtime_lot(strict_qtime: None) -> None:
     fab = _reserve_fab()
     result = _run_reserve(fab)
     holds = [e for e in result.events if e[0] == "reserve"]
@@ -483,7 +483,7 @@ def test_no_hold_without_a_scheduling_tick() -> None:
     assert result.tool_reservations == 0
 
 
-def test_reservation_is_resilimes_policy_only() -> None:
+def test_reservation_is_resilimes_policy_only(strict_qtime: None) -> None:
     fab = _reserve_fab()
     for result in (
         _run_reserve(fab, r2_policy=False),
@@ -501,7 +501,7 @@ def test_no_reservation_on_a_tool_with_pm_during_the_hold() -> None:
     assert check_trace(fab, result, downs=RES_DOWNS, pm=pm)["total"] == 0
 
 
-def test_breakdown_cancels_the_reservation() -> None:
+def test_breakdown_cancels_the_reservation(strict_qtime: None) -> None:
     fab = _reserve_fab()
     downs = [[], [*B_DOWN, (200.0, 250.0)]]
     result = _run_reserve(fab, downs=downs)
@@ -511,7 +511,7 @@ def test_breakdown_cancels_the_reservation() -> None:
     assert check_trace(fab, result, downs=downs, pm=NO_DOWNS)["total"] == 0
 
 
-def test_reservation_checks_flag_a_start_on_a_held_tool_and_a_long_hold() -> None:
+def test_reservation_checks_flag_a_start_on_a_held_tool_and_a_long_hold(strict_qtime: None) -> None:
     fab = _reserve_fab()
     result = _run_reserve(fab)
     at = next(i for i, e in enumerate(result.events) if e[0] == "reserve")
