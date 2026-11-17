@@ -1,4 +1,6 @@
-"""ResiliTrace case system v0: one case per late lot that needs follow-up.
+"""ResiliTrace case system: one case per late lot that needs follow-up.
+
+New cases are ``cases/v1``. ``cases/v0`` books still load.
 
 The explain layer answers, for one lot, why it is late. It does not answer
 what happens next: which lots are still waiting for a human, in what order,
@@ -32,11 +34,14 @@ without touching the model.
 
 Status is a small state machine:
 
-* ``open`` -> ``investigating`` | ``resolved`` | ``dismissed``
-* ``investigating`` -> ``open`` | ``resolved`` | ``dismissed``
+* ``open`` -> ``investigating`` | ``waiting`` | ``resolved`` | ``dismissed``
+* ``investigating`` -> ``open`` | ``waiting`` | ``resolved`` | ``dismissed``
+* ``waiting`` -> ``open`` | ``investigating`` | ``resolved`` | ``dismissed``
 * ``resolved`` -> ``open`` | ``dismissed``
-* ``dismissed`` -> ``open`` | ``investigating``
+* ``dismissed`` -> ``open`` | ``investigating`` | ``waiting``
 
+``waiting`` means the next move is outside this case (repair, a PM
+window, someone else's decision). It still counts as open work.
 ``open -> resolved`` is allowed on purpose: triage often resolves a case
 outright (duplicate, lot already recovered, no action needed), and
 forcing a fake ``investigating`` step would put a lie in the history.
@@ -60,7 +65,9 @@ A case carries ``content_hash`` (SHA-256, same pattern as
 ``EvidenceBundle`` and the claim ledger). The hash covers the case's
 content — id, lot, run, title, severity and its reason, status,
 lateness, evidence link, notes, and the status history without
-timestamps — but not ``created_at`` / ``updated_at`` or the history
+timestamps. ``cases/v1`` also covers ``owner`` (``None`` when
+unassigned). ``cases/v0`` seals predate ``owner`` and do not. The hash
+does not cover ``created_at`` / ``updated_at`` or the history
 timestamps, so re-stamping a case does not change its hash. The hash is
 a content self-consistency check, not a signature and not a proof that
 the record was never edited: timestamps can be rewritten without
@@ -69,19 +76,19 @@ them from another source. There is no book-level seal: ``verify_all()``
 checks each case, but deleting a case or reordering the book is not
 detected.
 
-Known limits of v0 (not hidden, just not built yet):
+Known limits (not hidden, just not built yet):
 
 * No persistence: a book lives in memory; ``to_json`` / ``from_json``
   is the only export. A store with retention policy is a later increment.
-* No owner or assignment: the book cannot say who is following up a
-  case, only that its status moved. ``investigating`` means somebody set
-  it so, not that a named person is on it.
-* No waiting/blocked state: a case waiting on repair, a PM window or a
-  customer decision can only sit in ``investigating``; "looking into it"
-  and "waiting on something else" cannot be told apart yet.
-* No frontend page: the lot-first listing is a data interface only; the
-  Cases page (with the design-system baseline the standards require for
-  the first page increment) comes later.
+* ``owner`` is an optional name on cases/v1. Empty means unassigned.
+  cases/v0 seals do not cover owner, so a v0 case cannot carry one.
+* ``waiting`` is the blocked state: the case is waiting on repair, a PM
+  window, or someone else's decision. It still counts as open work.
+  ``investigating`` means somebody is looking; ``waiting`` means the
+  next move is outside this case.
+* The Cases page reads v0 and v1. It shows the owner, or unassigned,
+  and lists ``waiting`` with the other statuses. It does not transition
+  a case and it does not store the book.
 * ``case_id`` is book-local: the same lot in another book gets another
   id. Do not use it as a cross-book key.
 * ``evidence_hash`` links a case to one evidence bundle by hash, but the
@@ -101,9 +108,10 @@ Known limits of v0 (not hidden, just not built yet):
   list); the book cannot verify it is complete, and no page or API
   consumes the rates yet.
 
-Version rule: ``cases/v0``. Changing a severity definition, a status
-transition, the suggestion thresholds or a field is a new version,
-not an edit.
+Version rule: new cases are ``cases/v1``. ``cases/v0`` books still
+load. Changing a severity definition, a status transition, the
+suggestion thresholds or a field is a new version, not an edit.
+``owner`` and ``waiting`` are that change.
 """
 
 from __future__ import annotations
@@ -120,7 +128,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from resilimes.explain.quality import Rate
 from resilimes.explain.schema import RunRef, canonical_json
 
-CASES_VERSION: Literal["cases/v0"] = "cases/v0"
+CasesVersion = Literal["cases/v0", "cases/v1"]
+# New cases are cases/v1 (owner + waiting). cases/v0 books still load;
+# their seals do not cover owner, so a v0 case cannot carry one.
+CASES_VERSION: CasesVersion = "cases/v1"
 
 Severity = Literal["critical", "major", "minor", "info"]
 SEVERITIES: tuple[str, ...] = ("critical", "major", "minor", "info")
@@ -131,13 +142,16 @@ SEVERITY_ORDER: dict[str, int] = {"critical": 0, "major": 1, "minor": 2, "info":
 SUGGEST_CRITICAL_MIN = 120.0
 SUGGEST_MAJOR_MIN = 30.0
 
-Status = Literal["open", "investigating", "resolved", "dismissed"]
-STATUSES: tuple[str, ...] = ("open", "investigating", "resolved", "dismissed")
+Status = Literal["open", "investigating", "waiting", "resolved", "dismissed"]
+STATUSES: tuple[str, ...] = ("open", "investigating", "waiting", "resolved", "dismissed")
+# Still needs a person: open, investigating, or waiting on something else.
+OPEN_STATUSES: tuple[str, ...] = ("open", "investigating", "waiting")
 TRANSITIONS: dict[str, tuple[str, ...]] = {
-    "open": ("investigating", "resolved", "dismissed"),
-    "investigating": ("open", "resolved", "dismissed"),
+    "open": ("investigating", "waiting", "resolved", "dismissed"),
+    "investigating": ("open", "waiting", "resolved", "dismissed"),
+    "waiting": ("open", "investigating", "resolved", "dismissed"),
     "resolved": ("open", "dismissed"),
-    "dismissed": ("open", "investigating"),
+    "dismissed": ("open", "investigating", "waiting"),
 }
 
 _HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -219,13 +233,14 @@ class Case(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    cases_version: Literal["cases/v0"] = CASES_VERSION
+    cases_version: CasesVersion = CASES_VERSION
     case_id: str
     lot: str
     run: RunRef
     title: str
     severity: Severity
     severity_reason: str
+    owner: str | None = None
     status: Status = "open"
     lateness_min: float | None = Field(default=None, ge=0.0)
     evidence_hash: str | None = None
@@ -239,7 +254,7 @@ class Case(BaseModel):
     @classmethod
     def _strip_text_fields(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            for field in ("lot", "title", "severity_reason"):
+            for field in ("lot", "title", "severity_reason", "owner"):
                 value = data.get(field)
                 if isinstance(value, str):
                     data = {**data, field: value.strip()}
@@ -257,6 +272,10 @@ class Case(BaseModel):
             raise ValueError("title must not be empty")
         if not self.severity_reason.strip():
             raise ValueError("severity_reason must not be empty")
+        if self.owner is not None and not self.owner.strip():
+            raise ValueError("owner must not be empty")
+        if self.cases_version == "cases/v0" and self.owner is not None:
+            raise ValueError("owner requires cases/v1")
         if self.lateness_min is not None and not math.isfinite(self.lateness_min):
             raise ValueError("lateness_min must be finite")
         if self.evidence_hash is not None and not _HASH_RE.match(self.evidence_hash):
@@ -309,8 +328,11 @@ class Case(BaseModel):
             )
 
     def body(self) -> dict[str, Any]:
-        """Everything the hash covers: content, not timestamps."""
-        return {
+        """Everything the hash covers: content, not timestamps.
+
+        cases/v0 seals predate ``owner`` and do not cover it. cases/v1 does.
+        """
+        payload = {
             "cases_version": self.cases_version,
             "case_id": self.case_id,
             "lot": self.lot,
@@ -326,6 +348,9 @@ class Case(BaseModel):
                 {"previous": e.previous, "status": e.status, "note": e.note} for e in self.history
             ],
         }
+        if self.cases_version != "cases/v0":
+            payload["owner"] = self.owner
+        return payload
 
     def sealed(self) -> Case:
         return self.model_copy(
@@ -470,7 +495,7 @@ class CaseBook(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    book_version: Literal["cases/v0"] = CASES_VERSION
+    book_version: CasesVersion = CASES_VERSION
     cases: tuple[Case, ...] = ()
     next_seq: int = Field(default=1, ge=1)
 
@@ -502,6 +527,7 @@ class CaseBook(BaseModel):
         title: str,
         severity: Severity,
         severity_reason: str | None = None,
+        owner: str | None = None,
         lateness_min: float | None = None,
         evidence_hash: str | None = None,
         notes: tuple[str, ...] = (),
@@ -539,6 +565,7 @@ class CaseBook(BaseModel):
             title=title,
             severity=severity,
             severity_reason=severity_reason,
+            owner=owner,
             lateness_min=lateness_min,
             evidence_hash=evidence_hash,
             notes=tuple(notes),
@@ -650,7 +677,7 @@ class CaseBook(BaseModel):
             grouped.setdefault(case.lot, []).append(case)
         rows = []
         for lot, items in grouped.items():
-            open_items = [c for c in items if c.status in ("open", "investigating")]
+            open_items = [c for c in items if c.status in OPEN_STATUSES]
             rows.append(
                 LotSummary(
                     lot=lot,
@@ -687,7 +714,7 @@ class CaseBook(BaseModel):
         return CaseBookSummary(
             total=len(self.cases),
             lots=len({c.lot for c in self.cases}),
-            open_total=sum(1 for c in self.cases if c.status in ("open", "investigating")),
+            open_total=sum(1 for c in self.cases if c.status in OPEN_STATUSES),
             by_status=by_status,
             by_severity=by_severity,
         )
@@ -772,4 +799,24 @@ class CaseBook(BaseModel):
 
     @classmethod
     def from_json(cls, payload: dict[str, Any]) -> CaseBook:
-        return cls.model_validate(payload)
+        """Load a book. A missing version stays ``cases/v0``.
+
+        ``CaseBook()`` in code is ``cases/v1``. A file that omits
+        ``book_version`` was written when the default was v0, and a case
+        that omits ``cases_version`` follows its book. That matches
+        ``normalizeCaseBook`` on the Cases page.
+        """
+        if not isinstance(payload, dict):
+            return cls.model_validate(payload)
+        data = dict(payload)
+        data.setdefault("book_version", "cases/v0")
+        cases = data.get("cases")
+        if isinstance(cases, list):
+            filled: list[Any] = []
+            for item in cases:
+                if isinstance(item, dict) and "cases_version" not in item:
+                    filled.append({**item, "cases_version": data["book_version"]})
+                else:
+                    filled.append(item)
+            data["cases"] = filled
+        return cls.model_validate(data)

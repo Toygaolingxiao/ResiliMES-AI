@@ -309,8 +309,8 @@ def _bar(kit: Toolkit, query: ContextQuery) -> ContextAnswer:
         ),
     ]
     basis = _basis(entries)
-    kit.registry.add(basis)
-    kit.registry.add_text(f"{lot_id} {family_name} {tool_name}")
+    kit.registry.add(basis, source="context:lot_basis")
+    kit.registry.add_text(f"{lot_id} {family_name} {tool_name}", source="context:lot")
     # Tier by code: a recorded start reason or a recorded displacement of
     # this lot is a decision record; everything else is the rule's result.
     tier = TIER_DECISION_RECORD if (visit.reason or displaced) else TIER_RULE_EMERGENT
@@ -461,7 +461,7 @@ def _gap(kit: Toolkit, query: ContextQuery) -> ContextAnswer:
     ]
     if idle_h <= 0.01:
         basis = _basis(entries)
-        kit.registry.add(basis)
+        kit.registry.add(basis, source="context:idle_basis")
         text = (
             f"{query.tool} was not idle in this window: {round(states['busy'] / HOUR, 2):g} h busy, "
             f"{round(states[DOWN] / HOUR, 2):g} h down, {round(states[PM] / HOUR, 2):g} h PM."
@@ -529,8 +529,8 @@ def _gap(kit: Toolkit, query: ContextQuery) -> ContextAnswer:
         ),
     ]
     basis = _basis(entries)
-    kit.registry.add(basis)
-    kit.registry.add_text(f"{query.tool} {family_name}")
+    kit.registry.add(basis, source="context:tool_basis")
+    kit.registry.add_text(f"{query.tool} {family_name}", source="context:tool")
     decided = bool(ai_events_here or displaced_here)
     # A classification or a stray decision event alone is not an answer:
     # with no lot waiting and no bucketed wait, nothing was observably
@@ -804,7 +804,7 @@ def _notes_part(
             },
         )
     ]
-    kit.registry.add(_basis(entries))
+    kit.registry.add(_basis(entries), source="context:window_basis")
     if not matched:
         return entries, ""
     first = matched[0][0]
@@ -854,7 +854,7 @@ def _free(
         basis.append({**entry, "n": offset + entry["n"]})
     if note_text:
         parts.append(("fab_notes", TIER_RULE_EMERGENT, note_text))
-    kit.registry.add(basis)
+    kit.registry.add(basis, source="context:notes_basis")
     if not parts:
         text = (
             "The recorded evidence available to this service does not answer that "
