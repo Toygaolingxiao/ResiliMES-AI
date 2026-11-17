@@ -80,7 +80,8 @@ class Explanation:
     # Time budget (docs/AI_EXPLAINER.md): wall-clock seconds and whether the deadline hit.
     elapsed_s: float = 0.0
     timeout: bool = False
-    # Set only when explain(..., open_case=True) and the lot is actually late.
+    # Set only when explain(..., open_case=True), the explanation succeeded,
+    # and the lot is actually late. Owner is unset; status is open.
     case_book: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
@@ -202,8 +203,10 @@ def explain(
     On timeout the answer is marked ``timeout`` and has no lever; the exact wait split and
     evidence (deterministic) are unaffected.
 
-    ``open_case`` defaults off. When it is on and the lot is late, the answer
-    carries a one-case ``case_book`` (cases/v0 JSON). The book is not stored.
+    ``open_case`` defaults off. When it is on, the explanation succeeded, and
+    the lot is late, the answer carries a one-case ``case_book`` (cases/v1
+    JSON). The owner is unset and the status is ``open``. The book is not
+    stored.
     """
     budget = deadline_s if deadline_s is not None else deadline.default_task_s()
     with deadline.task_deadline(budget):
@@ -336,6 +339,7 @@ def _open_case(kit: Toolkit, lot_id: str, late_min: float) -> dict[str, Any]:
         title=f"{lot_id} is late",
         severity=severity,
         lateness_min=late_min,
+        owner=None,
     )
     return book.to_json()
 
