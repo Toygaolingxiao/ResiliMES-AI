@@ -20,16 +20,17 @@
 // legality matches from_json. Validation error details stay English
 // field paths; see docs/CASES_PAGE.md.
 
-const CASES_VERSION = "cases/v0";
+const CASES_VERSIONS = ["cases/v0", "cases/v1"];
 const CASES_SEVERITIES = ["critical", "major", "minor", "info"];
 const CASES_SEVERITY_ORDER = { critical: 0, major: 1, minor: 2, info: 3 };
-const CASES_STATUSES = ["open", "investigating", "resolved", "dismissed"];
-const CASES_OPEN = ["open", "investigating"];
+const CASES_STATUSES = ["open", "investigating", "waiting", "resolved", "dismissed"];
+const CASES_OPEN = ["open", "investigating", "waiting"];
 const CASES_TRANSITIONS = {
-  open: ["investigating", "resolved", "dismissed"],
-  investigating: ["open", "resolved", "dismissed"],
+  open: ["investigating", "waiting", "resolved", "dismissed"],
+  investigating: ["open", "waiting", "resolved", "dismissed"],
+  waiting: ["open", "investigating", "resolved", "dismissed"],
   resolved: ["open", "dismissed"],
-  dismissed: ["open", "investigating"],
+  dismissed: ["open", "investigating", "waiting"],
 };
 const CASES_HASH_RE = /^sha256:[0-9a-f]{64}$/;
 const CASES_ID_RE = /^case-(\d+)$/;
@@ -42,7 +43,7 @@ const CASES_MAX_CASES_PER_LOT = 200;
 const CASES_BOOK_KEYS = ["book_version", "cases", "next_seq"];
 const CASES_CASE_KEYS = [
   "cases_version", "case_id", "lot", "run", "title", "severity",
-  "severity_reason", "status", "lateness_min", "evidence_hash",
+  "severity_reason", "owner", "status", "lateness_min", "evidence_hash",
   "notes", "history", "created_at", "updated_at", "content_hash",
 ];
 const CASES_RUN_KEYS = ["seed", "horizon_sec", "policy", "label", "sched_mode"];
@@ -231,8 +232,14 @@ function casesCheckCase(item, where, seenIds, errors) {
     return;
   }
   casesCheckKeys(item, CASES_CASE_KEYS, where, errors);
-  if (item.cases_version !== undefined && item.cases_version !== CASES_VERSION) {
-    errors.push(`${where}.cases_version: must be ${JSON.stringify(CASES_VERSION)}`);
+  if (item.cases_version !== undefined && !CASES_VERSIONS.includes(item.cases_version)) {
+    errors.push(`${where}.cases_version: must be cases/v0 or cases/v1`);
+  }
+  if (item.owner !== undefined && item.owner !== null && (typeof item.owner !== "string" || !item.owner.trim())) {
+    errors.push(`${where}.owner: must be a non-empty string or null`);
+  }
+  if (item.cases_version === "cases/v0" && item.owner) {
+    errors.push(`${where}.owner: owner requires cases/v1`);
   }
   if (typeof item.case_id !== "string" || !item.case_id.trim()) {
     errors.push(`${where}.case_id: must be a non-empty string`);
@@ -295,8 +302,8 @@ function validateCaseBook(payload) {
   const errors = [];
   if (!casesIsPlainObject(payload)) return ["book: must be a JSON object"];
   casesCheckKeys(payload, CASES_BOOK_KEYS, "book", errors);
-  if (payload.book_version !== undefined && payload.book_version !== CASES_VERSION) {
-    errors.push(`book.book_version: must be ${JSON.stringify(CASES_VERSION)}`);
+  if (payload.book_version !== undefined && !CASES_VERSIONS.includes(payload.book_version)) {
+    errors.push("book.book_version: must be cases/v0 or cases/v1");
   }
   const cases = payload.cases === undefined ? [] : payload.cases;
   if (!Array.isArray(cases)) {
@@ -327,18 +334,22 @@ function validateCaseBook(payload) {
 }
 
 // Normalize a validated payload the way pydantic does: fill defaults,
-// coerce numeric strings, trim the three stripped text fields. Returns
-// a new object; the caller's payload is untouched.
+// coerce numeric strings, trim the stripped text fields. Returns a new
+// object; the caller's payload is untouched. A missing book version
+// stays cases/v0 so an older file still loads; a missing case version
+// follows the book.
 function normalizeCaseBook(payload) {
   const book = JSON.parse(JSON.stringify(payload));
-  if (book.book_version === undefined) book.book_version = CASES_VERSION;
+  if (book.book_version === undefined) book.book_version = "cases/v0";
   if (!Array.isArray(book.cases)) book.cases = [];
   if (book.next_seq === undefined) book.next_seq = 1;
   for (const item of book.cases) {
-    if (item.cases_version === undefined) item.cases_version = CASES_VERSION;
+    if (item.cases_version === undefined) item.cases_version = book.book_version;
     if (typeof item.lot === "string") item.lot = item.lot.trim();
     if (typeof item.title === "string") item.title = item.title.trim();
     if (typeof item.severity_reason === "string") item.severity_reason = item.severity_reason.trim();
+    if (typeof item.owner === "string") item.owner = item.owner.trim();
+    if (item.owner === undefined) item.owner = null;
     if (item.status === undefined) item.status = "open";
     if (item.lateness_min !== undefined && item.lateness_min !== null) {
       item.lateness_min = casesToNumber(item.lateness_min);
@@ -499,6 +510,10 @@ function casesDetailRow(item, columns) {
   if (item.severity_reason) {
     cell.appendChild(casesEl("p", "note-inline", item.severity_reason));
   }
+  const owner = typeof item.owner === "string" && item.owner.trim()
+    ? item.owner.trim()
+    : casesText("ownerUnassigned");
+  cell.appendChild(casesEl("p", "note-inline", `${casesText("ownerLabel")} ${owner}`));
   const facts = document.createElement("dl");
   facts.className = "case-facts";
   const addFact = (label, value) => {
