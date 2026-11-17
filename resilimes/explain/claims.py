@@ -20,9 +20,10 @@ reproduces that step.
 Known limits of v0 (not hidden, just not built yet):
 
 * ``sources`` are ledger-level row references supplied by the caller. The
-  ledger does not yet know, per claim, which evidence row a value came from,
-  because ``FactRegistry`` does not record provenance. Per-claim source
-  attribution is a later increment.
+  ledger does not yet know, per claim, which evidence row a value came from.
+  ``FactRegistry`` can record provenance, but ``ledger_for_explanation``
+  still copies only ``ids`` and ``numbers``, which drops it. Per-claim
+  source attribution is a later increment.
 * The ledger records what was quoted and whether it checked out. It does not
   record which run produced the explanation (no seed / horizon / policy /
   label), which provider or model said it, when the explanation was
