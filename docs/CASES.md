@@ -2,6 +2,7 @@
 
 案件是「一 lot 迟到之后怎么办」的跟进记录。解释层回答一 lot 为什么迟到；
 案件回答：哪些 lot 还在等人工处理、按什么顺序处理、每 lot 决定了什么。
+其中「按什么顺序」在 v0 只有严重度排序（负责人与等待态见文末 v0 局限）。
 
 新案件是 `cases/v1`。`cases/v0` 台账仍可加载，其封印不覆盖 `owner`。
 `explain()` 不自动建案件。Cases 页面读 v0 和 v1，不改状态、不落盘。
@@ -106,6 +107,50 @@ open ──► investigating ──► resolved ──► open（重开）
 
 空台账时三者都返回空（列表为空、计数为 0），不抛错。
 
+## 案件覆盖率（case coverage，coverage/v0）
+
+`CaseBook.coverage(late_lots, run=None, *, denominator_run=None)`：
+分母是调用方提供的迟到 lot id 列，输出 `CaseCoverage`。
+
+两个率（只给一个会撒谎，所以一次给两个）：
+
+| 率 | 分子 | 含义 |
+| --- | --- | --- |
+| `triaged_coverage`（已立案覆盖率） | 有 ≥1 件案件的迟到 lot 数 | 迟到 lot 里立过案的比例。resolved/dismissed 也算——立过案不等于已处理 |
+| `open_coverage`（未关闭覆盖率） | 有 ≥1 件 `open`/`investigating`/`waiting` 案件的迟到 lot 数 | 迟到 lot 里仍有人要跟进的比例。`waiting` 与 `lots()` 的未关闭口径相同 |
+
+分母 0 时两率值均为 `None`（不是 0.0）；分母、分子、值三者常显（`quality.Rate`
+同款规则）。`uncovered_lots` 是无任何案件的 lot（按 lot id 字典序）；
+`without_open_case_lots` 是无未关闭案件的 lot（含 uncovered 的全部 lot 与
+仅有已关闭案件的 lot）。名称用 `case coverage` 全称，与 `report.py` 的
+证据时间覆盖（evidence time coverage）无关，是同一仓库内的另一数量。
+
+**分母的来源（必须遵守）**：分母须是全量迟到 lot——`explain.lateness.late_lots`
+的结果经 `fab.lot_id` 转换。**不得**用 `Toolkit.late_lots` 的默认 `limit=30`：
+它只取最迟的 30 件，而最迟的恰恰最可能已有案件，分母截断会系统性抬高覆盖率，
+且无任何报错。方法本身无法验证分母是否完整；分母漏 lot 会使两率虚高，分母错
+run 会使数字错向两边。调用方责任写在方法文档里；`denominator_run` 字段记录
+分母所出 run（与 `run` 不同时抛错）。
+
+**口径细节**：
+- `run` 只过滤分子（只计该 run 的案件），分母原样使用；不传 `run` 时跨 run
+  聚合，与 `lots()` 同单位。
+- lot 照合先去首尾空白、区分大小写（`"lot-1"` ≠ `"LOT-1"`）；不对照 fab 校验
+  lot id 是否存在——分母里的错字 id 会被算 uncovered（假阴性方向，分诊时看得见），
+  而不是被算 covered。
+- 严重度不筛选：`info` 观察项案件也算 triaged（且若状态为 open 也算 open）。
+  triaged ≠ 已处理；open ≠ 已解决——两个率回答的是「立过案」与「仍有人要
+  跟进」，不是处理结果。
+- 结果是数据接口，不是分诊 UI：`uncovered_lots` 无上限、无迟到量排序；页面
+  或 API 的消费是后续增量。目前没有任何调用方（Cases 页未合併也不显示
+  coverage）；口径落地、供给与调用方待接线。
+
+**版本**：`coverage/v0`（`CaseCoverage.coverage_version`）。`cases/v0` 不升版：
+本增量只追加模型与方法，未改既有字段、状态变迁与建议阈值。`CaseCoverage`
+复用 `quality.Rate`（同一分母规则：分母 0 → `None`、值恒等于分子/分母）；
+模型另有交叉校验（计数与列表长度一致、两率分子/分母与计数一致、列表已排序
+无重复）。
+
 ## 口径与版本规则
 
 - 计数只给分子与分母的原材料（`summary` 只给计数，不给比率）。
@@ -129,7 +174,7 @@ open ──► investigating ──► resolved ──► open（重开）
   错误，不是校验错误；只接受小写 hex（与 `EvidenceBundle` 自身输出一致）。
 - 建议严重度只看迟到分钟数。非迟到原因开的案件（质量 hold、仅注记原因）
   须人工指定严重度并写理由。
-- 案件覆盖率未度量：台账只计已有案件，无法回答「多少迟到 lot 根本没有
-  案件」；该比率需 explain 侧提供分母（全部迟到 lot 数）。
+- 案件覆盖率已度量（coverage/v0，见上节）：两个率与两张未覆盖 lot 清单，
+  分母由调用方供给；供给与调用方接线（页面/API 的消费）是后续增量。
 - `lateness_min` 是建案时快照，会过期；案件不存 lot 的 due 时间，复盘时
   须回 run 记录重算当前迟到。

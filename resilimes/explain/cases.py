@@ -101,9 +101,13 @@ Known limits (not hidden, just not built yet):
 * ``lots()`` and ``cases_for_lot()`` aggregate across runs unless a run
   is passed: the same lot in two runs shares one row. Use ``for_run``
   to look at one run only.
-* Case coverage is not measured: the book only counts cases it holds,
-  it cannot say how many late lots have no case at all. That ratio
-  needs the explain side to supply the denominator.
+* Case coverage is measured by ``CaseBook.coverage`` (coverage/v0): two
+  rates over a caller-supplied denominator of late lots -- triaged (any
+  case exists) and open (a case in ``OPEN_STATUSES``: open,
+  investigating, or waiting). The
+  denominator must come from the explain side (the full ``late_lots``
+  list); the book cannot verify it is complete, and no page or API
+  consumes the rates yet.
 
 Version rule: new cases are ``cases/v1``. ``cases/v0`` books still
 load. Changing a severity definition, a status transition, the
@@ -116,11 +120,13 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from resilimes.explain.quality import Rate
 from resilimes.explain.schema import RunRef, canonical_json
 
 CasesVersion = Literal["cases/v0", "cases/v1"]
@@ -398,6 +404,84 @@ class CaseBookSummary(BaseModel):
     by_severity: dict[str, int] = Field(default_factory=dict)
 
 
+COVERAGE_VERSION: Literal["coverage/v0"] = "coverage/v0"
+
+
+def _coverage_rate(numerator: int, denominator: int) -> Rate:
+    """A rate with its denominator attached (mirrors quality._rate)."""
+    return Rate(
+        numerator=numerator,
+        denominator=denominator,
+        value=None if denominator == 0 else numerator / denominator,
+    )
+
+
+class CaseCoverage(BaseModel):
+    """How many late lots have a case, and how many still have an open one.
+
+    Two rates, because one number lies by omission. ``triaged_coverage``
+    counts a lot as covered once any case exists for it -- even one
+    already resolved or dismissed. ``open_coverage`` counts only lots
+    with at least one case still in ``OPEN_STATUSES`` (open, investigating,
+    or waiting). A lot whose
+    only case was dismissed is triaged, not handled: the two rates
+    together say that, instead of hiding it behind a single "coverage"
+    figure. Neither rate means "handled": triaged means a case was filed,
+    open means somebody still has to act.
+
+    The denominator is caller-supplied (see ``CaseBook.coverage``). This
+    model records the numbers; it cannot verify the denominator was
+    complete. The name is ``case_coverage`` in prose to avoid confusion
+    with ``report.py``'s evidence time coverage, which is a different
+    quantity in the same repository.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    coverage_version: Literal["coverage/v0"] = COVERAGE_VERSION
+    run: RunRef | None = None
+    denominator_run: RunRef | None = None
+    late_total: int = Field(ge=0)
+    triaged_total: int = Field(ge=0)
+    open_total: int = Field(ge=0)
+    triaged_coverage: Rate
+    open_coverage: Rate
+    uncovered_lots: tuple[str, ...] = ()
+    without_open_case_lots: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def _counts_match_lists(self) -> CaseCoverage:
+        if self.triaged_total > self.late_total:
+            raise ValueError("triaged_total cannot exceed late_total")
+        if self.open_total > self.triaged_total:
+            raise ValueError("open_total cannot exceed triaged_total")
+        if len(self.uncovered_lots) != self.late_total - self.triaged_total:
+            raise ValueError("uncovered_lots must list exactly the untriaged lots")
+        if len(self.without_open_case_lots) != self.late_total - self.open_total:
+            raise ValueError("without_open_case_lots must list exactly the lots with no open case")
+        if len(set(self.uncovered_lots)) != len(self.uncovered_lots):
+            raise ValueError("uncovered_lots must not repeat a lot")
+        if len(set(self.without_open_case_lots)) != len(self.without_open_case_lots):
+            raise ValueError("without_open_case_lots must not repeat a lot")
+        if not set(self.uncovered_lots) <= set(self.without_open_case_lots):
+            raise ValueError("a lot with no case at all also has no open case")
+        if list(self.uncovered_lots) != sorted(self.uncovered_lots):
+            raise ValueError("uncovered_lots must be sorted")
+        if list(self.without_open_case_lots) != sorted(self.without_open_case_lots):
+            raise ValueError("without_open_case_lots must be sorted")
+        if (
+            self.triaged_coverage.numerator != self.triaged_total
+            or self.triaged_coverage.denominator != self.late_total
+        ):
+            raise ValueError("triaged_coverage must be triaged_total / late_total")
+        if (
+            self.open_coverage.numerator != self.open_total
+            or self.open_coverage.denominator != self.late_total
+        ):
+            raise ValueError("open_coverage must be open_total / late_total")
+        return self
+
+
 class CaseBook(BaseModel):
     """In-memory collection of cases. Methods return a new book.
 
@@ -630,6 +714,77 @@ class CaseBook(BaseModel):
             open_total=sum(1 for c in self.cases if c.status in OPEN_STATUSES),
             by_status=by_status,
             by_severity=by_severity,
+        )
+
+    def coverage(
+        self,
+        late_lots: Iterable[str],
+        run: RunRef | dict[str, Any] | None = None,
+        *,
+        denominator_run: RunRef | dict[str, Any] | None = None,
+    ) -> CaseCoverage:
+        """Case coverage over caller-supplied late lots (coverage/v0).
+
+        ``late_lots`` is the denominator: every lot that was late in the
+        run, as lot-id strings. It must be the *full* list -- build it
+        from ``explain.lateness.late_lots`` plus ``fab.lot_id``, not from
+        ``Toolkit.late_lots`` (whose default ``limit=30`` silently keeps
+        only the 30 latest lots, which are also the likeliest to already
+        have a case, so both rates would read high). The method cannot
+        verify the denominator is complete; a short denominator inflates
+        the rates silently, so the caller owns completeness.
+
+        ``run`` scopes the numerator only: only cases of that run count.
+        The denominator is used exactly as supplied, never filtered by
+        run -- so when ``run`` is given, the denominator must come from
+        the same run. Pass that run as ``denominator_run`` to have it
+        recorded (and checked: a ``denominator_run`` different from
+        ``run`` raises). Without ``run`` the book aggregates across runs,
+        like ``lots()``.
+
+        Matching is by lot id after stripping surrounding whitespace, and
+        is case-sensitive: ``"lot-1"`` does not match ``"LOT-1"``. Lot ids
+        are never checked against the fab: a denominator id with no case
+        is reported uncovered even if the id itself is a typo (a false
+        uncovered, which triage can see, rather than a false covered).
+
+        The result is a data interface, not a triage UI: ``uncovered_lots``
+        and ``without_open_case_lots`` are sorted lot-id lists with no
+        cap, and nothing here sorts by lateness. Pure function of the
+        book and the denominator: the book is not changed.
+        """
+        if isinstance(late_lots, str):
+            raise TypeError("late_lots must be an iterable of lot ids, not a bare string")
+        scope = RunRef.model_validate(run) if run is not None else None
+        denom_run = RunRef.model_validate(denominator_run) if denominator_run is not None else None
+        if scope is not None and denom_run is not None and scope != denom_run:
+            raise ValueError(
+                "denominator_run must be the run the denominator came from: "
+                f"run is {scope} but denominator_run is {denom_run}"
+            )
+        lots: set[str] = set()
+        for item in late_lots:
+            if not isinstance(item, str):
+                raise TypeError(f"late lot ids must be strings, got {type(item).__name__}")
+            lot = item.strip()
+            if not lot:
+                raise ValueError("late lot ids must not be empty or blank")
+            lots.add(lot)
+        in_scope = [c for c in self.cases if scope is None or c.run == scope]
+        triaged = {c.lot for c in in_scope}
+        open_cases = {c.lot for c in in_scope if c.status in OPEN_STATUSES}
+        triaged_total = len(triaged & lots)
+        open_total = len(open_cases & lots)
+        return CaseCoverage(
+            run=scope,
+            denominator_run=denom_run,
+            late_total=len(lots),
+            triaged_total=triaged_total,
+            open_total=open_total,
+            triaged_coverage=_coverage_rate(triaged_total, len(lots)),
+            open_coverage=_coverage_rate(open_total, len(lots)),
+            uncovered_lots=tuple(sorted(lots - triaged)),
+            without_open_case_lots=tuple(sorted(lots - open_cases)),
         )
 
     def verify_all(self) -> list[str]:

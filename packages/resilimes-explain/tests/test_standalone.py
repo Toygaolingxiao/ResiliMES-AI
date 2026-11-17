@@ -178,3 +178,26 @@ def test_fact_registry_provenance_round_trip():
     assert check("Init_Lot_3_17 waited 42 min.", registry) == []
     snapshot = registry.provenance()
     assert snapshot["ids"]["INIT_LOT_3_17"] == ["tool:investigator row 3"]
+
+
+def test_case_coverage_two_rates():
+    from resilimes.explain.cases import CaseBook
+
+    ref = RunRef(seed=1, horizon_sec=172800.0, policy="baseline")
+    book = CaseBook()
+    book, case = book.add_case(
+        lot="Lot-1",
+        run=ref,
+        title="Lot-1 late",
+        severity="major",
+        lateness_min=45.0,
+        created_at="2026-11-14T00:00:00Z",
+    )
+    book = book.transition(case.case_id, "resolved", at="2026-11-14T01:00:00Z")
+    result = book.coverage(["Lot-1", "Lot-2"])
+    assert result.coverage_version == "coverage/v0"
+    assert (result.triaged_total, result.open_total) == (1, 0)
+    assert result.triaged_coverage.value == pytest.approx(0.5)
+    assert result.open_coverage.value == pytest.approx(0.0)
+    assert result.uncovered_lots == ("Lot-2",)
+    assert CaseBook().coverage([]).triaged_coverage.value is None
