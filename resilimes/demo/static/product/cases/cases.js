@@ -2,10 +2,9 @@
 // Loaded after the run console so it can call the shared helpers.
 //
 // Data source (v0): a CaseBook JSON file exported by cases.py (to_json).
-// There is no server endpoint yet — cases.py lives in unmerged PR #90 —
-// so the page reads a file the user picks, validates it against the
-// cases/v0 contract, and renders it read-only. The book stays in memory
-// only; reloading the page unloads it.
+// There is no server endpoint yet, so the page reads a file the user
+// picks, validates it against the cases/v0 contract, and renders it
+// read-only. The book stays in memory only; reloading the page unloads it.
 //
 // Read-only on purpose: changing a case would break its content_hash,
 // and the seal is a SHA-256 over Python's canonical JSON. Recomputing
@@ -17,10 +16,9 @@
 // The validator mirrors cases.py (from_json) as closely as a browser
 // can: pydantic defaults and lax numeric coercion are accepted, and the
 // payload is normalized (defaults filled, numeric strings coerced,
-// lot/title/reason trimmed) before it is stored. Two deliberate
-// divergences remain, both recorded in docs/CASES_PAGE.md: history
-// transition legality is enforced here (from_json only checks the
-// chain), and validation error details stay English field paths.
+// lot/title/reason trimmed) before it is stored. History transition
+// legality matches from_json. Validation error details stay English
+// field paths; see docs/CASES_PAGE.md.
 
 const CASES_VERSION = "cases/v0";
 const CASES_SEVERITIES = ["critical", "major", "minor", "info"];
@@ -212,9 +210,9 @@ function casesCheckHistory(history, status, where, errors) {
     if (event.note !== undefined && typeof event.note !== "string") {
       errors.push(`${at}.note: must be a string`);
     }
-    // Deliberately stricter than from_json: the chain alone does not
-    // prove the move was legal. A genuine to_json export can never
-    // contain an illegal move (transition() enforces TRANSITIONS).
+    // Same rule as from_json: a continuous chain can still be an illegal
+    // move. A genuine to_json export cannot contain one, because
+    // transition() enforces TRANSITIONS before it stores the case.
     if (index > 0 && CASES_STATUSES.includes(event.status)
       && !(CASES_TRANSITIONS[previous] || []).includes(event.status)) {
       errors.push(`${at}: illegal transition ${JSON.stringify(previous)} -> ${JSON.stringify(event.status)}`);

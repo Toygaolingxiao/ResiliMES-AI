@@ -94,12 +94,9 @@ Cases ページは「一 lot 遅れた後、誰が何をどの順番で片付け
 
 ## 意図的な乖離（`from_json` との差分）
 
-- **history の遷移合法性**：ブラウザ検証は連続する二つの状態が
-  `TRANSITIONS` の合法遷移かも検査する。`from_json` は鎖の連続
-  性だけを見るため、手作りの違法遷移（例：`resolved →
-  investigating`）は Python を通るが本ページは拒否する。
-  正規の `to_json` 出力は `transition()` 経由でしか生まれず、
-  違法遷移を含み得ないため、実務上の影響はない。
+history の遷移合法性は乖離ではない。`from_json` と同じく、鎖が連続していても
+`TRANSITIONS` に無い辺（例：`resolved → investigating`）は拒否する。
+
 - **検証エラーの言語**：拒否理由の詳細は英語のフィールドパス
   （例：`cases[0].severity: unknown severity "urgent"`）のまま。
   見出し（`fileError`）は三言語化されているが、理由の各行は

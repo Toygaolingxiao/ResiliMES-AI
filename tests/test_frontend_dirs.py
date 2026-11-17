@@ -37,9 +37,7 @@ def test_pages_are_split_and_the_console_route_still_works() -> None:
     assert "function paintAnalyze" in (STATIC / "product/quality/quality.js").read_text(
         encoding="utf-8"
     )
-    assert "function paintCases" in (STATIC / "product/cases/cases.js").read_text(
-        encoding="utf-8"
-    )
+    assert "function paintCases" in (STATIC / "product/cases/cases.js").read_text(encoding="utf-8")
     assert "function paintCases" not in (STATIC / "workshop/console/console.js").read_text(
         encoding="utf-8"
     )
