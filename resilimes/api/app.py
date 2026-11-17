@@ -29,6 +29,7 @@ from resilimes.api.intents import (
     confirm_intent,
     propose_intent,
 )
+from resilimes.api.timeline import router as timeline_router
 from resilimes.config import ConfigError, Settings, get_settings
 from resilimes.data.factory import build_source
 from resilimes.data.zetaris_source import ZetarisDataError
@@ -286,6 +287,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(insight_router)
     app.include_router(explain_router)
+    app.include_router(timeline_router)
 
     if _STATIC.exists():
         # Old script URLs keep working after the product / workshop split.
@@ -316,6 +318,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         @app.get("/import")
         def import_page() -> FileResponse:
             return FileResponse(_STATIC / "product" / "import" / "import.html")
+
+        @app.get("/timeline")
+        def timeline_page() -> FileResponse:
+            return FileResponse(_STATIC / "product" / "timeline" / "timeline.html")
 
     return app
 

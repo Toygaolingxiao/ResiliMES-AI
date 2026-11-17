@@ -174,6 +174,8 @@ function paint() {
   if (reportLink) reportLink.textContent = (copy.report && copy.report.link) || "";
   const importLink = $("#import-link");
   if (importLink) importLink.textContent = (copy.import && copy.import.link) || "";
+  const timelineLink = $("#timeline-link");
+  if (timelineLink) timelineLink.textContent = (copy.timeline && copy.timeline.link) || "";
   $("#note").textContent = copy.versionNote;
   $("#lang-label").textContent = copy.lang;
   $("#disruption-label").textContent = copy.disruption;

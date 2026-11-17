@@ -199,7 +199,10 @@
     const select = $("lot");
     select.replaceChildren();
     for (const item of lots || []) {
-      const option = el("option", "", `${item.lot} · ${item.late_sec} ${copy().seconds || ""}`);
+      const label = item.late_sec == null
+        ? item.lot
+        : `${item.lot} · ${item.late_sec} ${copy().seconds || ""}`;
+      const option = el("option", "", label);
       option.value = item.lot;
       if (item.lot === selected) option.selected = true;
       select.appendChild(option);
@@ -226,8 +229,12 @@
     }
     state.lots = lots.lots || [];
     const wanted = picked || new URLSearchParams(location.search).get("lot") || "";
+    // A Gantt "why?" link names the lot even when it is not in the late list.
+    if (wanted && !state.lots.some((item) => item.lot === wanted)) {
+      state.lots = [{ lot: wanted, late_sec: null }, ...state.lots];
+    }
     fillLots(state.lots, wanted);
-    if (!(lots.lots || []).length) {
+    if (!state.lots.length) {
       setStatus(c.empty);
       return;
     }
