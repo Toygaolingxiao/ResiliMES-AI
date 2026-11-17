@@ -310,6 +310,40 @@ def test_ledger_failed_set_matches_the_gate(text):
     assert actual_failed_ids == expected_failed_ids
 
 
+def test_claim_sources_follow_registry_provenance():
+    registry = FactRegistry()
+    registry.add_text("120", source="tool:lot_lateness")
+    registry.add_ids(["Lot-1"], source="tool:lot_lateness")
+    ledger = build_ledger(
+        "Lot-1 finished 120 min late.",
+        registry,
+        sources=("caller:extra",),
+    )
+    number = ledger.by_value("120", kind="number")[0]
+    lot = ledger.by_value("Lot-1", kind="id")[0]
+    assert number.sources == ("tool:lot_lateness", "caller:extra")
+    assert lot.sources == ("tool:lot_lateness", "caller:extra")
+    # Counting word 1 inside Lot-1 has no number provenance of its own.
+    assert ledger.by_value("1", kind="number")[0].sources == ("caller:extra",)
+
+
+def test_ledger_for_explanation_keeps_provenance():
+    explanation = Explanation(
+        lot="Lot-1",
+        explanation="Lot-1 finished 120 min late.",
+        claim="Applying prioritise saves 25 min.",
+        expected_saving_min=25.0,
+    )
+    registry = FactRegistry()
+    registry.add_text("120", source="tool:lot_lateness")
+    ledger = ledger_for_explanation(explanation, registry)
+    assert ledger.by_value("120", kind="number")[0].sources == ("tool:lot_lateness",)
+    assert ledger.by_value("25", kind="number")[0].sources == ("explainer:expected_saving_min",)
+    assert ledger.by_value("Lot-1", kind="id")[0].sources == ("explainer:lot",)
+    assert "25" not in registry.numbers
+    assert registry.sources("number", "120") == ("tool:lot_lateness",)
+
+
 def test_sources_are_recorded_ledger_wide():
     ledger = build_ledger(TEXT, _registry(), sources=("lateness.while_late_min", "waits[0].family"))
     assert all(c.sources == ("lateness.while_late_min", "waits[0].family") for c in ledger.claims)

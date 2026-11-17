@@ -812,12 +812,12 @@ def _scripted_narrative(record: DeliberationRecord) -> str:
 
 def _registry_for(record: DeliberationRecord, context: dict[str, Any]) -> FactRegistry:
     registry = FactRegistry()
-    registry.add(record.event)
-    registry.add(context)
-    registry.add([item.to_json() for item in record.assessments])
-    registry.add(record.conflicts)
-    registry.add(record.decision)
-    registry.add(record.decision_basis)
+    registry.add(record.event, source="deliberation:event")
+    registry.add(context, source="deliberation:context")
+    registry.add([item.to_json() for item in record.assessments], source="deliberation:assessments")
+    registry.add(record.conflicts, source="deliberation:conflicts")
+    registry.add(record.decision, source="deliberation:decision")
+    registry.add(record.decision_basis, source="deliberation:basis")
     return registry
 
 

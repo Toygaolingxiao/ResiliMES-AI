@@ -19,11 +19,11 @@ reproduces that step.
 
 Known limits of v0 (not hidden, just not built yet):
 
-* ``sources`` are ledger-level row references supplied by the caller. The
-  ledger does not yet know, per claim, which evidence row a value came from.
-  ``FactRegistry`` can record provenance, but ``ledger_for_explanation``
-  still copies only ``ids`` and ``numbers``, which drops it. Per-claim
-  source attribution is a later increment.
+* ``sources`` on a claim are the provenance labels recorded for that
+  value, plus any ledger-wide labels the caller passes to ``build_ledger``.
+  A label is what the registering call site reported (``tool:lot_lateness``,
+  ``explainer:lot``), not a proof of which row inside a payload held the
+  value. Multi-source values keep every label, first-seen order.
 * The ledger records what was quoted and whether it checked out. It does not
   record which run produced the explanation (no seed / horizon / policy /
   label), which provider or model said it, when the explanation was
@@ -216,6 +216,17 @@ def _misses_by_kind(text: str, registry: FactRegistry) -> tuple[set[str], set[st
     return failed_numbers, failed_ids
 
 
+def _sources_for(
+    registry: FactRegistry, kind: str, value: str, extra: tuple[str, ...]
+) -> tuple[str, ...]:
+    """Provenance labels for one value, then any caller-wide labels."""
+    recorded = list(registry.sources(kind, value))
+    for item in extra:
+        if item not in recorded:
+            recorded.append(item)
+    return tuple(recorded)
+
+
 def build_ledger(
     text: str,
     registry: FactRegistry,
@@ -256,7 +267,7 @@ def build_ledger(
                     kind="number",
                     value=value,
                     statement=sentence,
-                    sources=sources,
+                    sources=_sources_for(registry, "number", value, sources),
                     result="failed" if value in failed_numbers else "passed",
                     checked_at=stamp,
                     reason=f"unknown number {raw}" if value in failed_numbers else None,
@@ -279,7 +290,7 @@ def build_ledger(
                     kind="id",
                     value=upper,
                     statement=sentence,
-                    sources=sources,
+                    sources=_sources_for(registry, "id", upper, sources),
                     result="failed" if upper in failed_ids else "passed",
                     checked_at=stamp,
                     reason=f"unknown id {ids[upper]}" if upper in failed_ids else None,
@@ -297,28 +308,27 @@ def ledger_for_explanation(
 ) -> ClaimLedger:
     """Build a ledger for an ``Explanation``: explanation text plus its claim.
 
-    The subject is the lot id. ``sources`` are the evidence row references
-    the caller can vouch for, applied ledger-wide (see the module docstring).
+    The subject is the lot id. ``sources`` are extra labels applied to every
+    claim after that claim's own provenance.
 
-    The registry the gate actually used is reproduced here: the explainer
-    adds the counterfactual's ``expected_saving_min`` and the lot id to its
-    registry copy before checking (``explainer._explain``), so a claim
-    sentence that quotes the expected saving passes here exactly as it
-    passed the gate. The caller's registry is not mutated. Note the saving
-    itself is the model's own estimate and is never quoted as a claim unless
-    the text says it; verifying it is ``verify_counterfactual``'s job, and
-    the re-run result is not part of this ledger.
+    The registry the gate actually used is reproduced here: ``copy()`` keeps
+    provenance, then the explainer's expected saving and lot id are added
+    with their own labels (``explainer._explain``). The caller's registry is
+    not mutated. Note the saving itself is the model's own estimate and is
+    never quoted as a claim unless the text says it; verifying it is
+    ``verify_counterfactual``'s job, and the re-run result is not part of
+    this ledger.
 
     The two texts are joined as two sentences: if the explanation does not
     end with sentence punctuation, a period is added first, so claims from
     the claim sentence are never attributed to a merged pseudo-sentence.
     """
-    augmented = FactRegistry()
-    augmented.ids = set(registry.ids)
-    augmented.numbers = set(registry.numbers)
+    augmented = registry.copy()
     if explanation.expected_saving_min is not None:
-        augmented.add_text(str(explanation.expected_saving_min))
-    augmented.add_text(explanation.lot)
+        augmented.add_text(
+            str(explanation.expected_saving_min), source="explainer:expected_saving_min"
+        )
+    augmented.add_text(explanation.lot, source="explainer:lot")
     explanation_text = explanation.explanation.strip()
     claim_text = explanation.claim.strip()
     if explanation_text and explanation_text[-1] not in ".!?":
