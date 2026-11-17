@@ -80,6 +80,9 @@ class Explanation:
     # Time budget (docs/AI_EXPLAINER.md): wall-clock seconds and whether the deadline hit.
     elapsed_s: float = 0.0
     timeout: bool = False
+    # Set only when explain(..., open_case=True), the explanation succeeded,
+    # and the lot is actually late. Owner is unset; status is open.
+    case_book: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
@@ -193,15 +196,28 @@ def explain(
     language: str = "en",
     temperature: float = 0.2,
     deadline_s: float | None = None,
+    open_case: bool = False,
 ) -> Explanation:
     """Explain one late lot under a wall-clock budget (``deadline_s``, default 180 s).
 
     On timeout the answer is marked ``timeout`` and has no lever; the exact wait split and
     evidence (deterministic) are unaffected.
+
+    ``open_case`` defaults off. When it is on, the explanation succeeded, and
+    the lot is late, the answer carries a one-case ``case_book`` (cases/v1
+    JSON). The owner is unset and the status is ``open``. The book is not
+    stored.
     """
     budget = deadline_s if deadline_s is not None else deadline.default_task_s()
     with deadline.task_deadline(budget):
-        return _explain(kit, lot_id, provider, language=language, temperature=temperature)
+        return _explain(
+            kit,
+            lot_id,
+            provider,
+            language=language,
+            temperature=temperature,
+            open_case=open_case,
+        )
 
 
 def _explain(
@@ -211,6 +227,7 @@ def _explain(
     *,
     language: str,
     temperature: float,
+    open_case: bool = False,
 ) -> Explanation:
     kit.registry = kit.registry or FactRegistry()
     ev = evidence(kit, lot_id)
@@ -304,7 +321,27 @@ def _explain(
     out.expected_saving_min = float(cf["expected_saving_min"])
     out.claim = str(cf.get("claim", ""))
     out.fact_ok = not out.fact_misses
+    if open_case:
+        late_min = float(ev["lateness"]["late_min"])
+        if late_min > 0:
+            out.case_book = _open_case(kit, lot_id, late_min)
     return out
+
+
+def _open_case(kit: Toolkit, lot_id: str, late_min: float) -> dict[str, Any]:
+    """One in-memory follow-up case for a late lot. Not persisted."""
+    from resilimes.explain.cases import CaseBook, suggest_severity
+
+    severity = suggest_severity(late_min) or "info"
+    book, _case = CaseBook().add_case(
+        lot=lot_id,
+        run=run_ref(kit.run),
+        title=f"{lot_id} is late",
+        severity=severity,
+        lateness_min=late_min,
+        owner=None,
+    )
+    return book.to_json()
 
 
 def _wait_windows(run: RunRecord, lot: int, fam: int) -> list[tuple[float, float]]:
