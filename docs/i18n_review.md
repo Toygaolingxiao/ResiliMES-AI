@@ -942,6 +942,82 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `cases.emptyLots` | This book has no cases. | 该台账没有案件。 | この台帳に案件はありません。 |
 | `cases.capped` | Showing the first {shown} of {total} cases in this lot. | 本 lot 仅显示前 {shown} 个案件，共 {total} 个。 | このロットは {total} 件中先頭 {shown} 件のみ表示。 |
 | `cases.fileTooLarge` | File is too large ({mb} MB). CaseBook files must be under 5 MB. | 文件过大（{mb} MB），CaseBook 文件须小于 5 MB。 | ファイルが大きすぎます（{mb} MB）。CaseBook は 5 MB 未満にしてください。 |
+| `timeline.link` | Timeline | 时间线 | 工程表 |
+| `timeline.title` | Operation timeline | 工序甘特图 | 工程ガント |
+| `timeline.lead` | One time axis. Switch between tools and product lots. Right-click a bar and ask why. | 同一条时间轴。在装置视图和产品批次视图之间切换。在条上右键，问为什么。 | 時間軸は一つ。装置別と製品・ロット別を切り替える。バーを右クリックして、なぜかを開く。 |
+| `timeline.back` | ResiliMES | ResiliMES | ResiliMES |
+| `timeline.view` | View | 视图 | 表示 |
+| `timeline.viewMachine` | By tool | 按装置 | 装置別 |
+| `timeline.viewProduct` | By product / lot | 按产品 / 批次 | 製品・ロット別 |
+| `timeline.links` | Route lines | 路径连线 | 連携線 |
+| `timeline.idleTools` | Idle tools | 空闲装置 | 空き装置 |
+| `timeline.lotUnit` | lots | 批 | ロット |
+| `timeline.refresh` | Update | 更新 | 更新 |
+| `timeline.reset` | Reset | 重置 | リセット |
+| `timeline.fit` | All | 全部 | 全体 |
+| `timeline.zoomIn` | Zoom in | 放大 | 拡大 |
+| `timeline.zoomOut` | Zoom out | 缩小 | 縮小 |
+| `timeline.exportPng` | PNG | PNG | PNG |
+| `timeline.exportCsv` | CSV | CSV | CSV |
+| `timeline.filter` | Filters | 筛选 | フィルタ |
+| `timeline.help` | * matches part of a name. M* starts with M, *01 ends with 01. | * 表示部分匹配。M* 表示以 M 开头，*01 表示以 01 结尾。 | * は部分一致。M* は M で始まる、*01 は 01 で終わる。 |
+| `timeline.machine` | Tool | 装置 | 装置 |
+| `timeline.group` | Tool group | 装置组 | 装置グループ |
+| `timeline.lot` | Lot | 批次 | ロット |
+| `timeline.step` | Step | 工序 | 工程 |
+| `timeline.product` | Product | 产品 | プロダクト |
+| `timeline.priority` | Priority | 优先级 | 優先度 |
+| `timeline.priorityAll` | All | 全部 | すべて |
+| `timeline.all` | All | 全部 | すべて |
+| `timeline.start` | Start | 开始 | 開始 |
+| `timeline.end` | End | 结束 | 終了 |
+| `timeline.jobs` | Jobs | 作业数 | ジョブ数 |
+| `timeline.machines` | Tools | 装置数 | 装置数 |
+| `timeline.lots` | Lots | 批次数 | ロット数 |
+| `timeline.operations` | Steps | 工序数 | 工程数 |
+| `timeline.moves` | Moves | Move 数 | Move数 |
+| `timeline.skips` | Skips | 跳过数 | SKIP数 |
+| `timeline.lateLots` | Late | 迟到 | 納期遅れ |
+| `timeline.qtime` | Q-time | 排队时限 | Qタイム |
+| `timeline.selected` | Selected | 已选 | 選択中 |
+| `timeline.clear` | Clear | 清除 | 解除 |
+| `timeline.loading` | Loading… | 正在加载… | 読み込み中… |
+| `timeline.error` | Could not load: {msg} | 无法加载：{msg} | 読み込めませんでした: {msg} |
+| `timeline.truncated` | The window was cut at the bar limit. Narrow the time range. | 条数达到上限，已截断。请缩小时间范围。 | バー数が上限に達したため、途中までです。期間を狭めてください。 |
+| `timeline.empty` | No work matches these filters. | 当前条件没有作业。 | この条件に該当する作業はありません。 |
+| `timeline.shiftA` | Shift A | A 班 | A直 |
+| `timeline.shiftB` | Shift B | B 班 | B直 |
+| `timeline.shiftC` | Shift C | C 班 | C直 |
+| `timeline.now` | Now | 现在 | 現在 |
+| `timeline.processing` | Processing | 加工中 | 処理中 |
+| `timeline.running` | Running | 运行 | 稼働 |
+| `timeline.scheduled` | Scheduled | 已排 | 計画 |
+| `timeline.reserved` | Reserved | 已预约 | 予約 |
+| `timeline.waiting` | Waiting | 等待 | 待機 |
+| `timeline.transport` | In transport | 搬送中 | 搬送中 |
+| `timeline.setup` | Setup | 准备 | セットアップ |
+| `timeline.down` | Down | 宕机 | ダウン |
+| `timeline.pm` | PM | 保养 | PM |
+| `timeline.idle` | Idle | 空闲 | アイドル |
+| `timeline.why` | Why? | 为什么？ | なぜ？ |
+| `timeline.onTime` | On time | 未迟到 | 納期内 |
+| `timeline.qtimeBreach` | Q-time exceeded | 排队时限已超出 | Qタイム超過 |
+| `timeline.qtimeRiskWord` | Q-time risk | 排队时限有风险 | Qタイム危険 |
+| `timeline.qtimeOk` | Inside the limit | 在时限内 | 制限内 |
+| `timeline.tipState` | State | 状态 | 状態 |
+| `timeline.tipLot` | Lot | 批次 | ロット |
+| `timeline.tipProduct` | Product | 产品 | 製品 |
+| `timeline.tipMachine` | Tool | 装置 | 装置 |
+| `timeline.tipStep` | Step | 工序 | 工程 |
+| `timeline.tipRecipe` | Recipe | 配方 | レシピ |
+| `timeline.tipStart` | Start | 开始 | 開始 |
+| `timeline.tipEnd` | End | 结束 | 終了 |
+| `timeline.tipDuration` | Duration | 历时 | 所要 |
+| `timeline.tipSetup` | Setup | 准备 | セットアップ |
+| `timeline.tipPriority` | Priority | 优先级 | 優先度 |
+| `timeline.tipDue` | Due | 交期 | 納期 |
+| `timeline.tipLate` | Due status | 交期状态 | 納期状態 |
+| `timeline.tipQtime` | Q-time | 排队时限 | Qタイム |
 ## AI shift lead study progress (new, needs zh/ja review)
 
 The `shiftLead.*` keys label the study progress card in the console rail
