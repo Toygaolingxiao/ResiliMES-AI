@@ -103,7 +103,8 @@ Known limits (not hidden, just not built yet):
   to look at one run only.
 * Case coverage is measured by ``CaseBook.coverage`` (coverage/v0): two
   rates over a caller-supplied denominator of late lots -- triaged (any
-  case exists) and open (an open/investigating case exists). The
+  case exists) and open (a case in ``OPEN_STATUSES``: open,
+  investigating, or waiting). The
   denominator must come from the explain side (the full ``late_lots``
   list); the book cannot verify it is complete, and no page or API
   consumes the rates yet.
@@ -405,11 +406,6 @@ class CaseBookSummary(BaseModel):
 
 COVERAGE_VERSION: Literal["coverage/v0"] = "coverage/v0"
 
-# A case counts as "open" while somebody still has to do something about
-# it: open or investigating. Resolved and dismissed cases are closed: the
-# lot was triaged, but nothing is waiting on it any more.
-OPEN_STATUSES: tuple[Status, ...] = ("open", "investigating")
-
 
 def _coverage_rate(numerator: int, denominator: int) -> Rate:
     """A rate with its denominator attached (mirrors quality._rate)."""
@@ -426,7 +422,8 @@ class CaseCoverage(BaseModel):
     Two rates, because one number lies by omission. ``triaged_coverage``
     counts a lot as covered once any case exists for it -- even one
     already resolved or dismissed. ``open_coverage`` counts only lots
-    with at least one case still open or under investigation. A lot whose
+    with at least one case still in ``OPEN_STATUSES`` (open, investigating,
+    or waiting). A lot whose
     only case was dismissed is triaged, not handled: the two rates
     together say that, instead of hiding it behind a single "coverage"
     figure. Neither rate means "handled": triaged means a case was filed,

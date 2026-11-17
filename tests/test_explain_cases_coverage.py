@@ -1,7 +1,7 @@
 """Contract tests for ResiliTrace case coverage v0 (CaseBook.coverage).
 
 Two rates over a caller-supplied denominator of late lots: triaged (any
-case exists) and open (an open/investigating case exists). The denominator
+case exists) and open (open, investigating, or waiting). The denominator
 is the caller's responsibility; these tests pin the method's own rules.
 """
 
@@ -119,6 +119,15 @@ def test_blank_lot_id_is_rejected() -> None:
         book.coverage([""])
     with pytest.raises(ValueError):
         book.coverage([" "])
+
+
+def test_waiting_counts_as_open() -> None:
+    book = _book_with_cases(("LOT-1", "major", 45.0, RUN, "waiting"))
+    result = book.coverage(["LOT-1", "LOT-2"])
+    assert result.triaged_total == 1
+    assert result.open_total == 1
+    assert result.uncovered_lots == ("LOT-2",)
+    assert result.without_open_case_lots == ("LOT-2",)
 
 
 def test_dismissed_only_lot_is_triaged_not_open() -> None:

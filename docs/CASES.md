@@ -117,7 +117,7 @@ open ──► investigating ──► resolved ──► open（重开）
 | 率 | 分子 | 含义 |
 | --- | --- | --- |
 | `triaged_coverage`（已立案覆盖率） | 有 ≥1 件案件的迟到 lot 数 | 迟到 lot 里立过案的比例。resolved/dismissed 也算——立过案不等于已处理 |
-| `open_coverage`（未关闭覆盖率） | 有 ≥1 件 `open`/`investigating` 案件的迟到 lot 数 | 迟到 lot 里仍有人要跟进的比例 |
+| `open_coverage`（未关闭覆盖率） | 有 ≥1 件 `open`/`investigating`/`waiting` 案件的迟到 lot 数 | 迟到 lot 里仍有人要跟进的比例。`waiting` 与 `lots()` 的未关闭口径相同 |
 
 分母 0 时两率值均为 `None`（不是 0.0）；分母、分子、值三者常显（`quality.Rate`
 同款规则）。`uncovered_lots` 是无任何案件的 lot（按 lot id 字典序）；
