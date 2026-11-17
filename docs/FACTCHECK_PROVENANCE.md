@@ -19,13 +19,14 @@ fact. `provenance()` carries no hash or seal, so it must not be
 presented to an auditor as verified provenance until the
 registry-fingerprint increment lands.
 
-It is a precondition for the claim ledger's next increment (per-claim
-source attribution, listed as a known limit in `docs/CLAIM_LEDGER.md`),
-not a sufficient one: the attribution increment still has to define a
-policy for multi-source values, for numbers that only occur inside id
-tokens, and for the registry-copy sites named below. Until that
-increment lands, nothing consumes provenance, and in a live run every
-value is unattributed.
+The claim ledger consumes this map (`docs/CLAIM_LEDGER.md`). Policy,
+fixed there and in `tests/test_explain_claims.py`: list every label in
+first-seen order, then any caller-wide labels, without dropping
+duplicates or picking a winner. Digits that only occur inside an id
+token stay unattributed (`sources()` is `()`). Counting words 0–10 are
+not special-cased. `explainer.py` and `ledger_for_explanation` copy the
+registry with `copy()` before they add the expected saving and the lot
+id.
 
 ## Contract: provenance/v0
 
@@ -79,9 +80,9 @@ value is unattributed.
   `add_ids` calls; `add()` on a whole payload is whole-payload
   granularity by construction.
 - Numbers `0`–`10` are always allowed by the gate regardless of
-  evidence. A source recorded for one (e.g. `"5"` from `"5 lots."`) is
-  noise, not evidence; the attribution increment should skip them or
-  mark them trivially-attributed.
+  evidence. The ledger does not drop them: a source recorded for one
+  (e.g. `"5"` from `"5 lots."`) is quoted like any other reported
+  label. It is still a counting word, not a measured quantity.
 - Leading zeros are a known `_norm` limit, inherited from the gate:
   evidence containing `042` registers `"042"`, and
   `sources("number", "42")` returns `()`. Fixing `_norm` would change
@@ -94,23 +95,11 @@ value is unattributed.
 
 Copy a registry through `FactRegistry.copy()`, which copies `ids`,
 `numbers` **and** `_provenance` (source lists deep-copied). Rebuilding
-one by copying only `ids`/`numbers` silently drops provenance — that is
-exactly what two existing sites do today:
-
-- `resilimes/explain/explainer.py` (the registry the gate used for the
-  explanation, built by copying sets);
-- `claims.py`'s `ledger_for_explanation` (unmerged PR #89, same
-  pattern).
-
-Even after call-site wiring lands, the main path (`explain()` →
-`ledger_for_explanation`) would still produce unattributed claims
-unless those sites switch to `copy()`. Switching them is the wiring /
-attribution increment's job; this increment only provides the method.
-Note also that `claims.py`'s docstring sentence "FactRegistry does not
-record provenance" becomes false the moment this PR merges, and its
-`build_ledger(..., sources: tuple[str, ...])` parameter name will
-collide with the new `FactRegistry.sources()` method in the attribution
-increment — both are flagged here so neither is discovered by surprise.
+one by copying only `ids`/`numbers` silently drops provenance.
+`explainer._explain` and `ledger_for_explanation` both use `copy()`.
+`build_ledger`'s `sources` argument is the caller-wide label tuple; the
+lookup method is `registry.sources`, called from `_sources_for`, so the
+parameter does not shadow the method.
 
 ## Source labels
 
@@ -131,27 +120,22 @@ worse than an empty one, because the ledger will quote it as evidence.
 
 ## What this increment does not do
 
-- **No call-site wiring.** `toolkit`, `explainer`, `investigator` and
-  `gap_explainer` still register values without a source, so in a live
-  run every value is unattributed until the wiring increment lands.
-  Wiring is deliberately separate: it decides, per call site, what a
-  source label means, restructures registration where row granularity is
-  needed, and switches the two copy sites to `copy()`. A wiring site
-  that builds a label from data must validate it at construction: a bad
-  label raises out of the explain path instead of degrading to
-  unattributed registration, by design (fail-closed, not fail-open).
+- **No row-level labels.** Call sites now pass a reported source
+  (`tool:<name>`, `tool:sql`, `question`, `context:*`, `gap:facts`,
+  `explainer:expected_saving_min`, `explainer:lot`, `handover:*`,
+  `deliberation:*`). `add()` on a whole payload is still one label for
+  every value in it. A label built from data must be valid at
+  construction: a bad label raises out of the explain path instead of
+  degrading to unattributed registration (fail-closed).
 - **No registry fingerprint.** Binding a ledger to the exact registry
   contents it was checked against (a hash of the registry, as named in
   `docs/CLAIM_LEDGER.md`) is a later increment.
-- **No change to claim/v0.** `claims.py` is untouched; the ledger does
-  not read provenance yet. The per-claim attribution increment will
-  consume `sources()` and must define its multi-source policy (list all
-  labels? prefer tool over question? mark ambiguous?) — it must not
-  silently pick the first label and present it as "the" source — and
-  must not change the `claim/v0` field set without a version bump.
+- **No claim/v1.** The ledger reads `sources()` and keeps every label.
+  The `claim/v0` field set is unchanged. A registry with no provenance
+  still produces the previous caller-wide `sources` tuple.
 - **No verification of labels.** A label is a claim about origin, not
-  proof of it. The ledger must quote labels as "reported source", never
-  as a verified fact.
+  proof of it. The ledger quotes labels as "reported source", never as
+  a verified fact.
 
 ## Tests
 

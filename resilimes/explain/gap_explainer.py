@@ -195,7 +195,7 @@ def explain_gap(
     )
     draft = scripted_text(gap)
     registry = FactRegistry()
-    registry.add(_facts(gap))
+    registry.add(_facts(gap), source="gap:facts")
     if provider is None or provider.mocked:
         out.text = draft
         out.source = "scripted"
