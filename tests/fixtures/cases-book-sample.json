@@ -1,5 +1,5 @@
 {
-  "_note": "Cases page parity corpus. The valid book is a real cases.py to_json export (2 lots, 4 cases, one resolved critical); expected lots/summary are the Python CaseBook.lots()/summary() outputs. Edge payloads are hand-built and were cross-checked against CaseBook.from_json on 2026-11-15, except illegal_transition, which from_json accepts but the page deliberately rejects (transition legality). The 1e999 literal parses to Infinity in JS.",
+  "_note": "Cases page parity corpus. The valid book is a real cases.py to_json export (2 lots, 4 cases, one resolved critical); expected lots/summary are the Python CaseBook.lots()/summary() outputs. Edge payloads are hand-built and were cross-checked against CaseBook.from_json on 2026-11-15, including illegal_transition, which both from_json and the page reject. The 1e999 literal parses to Infinity in JS.",
   "valid": {
     "book_version": "cases/v0",
     "cases": [

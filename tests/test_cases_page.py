@@ -5,10 +5,8 @@ on the fixture corpus.
 
 The fixture (``tests/fixtures/cases-book-sample.json``) holds a real
 ``to_json`` export plus hand-built edge payloads; the ``valid`` flag on
-each edge payload is what ``CaseBook.from_json`` returns, except
-``illegal_transition``, which ``from_json`` accepts but the page
-deliberately rejects (history transition legality — see
-``docs/CASES_PAGE.md``).
+each edge payload is what ``CaseBook.from_json`` returns.
+``illegal_transition`` is rejected by both the page and ``from_json``.
 
 Runs under node when it is available; skips honestly when it is not
 (the page is browser JS and has no Python equivalent). The driver is
@@ -99,3 +97,13 @@ def test_cases_page_fixture_is_valid_json() -> None:
     assert data["valid"]["book_version"] == "cases/v0"
     assert data["expected_lots"]
     assert data["edge"]
+
+
+def test_illegal_transition_is_rejected_by_from_json() -> None:
+    from pydantic import ValidationError
+
+    from resilimes.explain.cases import CaseBook
+
+    data = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    with pytest.raises(ValidationError):
+        CaseBook.from_json(data["edge"]["illegal_transition"]["payload"])
