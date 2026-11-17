@@ -26,15 +26,22 @@ def test_pages_are_split_and_the_console_route_still_works() -> None:
         "/assets/product/explanation/explanation.js",
         "/assets/product/replay/replay.js",
         "/assets/product/quality/quality.js",
+        "/assets/product/cases/cases.js",
     ):
         assert path in index
     assert 'id="panel-recover"' in index
+    assert 'id="panel-cases"' in index
     assert "function paintAnalyze" not in (STATIC / "workshop/console/console.js").read_text(
         encoding="utf-8"
     )
     assert "function paintAnalyze" in (STATIC / "product/quality/quality.js").read_text(
         encoding="utf-8"
     )
+    assert "function paintCases" in (STATIC / "product/cases/cases.js").read_text(encoding="utf-8")
+    assert "function paintCases" not in (STATIC / "workshop/console/console.js").read_text(
+        encoding="utf-8"
+    )
+    assert '"cases"' in (STATIC / "workshop/console/console.js").read_text(encoding="utf-8")
     assert 'id: "notes"' in (STATIC / "ai.js").read_text(encoding="utf-8")
     assert "function renderReplay" in (STATIC / "product/replay/replay.js").read_text(
         encoding="utf-8"
@@ -45,6 +52,8 @@ def test_pages_are_split_and_the_console_route_still_works() -> None:
     page = client.get("/")
     assert page.status_code == 200
     assert 'id="panel-recover"' in page.text
+    assert 'id="panel-cases"' in page.text
+    assert "/assets/product/cases/cases.js" in page.text
     console = client.get("/assets/workshop/console/console.js")
     assert console.status_code == 200
     assert "function paint(" in console.text

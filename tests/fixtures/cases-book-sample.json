@@ -1,0 +1,1656 @@
+{
+  "_note": "Cases page parity corpus. The valid book is a real cases.py to_json export (2 lots, 4 cases, one resolved critical); expected lots/summary are the Python CaseBook.lots()/summary() outputs. Edge payloads are hand-built and were cross-checked against CaseBook.from_json on 2026-11-15, including illegal_transition, which both from_json and the page reject. The 1e999 literal parses to Infinity in JS.",
+  "valid": {
+    "book_version": "cases/v0",
+    "cases": [
+      {
+        "cases_version": "cases/v0",
+        "case_id": "case-0001",
+        "lot": "LOT-1004",
+        "run": {
+          "seed": 1,
+          "horizon_sec": 28800.0,
+          "policy": "recover",
+          "label": "baseline",
+          "sched_mode": null
+        },
+        "title": "Litho queue jam",
+        "severity": "major",
+        "severity_reason": "45 min late, needs a decision this shift",
+        "status": "open",
+        "lateness_min": 45.0,
+        "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "notes": [
+          "called the tool owner"
+        ],
+        "history": [
+          {
+            "previous": null,
+            "status": "open",
+            "at": "2026-11-14T09:00:00Z",
+            "note": "created"
+          }
+        ],
+        "created_at": "2026-11-14T09:00:00Z",
+        "updated_at": "2026-11-14T09:00:00Z",
+        "content_hash": "sha256:f5b3ee4d9e95eb886cd282833834a6d8a24584e2fc437aad7786b981cac2ab79"
+      },
+      {
+        "cases_version": "cases/v0",
+        "case_id": "case-0002",
+        "lot": "LOT-1004",
+        "run": {
+          "seed": 1,
+          "horizon_sec": 28800.0,
+          "policy": "recover",
+          "label": "baseline",
+          "sched_mode": null
+        },
+        "title": "Near miss on etch",
+        "severity": "info",
+        "severity_reason": "not late, watching",
+        "status": "open",
+        "lateness_min": 0.0,
+        "evidence_hash": null,
+        "notes": [],
+        "history": [
+          {
+            "previous": null,
+            "status": "open",
+            "at": "2026-11-14T09:05:00Z",
+            "note": "created"
+          }
+        ],
+        "created_at": "2026-11-14T09:05:00Z",
+        "updated_at": "2026-11-14T09:05:00Z",
+        "content_hash": "sha256:f14dac9021045222cc8ab675f1242f5ab7d2e8c466f59320e33b3f6f92ce037d"
+      },
+      {
+        "cases_version": "cases/v0",
+        "case_id": "case-0003",
+        "lot": "LOT-1007",
+        "run": {
+          "seed": 1,
+          "horizon_sec": 28800.0,
+          "policy": "recover",
+          "label": "baseline",
+          "sched_mode": null
+        },
+        "title": "Old critical, already fixed",
+        "severity": "critical",
+        "severity_reason": "180 min late, escalated at once",
+        "status": "resolved",
+        "lateness_min": 180.0,
+        "evidence_hash": null,
+        "notes": [],
+        "history": [
+          {
+            "previous": null,
+            "status": "open",
+            "at": "2026-11-14T08:00:00Z",
+            "note": "created"
+          },
+          {
+            "previous": "open",
+            "status": "resolved",
+            "at": "2026-11-15T00:32:12.658005Z",
+            "note": "recovered in replan"
+          }
+        ],
+        "created_at": "2026-11-14T08:00:00Z",
+        "updated_at": "2026-11-15T00:32:12.658005Z",
+        "content_hash": "sha256:b017384f3176fe0d63845939d95057b2b915d5713a9725c99e2b6d4a115fc906"
+      },
+      {
+        "cases_version": "cases/v0",
+        "case_id": "case-0004",
+        "lot": "LOT-1009",
+        "run": {
+          "seed": 1,
+          "horizon_sec": 28800.0,
+          "policy": "recover",
+          "label": "baseline",
+          "sched_mode": null
+        },
+        "title": "Waiting on maintenance",
+        "severity": "minor",
+        "severity_reason": "10 min late, shift can absorb",
+        "status": "open",
+        "lateness_min": 10.0,
+        "evidence_hash": null,
+        "notes": [],
+        "history": [
+          {
+            "previous": null,
+            "status": "open",
+            "at": "2026-11-14T09:10:00Z",
+            "note": "created"
+          }
+        ],
+        "created_at": "2026-11-14T09:10:00Z",
+        "updated_at": "2026-11-14T09:10:00Z",
+        "content_hash": "sha256:7a270f0ed74590a92318ab4157ff0f90de0e0733f5560ec072c39317421e511a"
+      }
+    ],
+    "next_seq": 5
+  },
+  "expected_lots": [
+    "LOT-1004",
+    "LOT-1009",
+    "LOT-1007"
+  ],
+  "expected_summary": {
+    "total": 4,
+    "lots": 3,
+    "open_total": 3,
+    "by_status": {
+      "open": 3,
+      "investigating": 0,
+      "resolved": 1,
+      "dismissed": 0
+    },
+    "by_severity": {
+      "critical": 1,
+      "major": 1,
+      "minor": 1,
+      "info": 1
+    }
+  },
+  "broken": {
+    "bad_severity": {
+      "book_version": "cases/v0",
+      "cases": [
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0001",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Litho queue jam",
+          "severity": "urgent",
+          "severity_reason": "45 min late, needs a decision this shift",
+          "status": "open",
+          "lateness_min": 45.0,
+          "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "notes": [
+            "called the tool owner"
+          ],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:00:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:00:00Z",
+          "updated_at": "2026-11-14T09:00:00Z",
+          "content_hash": "sha256:f5b3ee4d9e95eb886cd282833834a6d8a24584e2fc437aad7786b981cac2ab79"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0002",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Near miss on etch",
+          "severity": "info",
+          "severity_reason": "not late, watching",
+          "status": "open",
+          "lateness_min": 0.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:05:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:05:00Z",
+          "updated_at": "2026-11-14T09:05:00Z",
+          "content_hash": "sha256:f14dac9021045222cc8ab675f1242f5ab7d2e8c466f59320e33b3f6f92ce037d"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0003",
+          "lot": "LOT-1007",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Old critical, already fixed",
+          "severity": "critical",
+          "severity_reason": "180 min late, escalated at once",
+          "status": "resolved",
+          "lateness_min": 180.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T08:00:00Z",
+              "note": "created"
+            },
+            {
+              "previous": "open",
+              "status": "resolved",
+              "at": "2026-11-15T00:32:12.658005Z",
+              "note": "recovered in replan"
+            }
+          ],
+          "created_at": "2026-11-14T08:00:00Z",
+          "updated_at": "2026-11-15T00:32:12.658005Z",
+          "content_hash": "sha256:b017384f3176fe0d63845939d95057b2b915d5713a9725c99e2b6d4a115fc906"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0004",
+          "lot": "LOT-1009",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Waiting on maintenance",
+          "severity": "minor",
+          "severity_reason": "10 min late, shift can absorb",
+          "status": "open",
+          "lateness_min": 10.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:10:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:10:00Z",
+          "updated_at": "2026-11-14T09:10:00Z",
+          "content_hash": "sha256:7a270f0ed74590a92318ab4157ff0f90de0e0733f5560ec072c39317421e511a"
+        }
+      ],
+      "next_seq": 5
+    },
+    "bad_history": {
+      "book_version": "cases/v0",
+      "cases": [
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0001",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Litho queue jam",
+          "severity": "major",
+          "severity_reason": "45 min late, needs a decision this shift",
+          "status": "open",
+          "lateness_min": 45.0,
+          "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "notes": [
+            "called the tool owner"
+          ],
+          "history": [
+            {
+              "previous": null,
+              "status": "resolved",
+              "at": "2026-11-14T09:00:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:00:00Z",
+          "updated_at": "2026-11-14T09:00:00Z",
+          "content_hash": "sha256:f5b3ee4d9e95eb886cd282833834a6d8a24584e2fc437aad7786b981cac2ab79"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0002",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Near miss on etch",
+          "severity": "info",
+          "severity_reason": "not late, watching",
+          "status": "open",
+          "lateness_min": 0.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:05:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:05:00Z",
+          "updated_at": "2026-11-14T09:05:00Z",
+          "content_hash": "sha256:f14dac9021045222cc8ab675f1242f5ab7d2e8c466f59320e33b3f6f92ce037d"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0003",
+          "lot": "LOT-1007",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Old critical, already fixed",
+          "severity": "critical",
+          "severity_reason": "180 min late, escalated at once",
+          "status": "resolved",
+          "lateness_min": 180.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T08:00:00Z",
+              "note": "created"
+            },
+            {
+              "previous": "open",
+              "status": "resolved",
+              "at": "2026-11-15T00:32:12.658005Z",
+              "note": "recovered in replan"
+            }
+          ],
+          "created_at": "2026-11-14T08:00:00Z",
+          "updated_at": "2026-11-15T00:32:12.658005Z",
+          "content_hash": "sha256:b017384f3176fe0d63845939d95057b2b915d5713a9725c99e2b6d4a115fc906"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0004",
+          "lot": "LOT-1009",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Waiting on maintenance",
+          "severity": "minor",
+          "severity_reason": "10 min late, shift can absorb",
+          "status": "open",
+          "lateness_min": 10.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:10:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:10:00Z",
+          "updated_at": "2026-11-14T09:10:00Z",
+          "content_hash": "sha256:7a270f0ed74590a92318ab4157ff0f90de0e0733f5560ec072c39317421e511a"
+        }
+      ],
+      "next_seq": 5
+    },
+    "bad_next_seq": {
+      "book_version": "cases/v0",
+      "cases": [
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0001",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Litho queue jam",
+          "severity": "major",
+          "severity_reason": "45 min late, needs a decision this shift",
+          "status": "open",
+          "lateness_min": 45.0,
+          "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "notes": [
+            "called the tool owner"
+          ],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:00:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:00:00Z",
+          "updated_at": "2026-11-14T09:00:00Z",
+          "content_hash": "sha256:f5b3ee4d9e95eb886cd282833834a6d8a24584e2fc437aad7786b981cac2ab79"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0002",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Near miss on etch",
+          "severity": "info",
+          "severity_reason": "not late, watching",
+          "status": "open",
+          "lateness_min": 0.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:05:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:05:00Z",
+          "updated_at": "2026-11-14T09:05:00Z",
+          "content_hash": "sha256:f14dac9021045222cc8ab675f1242f5ab7d2e8c466f59320e33b3f6f92ce037d"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0003",
+          "lot": "LOT-1007",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Old critical, already fixed",
+          "severity": "critical",
+          "severity_reason": "180 min late, escalated at once",
+          "status": "resolved",
+          "lateness_min": 180.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T08:00:00Z",
+              "note": "created"
+            },
+            {
+              "previous": "open",
+              "status": "resolved",
+              "at": "2026-11-15T00:32:12.658005Z",
+              "note": "recovered in replan"
+            }
+          ],
+          "created_at": "2026-11-14T08:00:00Z",
+          "updated_at": "2026-11-15T00:32:12.658005Z",
+          "content_hash": "sha256:b017384f3176fe0d63845939d95057b2b915d5713a9725c99e2b6d4a115fc906"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0004",
+          "lot": "LOT-1009",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Waiting on maintenance",
+          "severity": "minor",
+          "severity_reason": "10 min late, shift can absorb",
+          "status": "open",
+          "lateness_min": 10.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:10:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:10:00Z",
+          "updated_at": "2026-11-14T09:10:00Z",
+          "content_hash": "sha256:7a270f0ed74590a92318ab4157ff0f90de0e0733f5560ec072c39317421e511a"
+        }
+      ],
+      "next_seq": 2
+    },
+    "unknown_key": {
+      "book_version": "cases/v0",
+      "cases": [
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0001",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Litho queue jam",
+          "severity": "major",
+          "severity_reason": "45 min late, needs a decision this shift",
+          "status": "open",
+          "lateness_min": 45.0,
+          "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "notes": [
+            "called the tool owner"
+          ],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:00:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:00:00Z",
+          "updated_at": "2026-11-14T09:00:00Z",
+          "content_hash": "sha256:f5b3ee4d9e95eb886cd282833834a6d8a24584e2fc437aad7786b981cac2ab79"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0002",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Near miss on etch",
+          "severity": "info",
+          "severity_reason": "not late, watching",
+          "status": "open",
+          "lateness_min": 0.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:05:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:05:00Z",
+          "updated_at": "2026-11-14T09:05:00Z",
+          "content_hash": "sha256:f14dac9021045222cc8ab675f1242f5ab7d2e8c466f59320e33b3f6f92ce037d"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0003",
+          "lot": "LOT-1007",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Old critical, already fixed",
+          "severity": "critical",
+          "severity_reason": "180 min late, escalated at once",
+          "status": "resolved",
+          "lateness_min": 180.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T08:00:00Z",
+              "note": "created"
+            },
+            {
+              "previous": "open",
+              "status": "resolved",
+              "at": "2026-11-15T00:32:12.658005Z",
+              "note": "recovered in replan"
+            }
+          ],
+          "created_at": "2026-11-14T08:00:00Z",
+          "updated_at": "2026-11-15T00:32:12.658005Z",
+          "content_hash": "sha256:b017384f3176fe0d63845939d95057b2b915d5713a9725c99e2b6d4a115fc906"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0004",
+          "lot": "LOT-1009",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Waiting on maintenance",
+          "severity": "minor",
+          "severity_reason": "10 min late, shift can absorb",
+          "status": "open",
+          "lateness_min": 10.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:10:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:10:00Z",
+          "updated_at": "2026-11-14T09:10:00Z",
+          "content_hash": "sha256:7a270f0ed74590a92318ab4157ff0f90de0e0733f5560ec072c39317421e511a"
+        }
+      ],
+      "next_seq": 5,
+      "surprise": 1
+    },
+    "bad_hash": {
+      "book_version": "cases/v0",
+      "cases": [
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0001",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Litho queue jam",
+          "severity": "major",
+          "severity_reason": "45 min late, needs a decision this shift",
+          "status": "open",
+          "lateness_min": 45.0,
+          "evidence_hash": "sha256:XYZ",
+          "notes": [
+            "called the tool owner"
+          ],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:00:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:00:00Z",
+          "updated_at": "2026-11-14T09:00:00Z",
+          "content_hash": "sha256:f5b3ee4d9e95eb886cd282833834a6d8a24584e2fc437aad7786b981cac2ab79"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0002",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Near miss on etch",
+          "severity": "info",
+          "severity_reason": "not late, watching",
+          "status": "open",
+          "lateness_min": 0.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:05:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:05:00Z",
+          "updated_at": "2026-11-14T09:05:00Z",
+          "content_hash": "sha256:f14dac9021045222cc8ab675f1242f5ab7d2e8c466f59320e33b3f6f92ce037d"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0003",
+          "lot": "LOT-1007",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Old critical, already fixed",
+          "severity": "critical",
+          "severity_reason": "180 min late, escalated at once",
+          "status": "resolved",
+          "lateness_min": 180.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T08:00:00Z",
+              "note": "created"
+            },
+            {
+              "previous": "open",
+              "status": "resolved",
+              "at": "2026-11-15T00:32:12.658005Z",
+              "note": "recovered in replan"
+            }
+          ],
+          "created_at": "2026-11-14T08:00:00Z",
+          "updated_at": "2026-11-15T00:32:12.658005Z",
+          "content_hash": "sha256:b017384f3176fe0d63845939d95057b2b915d5713a9725c99e2b6d4a115fc906"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0004",
+          "lot": "LOT-1009",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Waiting on maintenance",
+          "severity": "minor",
+          "severity_reason": "10 min late, shift can absorb",
+          "status": "open",
+          "lateness_min": 10.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:10:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:10:00Z",
+          "updated_at": "2026-11-14T09:10:00Z",
+          "content_hash": "sha256:7a270f0ed74590a92318ab4157ff0f90de0e0733f5560ec072c39317421e511a"
+        }
+      ],
+      "next_seq": 5
+    },
+    "tampered_seal": {
+      "book_version": "cases/v0",
+      "cases": [
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0001",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Litho queue jam",
+          "severity": "major",
+          "severity_reason": "45 min late, needs a decision this shift",
+          "status": "open",
+          "lateness_min": 45.0,
+          "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "notes": [
+            "called the tool owner"
+          ],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:00:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:00:00Z",
+          "updated_at": "2026-11-14T09:00:00Z",
+          "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0002",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Near miss on etch",
+          "severity": "info",
+          "severity_reason": "not late, watching",
+          "status": "open",
+          "lateness_min": 0.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:05:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:05:00Z",
+          "updated_at": "2026-11-14T09:05:00Z",
+          "content_hash": "sha256:f14dac9021045222cc8ab675f1242f5ab7d2e8c466f59320e33b3f6f92ce037d"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0003",
+          "lot": "LOT-1007",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Old critical, already fixed",
+          "severity": "critical",
+          "severity_reason": "180 min late, escalated at once",
+          "status": "resolved",
+          "lateness_min": 180.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T08:00:00Z",
+              "note": "created"
+            },
+            {
+              "previous": "open",
+              "status": "resolved",
+              "at": "2026-11-15T00:32:12.658005Z",
+              "note": "recovered in replan"
+            }
+          ],
+          "created_at": "2026-11-14T08:00:00Z",
+          "updated_at": "2026-11-15T00:32:12.658005Z",
+          "content_hash": "sha256:b017384f3176fe0d63845939d95057b2b915d5713a9725c99e2b6d4a115fc906"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0004",
+          "lot": "LOT-1009",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Waiting on maintenance",
+          "severity": "minor",
+          "severity_reason": "10 min late, shift can absorb",
+          "status": "open",
+          "lateness_min": 10.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:10:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:10:00Z",
+          "updated_at": "2026-11-14T09:10:00Z",
+          "content_hash": "sha256:7a270f0ed74590a92318ab4157ff0f90de0e0733f5560ec072c39317421e511a"
+        }
+      ],
+      "next_seq": 5
+    },
+    "not_object": [
+      1,
+      2,
+      3
+    ],
+    "bad_lateness": {
+      "book_version": "cases/v0",
+      "cases": [
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0001",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Litho queue jam",
+          "severity": "major",
+          "severity_reason": "45 min late, needs a decision this shift",
+          "status": "open",
+          "lateness_min": -5,
+          "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "notes": [
+            "called the tool owner"
+          ],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:00:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:00:00Z",
+          "updated_at": "2026-11-14T09:00:00Z",
+          "content_hash": "sha256:f5b3ee4d9e95eb886cd282833834a6d8a24584e2fc437aad7786b981cac2ab79"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0002",
+          "lot": "LOT-1004",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Near miss on etch",
+          "severity": "info",
+          "severity_reason": "not late, watching",
+          "status": "open",
+          "lateness_min": 0.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:05:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:05:00Z",
+          "updated_at": "2026-11-14T09:05:00Z",
+          "content_hash": "sha256:f14dac9021045222cc8ab675f1242f5ab7d2e8c466f59320e33b3f6f92ce037d"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0003",
+          "lot": "LOT-1007",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Old critical, already fixed",
+          "severity": "critical",
+          "severity_reason": "180 min late, escalated at once",
+          "status": "resolved",
+          "lateness_min": 180.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T08:00:00Z",
+              "note": "created"
+            },
+            {
+              "previous": "open",
+              "status": "resolved",
+              "at": "2026-11-15T00:32:12.658005Z",
+              "note": "recovered in replan"
+            }
+          ],
+          "created_at": "2026-11-14T08:00:00Z",
+          "updated_at": "2026-11-15T00:32:12.658005Z",
+          "content_hash": "sha256:b017384f3176fe0d63845939d95057b2b915d5713a9725c99e2b6d4a115fc906"
+        },
+        {
+          "cases_version": "cases/v0",
+          "case_id": "case-0004",
+          "lot": "LOT-1009",
+          "run": {
+            "seed": 1,
+            "horizon_sec": 28800.0,
+            "policy": "recover",
+            "label": "baseline",
+            "sched_mode": null
+          },
+          "title": "Waiting on maintenance",
+          "severity": "minor",
+          "severity_reason": "10 min late, shift can absorb",
+          "status": "open",
+          "lateness_min": 10.0,
+          "evidence_hash": null,
+          "notes": [],
+          "history": [
+            {
+              "previous": null,
+              "status": "open",
+              "at": "2026-11-14T09:10:00Z",
+              "note": "created"
+            }
+          ],
+          "created_at": "2026-11-14T09:10:00Z",
+          "updated_at": "2026-11-14T09:10:00Z",
+          "content_hash": "sha256:7a270f0ed74590a92318ab4157ff0f90de0e0733f5560ec072c39317421e511a"
+        }
+      ],
+      "next_seq": 5
+    }
+  },
+  "edge": {
+    "feb30": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-02-30T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": false
+    },
+    "space_no_seconds": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14 09:00:00+00:00",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14 09:00:00+00:00",
+            "updated_at": "2026-11-14T09:00+00:00",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": true
+    },
+    "plus_hhmm": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00+0530",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00+0530",
+            "updated_at": "2026-11-14T09:00:00+0530",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": true
+    },
+    "numeric_strings": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": "1",
+              "horizon_sec": "28800",
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": "45",
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": true
+    },
+    "missing_defaults": {
+      "payload": {
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": true
+    },
+    "missing_defaults_empty": {
+      "payload": {
+        "cases": []
+      },
+      "valid": true
+    },
+    "missing_next_seq": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ]
+      },
+      "valid": false
+    },
+    "missing_seed": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": false
+    },
+    "inf_lateness": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 1e999,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": false
+    },
+    "padded_lot": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "  LOT-1004  ",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "  Litho queue jam  ",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": true
+    },
+    "illegal_transition": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "investigating",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              },
+              {
+                "previous": "open",
+                "status": "resolved",
+                "at": "2026-11-14T09:30:00Z",
+                "note": ""
+              },
+              {
+                "previous": "resolved",
+                "status": "investigating",
+                "at": "2026-11-14T10:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": false
+    },
+    "missing_previous": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "recover",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": true
+    },
+    "empty_policy": {
+      "payload": {
+        "book_version": "cases/v0",
+        "cases": [
+          {
+            "cases_version": "cases/v0",
+            "case_id": "case-0001",
+            "lot": "LOT-1004",
+            "run": {
+              "seed": 1,
+              "horizon_sec": 28800.0,
+              "policy": "",
+              "label": "baseline"
+            },
+            "title": "Litho queue jam",
+            "severity": "major",
+            "severity_reason": "45 min late",
+            "status": "open",
+            "lateness_min": 45.0,
+            "evidence_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "notes": [],
+            "history": [
+              {
+                "previous": null,
+                "status": "open",
+                "at": "2026-11-14T09:00:00Z",
+                "note": ""
+              }
+            ],
+            "created_at": "2026-11-14T09:00:00Z",
+            "updated_at": "2026-11-14T09:00:00Z",
+            "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "next_seq": 2
+      },
+      "valid": true
+    }
+  },
+  "ordering": {
+    "book_version": "cases/v0",
+    "cases": [
+      {
+        "case_id": "case-10000",
+        "lot": "LOT-1",
+        "run": {
+          "seed": 1,
+          "horizon_sec": 28800.0,
+          "policy": "recover"
+        },
+        "title": "tenthousand",
+        "severity": "minor",
+        "severity_reason": "r",
+        "status": "open",
+        "lateness_min": 5.0,
+        "created_at": "2026-11-14T08:00:00Z",
+        "updated_at": "2026-11-14T08:00:00Z"
+      },
+      {
+        "case_id": "case-9999",
+        "lot": "LOT-1",
+        "run": {
+          "seed": 1,
+          "horizon_sec": 28800.0,
+          "policy": "recover"
+        },
+        "title": "ninethousand",
+        "severity": "minor",
+        "severity_reason": "r",
+        "status": "open",
+        "lateness_min": 5.0,
+        "created_at": "2026-11-14T08:00:00Z",
+        "updated_at": "2026-11-14T08:00:00Z"
+      },
+      {
+        "case_id": "case-0002",
+        "lot": "lot-1",
+        "run": {
+          "seed": 1,
+          "horizon_sec": 28800.0,
+          "policy": "recover"
+        },
+        "title": "lowercase lot",
+        "severity": "major",
+        "severity_reason": "r",
+        "status": "open",
+        "lateness_min": 30.0,
+        "created_at": "2026-11-14T08:00:00Z",
+        "updated_at": "2026-11-14T08:00:00Z"
+      },
+      {
+        "case_id": "case-0003",
+        "lot": "LOT-2",
+        "run": {
+          "seed": 1,
+          "horizon_sec": 28800.0,
+          "policy": "recover"
+        },
+        "title": "upper lot",
+        "severity": "major",
+        "severity_reason": "r",
+        "status": "open",
+        "lateness_min": 30.0,
+        "created_at": "2026-11-14T08:00:00Z",
+        "updated_at": "2026-11-14T08:00:00Z"
+      }
+    ],
+    "next_seq": 10001
+  },
+  "expected_lot_order": [
+    "LOT-2",
+    "lot-1",
+    "LOT-1"
+  ],
+  "expected_case_order_lot1": [
+    "case-9999",
+    "case-10000"
+  ]
+}

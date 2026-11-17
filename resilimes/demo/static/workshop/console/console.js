@@ -220,6 +220,7 @@ function paint() {
   paintRecover();
   paintAnalyze();
   paintVerify();
+  if (typeof paintCases === "function") paintCases();
   if (typeof paintAi === "function") paintAi();
   if (state.running && !state.report) $("#status").textContent = copy.working;
   else if (state.report) $("#status").textContent = state.report.blocked ? copy.refused : doneStatus(state.report);
@@ -230,9 +231,9 @@ function paintTabs() {
   const copy = t();
   const host = $("#tabs");
   host.innerHTML = "";
-  const tips = { recover: copy.tabRecoverTip, analyze: copy.tabAnalyzeTip, verify: copy.tabVerifyTip, ai: copy.tabAiTip };
+  const tips = { recover: copy.tabRecoverTip, analyze: copy.tabAnalyzeTip, verify: copy.tabVerifyTip, cases: copy.tabCasesTip, ai: copy.tabAiTip };
   const fabTabs = fabEnabled() ? window.Fab.tabs() : [];
-  const base = [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify], ["ai", copy.tabAi]];
+  const base = [["recover", copy.tabRecover], ["analyze", copy.tabAnalyze], ["verify", copy.tabVerify], ["cases", copy.tabCases], ["ai", copy.tabAi]];
   for (const [id, label] of [...fabTabs, ...base]) {
     if (fabTabs.length && id === "recover") {
       const gap = document.createElement("span");
@@ -262,7 +263,7 @@ function fabEnabled() {
 
 function showPanel() {
   const fab = fabEnabled() && state.tab.startsWith("fab-");
-  for (const id of ["recover", "analyze", "verify", "ai"]) {
+  for (const id of ["recover", "analyze", "verify", "cases", "ai"]) {
     const panel = $(`#panel-${id}`);
     if (panel) panel.hidden = fab || state.tab !== id;
   }
