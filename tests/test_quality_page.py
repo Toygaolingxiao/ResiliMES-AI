@@ -196,7 +196,7 @@ def test_quality_fixture_matches_model() -> None:
     ``valid`` flag to ``evaluate()`` / ``model_validate``.
     """
     try:
-        from resilimes.explain.quality import (  # noqa: PLC0415 - importable only after PR #88
+        from resilimes.explain.quality import (
             AttributionSample,
             QualityReport,
             evaluate,
