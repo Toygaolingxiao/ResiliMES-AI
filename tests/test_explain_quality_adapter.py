@@ -6,7 +6,10 @@ the adapter version has to change too. See docs/QUALITY_ADAPTER.md.
 These tests pin the mapping only. Rates are quality.evaluate's job (PR #88)
 and are measured, not asserted, in docs/QUALITY_ADAPTER.md -- except for
 the headline counts below, which are pure mapping facts (how many adapted
-samples are right/wrong/unknown) and pin the documented numerators.
+samples are right/wrong/unknown) and pin the documented numerators. The
+evaluate() wiring (this PR's increment) is tested separately at the end of
+this file: ``evaluate_adapted`` / ``evaluate_file`` / ``--report`` must
+reproduce the documented first measurement through the real pipeline.
 """
 
 from __future__ import annotations
@@ -21,6 +24,8 @@ from resilimes.insight.quality_adapter import (
     ADAPTER_VERSION,
     adapt_investigator_file,
     adapt_investigator_rows,
+    evaluate_adapted,
+    evaluate_file,
     main,
 )
 
@@ -471,3 +476,127 @@ def test_cli_out_write_failure_exits_two(tmp_path, capsys):
     src = REPO_ROOT / "results_pc" / "investigator_nightshift_v2.json"
     assert main([str(src), "--out", str(tmp_path / "no-such-dir" / "samples.json")]) == 2
     assert "quality_adapter:" in capsys.readouterr().err
+
+
+# --- evaluate() wiring (report/v0): adapt -> evaluate -> report. ---
+
+
+def test_evaluate_adapted_rates_carry_denominators():
+    """Four synthetic rows: 2 right, 1 wrong, 1 unknown, all truth known.
+
+    misattribution 1/3 (unknown is not in its denominator), over-unknown
+    1/4, unknown share 1/4; calibration empty by construction (no
+    confidence anywhere), ECE None.
+    """
+    rows = [
+        _row(case_id="c1", truth="tool_down", primary="tool_down"),
+        _row(case_id="c2", truth="tool_down", primary="tool_down"),
+        _row(case_id="c3", truth="tool_down", primary="release_burst"),
+        _row(case_id="c4", truth="tool_down", primary=None, ai={"primary_cause": None}),
+    ]
+    # _row with primary=None still builds an ai dict with primary None; the
+    # adapter treats a missing usable answer as unknown.
+    report = evaluate_adapted(_adapt(rows))
+    assert report.total_samples == 4
+    assert report.truth_known == 4
+    assert (report.misattribution.numerator, report.misattribution.denominator) == (1, 3)
+    assert report.misattribution.value == pytest.approx(1 / 3)
+    assert (report.over_unknown.numerator, report.over_unknown.denominator) == (1, 4)
+    assert (report.unknown_share.numerator, report.unknown_share.denominator) == (1, 4)
+    assert report.calibration_samples == 0
+    assert report.expected_calibration_error is None
+
+
+def test_evaluate_adapted_empty_set_has_none_rates():
+    report = evaluate_adapted(_adapt([]))
+    assert report.total_samples == 0
+    assert report.misattribution.value is None
+    assert report.misattribution.denominator == 0
+    assert report.over_unknown.value is None
+    assert report.unknown_share.value is None
+    assert report.expected_calibration_error is None
+
+
+def test_evaluate_adapted_does_not_mutate_the_adapted_set():
+    adapted = _adapt([_row()])
+    before = adapted.samples
+    evaluate_adapted(adapted)
+    assert adapted.samples == before
+
+
+def test_evaluate_file_reproduces_first_measurement():
+    """The documented first measurement, re-run through the real pipeline.
+
+    Pins docs/QUALITY_ADAPTER.md: v2 misattribution 4/24, over-unknown
+    0/24; v1 misattribution 11/22 (denominator 22, not 24: the 2 unknown
+    rows are not in it), over-unknown 2/24; calibration 0 / ECE None on
+    both (investigator emits no confidence).
+    """
+    _, v2 = evaluate_file(REPO_ROOT / "results_pc" / "investigator_nightshift_v2.json")
+    assert v2.total_samples == 24
+    assert (v2.misattribution.numerator, v2.misattribution.denominator) == (4, 24)
+    assert (v2.over_unknown.numerator, v2.over_unknown.denominator) == (0, 24)
+    assert v2.calibration_samples == 0
+    assert v2.expected_calibration_error is None
+    _, v1 = evaluate_file(REPO_ROOT / "results_pc" / "investigator_nightshift_v1.json")
+    assert v1.total_samples == 24
+    assert (v1.misattribution.numerator, v1.misattribution.denominator) == (11, 22)
+    assert (v1.over_unknown.numerator, v1.over_unknown.denominator) == (2, 24)
+    assert v1.calibration_samples == 0
+    assert v1.expected_calibration_error is None
+
+
+def test_evaluate_file_duplicate_case_id_fails(tmp_path):
+    src = tmp_path / "dup.json"
+    src.write_text(
+        json.dumps({"rows": [_row(case_id="c1"), _row(case_id="c1", primary="release_burst")]}),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="duplicate case_id"):
+        evaluate_file(src)
+
+
+def test_cli_report_writes_quality_report(tmp_path, capsys):
+    src = REPO_ROOT / "results_pc" / "investigator_nightshift_v2.json"
+    report_path = tmp_path / "report.json"
+    assert main([str(src), "--report", str(report_path)]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["samples"] == 24
+    assert summary["report"]["misattribution"] == {
+        "numerator": 4,
+        "denominator": 24,
+        "value": pytest.approx(4 / 24),
+    }
+    assert summary["report"]["over_unknown"] == {
+        "numerator": 0,
+        "denominator": 24,
+        "value": 0.0,
+    }
+    assert summary["report"]["calibration_samples"] == 0
+    assert summary["report"]["expected_calibration_error"] is None
+    written = json.loads(report_path.read_text(encoding="utf-8"))
+    assert written["metrics_version"] == "quality/v0"
+    assert written["adapter_version"] == "adapter/v0"
+    assert written["report"]["total_samples"] == 24
+    assert written["report"]["metrics_version"] == "quality/v0"
+    assert written["report"]["misattribution"] == {
+        "numerator": 4,
+        "denominator": 24,
+        "value": pytest.approx(4 / 24),
+    }
+    assert written["summary"]["samples"] == 24
+    assert written["summary"]["skipped"] == {}
+
+
+def test_cli_report_write_failure_exits_two(tmp_path):
+    src = REPO_ROOT / "results_pc" / "investigator_nightshift_v2.json"
+    assert main([str(src), "--report", str(tmp_path / "no-such-dir" / "report.json")]) == 2
+
+
+def test_cli_out_and_report_together(tmp_path, capsys):
+    src = REPO_ROOT / "results_pc" / "investigator_nightshift_v2.json"
+    out = tmp_path / "samples.json"
+    report_path = tmp_path / "report.json"
+    assert main([str(src), "--out", str(out), "--report", str(report_path)]) == 0
+    assert len(json.loads(out.read_text(encoding="utf-8"))["samples"]) == 24
+    assert json.loads(report_path.read_text(encoding="utf-8"))["report"]["total_samples"] == 24

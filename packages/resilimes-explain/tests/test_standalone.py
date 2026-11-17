@@ -201,3 +201,43 @@ def test_case_coverage_two_rates():
     assert result.open_coverage.value == pytest.approx(0.0)
     assert result.uncovered_lots == ("Lot-2",)
     assert CaseBook().coverage([]).triaged_coverage.value is None
+
+
+def test_quality_evaluate_over_adapter_shaped_dicts():
+    """Boundary: sample dicts in the adapter's JSON shape validate as
+    AttributionSample and evaluate() runs over them (evaluate wiring)."""
+    from resilimes.explain.quality import AttributionSample, evaluate
+
+    samples = [
+        AttributionSample(**sample)
+        for sample in (
+            {
+                "sample_id": "investigator:c1",
+                "tier": "attributed",
+                "predicted_cause": "tool_down",
+                "true_cause": "tool_down",
+                "confidence": None,
+            },
+            {
+                "sample_id": "investigator:c2",
+                "tier": "attributed",
+                "predicted_cause": "release_burst",
+                "true_cause": "tool_down",
+                "confidence": None,
+            },
+            {
+                "sample_id": "investigator:c3",
+                "tier": "unknown",
+                "predicted_cause": None,
+                "true_cause": "tool_down",
+                "confidence": None,
+            },
+        )
+    ]
+    report = evaluate(samples)
+    assert report.metrics_version == "quality/v0"
+    assert (report.misattribution.numerator, report.misattribution.denominator) == (1, 2)
+    assert (report.over_unknown.numerator, report.over_unknown.denominator) == (1, 3)
+    assert report.calibration_samples == 0
+    assert report.expected_calibration_error is None
+    assert evaluate([]).misattribution.value is None

@@ -77,9 +77,28 @@ python -m resilimes.insight.quality_adapter results_pc/investigator_nightshift_v
 
 stdout 打印 summary JSON（`adapter_version` / `source` / `shape` / `samples` /
 `skipped` / `system_answers_used` / `system_answer_sample_ids` /
-`out_of_taxonomy_*`）。`--out` 指定时写出自描述对象
+`out_of_taxonomy_*`），外加 `report` 键：三项度量的分子/分母/值与校准样本
+数（见下「接线」）。`--out` 指定时写出自描述对象
 `{"samples": [...], "summary": {...}}`（样本列 + 全部元数据，只拿该文件
 的下游也能复原跳过与来源信息）。写出失败时 exit 2（不抛 traceback）。
+
+## 接线：适配 → 评估 → 报告（evaluate wiring）
+
+`evaluate_adapted(adapted)` 把适配得到的样本列喂给 `quality.evaluate()`：
+每条样本 dict 先过真实 `AttributionSample` 校验，再算 quality/v0 报告。
+`evaluate_file(path)` 一步完成适配与评估；CLI 加 `--report report.json`
+写出自描述对象 `{"report": <QualityReport 全量 JSON>, "summary": {...},
+"adapter_version", "metrics_version"}`，只拿该文件也能复原测了什么、
+跳过了什么。
+
+```sh
+python -m resilimes.insight.quality_adapter results_pc/investigator_nightshift_v2.json --report report.json
+```
+
+接线不改变任何映射规则：它只把适配器已产出的样本列交给已有的
+`evaluate()`。样本列本身仍由 adapter/v0 的规则决定；率的口径仍由
+quality/v0 决定。空样本列评估出的报告三项率均为 `None`（分母 0：数据
+不足，不是 0.0）。
 
 ## 首次实测（2026-11-16，本地运行）
 
@@ -161,11 +180,14 @@ v2 `ai_top1 20/24` → 答对 20、答错 4，与误归因 4/24 一致；v1 `ai_
 只定义 top-1，适配器忽略 `secondary_cause` 是口径内的选择。
 
 **再现性**：上表数字由三位独立审核员用真实 `quality.py` 另行复算一致。
-但在 main 上复现需要 #88 合并——本 PR 内没有任何办法把样本列喂给
-`evaluate()`（接线是 #88 合并后的跟进增量），实测脚本也不在 PR 内。
-复现步骤（#88 合并后）：`python -m resilimes.insight.quality_adapter
-results_pc/investigator_nightshift_v2.json --out samples.json` 取
-`samples` 列喂给 `quality.evaluate()`；输入文件以 blob（上表）核对。
+#88 合并后，接线已落地，复现是测试与 CLI 的一部分，不再需要手工拼
+样本列：`tests/test_explain_quality_adapter.py` 的
+`test_evaluate_file_reproduces_first_measurement` 用真实
+`evaluate()` 对两文件重算并断言上表 headline（v2 误归因 4/24、v1
+11/22）；命令行复现：`python -m resilimes.insight.quality_adapter
+results_pc/investigator_nightshift_v2.json --report report.json` 取
+`report.misattribution` / `report.over_unknown`；输入文件以 blob（上表）
+核对。
 
 ## 局限与非目标
 
@@ -190,8 +212,9 @@ results_pc/investigator_nightshift_v2.json --out samples.json` 取
   亦然——届时 `"attributed"` 才能配得上 schema 的来源保证。
 - 新形态的 `run_investigator` 输出（带 system/degraded/timeout）跑
   一轮后，用本适配器复测，对比 legacy 形态下 system 回答的占比。
-- `evaluate()` 接线（#88 合并后）：CLI 或 study 侧加 `--quality-report`
-  选项，适配 → 评估 → 报告一次完成。
+- `evaluate()` 接线（#88 合并后）：已落地（本增量）。CLI 或 study 侧加 `--quality-report`
+  选项，适配 → 评估 → 报告一次完成；`evaluate_adapted` / `evaluate_file` /
+  CLI `--report` 即此接线，首次实测已由测试固定在 CI 内。
 - 证据页 degraded 标题的歧义（标题显示 AI 答案、警告行显示规则答案）
   与 system-score 读法不一致，应由上游定夺哪一方是「运用者看到的回答」；
   在此之前适配器按 system-score 读法，并在本文中明示分歧。
