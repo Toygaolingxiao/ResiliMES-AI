@@ -88,6 +88,13 @@
       paintLegend(c);
       paintStats();
       draw();
+      // The scope notice is the one line that reconciles the cards with
+      // the drawn bars; re-render it on language switch too, not only on
+      // load, or it goes stale in the previous language.
+      if (state.payload) {
+        const status = statusFor(state.payload, c);
+        setStatus(status.message, status.warn);
+      }
     }
     function paintLegend(c) {
       const items = [
@@ -199,6 +206,10 @@
       if (span != null) {
         query.set("t0", String(Math.max(0, state.t0 - span)));
         query.set("t1", String(state.t1 + span));
+        // The display window: stats and scope are computed over this, not
+        // the wider prefetched fetch.
+        query.set("view_t0", String(state.t0));
+        query.set("view_t1", String(state.t1));
       }
       const machine = $(".tl-machine").value.trim();
       const group = $(".tl-group-select").value;
@@ -246,7 +257,8 @@
         state.t1 = body.window.t1;
       }
       index();
-      setStatus(body.truncated ? (copy().truncated || "") : "");
+      const status = statusFor(body, copy());
+      setStatus(status.message, status.warn);
       syncInputs();
       paint();
     }
@@ -1077,7 +1089,43 @@
     return out;
   }
 
-  window.ResiliTimeline = { mount };
+  // Status line for what the page actually shows. The lot cap and the bar
+  // limit both shrink the drawn bars, while the cards count the display
+  // window, so a window that hides lots must say so instead of letting
+  // the cards pass for the full picture. The lots sentence appears
+  // whenever fewer lots are drawn than the window holds, whatever cut
+  // them — not merely when the cap engaged, which can also fire while
+  // nothing was hidden. Pure over (payload, copy) so node can test it.
+  // Fallback English when the catalog lacks the key: a capped window
+  // must never fail silent.
+  const SCOPE_LOTS_FALLBACK =
+    "Showing {shown} of {total} lots in this window. Counts cover this window; Skips counts the whole book.";
+  function scopeNotice(payload, c) {
+    const copy = c || {};
+    const scope = (payload && payload.scope) || {};
+    const parts = [];
+    const shown = scope.lots_shown;
+    const total = scope.lots_total;
+    if (Number.isFinite(shown) && Number.isFinite(total) && shown < total) {
+      parts.push(fill(copy.scopeLots || SCOPE_LOTS_FALLBACK, { shown, total }));
+    }
+    if (payload && payload.truncated) parts.push(copy.truncated || "");
+    return parts.filter(Boolean).join(" ");
+  }
+
+  function statusFor(payload, c) {
+    const scope = (payload && payload.scope) || {};
+    const hidden =
+      Number.isFinite(scope.lots_shown) &&
+      Number.isFinite(scope.lots_total) &&
+      scope.lots_shown < scope.lots_total;
+    return {
+      message: scopeNotice(payload, c),
+      warn: Boolean(hidden || (payload && payload.truncated)),
+    };
+  }
+
+  window.ResiliTimeline = { mount, scopeNotice };
   const host = document.getElementById("timeline-app");
   if (host) mount(host);
 })();
