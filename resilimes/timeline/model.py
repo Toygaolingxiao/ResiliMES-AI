@@ -2,6 +2,14 @@
 
 One book of machines, lots, and operations becomes a windowed payload.
 The page draws it. Nothing here touches the scheduler.
+
+Two windows: ``window`` is the fetched range (the page prefetches one span
+on each side for panning); ``view`` is the display range the page shows.
+``scope`` states how much of the display window the returned bars show;
+stats are computed over the display window, never over the capped subset,
+so the cards cannot silently shrink with the lot cap. ``daily`` is the
+one exception: it counts the fetched window, as a navigation aid.
+``skip_count`` is a whole-book replay count, not a window count at all.
 """
 
 from __future__ import annotations
@@ -91,6 +99,12 @@ class Book:
 class TimelineQuery:
     t0: float | None = None
     t1: float | None = None
+    # Display window, sent by the page as view_t0/view_t1. The page fetches
+    # a wider window than it shows (one span of prefetch on each side, for
+    # panning), so stats and scope are computed over the display window,
+    # not the fetched one. Absent, the display window is the fetch window.
+    view_t0: float | None = None
+    view_t1: float | None = None
     product: str = ""
     lot: str = ""
     machine: str = ""
@@ -135,6 +149,16 @@ def window_payload(book: Book, query: TimelineQuery) -> dict[str, object]:
         return _bar_match(bar, query)
 
     chosen = [bar for bar in book.bars if keep(bar)]
+    # The window set, before any display cap: daily is computed over it
+    # (a navigation aid across the loaded range). Stats and scope are
+    # computed over the *display* window below, so the cards describe what
+    # the page actually shows, not the wider prefetched fetch.
+    window_bars = list(chosen)
+    # Display window, clamped inside the fetch window. Absent, it is the
+    # fetch window itself.
+    v0 = t0 if query.view_t0 is None else min(max(query.view_t0, t0), t1)
+    v1 = t1 if query.view_t1 is None else max(min(query.view_t1, t1), v0)
+    view_bars = [bar for bar in window_bars if _overlap(bar.start_min, bar.end_min, v0, v1)]
     kept_lots = _cap_lots(chosen, query.lots, query.focus)
     if kept_lots is not None:
         chosen = [bar for bar in chosen if _members(bar) & kept_lots]
@@ -148,7 +172,10 @@ def window_payload(book: Book, query: TimelineQuery) -> dict[str, object]:
         for bar in book.bars
         if query.focus and (bar.lot == query.focus or query.focus in bar.also)
     ][:400]
-    gaps = _gaps(chosen, t0, t1)
+    gaps = _gaps(chosen, window_bars, t0, t1)
+    # Bars actually drawn inside the display window: the fetched set,
+    # capped, cut, and clipped to the view.
+    shown_bars = [bar for bar in chosen if _overlap(bar.start_min, bar.end_min, v0, v1)]
     machines = _machines_for(book, chosen, query, narrowed, t0, t1)
     blocks = [
         block
@@ -168,9 +195,29 @@ def window_payload(book: Book, query: TimelineQuery) -> dict[str, object]:
         "horizon_min": horizon,
         "shift_min": book.shift_min or SHIFT_MIN,
         "window": {"t0": t0, "t1": t1},
+        "view": {"t0": v0, "t1": v1},
         "truncated": truncated,
-        "stats": _stats(chosen, book, narrowed),
-        "daily": _daily(chosen, horizon),
+        # How much of the display window the returned bars show.
+        # ``lots_total`` / ``bars_total`` / ``machines_total`` count the
+        # display window before either cap; ``*_shown`` count the bars
+        # actually drawn inside it. ``lots_capped`` is true when the lot
+        # cap engaged on the fetch window (it can be true while the view
+        # shows all its lots). Stats are computed over the display window,
+        # so they agree with the ``*_total`` counts, not with the subset —
+        # except ``skip_count``, which is a whole-book replay count (0
+        # when the query is narrowed). ``daily`` stays fetch-window: it is
+        # a navigation aid across the loaded range.
+        "scope": {
+            "lots_total": len({bar.lot for bar in view_bars}),
+            "lots_shown": len({bar.lot for bar in shown_bars}),
+            "lots_capped": kept_lots is not None,
+            "bars_total": len(view_bars),
+            "bars_shown": len(shown_bars),
+            "machines_total": len({bar.machine for bar in view_bars}),
+            "machines_shown": len({bar.machine for bar in shown_bars}),
+        },
+        "stats": _stats(view_bars, book, narrowed),
+        "daily": _daily(window_bars, horizon),
         "facets": _facets(book),
         "machine_rows": machine_rows(machines),
         "product_rows": product_rows(lots),
@@ -340,10 +387,20 @@ def _members(bar: Bar) -> set[str]:
     return {bar.lot, *bar.also}
 
 
-def _gaps(bars: list[Bar], t0: float, t1: float) -> list[dict[str, object]]:
+def _gaps(bars: list[Bar], window_bars: list[Bar], t0: float, t1: float) -> list[dict[str, object]]:
+    """Gaps between one lot's consecutive *displayed* bars.
+
+    A gap is only reported when the lot's sequence is intact: if any bar
+    of the lot in the window was dropped by the lot cap or the bar limit,
+    the "waiting" band would cover real processing time, so that gap is
+    skipped instead of fabricated. ``window_bars`` is the pre-cap set.
+    """
     by_lot: dict[str, list[Bar]] = {}
     for bar in bars:
         by_lot.setdefault(bar.lot, []).append(bar)
+    window_by_lot: dict[str, list[Bar]] = {}
+    for bar in window_bars:
+        window_by_lot.setdefault(bar.lot, []).append(bar)
     gaps: list[dict[str, object]] = []
     for lot, rows in by_lot.items():
         rows.sort(key=lambda bar: (bar.start_min, bar.end_min))
@@ -351,6 +408,8 @@ def _gaps(bars: list[Bar], t0: float, t1: float) -> list[dict[str, object]]:
             if nxt.start_min <= prev.end_min:
                 continue
             if not _overlap(prev.end_min, nxt.start_min, t0, t1):
+                continue
+            if _split_between(window_by_lot.get(lot, []), prev.end_min, nxt.start_min):
                 continue
             gap = nxt.start_min - prev.end_min
             state = "transport" if gap <= TRANSPORT_MAX_MIN else "waiting"
@@ -379,6 +438,15 @@ def _gaps(bars: list[Bar], t0: float, t1: float) -> list[dict[str, object]]:
                 }
             )
     return gaps
+
+
+def _split_between(window_rows: list[Bar], start: float, end: float) -> bool:
+    """True when the lot has a window bar overlapping (start, end).
+
+    Such a bar was dropped from the displayed set by the lot cap or the
+    bar limit, so the interval is not a real gap: the lot was processing.
+    """
+    return any(bar.start_min < end and bar.end_min > start for bar in window_rows)
 
 
 def _bar_json(bar: Bar, now_min: float) -> dict[str, object]:

@@ -990,6 +990,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `timeline.loading` | Loading… | 正在加载… | 読み込み中… |
 | `timeline.error` | Could not load: {msg} | 无法加载：{msg} | 読み込めませんでした: {msg} |
 | `timeline.truncated` | The window was cut at the bar limit. Narrow the time range. | 条数达到上限，已截断。请缩小时间范围。 | バー数が上限に達したため、途中までです。期間を狭めてください。 |
+| `timeline.scopeLots` | Showing {shown} of {total} lots in this window. Counts cover this window; Skips counts the whole book. | 本显示窗口共 {total} 个批次，仅显示 {shown} 个。数字为本窗口的值；Skips 为整本的值。 | この表示期間のロット {total} 件中 {shown} 件を表示しています。数値は表示期間のものです。Skips はブック全体の値です。 |
 | `timeline.empty` | No work matches these filters. | 当前条件没有作业。 | この条件に該当する作業はありません。 |
 | `timeline.shiftA` | Shift A | A 班 | A直 |
 | `timeline.shiftB` | Shift B | B 班 | B直 |
