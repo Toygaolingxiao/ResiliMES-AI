@@ -80,6 +80,9 @@ def test_quality_report_page_wiring() -> None:
     assert "function normalizeQualityReport" in report_js
     assert "function paintQualityReport" in report_js
     assert "function qualityViewToggle" in report_js
+    assert "function qualityServerReport" in report_js
+    assert "function qualityLoadServer" in report_js
+    assert "/api/quality?variant=" in report_js
     quality_js = (STATIC / "product/quality/quality.js").read_text(encoding="utf-8")
     assert "state.qualityView" in quality_js
     assert "paintQualityReport()" in quality_js
