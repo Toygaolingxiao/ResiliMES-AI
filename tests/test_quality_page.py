@@ -61,7 +61,7 @@ const src = fs.readFileSync(qualityJs, "utf-8");
 const data = JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(src + "\nthis.__t = { validateQualityReport, normalizeQualityReport, qualitySummary, qualityRateText, qualityBinRows };", ctx);
+vm.runInContext(src + "\nthis.__t = { validateQualityReport, normalizeQualityReport, qualitySummary, qualityRateText, qualityBinRows, qualityServerReport };", ctx);
 const F = ctx.__t;
 const failures = [];
 function check(name, cond, extra) {
@@ -114,6 +114,17 @@ check("non-grid bin range is not rounded onto the grid", F.qualityBinRows({ cali
 const emptyRows = F.qualityBinRows(F.normalizeQualityReport(data.edge.empty_report.payload));
 check("empty report rate text is null", F.qualityRateText(data.edge.empty_report.payload.misattribution) === null);
 check("empty report has 10 empty bins", emptyRows.length === 10 && emptyRows.every((r) => r.count === 0 && r.mean === null), emptyRows.length);
+// Server envelope (/api/quality): the report inside must validate the
+// same way a file does, and the source string must be present.
+const envelope = { api_version: "quality-api/v0", variant: "v2", source: "results_pc/investigator_nightshift_v2.json", report: data.valid };
+const served = F.qualityServerReport(envelope);
+check("server envelope loads", !served.errors && served.report.total_samples === 12 && served.source === "results_pc/investigator_nightshift_v2.json", served);
+check("server envelope normalizes", served.report && served.report.metrics_version === "quality/v0", served.report);
+const badEnvelope = { source: "results_pc/investigator_nightshift_v2.json", report: data.edge.inconsistent_counts.payload };
+check("server envelope rejects an invalid report", F.qualityServerReport(badEnvelope).errors.length > 0, F.qualityServerReport(badEnvelope));
+check("server envelope requires a source", F.qualityServerReport({ report: data.valid }).errors.length > 0);
+check("server envelope requires a report", F.qualityServerReport({ source: "x.json" }).errors.length > 0);
+check("server envelope rejects a non-object", F.qualityServerReport(null).errors.length > 0);
 console.log(JSON.stringify({ failures }));
 """
 
