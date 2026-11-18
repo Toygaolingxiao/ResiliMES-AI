@@ -9,6 +9,7 @@ function paintAnalyze() {
   const savedScroll = host.scrollTop;
   const active = document.activeElement;
   const hadFileFocus = active && host.contains(active) && active.id === "quality-file";
+  const hadServerFocus = active && host.contains(active) && active.id === "quality-load-server";
   const hadToggleFocus = active && host.contains(active)
     && typeof active.id === "string" && active.id.indexOf("quality-view-") === 0;
   host.innerHTML = "";
@@ -27,6 +28,9 @@ function paintAnalyze() {
     if (hadFileFocus) {
       const picker = document.getElementById("quality-file");
       if (picker) picker.focus();
+    } else if (hadServerFocus) {
+      const serverButton = document.getElementById("quality-load-server");
+      if (serverButton) serverButton.focus();
     } else if (hadToggleFocus) {
       const toggle = document.getElementById(`quality-view-${state.qualityView || "kpi"}`);
       if (toggle) toggle.focus();
