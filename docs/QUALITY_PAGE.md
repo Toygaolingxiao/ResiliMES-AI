@@ -2,10 +2,11 @@
 
 实现：`resilimes/demo/static/product/quality/quality-report.js`（新）、
 `resilimes/demo/static/product/quality/quality.js`（`paintAnalyze` 加视图切换）；
-契约测试：`tests/test_quality_page.py` + `tests/fixtures/quality-report-sample.json`；
-接线测试：`tests/test_frontend_dirs.py::test_quality_report_page_wiring`。
-口径：`docs/QUALITY_METRICS.md`（quality/v0，PR #88 未合并，本文引用时标注状态）；
-设计基线：`docs/DESIGN_SYSTEM.md`（PR #91 未合并，§7 的 Quality 改造方向）。
+服务端加载：`GET /api/quality`（quality-api/v0，见 `docs/API_QUALITY.md`）；
+契约测试：`tests/test_quality_page.py` + `tests/fixtures/quality-report-sample.json`
++ `tests/test_api_quality.py`；接线测试：
+`tests/test_frontend_dirs.py::test_quality_report_page_wiring`。
+口径：`docs/QUALITY_METRICS.md`（quality/v0）；设计基线：`docs/DESIGN_SYSTEM.md`。
 
 ## 构成（标准第四节：新构成的理由、与现状的差异及取舍）
 
@@ -15,15 +16,16 @@
 
 - **KPI 视图**（默认）：既有排程 KPI 卡片，原样保留，可达、不删除。
 - **信任视图**（Trust metrics）：quality/v0 的三项度量 + 校准 + 样本计数，
-  数据来自用户加载的 QualityReport JSON 文件（内存-only）。
+  数据来自服务端加载（`GET /api/quality`，项目自己的首次实测）或用户
+  加载的 QualityReport JSON 文件（内存-only）。
 
-默认视图的抉择（基线 §7 列为第 4 项增量的必答项）：**默认 KPI**。
-理由：① 目前不存在任何实测 QualityReport（故障注入基准适配是开发队列
-第 1 项的剩余增量，待 PR #88 合并后进行），默认信任视图会让所有既有
-用户先看到一个空状态；② KPI 面板是工程师每日复盘的工作面，改默认是
-破坏性变更。实测报告落地后，由后续增量重议默认视图；切换状态只存在
-`state.qualityView`（内存），不持久化（后续增量可记 `localStorage`，
-与 `resilimes.lang` 同机制）。
+默认视图的抉择（基线 §7 列为第 4 项增量的必答项）：**默认 KPI**（本次
+重议后维持）。理由：① 信任视图仍需用户点一次加载才有数据（服务端加载
+是一键、不是自动取数；自动取数会给默认面板加网络依赖，失败时默认面
+就是错误态）；② KPI 面板是工程师每日复盘的工作面，改默认是破坏性变更。
+服务端加载落地后，空状态已不再是"尚无实测报告"，而是"点一下即可看首次
+实测"；默认视图仍维持 KPI。切换状态只存在 `state.qualityView`（内存），
+不持久化（后续增量可记 `localStorage`，与 `resilimes.lang` 同机制）。
 
 三类人分别的使用场景（标准第三节第一问）：
 
@@ -110,20 +112,21 @@ mean/accuracy 为有限数或 null。
   置信与准确率显示「—」；区间按原值打印（最多 3 位小数去尾零，不
   四舍五入到 0.1 网格），末位 `[0.9, 1]` 双闭，其余左闭右开。
 - 样本计数卡：样本总数 / 已回答 / 不明回答 / 真值已知（四行两列表）。
-- 来源说明：**每张内容卡底部均标「未验证文件」短句**（三张比率卡、
-  校准卡、样本计数卡各一）；load 卡另有完整说明（数字按文件所报原
-  样展示，本页不重算；手写文件与真实导出无法区分）。单张卡的截图
-  也带警示。
-- 空状态：未加载报告时写清为什么空（尚无服务端数据）与补法
-  （`evaluate()` 导出后加载，quality/v0 实现随 PR #88 合入，口径见
-  `QUALITY_METRICS.md`）；目前尚无实测报告的原因写明（故障注入
-  基准适配是后续增量）。
+- 来源说明：**每张内容卡底部均标出处短句**（三张比率卡、校准卡、样本
+  计数卡各一）；文件加载时是「未验证文件」短句，load 卡另有完整说明
+  （数字按文件所报原样展示，本页不重算；手写文件与真实导出无法区分）；
+  服务端加载时是「服务器报告」短句，load 卡另有完整说明（由已保存的
+  基准文件实时计算，不是实时运行的结果；来源见"已加载"行）。单张卡的
+  截图也带警示。
+- 空状态：未加载报告时写清为什么空（尚未加载）与补法（点"从服务器加载"
+  看首次实测，或 `evaluate()` 导出后加载；口径见 `QUALITY_METRICS.md`）。
 - 错误状态：无效文件列出全部校验理由（最多 20 条，余数计数），不加载
-  任何内容；文件 > 5 MB 拒绝；非 JSON 说明解析失败原因；错误卡底部
-  有三语下一步指引（重新导出、确认 `metrics_version` 为 quality/v0；
-  字段路径详情仍为英语）。
-- 滚动与焦点：信任视图重绘时保留面板滚动位置；文件选择框获得焦点时
-  重绘后恢复焦点（与 Cases 页同款处理）。
+  任何内容；文件 > 5 MB 拒绝；非 JSON 说明解析失败原因；服务端加载失败
+  （非 200、网络错误、信封无效）同样列出原因并进入错误卡，不加载任何
+  内容；错误卡底部有三语下一步指引（重新导出、确认 `metrics_version`
+  为 quality/v0；字段路径详情仍为英语）。
+- 滚动与焦点：信任视图重绘时保留面板滚动位置；文件选择框与服务端加载
+  按钮获得焦点时重绘后恢复焦点（与 Cases 页同款处理）。
 - 响应式：沿用既有断点，不另发明；`.cards` 三列在窄屏下的行为与既有
   KPI 卡一致，不另行规定列数。
 
@@ -142,19 +145,26 @@ mean/accuracy；（2）ECE 与 mean/accuracy 的 [0, 1] 范围；（3）跨字�
 - **ECE 与 mean/accuracy 的范围检查不在 `quality.py`**：模型无范围
   约束，本页补了校验；若 `quality.py` 后续版本加范围约束，本页
   校验与之重合，无冲突。
+- **服务端加载**（`GET /api/quality`，quality-api/v0，见
+  `docs/API_QUALITY.md`）：load 卡的服务端行（版本选择 v2/v1 + "从服务器
+  加载"按钮）取服务端的首次实测；取到的信封（`report` + `source`）先过
+  与文件同一校验器（`qualityServerReport`，node parity 覆盖），再进同一
+  渲染路径；`report` 或 `source` 缺失、校验不通过、HTTP 非 200、网络失败
+  时一律拒绝加载并列出原因。服务端报告不是实时运行的结果——页面用
+  `serverNote` 明示，并把 `source`（基准文件路径）显示在"已加载"行。
+  文件加载路径保留，作为服务端没有的报告的后备。
 - **信任视图的名称**：`信任度量 / Trust metrics` 沿用基线 §7 的叫法；
-  页面本身不验证任何东西，诚实性由每张卡的「未验证文件」短句与
-  load 卡的完整说明承担，不由名字承担。
+  页面本身不验证任何东西，诚实性由每张卡的出处短句与 load 卡的完整
+  说明承担，不由名字承担。
 - **`trustTitle` 的 `(quality/v0)`**：写的是本页实现的契约版本，不
   是所加载文件的版本（校验已拒绝其他版本）；契约升级时随代码改。
 
 ## v0 局限（未实现、未核实）
 
-- 无服务端数据：`quality.py` 在未合并 PR #88，故障注入基准适配未做；
-  目前没有任何实测 QualityReport 可加载，信任视图现阶段只能加载
-  人工构造或测试导出的报告。
-- 无 `/api/quality` 端点；无持久化；无状态迁移（只读）；视图选择不
-  持久化（每次访问默认 KPI）。
+- 服务端报告仍不是实时运行的结果：`/api/quality` 从已保存的基准文件
+  实时计算（见 `docs/API_QUALITY.md`），不是跑一次新的基准；报告无
+  run id、时间戳、基准配置字段（quality/v0 的局限）。
+- 无持久化；无状态迁移（只读）；视图选择不持久化（每次访问默认 KPI）。
 - **无解读锚点**：本页不给任何通过/不通过阈值；小样本下比率与 ECE
   都不稳定，阅读时以分母与校准样本数为准（ECE 定义行已写明暂无阈值）。
 - **无 provenance**：`QualityReport` 无 run id、时间戳、基准配置字段，
@@ -187,50 +197,49 @@ mean/accuracy；（2）ECE 与 mean/accuracy 的 [0, 1] 范围；（3）跨字�
    的偏离：空箱 mean/accuracy、ECE/mean 超范围、跨字段不一致、分箱
    几何缺失、缺失分箱且校准样本 > 0——JS 更严、拒绝加载）；缺失 ECE
    与分母 0 缺失 value 的报告两边都接受。
-5. 三语切换后 `quality.*` 41 键齐备，无缺键回退到英语原文键名；
+5. 三语切换后 `quality.*` 47 键齐备，无缺键回退到英语原文键名；
    `docs/i18n_review.md` 已再生成。
 6. `tests/test_quality_page.py`（node parity，含 quality-report.js
-   缺失时的回退驱动）与
+   缺失时的回退驱动与服务端信封检查）与
    `tests/test_frontend_dirs.py::test_quality_report_page_wiring` 通过；
    explain 回归测试全过；`node --check` 通过。
+7. 点"从服务器加载"（默认 v2）后，三张比率卡显示误归因 `16.7%`
+   （4/24）、过度不明 `0.0%`（0/24），"已加载"行显示来源
+   `results_pc/investigator_nightshift_v2.json`；切 v1 后显示 `50.0%`
+   （11/22）、`8.3%`（2/24）。
 
 测试逐条对应：AC1 由接线测试 + 人工核对（渲染部分无 DOM 自动化
 测试，见 v0 局限）；AC2/3/4 由 `tests/test_quality_page.py` 的 parity
 corpus 覆盖（node 驱动；ECE 与分箱 6–9 的 mean/accuracy 已断言）；
 `test_quality_fixture_matches_model` 在 PR #88 合并后自动接通与模型的
 双向断言，在此之前跳过；AC5 由 `tests/test_i18n.py`（键集合一致）+
-再生成；AC6 由 pytest 通过本身。
+再生成；AC6 由 pytest 通过本身；AC7 由 `tests/test_api_quality.py`
+（端点实测 v2 4/24、v1 11/22）+ node parity 的服务端信封检查覆盖，
+渲染部分（按钮点击、"已加载"行显示）目前是人工核对，无 DOM 渲染
+自动化测试。
 
 ## 依赖与合并順序
 
-- **本 PR 是 PR #88（quality.py / QUALITY_METRICS.md）的后合并**。
-  先合并会使 main 只有页面而无契约实现与口径文档。PR 正文に明記。
-- **合并前复核清单**（#88 合并时逐项打勾，语义漂移时页面会静默显示
-  旧口径数字）：① 字段名（`QualityReport` / `Rate` /
-  `CalibrationBin` 的全部字段与本页校验器一致）；② 三项比率的
-  分母定义与分箱边界（0.1 等宽、末箱双闭）未变；③ 版本仍为
-  `quality/v0`（口径变则版本须升）；④ `test_quality_fixture_matches_model`
-  在合并后的树上通过（它在 #88 合并前跳过，合并后自动接通）。
-- 与 PR #90 / #91 / #92 无文件重叠（#92 改 `index.html` 的 cases
-  script 行与 `styles.css` 末尾、`.cases` 规则、`i18n.json` 的
-  `cases` 节；本增量改 `index.html` 的 quality-report script 行
-  （在 quality.js 之前）、`styles.css` 的 `.analyze` 区块内规则、
-  `i18n.json` 的 `quality` 节（在 report 之后、import 之前），
-  锚点均不相同；`tests/test_frontend_dirs.py` 本增量只在文件末尾追加
-  新测试函数，不改 #92 改过的既有测试）。合并时若仍冲突，按
-  #88 → #90 → #91 → #92 → 本 PR 的顺序解决；`docs/i18n_review.md`
-  是生成文件，冲突时以合并后的 `i18n.json` 为准重新生成，不得整文件
-  取一边。
-- 回滚：revert 本 PR 的单一提交（分支 `Muse/resilitrace-20261115-pm`），
-  Metrics 面板恢复为只有 KPI 视图；既有 tab/页面不受影响。
+- **本 PR 无前置阻塞**：quality/v0（#88）、adapter/v0（#94）、evaluate
+  接线（#102）均已在 main；服务端加载不依赖任何未合并 PR。PR 正文に明記。
+- **合并前复核清单**（语义漂移时页面会静默显示旧口径数字）：① 字段名
+  （`QualityReport` / `Rate` / `CalibrationBin` 的全部字段与本页校验器
+  一致）；② 三项比率的分母定义与分箱边界（0.1 等宽、末箱双闭）未变；
+  ③ 版本仍为 `quality/v0`（口径变则版本须升）；④
+  `test_quality_fixture_matches_model` 在合并后的树上通过。
+- `docs/i18n_review.md` 是生成文件，冲突时以合并后的 `i18n.json`
+  为准重新生成，不得整文件取一边。
+- 回滚：revert 本 PR；`/api/quality` 消失、信任视图恢复为只读文件加载，
+  既有 tab/页面不受影响。
 - 回退安全：`quality-report.js` 加载失败（404）时 `paintAnalyze`
   回退到 KPI 视图，不拖垮控制台绘制；`tests/test_quality_page.py`
-  有对应的 node 回退驱动。
+  有对应的 node 回退驱动；`/api/quality` 失败时页面只显示错误卡，
+  不影响 KPI 视图。
 
 ## 非目标
 
 - 不做故障注入基准适配（第 1 项剩余增量，待 #88 合并后）。
-- 不接 `/api/quality`（无端点）；不做持久化；不做报告对比（多报告并排）。
+- 不做持久化；不做报告对比（多报告并排）。
 - 不改 report/import 页的裸百分比（基线 §5 缺口②，归属后续增量）。
 - 不改 KPI 视图的任何数字与口径（旧百分比无分母的问题，信任视图不
   覆盖 KPI 视图；KPI 视图的分母化是后续增量）。
