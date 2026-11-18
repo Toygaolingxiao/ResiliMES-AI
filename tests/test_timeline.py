@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 
 from resilimes.api.app import create_app
@@ -34,6 +40,7 @@ def _bar(
     pinned: bool = False,
     setup: float = 0.0,
     recipe: str = "R1",
+    also: tuple[str, ...] = (),
 ) -> Bar:
     return Bar(
         id=f"{lot}|{step}|{start}|{machine}",
@@ -53,6 +60,7 @@ def _bar(
         rework=False,
         pinned=pinned,
         qty=25,
+        also=also,
     )
 
 
@@ -109,6 +117,174 @@ def test_rows_group_machines_and_products() -> None:
         "LOT-1002",
         "LOT-2001",
     ]
+
+
+def test_scope_reports_the_cap_and_stats_stay_window_wide() -> None:
+    """H1 fix: the lot cap must be visible, and the cards must not shrink with it.
+
+    With lots=1 the page draws one lot, but scope must still report all four
+    window lots and stats must count the whole window (late LOT-3 included).
+    """
+    book = _book(
+        _bar("LOT-1", "LITHO-01", 0, 20),
+        _bar("LOT-1", "ETCH-01", 23, 40, group="Etch"),
+        _bar("LOT-1", "CMP-01", 80, 100, group="CMP"),
+        _bar("LOT-2", "LITHO-01", 30, 50, pinned=True),
+        _bar("LOT-3", "WET-01", 0, 10, group="Wet", priority=3, late=True, qtime="breach"),
+        _bar("LOT-4", "WET-01", 10, 20, group="Wet", priority=3, qtime="risk"),
+    )
+    capped = window_payload(book, TimelineQuery(t0=0, t1=200, lots=1))
+    scope = capped["scope"]
+    assert isinstance(scope, dict)
+    assert scope == {
+        "lots_total": 4,
+        "lots_shown": 1,
+        "lots_capped": True,
+        "bars_total": 6,
+        "bars_shown": 3,
+        "machines_total": 4,
+        "machines_shown": 3,
+    }
+    stats = capped["stats"]
+    assert isinstance(stats, dict)
+    assert stats["total_lots"] == 4
+    assert stats["total_jobs"] == 6
+    assert stats["late_lots"] == 1  # LOT-3 is late but not drawn
+    assert stats["qtime_breach"] == 1
+    assert stats["qtime_risk"] == 1
+    assert capped["daily"][0]["jobs"] == 6  # type: ignore[index]
+    assert capped["truncated"] is False
+
+    uncapped = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10))
+    assert uncapped["scope"] == {  # type: ignore[comparison-overlap]
+        "lots_total": 4,
+        "lots_shown": 4,
+        "lots_capped": False,
+        "bars_total": 6,
+        "bars_shown": 6,
+        "machines_total": 4,
+        "machines_shown": 4,
+    }
+
+    limited = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10, limit=2))
+    assert limited["truncated"] is True
+    assert limited["scope"]["bars_total"] == 6  # type: ignore[index]
+    assert limited["scope"]["bars_shown"] == 2  # type: ignore[index]
+    assert limited["stats"]["total_jobs"] == 6  # type: ignore[index]
+
+
+def test_scope_and_stats_follow_the_display_window() -> None:
+    """Prefetch: the page fetches 3x the display span, but stats/scope
+    describe the display window (view_t0/view_t1), not the fetch window."""
+    book = _book(
+        _bar("LOT-1", "LITHO-01", 0, 20),
+        _bar("LOT-1", "ETCH-01", 23, 40, group="Etch"),
+        _bar("LOT-2", "LITHO-01", 800, 820),
+        _bar("LOT-2", "ETCH-01", 830, 850, group="Etch"),
+    )
+    payload = window_payload(book, TimelineQuery(t0=0, t1=1200, view_t0=0, view_t1=200, lots=10))
+    assert payload["window"] == {"t0": 0, "t1": 1200}
+    assert payload["view"] == {"t0": 0, "t1": 200}
+    scope = payload["scope"]
+    assert isinstance(scope, dict)
+    assert scope["lots_total"] == 1  # only LOT-1 is in the display window
+    assert scope["lots_shown"] == 1
+    assert scope["bars_total"] == 2
+    assert scope["bars_shown"] == 2
+    assert scope["lots_capped"] is False
+    assert payload["stats"]["total_lots"] == 1  # type: ignore[index]
+    assert payload["stats"]["total_jobs"] == 2  # type: ignore[index]
+    assert len(payload["bars"]) == 4  # bars still cover the fetch window
+    # A view outside the fetch window clamps to an empty view, not an error.
+    empty_view = window_payload(
+        book, TimelineQuery(t0=0, t1=200, view_t0=150, view_t1=200, lots=10)
+    )
+    assert empty_view["scope"]["lots_total"] == 0  # type: ignore[index]
+    assert empty_view["stats"]["total_jobs"] == 0  # type: ignore[index]
+    assert empty_view["view"] == {"t0": 150, "t1": 200}
+
+
+def test_gaps_skip_split_sequences() -> None:
+    """An also-split sequence must not fabricate a waiting gap: LOT-1's
+    bars B and D survive only because they share a bar with LOT-9, while
+    C is dropped by the cap — so the B->D interval is not a gap."""
+    book = _book(
+        _bar("LOT-1", "LITHO-01", 0, 10),
+        _bar("LOT-1", "ETCH-01", 50, 60, group="Etch", also=("LOT-9",)),
+        _bar("LOT-1", "CMP-01", 70, 80, group="CMP"),
+        _bar("LOT-1", "WET-01", 100, 110, group="Wet", also=("LOT-9",)),
+        _bar("LOT-9", "LITHO-01", 0, 10),
+        _bar("LOT-9", "ETCH-01", 12, 22, group="Etch"),
+        _bar("LOT-9", "CMP-01", 24, 34, group="CMP"),
+        _bar("LOT-9", "WET-01", 36, 46, group="Wet"),
+        _bar("LOT-9", "LITHO-01", 48, 58),
+        _bar("LOT-9", "ETCH-01", 60, 70, group="Etch"),
+    )
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200, lots=1))
+    gaps = payload["gaps"]
+    assert isinstance(gaps, list)
+    # LOT-1's kept bars are B and D only; the 60->100 interval covers C's
+    # real processing time, so no LOT-1 gap may be reported.
+    assert not [gap for gap in gaps if gap["lot"] == "LOT-1"]  # type: ignore[union-attr]
+    # LOT-9's own short hops are real gaps and still reported.
+    assert any(gap["lot"] == "LOT-9" for gap in gaps)  # type: ignore[union-attr]
+    # Without the cap the real transport/waiting gaps appear.
+    full = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10))
+    assert {gap["state"] for gap in full["gaps"]} == {"transport", "waiting"}  # type: ignore[union-attr]
+
+
+def test_skip_count_is_book_wide_not_window_wide() -> None:
+    """skip_count is the whole-book replay count (0 when narrowed); it is
+    not a window stat, and the scope notice must not certify it as one."""
+    book = _book(
+        _bar("LOT-1", "LITHO-01", 0, 20),
+        _bar("LOT-2", "LITHO-01", 30, 50),
+    )
+    empty = window_payload(book, TimelineQuery(t0=1000, t1=1200, lots=10))
+    assert empty["stats"]["skip_count"] == 2  # type: ignore[index]
+    assert empty["stats"]["total_jobs"] == 0  # type: ignore[index]
+    narrowed = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10, priority=2))
+    assert narrowed["stats"]["skip_count"] == 0  # type: ignore[index]
+
+
+def test_focus_lot_is_drawn_but_not_counted_in_scope() -> None:
+    """The focus lot is selected on request: its bars draw and its lot
+    lists in product rows, but scope counts window lots only."""
+    book = _book(
+        _bar("LOT-1", "LITHO-01", 0, 20),
+        _bar("FOCUS-OUT", "LITHO-01", 1000, 1020),
+    )
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200, lots=1, focus="FOCUS-OUT"))
+    assert payload["scope"]["lots_total"] == 1  # type: ignore[index]
+    assert payload["scope"]["lots_shown"] == 1  # type: ignore[index]
+    assert len(payload["focus_bars"]) == 1  # type: ignore[arg-type]
+    rows = payload["product_rows"]
+    assert isinstance(rows, list)
+    assert "FOCUS-OUT" in {row["id"] for row in rows}  # type: ignore[union-attr]
+
+
+def test_lots_zero_disables_the_cap() -> None:
+    """Direct model use: lots<=0 means no cap (the API forbids 0 with
+    ge=1, so this is reachable only from Python). Pinned, not assumed."""
+    book = _book(
+        _bar("LOT-1", "LITHO-01", 0, 20),
+        _bar("LOT-2", "LITHO-01", 30, 50),
+        _bar("LOT-3", "WET-01", 0, 10, group="Wet"),
+    )
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200, lots=0))
+    assert payload["scope"]["lots_capped"] is False  # type: ignore[index]
+    assert payload["scope"]["lots_shown"] == 3  # type: ignore[index]
+
+
+def test_scope_lots_placeholders_match_in_all_languages() -> None:
+    """The notice fills {shown}/{total}; a translation that dropped one
+    would render 'Showing  of  lots' with no failure anywhere else."""
+    catalog = json.loads(
+        (ROOT / "resilimes" / "demo" / "static" / "i18n.json").read_text(encoding="utf-8")
+    )
+    for lang in ("en", "zh", "ja"):
+        text = catalog[lang]["timeline"]["scopeLots"]
+        assert "{shown}" in text and "{total}" in text, lang
 
 
 def test_states_gaps_qtime_and_the_lot_cap() -> None:
@@ -176,6 +352,31 @@ def test_api_groups_filters_and_serves_the_page() -> None:
     assert body["contract"] == "timeline/v1"
     assert body["source"] == "sample"
     assert body["bars"]
+    assert set(body["scope"]) == {
+        "lots_total",
+        "lots_shown",
+        "lots_capped",
+        "bars_total",
+        "bars_shown",
+        "machines_total",
+        "machines_shown",
+    }
+    assert body["view"] == body["window"]  # no view params: view is the fetch window
+    assert body["scope"]["lots_total"] == body["stats"]["total_lots"]
+    assert body["scope"]["bars_total"] == body["stats"]["total_jobs"]
+    viewed = client.get(
+        "/api/timeline",
+        params={"t0": 0, "t1": 5000, "view_t0": 0, "view_t1": 60, "lots": 100},
+    ).json()
+    assert viewed["view"] == {"t0": 0, "t1": 60}
+    assert viewed["window"] == body["window"]  # view params do not move the fetch window
+    assert viewed["stats"]["total_jobs"] <= body["stats"]["total_jobs"]
+    assert (
+        client.get(
+            "/api/timeline", params={"t0": 0, "t1": 5000, "view_t0": 60, "view_t1": 10}
+        ).status_code
+        == 422
+    )
     assert any(row["kind"] == "group" for row in body["machine_rows"])
     assert any(
         row["kind"] == "machine" and str(row["parent"]).startswith("g:")
@@ -200,3 +401,72 @@ def test_api_groups_filters_and_serves_the_page() -> None:
     script = client.get("/assets/product/timeline/timeline.js")
     assert script.status_code == 200
     assert "ResiliTimeline" in script.text
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TIMELINE_JS = ROOT / "resilimes" / "demo" / "static" / "product" / "timeline" / "timeline.js"
+
+# scopeNotice is pure over (payload, copy); the driver loads timeline.js in
+# a vm with a stub document (no #timeline-app, so the page never mounts)
+# and calls the function ResiliTimeline exposes for this check.
+SCOPE_DRIVER = r"""
+const fs = require("fs");
+const vm = require("vm");
+const src = fs.readFileSync(process.argv[2], "utf-8");
+const sandbox = {
+  window: {},
+  document: { getElementById: () => null },
+  console,
+};
+vm.createContext(sandbox);
+vm.runInContext(src, sandbox);
+const scopeNotice = sandbox.window.ResiliTimeline.scopeNotice;
+const failures = [];
+function check(name, cond, extra) {
+  if (!cond) failures.push(extra === undefined ? name : `${name}: ${JSON.stringify(extra)}`);
+}
+const copy = {
+  scopeLots: "Showing {shown} of {total} lots in this window. Counts cover this window; Skips counts the whole book.",
+  truncated: "The window was cut at the bar limit. Narrow the time range.",
+};
+const capped = { scope: { lots_capped: true, lots_shown: 100, lots_total: 1684 }, truncated: false };
+check("capped notice names the real counts",
+  scopeNotice(capped, copy) === "Showing 100 of 1684 lots in this window. Counts cover this window; Skips counts the whole book.",
+  scopeNotice(capped, copy));
+const both = { scope: { lots_capped: true, lots_shown: 2, lots_total: 4 }, truncated: true };
+check("capped plus bar-limit joins both sentences",
+  scopeNotice(both, copy) === "Showing 2 of 4 lots in this window. Counts cover this window; Skips counts the whole book. The window was cut at the bar limit. Narrow the time range.",
+  scopeNotice(both, copy));
+const plain = { scope: { lots_capped: false, lots_shown: 4, lots_total: 4 }, truncated: false };
+check("uncapped window shows nothing", scopeNotice(plain, copy) === "", scopeNotice(plain, copy));
+const onlyLimit = { scope: { lots_capped: false, lots_shown: 2, lots_total: 2 }, truncated: true };
+check("bar-limit alone keeps the old sentence",
+  scopeNotice(onlyLimit, copy) === copy.truncated, scopeNotice(onlyLimit, copy));
+const limitHidesLots = { scope: { lots_capped: false, lots_shown: 1568, lots_total: 1684 }, truncated: true };
+check("bar-limit hiding lots still names them",
+  scopeNotice(limitHidesLots, copy).startsWith("Showing 1568 of 1684 lots"), scopeNotice(limitHidesLots, copy));
+const falseAlarm = { scope: { lots_capped: true, lots_shown: 4, lots_total: 4 }, truncated: false };
+check("cap engaged but nothing hidden shows nothing", scopeNotice(falseAlarm, copy) === "", scopeNotice(falseAlarm, copy));
+check("missing scope is silent", scopeNotice({}, copy) === "");
+check("missing copy key falls back to English, never silent",
+  scopeNotice(capped, {}) === "Showing 100 of 1684 lots in this window. Counts cover this window; Skips counts the whole book.",
+  scopeNotice(capped, {}));
+check("null copy falls back to English", scopeNotice(capped, null).startsWith("Showing 100 of 1684 lots"), scopeNotice(capped, null));
+console.log(JSON.stringify({ failures }));
+"""
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_timeline_scope_notice_parity(tmp_path: Path) -> None:
+    driver = tmp_path / "timeline_scope_driver.cjs"
+    driver.write_text(SCOPE_DRIVER, encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(driver), str(TIMELINE_JS)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report["failures"] == []
