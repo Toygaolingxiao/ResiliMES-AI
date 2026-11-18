@@ -18,6 +18,8 @@ def timeline(
     request: Request,
     t0: float | None = Query(default=None, ge=0.0, le=200_000.0),
     t1: float | None = Query(default=None, ge=0.0, le=200_000.0),
+    view_t0: float | None = Query(default=None, ge=0.0, le=200_000.0),
+    view_t1: float | None = Query(default=None, ge=0.0, le=200_000.0),
     product: str = Query(default="", max_length=80),
     lot: str = Query(default="", max_length=80),
     machine: str = Query(default="", max_length=80),
@@ -37,6 +39,8 @@ def timeline(
     """Window of one recorded book. ``timeline/v1`` for the Gantt page and later APS screens."""
     if t0 is not None and t1 is not None and t1 <= t0:
         raise HTTPException(status_code=422, detail="Window end is not after the start.")
+    if view_t0 is not None and view_t1 is not None and view_t1 <= view_t0:
+        raise HTTPException(status_code=422, detail="View end is not after the start.")
     settings: Settings = request.app.state.settings
     try:
         loaded = _book(settings, book, seed, horizon_h)
@@ -49,6 +53,8 @@ def timeline(
         TimelineQuery(
             t0=t0,
             t1=t1,
+            view_t0=view_t0,
+            view_t1=view_t1,
             product=product,
             lot=lot,
             machine=machine,
