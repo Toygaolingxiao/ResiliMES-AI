@@ -360,6 +360,29 @@ def _report_summary(report: QualityReport) -> dict[str, Any]:
     }
 
 
+def summarize(adapted: AdaptedSet, report: QualityReport) -> dict[str, Any]:
+    """The self-describing summary of one adapted set and its report.
+
+    The CLI stdout summary and the ``/api/quality`` ``summary`` are the
+    same object: adapter version, source, shape, sample count, skips,
+    system-answer use, out-of-taxonomy counts, and the report's headline
+    rates with denominators attached. A holder of only this summary can
+    still recover what was measured and what was skipped.
+    """
+    return {
+        "adapter_version": ADAPTER_VERSION,
+        "source": adapted.source,
+        "shape": adapted.shape,
+        "samples": len(adapted.samples),
+        "skipped": adapted.skipped,
+        "system_answers_used": adapted.system_answers_used,
+        "system_answer_sample_ids": list(adapted.system_answer_sample_ids),
+        "out_of_taxonomy_predicted": adapted.out_of_taxonomy_predicted,
+        "out_of_taxonomy_truth": adapted.out_of_taxonomy_truth,
+        "report": _report_summary(report),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI: adapt a saved investigator file, print the summary as JSON.
 
@@ -383,18 +406,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         adapted = adapt_investigator_file(args.file)
         report = evaluate_adapted(adapted)
-        summary = {
-            "adapter_version": ADAPTER_VERSION,
-            "source": adapted.source,
-            "shape": adapted.shape,
-            "samples": len(adapted.samples),
-            "skipped": adapted.skipped,
-            "system_answers_used": adapted.system_answers_used,
-            "system_answer_sample_ids": list(adapted.system_answer_sample_ids),
-            "out_of_taxonomy_predicted": adapted.out_of_taxonomy_predicted,
-            "out_of_taxonomy_truth": adapted.out_of_taxonomy_truth,
-            "report": _report_summary(report),
-        }
+        summary = summarize(adapted, report)
         if args.out:
             Path(args.out).write_text(
                 json.dumps(
