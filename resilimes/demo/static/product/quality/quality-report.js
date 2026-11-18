@@ -2,9 +2,12 @@
 // Loaded before quality.js so paintAnalyze can call into it.
 //
 // Data source (v0): a QualityReport JSON file exported by
-// resilimes.explain.quality.evaluate() (quality/v0). There is no
-// server endpoint yet — quality.py lives in unmerged PR #88 — so the
-// page reads a file the user picks, validates it against the
+// resilimes.explain.quality.evaluate() (quality/v0), or the server's
+// own first measurement from GET /api/quality (quality-api/v0), which
+// computes the report live from the stored fault-injection benchmark
+// files (results_pc/investigator_nightshift_v2.json / v1.json). The
+// file path still exists for reports the server does not hold. Either
+// way the page reads a QualityReport, validates it against the
 // quality/v0 contract, and renders it read-only. The report stays in
 // memory only; reloading the page unloads it.
 //
@@ -12,6 +15,8 @@
 // file reports them and never recomputes a rate. A hand-written file
 // is indistinguishable from a real export, so the page says so
 // (quality.unverified) instead of claiming the numbers are checked.
+// A server report is computed from a stored benchmark file, not a
+// live run, so the page says that instead (quality.serverNote).
 //
 // The validator mirrors quality.py (QualityReport) as closely as a
 // browser can: pydantic defaults are accepted (missing
@@ -53,6 +58,12 @@ let qualityReport = null;
 let qualityFileName = "";
 let qualityErrors = [];
 let qualityLoadSeq = 0;
+// True when the loaded report came from GET /api/quality (server
+// report), false when it came from a file the user picked. The two
+// provenances get different notes: a file is unverified, a server
+// report is computed from a stored benchmark file, not a live run.
+let qualityFromServer = false;
+let qualityServerSource = "";
 
 function qualityCopy() {
   const copy = t();
@@ -388,7 +399,7 @@ function qualityRateCard(title, note, rate, denText) {
   }
   // Every content card carries the provenance warning, so a cropped
   // screenshot of one card never looks like a verified measurement.
-  card.appendChild(qualityEl("p", "note-inline", qualityText("unverifiedShort")));
+  card.appendChild(qualityEl("p", "note-inline", qualitySourceNoteShort()));
   return card;
 }
 
@@ -433,6 +444,92 @@ async function qualityLoadFile(file) {
   }
   qualityReport = normalizeQualityReport(payload);
   qualityFileName = file.name || "";
+  qualityErrors = [];
+  paintAnalyze();
+}
+
+// The short provenance note each content card carries, so a cropped
+// screenshot of one card never looks like a verified measurement.
+// A file load says "unverified file"; a server load says the report
+// was computed from the stored benchmark file.
+function qualitySourceNoteShort() {
+  return qualityText(qualityFromServer ? "serverNoteShort" : "unverifiedShort");
+}
+
+// Validate one parsed /api/quality envelope and return the report to
+// store. Pure function (no fetch, no DOM) so the node parity test can
+// cover it: { report, source } on success, { errors } on failure.
+// The envelope must carry a quality/v0 report and a source string;
+// anything else is rejected with reasons, nothing is loaded.
+function qualityServerReport(payload) {
+  if (!qualityIsPlainObject(payload)) return { errors: ["report: must be a JSON object"] };
+  const errors = [];
+  if (typeof payload.source !== "string" || !payload.source) {
+    errors.push("report.source: must be a non-empty string");
+  }
+  if (payload.report === undefined) {
+    errors.push("report: is required");
+  } else {
+    errors.push(...validateQualityReport(payload.report));
+  }
+  if (errors.length) return { errors };
+  return { report: normalizeQualityReport(payload.report), source: payload.source };
+}
+
+async function qualityLoadServer(variant) {
+  const mySeq = ++qualityLoadSeq;
+  const picked = variant === "v1" ? "v1" : "v2";
+  let response = null;
+  try {
+    response = await fetch(`/api/quality?variant=${picked}`);
+  } catch (error) {
+    if (mySeq !== qualityLoadSeq) return;
+    qualityReport = null;
+    qualityFileName = "";
+    qualityFromServer = false;
+    qualityServerSource = "";
+    qualityErrors = [qualityFill(qualityText("serverFailed"), { status: String((error && error.message) || error) })];
+    paintAnalyze();
+    return;
+  }
+  if (mySeq !== qualityLoadSeq) return;
+  if (!response.ok) {
+    qualityReport = null;
+    qualityFileName = "";
+    qualityFromServer = false;
+    qualityServerSource = "";
+    qualityErrors = [qualityFill(qualityText("serverFailed"), { status: String(response.status) })];
+    paintAnalyze();
+    return;
+  }
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    if (mySeq !== qualityLoadSeq) return;
+    qualityReport = null;
+    qualityFileName = "";
+    qualityFromServer = false;
+    qualityServerSource = "";
+    qualityErrors = [qualityFill(qualityText("invalidJson"), { reason: String((error && error.message) || error) })];
+    paintAnalyze();
+    return;
+  }
+  if (mySeq !== qualityLoadSeq) return;
+  const checked = qualityServerReport(payload);
+  if (checked.errors) {
+    qualityReport = null;
+    qualityFileName = "";
+    qualityFromServer = false;
+    qualityServerSource = "";
+    qualityErrors = checked.errors;
+    paintAnalyze();
+    return;
+  }
+  qualityReport = checked.report;
+  qualityFileName = checked.source;
+  qualityFromServer = true;
+  qualityServerSource = checked.source;
   qualityErrors = [];
   paintAnalyze();
 }
@@ -484,6 +581,8 @@ function paintQualityReport() {
     unload.addEventListener("click", () => {
       qualityReport = null;
       qualityFileName = "";
+      qualityFromServer = false;
+      qualityServerSource = "";
       qualityErrors = [];
       const picker = document.getElementById("quality-file");
       if (picker) picker.value = "";
@@ -493,6 +592,30 @@ function paintQualityReport() {
   }
   loadCard.appendChild(fileRow);
   loadCard.appendChild(qualityEl("p", "note-inline", qualityText("loadHint")));
+  // Server load: the project's own first measurement, computed live
+  // by GET /api/quality from the stored benchmark file. No file
+  // selection needed; the file path above stays for reports the
+  // server does not hold.
+  const serverRow = qualityEl("div", "file-row");
+  const serverLabel = qualityEl("label", "", qualityText("serverVariant"));
+  const serverSelect = document.createElement("select");
+  serverSelect.id = "quality-server-variant";
+  serverLabel.htmlFor = "quality-server-variant";
+  for (const variant of ["v2", "v1"]) {
+    const option = document.createElement("option");
+    option.value = variant;
+    option.textContent = variant;
+    serverSelect.appendChild(option);
+  }
+  const serverButton = qualityEl("button", "run quiet", qualityText("loadServer"));
+  serverButton.type = "button";
+  serverButton.id = "quality-load-server";
+  serverButton.addEventListener("click", () => {
+    qualityLoadServer(serverSelect.value);
+  });
+  serverRow.append(serverLabel, serverSelect, serverButton);
+  loadCard.appendChild(serverRow);
+  loadCard.appendChild(qualityEl("p", "note-inline", qualityText("serverHint")));
   if (qualityReport) {
     const summary = qualitySummary(qualityReport);
     loadCard.appendChild(qualityEl("p", "note-inline", qualityFill(qualityText("loaded"), {
@@ -501,7 +624,8 @@ function paintQualityReport() {
       truth: summary.truthKnown,
     })));
   }
-  loadCard.appendChild(qualityEl("p", "note-inline", qualityText("unverified")));
+  loadCard.appendChild(qualityEl("p", "note-inline",
+    qualityText(qualityFromServer ? "serverNote" : "unverified")));
   wrap.appendChild(loadCard);
 
   if (qualityErrors.length) {
@@ -573,7 +697,7 @@ function paintQualityReport() {
     n: summary.calibrationSamples,
     excluded: summary.excludedNoConfidence,
   })));
-  calibCard.appendChild(qualityEl("p", "note-inline", qualityText("unverifiedShort")));
+  calibCard.appendChild(qualityEl("p", "note-inline", qualitySourceNoteShort()));
   const rows = qualityBinRows(qualityReport);
   if (!rows.length) {
     calibCard.appendChild(qualityEl("p", "note-inline", qualityText("noBins")));
@@ -622,7 +746,7 @@ function paintQualityReport() {
   }
   table.appendChild(body);
   countsCard.appendChild(table);
-  countsCard.appendChild(qualityEl("p", "note-inline", qualityText("unverifiedShort")));
+  countsCard.appendChild(qualityEl("p", "note-inline", qualitySourceNoteShort()));
   wrap.appendChild(countsCard);
 
   host.appendChild(wrap);

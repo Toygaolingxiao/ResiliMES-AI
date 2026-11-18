@@ -29,6 +29,7 @@ from resilimes.api.intents import (
     confirm_intent,
     propose_intent,
 )
+from resilimes.api.quality import router as quality_router
 from resilimes.api.timeline import router as timeline_router
 from resilimes.config import ConfigError, Settings, get_settings
 from resilimes.data.factory import build_source
@@ -288,6 +289,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(insight_router)
     app.include_router(explain_router)
     app.include_router(timeline_router)
+    app.include_router(quality_router)
 
     if _STATIC.exists():
         # Old script URLs keep working after the product / workshop split.

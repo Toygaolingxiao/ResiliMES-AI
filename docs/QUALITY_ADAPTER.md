@@ -1,6 +1,6 @@
 # 故障注入基准适配（adapter/v0）
 
-实现：`resilimes/insight/quality_adapter.py`；契约测试：`tests/test_explain_quality_adapter.py`（41 件，40 通过、1 件は #88 未合并のため skip——下记「再现性」参照）。
+实现：`resilimes/insight/quality_adapter.py`；契约测试：`tests/test_explain_quality_adapter.py`（49 件，全部通过——#88 合併後は importorskip が skip しなくなった；evaluate 接线で 8 件追加。下记「再现性」参照）。
 口径：`docs/QUALITY_METRICS.md`（quality/v0；该文件属 PR #88，本 PR には含まれない）。
 本文只定适配规则与首次实测。适配规则变更 = 版本变更，不许静默改映射。
 
