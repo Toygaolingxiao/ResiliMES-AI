@@ -189,6 +189,7 @@ button { cursor: pointer; }
 .tl-row.late { color: var(--late); }
 .tl-bars { flex: 1; width: 100%; display: block; cursor: crosshair; touch-action: none; }
 .tl-status { margin: 0; min-height: 1.2em; color: var(--muted); font-size: 12px; }
+.tl-source { margin: 0; min-height: 1.2em; color: var(--muted); font-size: 12px; }
 .tl-status.warn { color: var(--late); }
 .tl-tip, .tl-menu {
   position: fixed;
