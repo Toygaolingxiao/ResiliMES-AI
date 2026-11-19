@@ -80,6 +80,48 @@ Two fields are NOT display-window counts:
   display window: it is a navigation aid across the loaded range, and its
   day buttons set the display span.
 
+## Data source
+
+Every payload already carried `source`, `seed` and `horizon_h`
+(`window_payload`, top-level fields); the page never showed them, so
+the SMT2020 benchmark and the sample fab were indistinguishable on
+screen. The page now renders a source line (`.tl-source`,
+`timeline.sourceLine`) from those three fields — no API change:
+
+- `smt2020` → "SMT2020 benchmark" (`timeline.sourceSmt2020`),
+  `sample` → "Sample fab" (`timeline.sourceSample`), in all three
+  languages. Any other `source` value is shown verbatim — never
+  dropped, never invented (the renderer fills `{seed}`/`{horizon}`
+  before `{source}`, so a source containing "{seed}" stays literal).
+  Matching is exact and case-sensitive; `"SMT2020"` is not mapped.
+- `sample` always takes the short form (`timeline.sourceLineShort`,
+  source only). The sample book has no random seed (`seed=1` is a
+  hardcoded constant) and its `horizon_h` is the last bar end
+  (6.98 h on the real sample book), not a run horizon — printing
+  "seed 1 · 6.98 h" would read as a seeded simulation run that never
+  happened.
+- Otherwise the full form prints only when the seed is a positive
+  integer and the horizon is a finite number above zero; any other
+  value takes the short form. If `source` itself is missing, not a
+  string, or blank, no line is shown.
+- `{horizon}` is the whole-book horizon (48 h for SMT2020), not the
+  span of the window currently on screen (12 h by default).
+- The line shows the book actually loaded, never the request
+  parameters: in sample mode the API ignores the `book`/`seed`/
+  `horizon_h` query parameters (see M5 below), so a requested seed
+  that was silently dropped is never printed as if it applied.
+- The line is separate from the warn status line (`.tl-status`): it is
+  factual, shown whenever a payload is loaded, re-rendered on
+  language switch, and never takes the warn style. A missing catalog
+  key falls back to English, never to silence.
+- A failed load clears the line, so no source is asserted under the
+  error. Residual: the failed load keeps the previous payload, so a
+  language switch afterwards re-renders the old source line from it
+  (and the old chart) — the same pre-existing stale-payload behaviour
+  as the rest of the page, not something this increment introduces.
+
+Still open: CSV / PNG export carries no source note (see above).
+
 ## What still describes the drawn subset only
 
 - `machine_rows` / `product_rows` / `blocks`: rows and blocks for the
