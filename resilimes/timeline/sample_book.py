@@ -100,6 +100,7 @@ def load_sample_book(settings: Settings) -> Book:
         bars=bars,
         blocks=blocks,
         skips=0,
+        book="sample",
         lot_index=lot_by_id,
     )
 
