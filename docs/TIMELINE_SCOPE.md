@@ -120,6 +120,18 @@ the honest number for the reader; the focus lot can additionally push
 set). Direct model use with `lots<=0` disables the cap (the API forbids
 0 with `ge=1`).
 
+## Book cache
+
+`load_smt_book` keeps built books in a process cache of at most 8 entries
+(`resilimes/timeline/smt_book.py`, `_CACHE_MAX = 8`, mirroring
+`resilimes/smt/replay.get_replay`). Eviction is least-recently-used: a hit
+moves its book to the most-recent end, and storing a ninth book drops the
+oldest entry. The default book (`"base"`) is never evicted — the Gantt
+page loads it on every visit, and a cold build costs ~3 minutes. Any
+other evicted book is rebuilt on its next request: same content, same
+key, just slow. The cap bounds memory only; it changes no payload, no
+stat, and no scope field.
+
 ## Acceptance (given/when/then)
 
 1. Given a window with 4 lots and `lots=1`, when the payload is built,
