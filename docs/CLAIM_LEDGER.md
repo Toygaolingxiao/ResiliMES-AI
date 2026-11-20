@@ -1,4 +1,4 @@
-# Claim ledger (claim/v0)
+# Claim ledger (claim/v1)
 
 The fact-check gate (`resilimes/explain/factcheck.py`) rejects an explanation
 whose numbers or ids are not in the evidence. The claim ledger is what the
@@ -41,7 +41,8 @@ contained at check time (see Limits).
     construction). A naive value, a date-only value, or a non-UTC offset
     is rejected; `Z` and `+00:00` are accepted.
   - `reason`: why unchecked, or the gate's miss text on a failure.
-- `ClaimLedger`: `ledger_version` (`claim/v0`, locked with `Literal`),
+- `ClaimLedger`: `ledger_version` (`claim/v1`, locked with `Literal`;
+  `claim/v0` ledgers still load and verify),
   `subject` (e.g. the lot id), `source` (what produced the text, e.g.
   `explainer`), `claims`, `content_hash` (`sha256:<hex>` over the canonical
   JSON without the hash and without `checked_at`, same pattern as Evidence
@@ -70,7 +71,9 @@ contained at check time (see Limits).
 
 Extraction follows the gate's own rule for what counts as a claim: an
 id-shaped token only counts when it carries a digit (`Diffusion_FE_120`,
-`Lot-1` count; `tool-hours`, `re-run` are prose and are not recorded).
+`Lot-1`, `3M_Lot_9`, `FE-120_A` count; `tool-hours`, `re-run` are prose
+and are not recorded). Numbers may carry comma grouping: `1,000` is one
+claim for the number 1000.
 Counting words 0–10 are always allowed by the gate and are recorded as
 passed when they appear as digits. Numbers are taken exactly as the gate
 sees them, including digits inside an id: `Lot-1` also quotes the number 1,
@@ -87,7 +90,7 @@ for a rate without accounting for that.
 - `summary()`: counts only (`total` / `passed` / `failed` / `unchecked`).
   Rates belong to the quality module (`explain.quality`), not the ledger.
 
-## Limits of v0 (declared, not hidden)
+## Limits (declared, not hidden)
 
 - `sources` are reported labels, not row proofs and not a verified
   fact. Multi-source values keep every label. Digits that only occur
@@ -95,8 +98,8 @@ for a rate without accounting for that.
   number source for them. Counting words 0–10 are not dropped: if a
   payload registered one, that label is quoted. A registry with no
   provenance still puts the caller-wide `sources` tuple on every claim,
-  so those ledgers keep the same hash. The field set is unchanged, so
-  this stays `claim/v0`.
+  so those ledgers keep the same hash. (That increment left the field
+  set unchanged and stayed within the then-current version.)
 - The ledger records what was quoted and whether it checked out. It does not
   record which run produced the explanation (no seed / horizon / policy /
   label), which provider or model said it, when the explanation was
@@ -114,16 +117,14 @@ for a rate without accounting for that.
   read it yet.
 - Shared blind spots with the gate (the ledger follows the gate's rules, so
   it shares them): sentence splitting protects only `e.g.` / `i.e.` /
-  `etc.` / `Fig.` / `vs.`; a thousands separator splits a number (`1,200`
-  becomes claims for `1` and `200`, and `000` can be recorded as failed
-  even when `1,000` was correctly quoted); an id that starts with a digit
-  (`3M_Lot_9`) or mixes hyphen and underscore (`Diffusion_FE-120`,
-  `Lot-1_FE_2`) is invisible to both the gate and the ledger — a forged id
-  of those shapes is not recorded at all, which the ledger must not be read
-  as "passed". These are gate-level gaps in `common/textfacts.py` and
-  `explain/factcheck.py`; fixing the extraction patterns is a separate
-  proposal, not part of this increment, because it changes what the gate
-  itself accepts.
+  `etc.` / `Fig.` / `vs.`. The extraction blind spots recorded here in v0 —
+  a thousands separator splitting a number (`1,200` becoming claims for
+  `1` and `200`, `000` recorded as failed), and ids that start with a
+  digit (`3M_Lot_9`) or mix hyphen and underscore (`Diffusion_FE-120`,
+  `Lot-1_FE_2`) being invisible to both gate and ledger — were closed in
+  claim/v1: extraction now lives only in `common.textfacts` and both
+  sides read it there (contract tests:
+  `tests/test_explain_factcheck_extraction.py`).
 - `content_hash` covers what was claimed and the verdicts, not `checked_at`
   (so the same text and registry always build the same hash). It is a
   self-consistency check, not a signature: anyone who can rewrite the ledger
@@ -131,5 +132,7 @@ for a rate without accounting for that.
 
 ## Version rule
 
-`claim/v0`. Changing a field, a result value or the extraction rule is a new
-version, not an edit. Contract tests: `tests/test_explain_claims.py`.
+`claim/v1`. Changing a field, a result value or the extraction rule is a new
+version, not an edit. v1 changed only the extraction rule (see Limits);
+`claim/v0` ledgers still load and verify. Contract tests:
+`tests/test_explain_claims.py`, `tests/test_explain_factcheck_extraction.py`.
