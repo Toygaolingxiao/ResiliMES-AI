@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -202,6 +204,26 @@ def test_scope_and_stats_follow_the_display_window() -> None:
     assert empty_view["scope"]["lots_total"] == 0  # type: ignore[index]
     assert empty_view["stats"]["total_jobs"] == 0  # type: ignore[index]
     assert empty_view["view"] == {"t0": 150, "t1": 200}
+
+
+def test_stats_fields_count_what_they_say() -> None:
+    """M6: total_jobs counts bars (operation segments), total_operations
+    counts distinct step kinds, total_moves sums wafer quantities —
+    a bar carrying qty=75 (as a batched bar does) counts 75, not one move."""
+    book = _book(
+        _bar("LOT-1", "LITHO-01", 0, 20, step="LITHO"),
+        _bar("LOT-1", "ETCH-01", 23, 40, group="Etch", step="ETCH"),
+        replace(_bar("LOT-2", "LITHO-01", 30, 50, step="LITHO"), qty=75),
+    )
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10))
+    stats = payload["stats"]
+    assert isinstance(stats, dict)
+    assert stats["total_jobs"] == 3  # bars, not lots and not jobs
+    assert stats["total_operations"] == 2  # LITHO + ETCH, not 3 executions
+    assert stats["total_moves"] == 125  # 25 + 25 + 75 wafer-steps
+    assert stats["total_lots"] == 2
+    assert stats["total_equipment"] == 2
+    assert payload["daily"][0]["jobs"] == 3  # type: ignore[index]
 
 
 def test_gaps_skip_split_sequences() -> None:
@@ -454,6 +476,50 @@ check("missing copy key falls back to English, never silent",
 check("null copy falls back to English", scopeNotice(capped, null).startsWith("Showing 100 of 1684 lots"), scopeNotice(capped, null));
 console.log(JSON.stringify({ failures }));
 """
+
+
+def test_stats_card_labels_name_the_measured_unit() -> None:
+    """M6/H2: the stat cards must read what the numbers count — Segments
+    (bars) and Wafer-steps (summed qty over bars), not Jobs and Moves — in
+    all three languages. Keys are unchanged, so this increment adds no new
+    fallback churn; the page's raw-key fallback itself is a known
+    divergence from the cases-page rule, recorded in TIMELINE_SCOPE.md."""
+    i18n = json.loads(
+        (ROOT / "resilimes" / "demo" / "static" / "i18n.json").read_text(encoding="utf-8")
+    )
+    expected = {
+        "en": {"jobs": "Segments", "moves": "Wafer-steps"},
+        "ja": {"jobs": "工程段数", "moves": "ウェーハステップ数"},
+        "zh": {"jobs": "工序段数", "moves": "晶圆步数"},
+    }
+    for lang, labels in expected.items():
+        timeline = i18n[lang]["timeline"]
+        for key, value in labels.items():
+            assert timeline[key] == value, (lang, key, timeline[key])
+    # The neighbouring labels are untouched by this increment.
+    assert i18n["en"]["timeline"]["operations"] == "Steps"
+    assert i18n["en"]["timeline"]["machines"] == "Tools"
+    assert i18n["en"]["timeline"]["lots"] == "Lots"
+    # Wiring guard: every key paintStats() looks up in timeline.js must
+    # exist in all three languages, so a renamed key cannot silently fall
+    # back to the raw key on the page (timeline.js `c[key] || key`).
+    js = (
+        ROOT / "resilimes" / "demo" / "static" / "product" / "timeline" / "timeline.js"
+    ).read_text(encoding="utf-8")
+    card_keys = set(re.findall(r'\["(\w+)",\s*\(?stats\.', js))
+    assert card_keys == {
+        "jobs",
+        "machines",
+        "lots",
+        "operations",
+        "moves",
+        "skips",
+        "lateLots",
+        "qtime",
+    }, card_keys
+    for lang in ("en", "ja", "zh"):
+        missing = card_keys - set(i18n[lang]["timeline"])
+        assert not missing, (lang, missing)
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
