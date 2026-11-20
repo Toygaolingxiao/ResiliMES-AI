@@ -12,18 +12,33 @@ _LOCK = threading.Lock()
 _CACHE: dict[str, Book] = {}
 
 
+class BookSelectorError(ValueError):
+    """A seed/horizon was combined with a book it does not refine."""
+
+
 def load_smt_book(
     *, book: str = "base", seed: int | None = None, horizon_h: float | None = None
 ) -> Book:
-    """The baseline book is the one the fab views already record. A seed or horizon asks for another."""
+    """The baseline book is the one the fab views already record. A seed or horizon asks for another.
+
+    ``book`` and ``seed``/``horizon_h`` are two different selectors and are
+    never silently combined: a seed or horizon refines only the ``base``
+    book. An unknown book name raises ``KeyError`` on every path; a known
+    book combined with a seed or horizon raises ``BookSelectorError``.
+    """
     fab = load_fab()
     if seed is None and horizon_h is None:
         spec = known_spec(fab, book)
     else:
+        if book != "base":
+            known_spec(fab, book)  # KeyError for an unknown book, as on the baseline path
+            raise BookSelectorError(
+                f"seed/horizon do not apply to the book {book!r}; they refine only the 'base' book."
+            )
         chosen_seed = 1 if seed is None else seed
         chosen_h = 48.0 if horizon_h is None else horizon_h
         spec = BookSpec(
-            key=f"timeline-{chosen_seed}-{chosen_h:g}",
+            key=f"timeline-{chosen_seed}-{chosen_h:.9g}",
             seed=chosen_seed,
             horizon=chosen_h * 3600.0,
         )
@@ -119,6 +134,7 @@ def book_from_replay(replay: Replay) -> Book:
         bars=bars,
         blocks=blocks,
         skips=sum(len(rows) for rows in replay.skips),
+        book=replay.spec.key,
     )
 
 
