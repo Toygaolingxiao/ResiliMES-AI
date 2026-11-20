@@ -122,6 +122,38 @@ screen. The page now renders a source line (`.tl-source`,
 
 Still open: CSV / PNG export carries no source note (see above).
 
+## Verified numbers: correcting the PR #101 smoke sentence
+
+PR #101's description says "1,199 bars across 1,313 tools and 2,156
+lots". Read literally, that sentence is wrong: it mixes a one-hour
+window's bar count with the whole 48-hour book's tool and lot totals.
+The measured figures (SMT2020 book, seed 1; independently re-measured
+2026-11-19 in this run — `load_smt_book()` + `window_payload`, by the
+coordinator and by the product and red-team reviewers separately; the
+2026-11-17 figures agree with them):
+
+| Figure | Value | Basis |
+| --- | --- | --- |
+| Bars, first hour, uncapped | 1,199 | 1-hour display window, `lots=5000` (effectively uncapped for this book) |
+| Tools, first hour, uncapped | 954 | Distinct machines with a bar in that window, `lots=5000` |
+| Lots, first hour, uncapped | 1,005 | Distinct `bar.lot` values with a bar in that window, `lots=5000` (primary lots only; another 277 lots appear only as batch members, `bar.also`, in the same hour — union 1,282) |
+| Bars drawn, first hour, page default (`lots=100`) | 228 | Drawn subset (`scope.bars_shown`); the Segments card still reads 1,199 |
+| Wafer-steps, first hour, uncapped | 36,900 | `sum(bar.qty)`; the old "Moves" card value, `lots=5000` |
+| Tools, whole 48 h book | 1,313 | Distinct machines in the book |
+| Lots, whole 48 h book | 2,113 | Distinct `bar.lot` values with at least one bar in the book (LotInfo rows: 2,156, of which 43 have no bar in 48 h) |
+
+Correct reading: "1,199 bars across 954 tools and 1,005 lots in the
+first hour (uncapped); the full 48 h book spans 1,313 tools and
+2,113 lots that ran at least one bar. At the page default (`lots=100`)
+the canvas draws 228 of those 1,199 bars while the Segments card still
+reads 1,199. This increment does not edit
+PR #101's description; this section is the correction of record, and the card
+labels fixed in this increment (Segments, Wafer-steps) are what stop the
+page itself from repeating the confusion. The 36,900 wafer-steps
+against 1,199 bars is also why "Moves" was misleading: one bar carries
+25 wafers (more when batched), so the old card read ~30x the bar
+count with no unit to explain it.
+
 ## What still describes the drawn subset only
 
 - `machine_rows` / `product_rows` / `blocks`: rows and blocks for the
