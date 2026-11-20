@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 
 from resilimes.api.app import create_app
 from resilimes.config import HORIZON, Settings
+from resilimes.smt.replay import BookSpec
+from resilimes.timeline import smt_book
 from resilimes.timeline.model import (
     Bar,
     Block,
@@ -470,3 +472,92 @@ def test_timeline_scope_notice_parity(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr or result.stdout
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert report["failures"] == []
+
+
+# --- smt_book cache -------------------------------------------------------
+#
+# A cold book build costs ~3 minutes, so load_smt_book caches built books.
+# The cache is bounded (LRU, _CACHE_MAX entries) and never evicts "base".
+# The slow parts (load_fab / get_replay / book_from_replay) are faked here;
+# the cache mechanics — hit identity, eviction order, the base pin — are
+# what these tests pin.
+
+
+@pytest.fixture
+def _isolated_smt_book_cache():
+    saved = dict(smt_book._CACHE)
+    smt_book._CACHE.clear()
+    yield
+    smt_book._CACHE.clear()
+    smt_book._CACHE.update(saved)
+
+
+def _fake_book_builders(monkeypatch: pytest.MonkeyPatch, calls: list[str]) -> None:
+    monkeypatch.setattr(smt_book, "load_fab", lambda: object())
+    monkeypatch.setattr(smt_book, "known_spec", lambda fab, book: BookSpec(key=book))
+
+    def fake_get_replay(spec: BookSpec) -> BookSpec:
+        calls.append(spec.key)
+        return spec
+
+    monkeypatch.setattr(smt_book, "get_replay", fake_get_replay)
+    monkeypatch.setattr(
+        smt_book,
+        "book_from_replay",
+        lambda replay: _book(_bar(f"KEY-{replay.key}", "M1", 0.0, 60.0)),
+    )
+
+
+def test_smt_book_cache_hit_returns_same_object(
+    monkeypatch: pytest.MonkeyPatch, _isolated_smt_book_cache: None
+) -> None:
+    calls: list[str] = []
+    _fake_book_builders(monkeypatch, calls)
+    first = smt_book.load_smt_book(book="base")
+    second = smt_book.load_smt_book(book="base")
+    assert first is second
+    assert calls == ["base"]
+
+
+def test_smt_book_cache_evicts_least_recently_used(
+    monkeypatch: pytest.MonkeyPatch, _isolated_smt_book_cache: None
+) -> None:
+    calls: list[str] = []
+    _fake_book_builders(monkeypatch, calls)
+    smt_book.load_smt_book(book="base")
+    for seed in range(1, 9):
+        smt_book.load_smt_book(seed=seed)
+    assert len(smt_book._CACHE) == smt_book._CACHE_MAX == 8
+    assert smt_book.cached("base")
+    assert not smt_book.cached("timeline-1-48")
+    assert smt_book.cached("timeline-8-48")
+    smt_book.load_smt_book(seed=1)
+    assert calls.count("timeline-1-48") == 2
+
+
+def test_smt_book_cache_touch_refreshes_recency(
+    monkeypatch: pytest.MonkeyPatch, _isolated_smt_book_cache: None
+) -> None:
+    calls: list[str] = []
+    _fake_book_builders(monkeypatch, calls)
+    smt_book.load_smt_book(book="base")
+    smt_book.load_smt_book(seed=1)
+    smt_book.load_smt_book(seed=2)
+    smt_book.load_smt_book(seed=1)  # hit: timeline-1-48 is now most recent
+    for seed in range(3, 9):
+        smt_book.load_smt_book(seed=seed)
+    assert smt_book.cached("timeline-1-48")
+    assert not smt_book.cached("timeline-2-48")
+
+
+def test_smt_book_cache_bound_holds_under_many_keys(
+    monkeypatch: pytest.MonkeyPatch, _isolated_smt_book_cache: None
+) -> None:
+    calls: list[str] = []
+    _fake_book_builders(monkeypatch, calls)
+    for seed in range(1, 13):
+        smt_book.load_smt_book(seed=seed)
+    assert smt_book._CACHE_MAX == 8
+    assert len(smt_book._CACHE) == 8
+    assert smt_book.cached("timeline-12-48")
+    assert not smt_book.cached("timeline-1-48")
