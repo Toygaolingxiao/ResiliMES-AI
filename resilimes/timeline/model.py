@@ -88,6 +88,11 @@ class Book:
     bars: list[Bar]
     blocks: list[Block]
     skips: int = 0
+    # Which recorded run this book is: the BookSpec key ("base", a
+    # scenario name, "whatif-<digest>", "timeline-<seed>-<h>"), or
+    # "sample". The payload carries it so a page can tell whether a
+    # deep link would land on this run's evidence or another run's.
+    book: str = "base"
     lot_index: dict[str, LotInfo] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -188,6 +193,7 @@ def window_payload(book: Book, query: TimelineQuery) -> dict[str, object]:
     return {
         "contract": CONTRACT,
         "source": book.source,
+        "book": book.book,
         "seed": book.seed,
         "horizon_h": book.horizon_h,
         "origin": book.origin,
