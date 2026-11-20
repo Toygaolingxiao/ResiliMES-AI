@@ -4,9 +4,11 @@ Moved out of ``resilimes.agents.facts`` so the explain layer can use it without
 importing agents. Callers import these names from here.
 
 This module is the single place that decides what counts as an id or a
-number in a text. The fact-check gate (``explain.factcheck``) and the claim
-ledger (``explain.claims``) both extract through here, so the two can never
-drift apart on token shapes.
+number in a text for the fact-check gate (``explain.factcheck``) and the
+claim ledger (``explain.claims``). Both extract through here, so the two
+can never drift apart on token shapes. (Other modules still extract
+numbers for their own purposes — ``agents.review_panel._numbers`` is one —
+so "single place" holds for the gate and the ledger, not repo-wide.)
 
 Extraction rules:
 
@@ -24,7 +26,7 @@ from __future__ import annotations
 
 import re
 
-_NUMBER = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
+_NUMBER = re.compile(r"\d{1,3}(?:,\d{3})+(?!\d)(?:\.\d+)?|\d+(?:\.\d+)?")
 _ID = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+\b")
 _ID_TOKEN = re.compile(r"[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)+")
 _HAS_DIGIT = re.compile(r"\d")
@@ -52,10 +54,13 @@ def narrative_mismatches(text: str, facts: dict[str, set[str]]) -> list[str]:
     ext_spans = [(m.start(), m.end()) for m in id_token_matches(text)]
     for match in _ID.finditer(text):
         token = match.group()
-        # A legacy hyphen match that is only the head of a longer
-        # mixed-separator token ("FE-120" inside "FE-120_A") is not a
-        # separate id; the longer token is judged below, once.
-        if any(start <= match.start() and match.end() < end for start, end in ext_spans):
+        # A legacy hyphen match that is only part of a longer
+        # mixed-separator token ("FE-120" inside "FE-120_A", or the tail
+        # "FE-120" inside "3M-FE-120") is not a separate id; the longer
+        # token is judged below, once. The suppression must cover the
+        # tail as well as the head: a legacy match ending exactly at the
+        # token's end is still only a fragment of that token.
+        if any(start <= match.start() and match.end() <= end for start, end in ext_spans):
             continue
         if token.upper() in facts["ids"] or token.upper() in seen:
             continue
