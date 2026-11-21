@@ -2,9 +2,32 @@ name: ci
 
 on:
   push:
+    branches: [main]
   pull_request:
 
+# A newer push to the same ref supersedes runs still in flight:
+# cancel them instead of letting them queue ahead of the current head.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -r requirements-dev.txt
+      - name: Lint
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+      - name: Typecheck
+        run: python -m mypy
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -18,26 +41,36 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install
         run: python -m pip install -r requirements-dev.txt
-      - name: Lint
-        run: |
-          python -m ruff check .
-          python -m ruff format --check .
-      - name: Typecheck
-        run: python -m mypy
-      - name: Explain boundary
-        run: python -m pytest -q tests/test_explain_boundary.py tests/test_explain_contract.py
-      - name: Test (strict_qtime)
+      # Full suite once per Python version. tests/conftest.py pins
+      # RESILIMES_SCHED_MODE=strict_qtime unless the caller set it, so
+      # this leg is the recorded (qtime-r2) path, as before; tests that
+      # cover the plan default explicitly (test_sched_mode.py) set the
+      # mode themselves and run here too.
+      - name: Test
         run: python -m pytest
-        env:
-          RESILIMES_SCHED_MODE: strict_qtime
-      - name: Test (plan)
-        run: python -m pytest
-        env:
-          RESILIMES_SCHED_MODE: plan
       - name: Offline smoke
         run: python smoke_test.py --mock
         env:
           RESILIMES_MODE: mock
+
+  # The ambient plan-mode full pass moves post-merge: it runs on every
+  # push to main (i.e. every merge), not on every PR push. PRs keep the
+  # explicit plan coverage in test_sched_mode.py plus the conftest pin
+  # discipline described in tests/conftest.py.
+  plan:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -r requirements-dev.txt
+      - name: Test (plan)
+        run: python -m pytest
+        env:
+          RESILIMES_SCHED_MODE: plan
 
   explain-alone:
     # The explain layer installed on its own, without the rest of the repository.
