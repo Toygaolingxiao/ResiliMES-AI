@@ -1072,9 +1072,12 @@
     ctx.restore();
   }
   function duration(minutes) {
-    const abs = Math.abs(minutes);
-    const h = Math.floor(abs / 60);
-    const m = Math.round(abs % 60);
+    // Round once, then split: rounding the remainder separately can
+    // yield "1h 60m" for a 119.6-minute bar (floor gives 1h, the
+    // rounded remainder gives 60m, and nothing carries).
+    const total = Math.round(Math.abs(minutes));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
     return h ? `${h}h ${m}m` : `${m}m`;
   }
   function num(value) { return (Math.round(value * 10) / 10).toFixed(1); }
@@ -1198,7 +1201,7 @@
     };
   }
 
-  window.ResiliTimeline = { mount, scopeNotice, whyHref, sourceLine };
+  window.ResiliTimeline = { mount, scopeNotice, whyHref, sourceLine, duration };
   const host = document.getElementById("timeline-app");
   if (host) mount(host);
 })();

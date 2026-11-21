@@ -19,15 +19,17 @@
     <article class="sheet">
       <h1 id="title">説明報告書</h1>
       <p id="lead" class="lead"></p>
-      <form id="pick" class="pick">
-        <label><span id="seed-label"></span> <input id="seed" type="number" min="1" max="9" value="1"></label>
-        <label><span id="horizon-label"></span> <input id="horizon" type="number" min="1" max="168" value="48"> <span id="horizon-unit"></span></label>
+      <form id="pick" class="pick" novalidate>
+        <label><span id="seed-label"></span> <input id="seed" type="number" min="1" max="9" value="1" aria-describedby="seed-error"></label>
+        <label><span id="horizon-label"></span> <input id="horizon" type="number" min="0" max="168" value="48" aria-describedby="horizon-error"> <span id="horizon-unit"></span></label>
         <label><span id="lot-label"></span>
           <select id="lot"></select>
         </label>
         <button id="show" type="submit"></button>
         <button id="print" type="button"></button>
       </form>
+      <p id="seed-error" class="field-error" role="alert" hidden></p>
+      <p id="horizon-error" class="field-error" role="alert" hidden></p>
       <p id="note" class="note"></p>
       <p id="status" class="status" role="status"></p>
       <div id="report" hidden></div>
