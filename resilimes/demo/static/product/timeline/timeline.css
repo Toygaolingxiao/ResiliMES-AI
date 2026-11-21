@@ -94,6 +94,7 @@ button { cursor: pointer; }
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 8px 10px;
 }
+.tl-filter-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
 .tl-field { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
 .tl-field input, .tl-field select {
   border: 1px solid var(--line);

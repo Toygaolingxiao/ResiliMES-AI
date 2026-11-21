@@ -949,7 +949,6 @@
           <button type="button" class="tl-btn tl-zoom-out"></button>
           <button type="button" class="tl-btn tl-zoom-in"></button>
           <button type="button" class="tl-btn tl-fit"></button>
-          <button type="button" class="tl-btn primary tl-refresh"></button>
           <button type="button" class="tl-btn tl-reset"></button>
           <button type="button" class="tl-btn tl-png"></button>
           <button type="button" class="tl-btn tl-csv"></button>
@@ -967,6 +966,9 @@
           <label class="tl-field"><span class="tl-field-priority"></span><select class="tl-priority-select"></select></label>
           <label class="tl-field"><span class="tl-field-start"></span><input class="tl-start" type="datetime-local"></label>
           <label class="tl-field"><span class="tl-field-end"></span><input class="tl-end" type="datetime-local"></label>
+        </div>
+        <div class="tl-filter-actions">
+          <button type="button" class="tl-btn primary tl-refresh"></button>
         </div>
       </form>
       <div class="tl-stats"></div>
