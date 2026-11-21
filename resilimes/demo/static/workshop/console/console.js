@@ -76,6 +76,8 @@ const state = {
   intent: null,
   scenarioItems: [],
   running: false,
+  runError: null,
+  lastRunBody: null,
   incidentText: "",
   utilSide: "after",
   smtGroup: "all",
@@ -122,6 +124,12 @@ async function init() {
     const incident = $("#incident").value.trim();
     if (incident) run({ incident });
   });
+  const statusRetry = $("#status-retry");
+  if (statusRetry) {
+    statusRetry.addEventListener("click", () => {
+      if (state.lastRunBody && !state.running) run(state.lastRunBody);
+    });
+  }
   $("#dispatch").addEventListener("submit", (event) => {
     event.preventDefault();
     const text = $("#dispatch-input").value.trim();
@@ -163,6 +171,24 @@ function taglineFor(copy) {
   if (id === "scale") return copy.taglineScale;
   if (id && copy.scenarios && copy.scenarios[id]) return copy.scenarios[id][0];
   return copy.taglineIdle;
+}
+
+// Pure status-line decision for paint() and the Wave H contract test.
+// Failures must survive a later paint(); retry is offered only then.
+function statusLineFor(stateLike, copy, doneFn) {
+  if (stateLike.running && !stateLike.report) {
+    return { text: copy.working || "", warn: false, retry: false };
+  }
+  if (stateLike.runError) {
+    return { text: String(stateLike.runError), warn: true, retry: true };
+  }
+  if (stateLike.report) {
+    const text = stateLike.report.blocked
+      ? (copy.refused || "")
+      : (typeof doneFn === "function" ? doneFn(stateLike.report) : "");
+    return { text, warn: false, retry: false };
+  }
+  return { text: "", warn: false, retry: false };
 }
 
 function paint() {
@@ -224,9 +250,21 @@ function paint() {
   paintVerify();
   if (typeof paintCases === "function") paintCases();
   if (typeof paintAi === "function") paintAi();
-  if (state.running && !state.report) $("#status").textContent = copy.working;
-  else if (state.report) $("#status").textContent = state.report.blocked ? copy.refused : doneStatus(state.report);
-  else $("#status").textContent = "";
+  paintStatus(copy);
+}
+
+function paintStatus(copy) {
+  const line = statusLineFor(state, copy || t(), doneStatus);
+  const node = $("#status");
+  if (node) {
+    node.textContent = line.text;
+    node.className = line.warn ? "status warn" : "status";
+  }
+  const retry = $("#status-retry");
+  if (!retry) return;
+  retry.textContent = (copy || t()).retry || "Retry";
+  retry.hidden = !line.retry || !state.lastRunBody;
+  retry.disabled = state.running;
 }
 
 function paintTabs() {
@@ -1574,6 +1612,8 @@ function showPlainTip(event, text) {
 async function run(body) {
   if (state.running) return;
   state.running = true;
+  state.runError = null;
+  state.lastRunBody = body;
   state.steps = [];
   state.report = null;
   state.intent = null;
@@ -1607,12 +1647,8 @@ async function run(body) {
         throw new Error(payload.detail || "Recovery failed");
       }
     });
-    const report = state.report;
-    $("#status").textContent = report && report.blocked
-      ? t().refused
-      : doneStatus(report);
   } catch (error) {
-    $("#status").textContent = error.message;
+    state.runError = error && error.message ? error.message : String(error);
   } finally {
     state.running = false;
     paint();

@@ -41,10 +41,11 @@ const CASES_MAX_FILE_BYTES = 5 * 1024 * 1024;
 const CASES_MAX_CASES_PER_LOT = 200;
 
 const CASES_BOOK_KEYS = ["book_version", "cases", "next_seq"];
+const CASES_TIERS = ["recorded", "attributed", "unknown"];
 const CASES_CASE_KEYS = [
   "cases_version", "case_id", "lot", "run", "title", "severity",
   "severity_reason", "owner", "status", "lateness_min", "evidence_hash",
-  "notes", "history", "created_at", "updated_at", "content_hash",
+  "tier", "notes", "history", "created_at", "updated_at", "content_hash",
 ];
 const CASES_RUN_KEYS = ["seed", "horizon_sec", "policy", "label", "sched_mode"];
 const CASES_EVENT_KEYS = ["previous", "status", "at", "note"];
@@ -273,6 +274,9 @@ function casesCheckCase(item, where, seenIds, errors) {
   if (item.evidence_hash !== undefined && item.evidence_hash !== null && !CASES_HASH_RE.test(item.evidence_hash)) {
     errors.push(`${where}.evidence_hash: must be sha256:<64 lowercase hex chars> or null`);
   }
+  if (item.tier !== undefined && item.tier !== null && !CASES_TIERS.includes(item.tier)) {
+    errors.push(`${where}.tier: unknown tier ${JSON.stringify(item.tier)}`);
+  }
   if (item.notes !== undefined) {
     if (!Array.isArray(item.notes) || item.notes.some((n) => typeof n !== "string" || !n.trim())) {
       errors.push(`${where}.notes: must be an array of non-empty strings`);
@@ -478,6 +482,25 @@ function casesLatenessText(lateness) {
   return formatDuration(lateness);
 }
 
+// Wave H fail-safe: a tier cell is never blank. Known tiers use their
+// label; missing / null / unknown-to-schema values render 「不明」.
+function casesTierLabelFor(tier, copy) {
+  const pack = copy || {};
+  if (tier && CASES_TIERS.includes(tier)) {
+    const labels = pack.tier || {};
+    return labels[tier] || tier;
+  }
+  return pack.tierUnknown || "不明";
+}
+
+function casesTierLabel(tier) {
+  return casesTierLabelFor(tier, casesCopy());
+}
+
+function casesTierCell(tier) {
+  return casesEl("td", "", casesTierLabel(tier));
+}
+
 function casesHashCell(hash) {
   if (!hash) return casesEl("td", "mono", casesText("noHash"));
   const cell = casesEl("td", "mono");
@@ -522,6 +545,7 @@ function casesDetailRow(item, columns) {
     facts.appendChild(dd);
   };
   addFact(casesText("colCreated"), item.created_at || "");
+  addFact(casesText("colTier"), casesTierLabel(item.tier));
   addFact(casesText("colEvidence"), item.evidence_hash || casesText("noHash"));
   addFact(casesText("colSeal"), item.content_hash || casesText("noHash"));
   cell.appendChild(facts);
@@ -614,6 +638,7 @@ function casesLotTable(rows) {
         [casesText("colSeverity"), ""],
         [casesText("colStatus"), ""],
         [casesText("colLateness"), "num"],
+        [casesText("colTier"), ""],
         [casesText("colEvidence"), ""],
         [casesText("colRun"), ""],
       ]) {
@@ -632,10 +657,11 @@ function casesLotTable(rows) {
         caseRow.appendChild(sevCell);
         caseRow.appendChild(casesEl("td", "", casesLabel(item.status || "open", "status")));
         caseRow.appendChild(casesEl("td", "num", casesLatenessText(item.lateness_min)));
+        caseRow.appendChild(casesTierCell(item.tier));
         caseRow.appendChild(casesHashCell(item.evidence_hash));
         caseRow.appendChild(casesRunCell(item.run));
         innerBody.appendChild(caseRow);
-        innerBody.appendChild(casesDetailRow(item, 7));
+        innerBody.appendChild(casesDetailRow(item, 8));
       }
       inner.appendChild(innerBody);
       cell.appendChild(inner);

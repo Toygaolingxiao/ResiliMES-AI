@@ -20,6 +20,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `refusedLine` | Refused: | 未采用： | 不採用： |
 | `idle` |  |  |  |
 | `working` | Rescheduling. | 正在重排。 | 再スケジュール中。 |
+| `retry` | Retry | 重试 | 再試行 |
 | `emptyTitle` | This shift | 本班 | 当直 |
 | `emptyHint` | Run a scenario to compare the current plan with the reschedule. | 选一个场景，对比当前计划与重排结果。 | シナリオを実行すると、現在の計画と再スケジュールを比べます。 |
 | `mock` |  |  |  |
@@ -924,10 +925,15 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `cases.colStatus` | Status | 状态 | 状態 |
 | `cases.colLateness` | Late by | 迟到时长 | 遅れ |
 | `cases.colEvidence` | Evidence hash | 证据哈希 | 証拠ハッシュ |
+| `cases.colTier` | Evidence tier | 证据档位 | 証拠の格付け |
 | `cases.colRun` | Run | Run | Run |
 | `cases.colNotes` | Notes | 备注 | 備考 |
 | `cases.colHistory` | History | 变迁 | 履歴 |
 | `cases.noHash` | no evidence hash | 无证据哈希 | 証拠ハッシュなし |
+| `cases.tierUnknown` | 不明 | 不明 | 不明 |
+| `cases.tier.recorded` | Recorded | 记录 | 記録 |
+| `cases.tier.attributed` | Observed attribution | 观测归因 | 観測帰因 |
+| `cases.tier.unknown` | 不明 | 不明 | 不明 |
 | `cases.sealNote` | Evidence hashes and case seals are shown, not verified on this page. Seal checks run in cases.py (verify_all); a server endpoint is still missing. | 证据哈希与案件封印只展示、不在本页校验。封存校验在 cases.py（verify_all）中进行；服务端接口尚未接入。 | 証拠ハッシュと案件の封印は表示のみで、この画面では検証しません。封印確認は cases.py（verify_all）で行います。サーバー側エンドポイントは未整備です。 |
 | `cases.noNotes` | No notes. | 无备注。 | 備考なし。 |
 | `cases.noHistory` | No history recorded. | 无变迁记录。 | 履歴なし。 |

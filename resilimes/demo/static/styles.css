@@ -402,7 +402,11 @@ textarea {
 }
 textarea:focus-visible { outline-offset: -2px; }
 .custom-wrap .run { margin-top: 6px; }
+.status-row { display: flex; align-items: center; gap: 8px; margin: 0; flex-wrap: wrap; }
+.status-row .status { flex: 1 1 auto; }
 .status { margin: 0; color: var(--muted); font-size: var(--text-label); min-height: 1.2em; }
+.status.warn { color: var(--amber); }
+.status-row .run { flex: 0 0 auto; }
 
 /* AI shift lead study progress (GET /api/shift-lead/status) */
 .sl-progress { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); background: var(--sheet); }
