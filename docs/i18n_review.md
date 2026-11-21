@@ -997,6 +997,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `timeline.error` | Could not load: {msg} | 无法加载：{msg} | 読み込めませんでした: {msg} |
 | `timeline.truncated` | The window was cut at the bar limit. Narrow the time range. | 条数达到上限，已截断。请缩小时间范围。 | バー数が上限に達したため、途中までです。期間を狭めてください。 |
 | `timeline.scopeLots` | Showing {shown} of {total} lots in this window. Counts cover this window; Skips counts the whole book. | 本显示窗口共 {total} 个批次，仅显示 {shown} 个。数字为本窗口的值；Skips 为整本的值。 | この表示期間のロット {total} 件中 {shown} 件を表示しています。数値は表示期間のものです。Skips はブック全体の値です。 |
+| `timeline.focusTruncated` | Showing the earliest {shown} of {total} bars for lot {lot}. The focus view is cut at {max} bars. | 该批次 {lot} 共 {total} 条，仅显示最早的 {shown} 条。聚焦视图截断于 {max} 条。 | ロット {lot} のバー {total} 件中最初の {shown} 件を表示しています。フォーカス表示は {max} 件で切られています。 |
 | `timeline.sourceLine` | Data: {source} · seed {seed} · {horizon} h | 数据：{source} · 种子 {seed} · {horizon} 小时 | データ: {source} · シード {seed} · {horizon} 時間 |
 | `timeline.sourceLineShort` | Data: {source} | 数据：{source} | データ: {source} |
 | `timeline.sourceSample` | Sample fab | 示例工厂 | サンプル工場 |

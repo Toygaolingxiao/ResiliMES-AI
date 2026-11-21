@@ -10,6 +10,8 @@ stats are computed over the display window, never over the capped subset,
 so the cards cannot silently shrink with the lot cap. ``daily`` is the
 one exception: it counts the fetched window, as a navigation aid.
 ``skip_count`` is a whole-book replay count, not a window count at all.
+``focus`` marks the focus drill-down cut: the focused lot's whole-book
+bars, earliest first, cut at ``FOCUS_BAR_MAX``.
 """
 
 from __future__ import annotations
@@ -24,6 +26,8 @@ TRANSPORT_MAX_MIN = 5.0
 IDLE_MIN = 15.0
 SHIFT_MIN = 8 * 60.0
 DAY_MIN = 24 * 60.0
+# Focus drill-down: a focused lot's whole-book bars, hard-cut here.
+FOCUS_BAR_MAX = 400
 _Q_RANK = {"": 0, "risk": 1, "breach": 2}
 
 
@@ -172,11 +176,15 @@ def window_payload(book: Book, query: TimelineQuery) -> dict[str, object]:
     if truncated:
         chosen = chosen[: query.limit]
 
-    focus_bars = [
+    focus_all = [
         bar
         for bar in book.bars
         if query.focus and (bar.lot == query.focus or query.focus in bar.also)
-    ][:400]
+    ]
+    # Earliest first, so the cut keeps a defined prefix of the lot's
+    # history instead of book order; the marker below names what was cut.
+    focus_all.sort(key=lambda bar: (bar.start_min, bar.end_min, bar.machine, bar.id))
+    focus_bars = focus_all[:FOCUS_BAR_MAX]
     gaps = _gaps(chosen, window_bars, t0, t1)
     # Bars actually drawn inside the display window: the fetched set,
     # capped, cut, and clipped to the view.
@@ -239,6 +247,17 @@ def window_payload(book: Book, query: TimelineQuery) -> dict[str, object]:
             for block in blocks
         ],
         "focus_bars": [_bar_json(bar, now) for bar in focus_bars],
+        # The focus cut, marked: focus_bars bypass the window and the
+        # filters, so without these counts the page would silently draw
+        # a prefix of the lot's history. Always present, zero-valued
+        # when no lot is focused.
+        "focus": {
+            "lot": query.focus,
+            "bars_total": len(focus_all),
+            "bars_shown": len(focus_bars),
+            "bars_max": FOCUS_BAR_MAX,
+            "truncated": len(focus_all) > FOCUS_BAR_MAX,
+        },
         "idle_min": IDLE_MIN,
     }
 
@@ -425,7 +444,8 @@ def _gaps(bars: list[Bar], window_bars: list[Bar], t0: float, t1: float) -> list
     """Gaps between one lot's consecutive *displayed* bars.
 
     A gap is only reported when the lot's sequence is intact: if any bar
-    of the lot in the window was dropped by the lot cap or the bar limit,
+    involving the lot in the window was dropped by the lot cap or the bar
+    limit — or is displayed under another lot's row as an also member —
     the "waiting" band would cover real processing time, so that gap is
     skipped instead of fabricated. ``window_bars`` is the pre-cap set.
     """
@@ -434,7 +454,11 @@ def _gaps(bars: list[Bar], window_bars: list[Bar], t0: float, t1: float) -> list
         by_lot.setdefault(bar.lot, []).append(bar)
     window_by_lot: dict[str, list[Bar]] = {}
     for bar in window_bars:
-        window_by_lot.setdefault(bar.lot, []).append(bar)
+        # Group by every lot the bar involves, not just its primary lot:
+        # a batched bar processes its also lots too, so the guard must
+        # see it when checking those lots' intervals.
+        for lot in _members(bar):
+            window_by_lot.setdefault(lot, []).append(bar)
     gaps: list[dict[str, object]] = []
     for lot, rows in by_lot.items():
         rows.sort(key=lambda bar: (bar.start_min, bar.end_min))
@@ -475,10 +499,11 @@ def _gaps(bars: list[Bar], window_bars: list[Bar], t0: float, t1: float) -> list
 
 
 def _split_between(window_rows: list[Bar], start: float, end: float) -> bool:
-    """True when the lot has a window bar overlapping (start, end).
+    """True when a window bar involving the lot overlaps (start, end).
 
     Such a bar was dropped from the displayed set by the lot cap or the
-    bar limit, so the interval is not a real gap: the lot was processing.
+    bar limit, or is displayed under another lot's row as an also member,
+    so the interval is not a real gap: the lot was processing.
     """
     return any(bar.start_min < end and bar.end_min > start for bar in window_rows)
 

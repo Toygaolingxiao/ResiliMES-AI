@@ -173,7 +173,7 @@
         clear.type = "button";
         clear.className = "tl-btn";
         clear.textContent = c.clear || "解除";
-        clear.addEventListener("click", () => { state.focus = ""; draw(); paintStats(); });
+        clear.addEventListener("click", () => { state.focus = ""; draw(); paintStats(); load(); });
         selected.appendChild(clear);
       }
       fillFacets();
@@ -877,6 +877,9 @@
           state.focus = found.bar.lot;
           draw();
           paintStats();
+          // The status line and focus_bars come from the payload: without
+          // a reload they would still describe the previous focus.
+          load();
         }
       });
       canvas.addEventListener("pointerleave", hideTip);
@@ -1106,7 +1109,11 @@
   }
   function fill(template, params) {
     let out = template || "";
-    for (const [name, value] of Object.entries(params || {})) out = out.replaceAll(`{${name}}`, value == null ? "" : String(value));
+    // A replacer function, not a string: replaceAll would expand "$&"
+    // and friends in a value, so a lot id containing "$&" must stay
+    // literal. This is the first call site that fills a data-controlled
+    // string (a lot id, not a number) into a template.
+    for (const [name, value] of Object.entries(params || {})) out = out.replaceAll(`{${name}}`, () => (value == null ? "" : String(value)));
     return out;
   }
 
@@ -1121,6 +1128,8 @@
   // must never fail silent.
   const SCOPE_LOTS_FALLBACK =
     "Showing {shown} of {total} lots in this window. Counts cover this window; Skips counts the whole book.";
+  const FOCUS_TRUNCATED_FALLBACK =
+    "Showing the earliest {shown} of {total} bars for lot {lot}. The focus view is cut at {max} bars.";
   function scopeNotice(payload, c) {
     const copy = c || {};
     const scope = (payload && payload.scope) || {};
@@ -1131,6 +1140,29 @@
       parts.push(fill(copy.scopeLots || SCOPE_LOTS_FALLBACK, { shown, total }));
     }
     if (payload && payload.truncated) parts.push(copy.truncated || "");
+    // The focus cut is whole-book, not windowed, so it gets its own
+    // sentence: without it the page would draw a prefix of the lot's
+    // history and call it the lot. Counts and a lot id are required —
+    // a truncated payload without them says nothing rather than a
+    // broken sentence. {lot} is filled last, so a lot id containing
+    // "{shown}" stays literal.
+    const focus = (payload && payload.focus) || {};
+    if (
+      focus.truncated &&
+      focus.lot &&
+      Number.isFinite(focus.bars_shown) &&
+      Number.isFinite(focus.bars_total) &&
+      Number.isFinite(focus.bars_max)
+    ) {
+      parts.push(
+        fill(copy.focusTruncated || FOCUS_TRUNCATED_FALLBACK, {
+          shown: focus.bars_shown,
+          total: focus.bars_total,
+          max: focus.bars_max,
+          lot: focus.lot,
+        }),
+      );
+    }
     return parts.filter(Boolean).join(" ");
   }
 
@@ -1195,13 +1227,29 @@
       Number.isFinite(scope.lots_shown) &&
       Number.isFinite(scope.lots_total) &&
       scope.lots_shown < scope.lots_total;
+    // The focus term warns exactly when a focus sentence will render:
+    // a truncated focus without counts or a lot id says nothing (see
+    // scopeNotice), so it must not take the warn style either —
+    // otherwise the page would show a warn stripe over an empty line,
+    // the same silent failure this increment exists to remove.
+    // (The older `truncated` term predates this rule: it warns whenever
+    // the bar limit cut, even if the copy key is missing and no
+    // sentence renders.)
+    const focus = (payload && payload.focus) || {};
+    const focusTruncated = Boolean(
+      focus.truncated &&
+        focus.lot &&
+        Number.isFinite(focus.bars_shown) &&
+        Number.isFinite(focus.bars_total) &&
+        Number.isFinite(focus.bars_max),
+    );
     return {
       message: scopeNotice(payload, c),
-      warn: Boolean(hidden || (payload && payload.truncated)),
+      warn: Boolean(hidden || (payload && payload.truncated) || focusTruncated),
     };
   }
 
-  window.ResiliTimeline = { mount, scopeNotice, whyHref, sourceLine, duration };
+  window.ResiliTimeline = { mount, scopeNotice, statusFor, whyHref, sourceLine, duration };
   const host = document.getElementById("timeline-app");
   if (host) mount(host);
 })();
