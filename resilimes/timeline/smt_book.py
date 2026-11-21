@@ -1,15 +1,24 @@
-"""Timeline book from one recorded SMT2020 run. Read-only."""
+"""Timeline book from one recorded SMT2020 run. Read-only.
+
+Book cache: at most ``_CACHE_MAX`` books are kept, least-recently-used
+first, mirroring ``resilimes.smt.replay.get_replay``. The default book
+(``"base"``) is never evicted: the Gantt page loads it on every visit,
+and a cold build costs ~3 minutes. Any other book evicted by the cap is
+rebuilt on its next request — same content, same key, just slow.
+"""
 
 from __future__ import annotations
 
 import threading
+from collections import OrderedDict
 
 from resilimes.smt.fab import Fab, load_fab
 from resilimes.smt.replay import WAFERS_PER_LOT, BookSpec, Replay, get_replay, known_spec
 from resilimes.timeline.model import Bar, Block, Book, LotInfo, Machine, worse_qtime
 
 _LOCK = threading.Lock()
-_CACHE: dict[str, Book] = {}
+_CACHE: OrderedDict[str, Book] = OrderedDict()
+_CACHE_MAX = 8
 
 
 def load_smt_book(
@@ -29,13 +38,28 @@ def load_smt_book(
         )
     with _LOCK:
         cached = _CACHE.get(spec.key)
+        if cached is not None:
+            _CACHE.move_to_end(spec.key)
     if cached is not None:
         return cached
     replay = get_replay(spec)
     built = book_from_replay(replay)
     with _LOCK:
         _CACHE[spec.key] = built
+        _CACHE.move_to_end(spec.key)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = next(iter(_CACHE))
+            if oldest == "base":
+                _CACHE.move_to_end(oldest)
+                oldest = next(iter(_CACHE))
+            _CACHE.pop(oldest)
     return built
+
+
+def cached(key: str) -> bool:
+    """Whether the book for ``key`` is in the cache (no build is triggered)."""
+    with _LOCK:
+        return key in _CACHE
 
 
 def book_from_replay(replay: Replay) -> Book:
