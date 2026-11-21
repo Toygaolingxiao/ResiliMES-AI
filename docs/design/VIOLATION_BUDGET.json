@@ -1,0 +1,42 @@
+{
+  "$schema_note": "Wave 0 style-violation budgets for #121. Counts only decrease; CI fails if a metric rises. Each converging PR must lower at least one budget it touches. Wave 5 target: all zero (or explicitly waived on #121).",
+  "version": 1,
+  "updated": "2026-11-22",
+  "issue": 121,
+  "wave": 0,
+  "metrics": {
+    "css_hex_outside_token_defs": {
+      "budget": 112,
+      "description": "Hex colour literals in *.css property values (lines that are not custom-property definitions)."
+    },
+    "css_rgba_outside_token_defs": {
+      "budget": 14,
+      "description": "rgba()/rgb() literals in *.css property values outside custom-property definitions."
+    },
+    "js_hex_literals": {
+      "budget": 74,
+      "description": "Hex colour literals in demo/static *.js (canvas palettes included until Wave 1c)."
+    },
+    "js_rgba_literals": {
+      "budget": 1,
+      "description": "rgba()/rgb() literals in demo/static *.js."
+    },
+    "spacing_outside_legacy_ladder": {
+      "budget": 173,
+      "description": "padding/margin/gap/inset px values outside {0,4,8,12,16}. Control/row ladder 24/32/40/48 is the Wave 0 decision; this metric still tracks legacy off-ladder noise until Wave 1 lint set expands."
+    },
+    "font_size_outside_text_tokens": {
+      "budget": 36,
+      "description": "font-size px values outside {12,13,14,16,28,32} (text-* ladder)."
+    },
+    "breakpoints_outside_baseline": {
+      "budget": 2,
+      "description": "width breakpoints outside {1500,1440,1320,1279,1023}. Known: fab 1200, timeline 720."
+    }
+  },
+  "notes": [
+    "Budgets measured 2026-11-22 on main after #123 (Wave H).",
+    "Allowed spacing set will expand to include control heights 24/32/40/48 when Wave 1 lint lands; until then off-ladder count stays the ratchet signal.",
+    "Chart/data colours remain in scope for counting until registered in tokens.json chart palette (Wave 1)."
+  ]
+}
