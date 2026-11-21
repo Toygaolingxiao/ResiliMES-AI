@@ -130,9 +130,11 @@ worse than an empty one, because the ledger will quote it as evidence.
 - **No registry fingerprint.** Binding a ledger to the exact registry
   contents it was checked against (a hash of the registry, as named in
   `docs/CLAIM_LEDGER.md`) is a later increment.
-- **No claim/v1.** The ledger reads `sources()` and keeps every label.
-  The `claim/v0` field set is unchanged. A registry with no provenance
-  still produces the previous caller-wide `sources` tuple.
+- **No claim version change in that increment.** The ledger reads
+  `sources()` and keeps every label. The claim field set was unchanged,
+  and a registry with no provenance still produces the previous
+  caller-wide `sources` tuple. (The ledger later moved to claim/v1 for
+  an extraction-rule change; its field set is still unchanged.)
 - **No verification of labels.** A label is a claim about origin, not
   proof of it. The ledger quotes labels as "reported source", never as
   a verified fact.
