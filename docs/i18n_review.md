@@ -779,8 +779,10 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `report.lead` | Read-only. One lot or case. Each sentence shows its tier and its sources. The content_hash can be checked again later. | 只读。一次看一个批次或案例。每句话标出依据层级和来源。content_hash 可以事后再核对。 | 読み取り専用です。ロットまたはケースを1件ずつ示します。各文に根拠の層と出典を付けます。content_hash で後から照合できます。 |
 | `report.lot` | Lot | 批次 | ロット |
 | `report.seed` | Seed | 种子 | シード |
+| `report.seedRange` | Seed must be a whole number between {min} and {max}. | 种子必须是 {min} 到 {max} 之间的整数。 | シードは{min}以上{max}以下の整数で入力してください。 |
 | `report.horizon` | Run length | 运行时长 | 対象時間 |
 | `report.horizonUnit` | h | 小时 | 時間 |
+| `report.horizonRange` | Run length must be greater than 0 and at most {max}. | 运行时长必须大于 0 且不超过 {max}。 | 対象時間は0より大きく{max}以下で入力してください。 |
 | `report.show` | Show | 显示 | 表示 |
 | `report.print` | Print | 打印 | 印刷 |
 | `report.loading` | Loading… | 读取中… | 読み込み中… |
@@ -804,6 +806,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `report.sources` | Sources | 来源 | 出典 |
 | `report.missing` | Missing | 缺少 | 不足 |
 | `report.none` | None | 无 | なし |
+| `report.notUpdated` | Not updated — fix the highlighted field first. | 未更新——请先修正标出的字段。 | 更新していません。ハイライトされた項目を直してください。 |
 | `report.run` | Run | 运行 | ラン |
 | `report.subject` | Subject | 对象 | 対象 |
 | `report.kinds.lot` | Lot | 批次 | ロット |
