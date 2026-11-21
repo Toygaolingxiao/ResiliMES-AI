@@ -19,4 +19,6 @@ def test_recent_lots_only_after_successful_fetch() -> None:
     assert "S.recentLots" not in open_lot
     assert "goto(" in open_lot
     assert "S.recentLots = S.recentLots.filter((x) => x !== S.lot)" in text
-    assert "S.recentLots = [lot.lot, ...S.recentLots.filter((x) => x !== lot.lot)].slice(0, 8)" in text
+    assert (
+        "S.recentLots = [lot.lot, ...S.recentLots.filter((x) => x !== lot.lot)].slice(0, 8)" in text
+    )
