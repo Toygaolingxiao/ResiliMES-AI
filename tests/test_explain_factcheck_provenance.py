@@ -2,8 +2,8 @@
 
 Provenance is metadata layered on the fact-check gate: it records, per
 registered value, the caller-supplied source label it came from. It must
-never change what the gate accepts. The claim ledger reads this map to
-attribute each claim to its evidence row.
+never change what the gate accepts. The claim ledger (claim/v0) will later
+read this map to attribute each claim to its evidence row.
 """
 
 from __future__ import annotations

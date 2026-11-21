@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import subprocess
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -25,6 +23,7 @@ from resilimes.timeline.model import (
     product_rows,
     window_payload,
 )
+from resilimes.timeline.sample_book import load_sample_book
 
 
 def _bar(
@@ -206,26 +205,6 @@ def test_scope_and_stats_follow_the_display_window() -> None:
     assert empty_view["view"] == {"t0": 150, "t1": 200}
 
 
-def test_stats_fields_count_what_they_say() -> None:
-    """M6: total_jobs counts bars (operation segments), total_operations
-    counts distinct step kinds, total_moves sums wafer quantities —
-    a bar carrying qty=75 (as a batched bar does) counts 75, not one move."""
-    book = _book(
-        _bar("LOT-1", "LITHO-01", 0, 20, step="LITHO"),
-        _bar("LOT-1", "ETCH-01", 23, 40, group="Etch", step="ETCH"),
-        replace(_bar("LOT-2", "LITHO-01", 30, 50, step="LITHO"), qty=75),
-    )
-    payload = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10))
-    stats = payload["stats"]
-    assert isinstance(stats, dict)
-    assert stats["total_jobs"] == 3  # bars, not lots and not jobs
-    assert stats["total_operations"] == 2  # LITHO + ETCH, not 3 executions
-    assert stats["total_moves"] == 125  # 25 + 25 + 75 wafer-steps
-    assert stats["total_lots"] == 2
-    assert stats["total_equipment"] == 2
-    assert payload["daily"][0]["jobs"] == 3  # type: ignore[index]
-
-
 def test_gaps_skip_split_sequences() -> None:
     """An also-split sequence must not fabricate a waiting gap: LOT-1's
     bars B and D survive only because they share a bar with LOT-9, while
@@ -298,6 +277,28 @@ def test_lots_zero_disables_the_cap() -> None:
     assert payload["scope"]["lots_shown"] == 3  # type: ignore[index]
 
 
+def test_payload_carries_source_seed_and_horizon() -> None:
+    """M2: the source line renders from the payload, so the payload must
+    carry the three fields the page needs — no API change, just pinned."""
+    book = _book(_bar("LOT-1", "LITHO-01", 0, 20))
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200))
+    assert payload["source"] == "sample"
+    assert payload["seed"] == 1
+    assert payload["horizon_h"] == 24.0
+
+
+def test_real_sample_book_values_are_not_run_parameters() -> None:
+    """M2: the real sample book's seed/horizon are not run parameters —
+    seed is a hardcoded 1, horizon_h the last bar end — so the page
+    renders the short form for sample. Pins the payload facts the
+    short-form rule relies on (measured this run)."""
+    book = load_sample_book(Settings())
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200))
+    assert payload["source"] == "sample"
+    assert payload["seed"] == 1
+    assert payload["horizon_h"] == 6.98  # last bar end, not a run horizon
+
+
 def test_scope_lots_placeholders_match_in_all_languages() -> None:
     """The notice fills {shown}/{total}; a translation that dropped one
     would render 'Showing  of  lots' with no failure anywhere else."""
@@ -307,6 +308,10 @@ def test_scope_lots_placeholders_match_in_all_languages() -> None:
     for lang in ("en", "zh", "ja"):
         text = catalog[lang]["timeline"]["scopeLots"]
         assert "{shown}" in text and "{total}" in text, lang
+        line = catalog[lang]["timeline"]["sourceLine"]
+        assert "{source}" in line and "{seed}" in line and "{horizon}" in line, lang
+        short = catalog[lang]["timeline"]["sourceLineShort"]
+        assert "{source}" in short, lang
 
 
 def test_states_gaps_qtime_and_the_lot_cap() -> None:
@@ -478,54 +483,140 @@ console.log(JSON.stringify({ failures }));
 """
 
 
-def test_stats_card_labels_name_the_measured_unit() -> None:
-    """M6/H2: the stat cards must read what the numbers count — Segments
-    (bars) and Wafer-steps (summed qty over bars), not Jobs and Moves — in
-    all three languages. Keys are unchanged, so this increment adds no new
-    fallback churn; the page's raw-key fallback itself is a known
-    divergence from the cases-page rule, recorded in TIMELINE_SCOPE.md."""
-    i18n = json.loads(
-        (ROOT / "resilimes" / "demo" / "static" / "i18n.json").read_text(encoding="utf-8")
-    )
-    expected = {
-        "en": {"jobs": "Segments", "moves": "Wafer-steps"},
-        "ja": {"jobs": "工程段数", "moves": "ウェーハステップ数"},
-        "zh": {"jobs": "工序段数", "moves": "晶圆步数"},
-    }
-    for lang, labels in expected.items():
-        timeline = i18n[lang]["timeline"]
-        for key, value in labels.items():
-            assert timeline[key] == value, (lang, key, timeline[key])
-    # The neighbouring labels are untouched by this increment.
-    assert i18n["en"]["timeline"]["operations"] == "Steps"
-    assert i18n["en"]["timeline"]["machines"] == "Tools"
-    assert i18n["en"]["timeline"]["lots"] == "Lots"
-    # Wiring guard: every key paintStats() looks up in timeline.js must
-    # exist in all three languages, so a renamed key cannot silently fall
-    # back to the raw key on the page (timeline.js `c[key] || key`).
-    js = (
-        ROOT / "resilimes" / "demo" / "static" / "product" / "timeline" / "timeline.js"
-    ).read_text(encoding="utf-8")
-    card_keys = set(re.findall(r'\["(\w+)",\s*\(?stats\.', js))
-    assert card_keys == {
-        "jobs",
-        "machines",
-        "lots",
-        "operations",
-        "moves",
-        "skips",
-        "lateLots",
-        "qtime",
-    }, card_keys
-    for lang in ("en", "ja", "zh"):
-        missing = card_keys - set(i18n[lang]["timeline"])
-        assert not missing, (lang, missing)
-
-
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
 def test_timeline_scope_notice_parity(tmp_path: Path) -> None:
     driver = tmp_path / "timeline_scope_driver.cjs"
     driver.write_text(SCOPE_DRIVER, encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(driver), str(TIMELINE_JS)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report["failures"] == []
+
+
+# sourceLine is pure over (payload, copy); same driver pattern as
+# scopeNotice: load timeline.js in a vm with a stub document and call
+# the function ResiliTimeline exposes.
+SOURCE_DRIVER = r"""
+const fs = require("fs");
+const vm = require("vm");
+const src = fs.readFileSync(process.argv[2], "utf-8");
+const sandbox = {
+  window: {},
+  document: { getElementById: () => null },
+  console,
+};
+vm.createContext(sandbox);
+vm.runInContext(src, sandbox);
+const sourceLine = sandbox.window.ResiliTimeline.sourceLine;
+const failures = [];
+function check(name, cond, extra) {
+  if (!cond) failures.push(extra === undefined ? name : `${name}: ${JSON.stringify(extra)}`);
+}
+const copy = {
+  sourceLine: "Data: {source} · seed {seed} · {horizon} h",
+  sourceLineShort: "Data: {source}",
+  sourceSmt2020: "SMT2020 benchmark",
+  sourceSample: "Sample fab",
+};
+const smt = { source: "smt2020", seed: 1, horizon_h: 48 };
+check("smt2020 names the benchmark",
+  sourceLine(smt, copy) === "Data: SMT2020 benchmark · seed 1 · 48 h",
+  sourceLine(smt, copy));
+const sample = { source: "sample", seed: 1, horizon_h: 24 };
+const jaCopy = {
+  sourceLine: "データ: {source} · シード {seed} · {horizon} 時間",
+  sourceLineShort: "データ: {source}",
+  sourceSmt2020: "SMT2020 ベンチマーク",
+  sourceSample: "サンプル工場",
+};
+// Sample has no seed and no run horizon: always the short form, in
+// every language — never "seed 1 · 24 h" for a run that never happened.
+check("sample renders the short form in Japanese",
+  sourceLine(sample, jaCopy) === "データ: サンプル工場",
+  sourceLine(sample, jaCopy));
+check("sample renders the short form in English",
+  sourceLine(sample, copy) === "Data: Sample fab",
+  sourceLine(sample, copy));
+// "\uFF1A" below is the fullwidth colon in the real catalog values.
+const zhCopy = {
+  sourceLine: "数据\uFF1A{source} · 种子 {seed} · {horizon} 小时",
+  sourceLineShort: "数据\uFF1A{source}",
+  sourceSmt2020: "SMT2020 基准",
+  sourceSample: "示例工厂",
+};
+check("smt2020 renders in Chinese",
+  sourceLine(smt, zhCopy) === "数据\uFF1ASMT2020 基准 · 种子 1 · 48 小时",
+  sourceLine(smt, zhCopy));
+const other = { source: "zetaris", seed: 2, horizon_h: 72 };
+check("unknown source is shown verbatim, never dropped",
+  sourceLine(other, copy) === "Data: zetaris · seed 2 · 72 h",
+  sourceLine(other, copy));
+const braced = { source: "{seed}", seed: 1, horizon_h: 48 };
+check("a source containing {seed} stays verbatim",
+  sourceLine(braced, copy) === "Data: {seed} · seed 1 · 48 h",
+  sourceLine(braced, copy));
+const bracedHorizon = { source: "{horizon}", seed: 1, horizon_h: 48 };
+check("a source containing {horizon} stays verbatim",
+  sourceLine(bracedHorizon, copy) === "Data: {horizon} · seed 1 · 48 h",
+  sourceLine(bracedHorizon, copy));
+const noSeed = { source: "smt2020", horizon_h: 48 };
+check("missing seed falls back to the short form",
+  sourceLine(noSeed, copy) === "Data: SMT2020 benchmark",
+  sourceLine(noSeed, copy));
+const noHorizon = { source: "smt2020", seed: 1 };
+check("missing horizon falls back to the short form",
+  sourceLine(noHorizon, copy) === "Data: SMT2020 benchmark",
+  sourceLine(noHorizon, copy));
+const stringSeed = { source: "smt2020", seed: "1", horizon_h: 48 };
+check("string seed falls back to the short form",
+  sourceLine(stringSeed, copy) === "Data: SMT2020 benchmark",
+  sourceLine(stringSeed, copy));
+const nanSeed = { source: "smt2020", seed: NaN, horizon_h: 48 };
+check("NaN seed falls back to the short form",
+  sourceLine(nanSeed, copy) === "Data: SMT2020 benchmark",
+  sourceLine(nanSeed, copy));
+const fractionalSeed = { source: "smt2020", seed: 1.5, horizon_h: 48 };
+check("fractional seed falls back to the short form",
+  sourceLine(fractionalSeed, copy) === "Data: SMT2020 benchmark",
+  sourceLine(fractionalSeed, copy));
+const zeroHorizon = { source: "smt2020", seed: 1, horizon_h: 0 };
+check("zero horizon falls back to the short form",
+  sourceLine(zeroHorizon, copy) === "Data: SMT2020 benchmark",
+  sourceLine(zeroHorizon, copy));
+const infiniteHorizon = { source: "smt2020", seed: 1, horizon_h: Infinity };
+check("infinite horizon falls back to the short form",
+  sourceLine(infiniteHorizon, copy) === "Data: SMT2020 benchmark",
+  sourceLine(infiniteHorizon, copy));
+check("missing source shows nothing", sourceLine({}, copy) === "");
+check("blank source shows nothing",
+  sourceLine({ source: "   ", seed: 1, horizon_h: 48 }, copy) === "");
+check("non-string source shows nothing",
+  sourceLine({ source: 7, seed: 1, horizon_h: 48 }, copy) === "");
+check("null payload shows nothing", sourceLine(null, copy) === "");
+check("undefined payload shows nothing", sourceLine(undefined, copy) === "");
+check("missing copy key falls back to English, never silent",
+  sourceLine(smt, {}) === "Data: SMT2020 benchmark · seed 1 · 48 h",
+  sourceLine(smt, {}));
+check("partial copy falls back to the English source name",
+  sourceLine(smt, { sourceLine: copy.sourceLine, sourceLineShort: copy.sourceLineShort }) === "Data: SMT2020 benchmark · seed 1 · 48 h",
+  sourceLine(smt, { sourceLine: copy.sourceLine, sourceLineShort: copy.sourceLineShort }));
+check("null copy falls back to English",
+  sourceLine(smt, null) === "Data: SMT2020 benchmark · seed 1 · 48 h",
+  sourceLine(smt, null));
+console.log(JSON.stringify({ failures }));
+"""
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_timeline_source_line_parity(tmp_path: Path) -> None:
+    driver = tmp_path / "timeline_source_driver.cjs"
+    driver.write_text(SOURCE_DRIVER, encoding="utf-8")
     result = subprocess.run(
         ["node", str(driver), str(TIMELINE_JS)],
         capture_output=True,

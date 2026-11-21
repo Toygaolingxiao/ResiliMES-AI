@@ -38,7 +38,7 @@ def _registry() -> FactRegistry:
 
 
 def test_version_and_fields_are_pinned():
-    assert LEDGER_VERSION == "claim/v1"
+    assert LEDGER_VERSION == "claim/v0"
     assert KINDS == ("number", "id")
     assert RESULTS == ("passed", "failed", "unchecked")
     assert set(ClaimLedger.model_fields) == {

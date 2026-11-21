@@ -1,30 +1,26 @@
 """Every id and number an AI text quotes must come from evidence it was given.
 
-Extraction lives in ``common.textfacts`` and is shared with the claim
-ledger: separator tokens with a letter and a digit are ids (the SMT2020
-shapes ``Init_Lot_3_17`` and ``Diffusion_FE_120``, mixed separators such
-as ``FE-120_A``, digit-leading shapes such as ``3M_Lot_9``), and numbers
-may carry comma grouping (``1,000``). Small counting words (0-10) are
-allowed because "two causes" and "step 1" are prose, not data.
+Reuses ``common.textfacts.narrative_mismatches`` (hyphenated ids, numbers) and adds
+the SMT2020 id shape, which uses underscores (``Init_Lot_3_17``,
+``Diffusion_FE_120``): any underscore token with a digit must be a known id.
+Small counting words (0-10) are allowed because "two causes" and "step 1"
+are prose, not data.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import unicodedata
 from collections.abc import Iterable
 from typing import Any
 
-from resilimes.common.textfacts import (
-    _HAS_DIGIT,
-    _HAS_LETTER,
-    _ID_TOKEN,
-    _NUMBER,
-    _norm,
-    _numbers,
-    narrative_mismatches,
-)
+from resilimes.common.textfacts import _norm, _numbers, narrative_mismatches
 
+_UNDERSCORE_ID = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+\b")
+_HYPHEN_ID = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+\b")
+_NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")  # mirrors common.textfacts._NUMBER
+_HAS_DIGIT = re.compile(r"\d")
 ALWAYS_OK_NUMBERS = frozenset(str(n) for n in range(11))
 _MAX_SOURCE_LEN = 200
 
@@ -88,17 +84,15 @@ class FactRegistry:
     def add_text(self, text: str, *, source: str | None = None) -> None:
         label = _clean_source(source)
         numbers = _numbers(text)
-        # Registration takes every separator token that contains a letter:
-        # the legacy letter-leading shapes plus digit-leading and
-        # mixed-separator ids. Pure-numeric tokens (dates, ranges) are not
-        # ids and are never registered as one.
-        id_matches = [m for m in _ID_TOKEN.finditer(text) if _HAS_LETTER.search(m.group())]
-        id_spans = [(m.start(), m.end()) for m in id_matches]
-        ids = {m.group().upper() for m in id_matches}
+        underscore_spans = [(m.start(), m.end()) for m in _UNDERSCORE_ID.finditer(text)]
+        hyphen_spans = [(m.start(), m.end()) for m in _HYPHEN_ID.finditer(text)]
+        underscore_ids = {text[start:end].upper() for start, end in underscore_spans}
+        hyphen_ids = {text[start:end].upper() for start, end in hyphen_spans}
         self.numbers |= numbers
-        self.ids |= ids
+        self.ids |= underscore_ids | hyphen_ids
         if label is not None:
-            for match in _NUMBER.finditer(text):
+            id_spans = underscore_spans + hyphen_spans
+            for match in _NUMBER_RE.finditer(text):
                 # Digits inside an id token ("3"/"17" in "Init_Lot_3_17")
                 # are registered as numbers by the gate, but they are not
                 # standalone data: a later claim quoting "3" must not cite
@@ -106,7 +100,7 @@ class FactRegistry:
                 if any(start <= match.start() and match.end() <= end for start, end in id_spans):
                     continue
                 self._record("number", _norm(match.group()), label)
-            for value in ids:
+            for value in underscore_ids | hyphen_ids:
                 self._record("id", value, label)
 
     def add(self, payload: Any, *, source: str | None = None) -> None:
@@ -174,11 +168,19 @@ def check(text: str, registry: FactRegistry) -> list[str]:
     """Unknown ids and numbers in ``text``. Empty list means it passes."""
     facts = registry.facts()
     # Hyphenated words without a digit ("tool-hours", "re-run") are prose, not ids.
-    return [
+    misses = [
         item
         for item in narrative_mismatches(text, facts)
         if not item.startswith("unknown id ") or _HAS_DIGIT.search(item[len("unknown id ") :])
     ]
+    seen = {item.split(" ", 2)[-1].upper() for item in misses}
+    for token in _UNDERSCORE_ID.findall(text):
+        upper = token.upper()
+        if not _HAS_DIGIT.search(token) or upper in facts["ids"] or upper in seen:
+            continue
+        seen.add(upper)
+        misses.append(f"unknown id {token}")
+    return misses
 
 
 def number_known(value: str, registry: FactRegistry) -> bool:

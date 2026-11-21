@@ -288,34 +288,6 @@ def product_rows(lots: list[LotInfo]) -> list[dict[str, object]]:
 
 
 def _stats(bars: list[Bar], book: Book, narrowed: bool) -> dict[str, object]:
-    """Stats over the display-window bar set (before lot cap and bar limit).
-
-    Each field counts what its card label says; the field names are
-    historical (timeline/v1) and do not always match — the card labels
-    in i18n.json name the measured unit:
-
-    - ``total_jobs``: bars in the window. One bar is one lot's one step on
-      one machine, i.e. an operation segment — not a job in the lot sense.
-      The field name is historical (timeline/v1); the label reads Segments.
-    - ``total_equipment``: distinct machines with at least one bar.
-    - ``total_lots``: distinct ``bar.lot`` values with at least one bar.
-      ``also`` members sharing a bar are not counted.
-    - ``total_operations``: distinct ``bar.step`` values — step kinds, not
-      step executions. The label reads Steps. Step values are assumed to
-      be normalized family names; distinct strings count as distinct steps.
-    - ``total_moves``: sum of ``bar.qty`` over the bars. ``qty`` is wafers
-      (25 per lot per step in SMT2020; a batched bar carries 25 per lot in
-      the batch), so this is wafer-steps, not moves and not distinct
-      wafers: one lot is counted once per step it runs. A batched bar's
-      ``qty`` includes the wafers of its ``also`` lots, which are not
-      counted in Lots. The label reads Wafer-steps. The stats assume
-      ``qty >= 0``; no validation is applied (real books carry 25
-      wafers per lot per step).
-    - ``skip_count``: whole-book replay skips (0 when narrowed); not a
-      window stat.
-    - ``late_lots`` / ``qtime_breach`` / ``qtime_risk``: distinct late lots
-      and bars flagged breach/risk, over the same window bar set.
-    """
     steps = {bar.step for bar in bars}
     return {
         "total_jobs": len(bars),

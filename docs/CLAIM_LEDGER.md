@@ -1,4 +1,4 @@
-# Claim ledger (claim/v1)
+# Claim ledger (claim/v0)
 
 The fact-check gate (`resilimes/explain/factcheck.py`) rejects an explanation
 whose numbers or ids are not in the evidence. The claim ledger is what the
@@ -41,8 +41,7 @@ contained at check time (see Limits).
     construction). A naive value, a date-only value, or a non-UTC offset
     is rejected; `Z` and `+00:00` are accepted.
   - `reason`: why unchecked, or the gate's miss text on a failure.
-- `ClaimLedger`: `ledger_version` (`claim/v1`, `Literal["claim/v0",
-  "claim/v1"]`; `claim/v0` ledgers still load and verify),
+- `ClaimLedger`: `ledger_version` (`claim/v0`, locked with `Literal`),
   `subject` (e.g. the lot id), `source` (what produced the text, e.g.
   `explainer`), `claims`, `content_hash` (`sha256:<hex>` over the canonical
   JSON without the hash and without `checked_at`, same pattern as Evidence
@@ -71,9 +70,7 @@ contained at check time (see Limits).
 
 Extraction follows the gate's own rule for what counts as a claim: an
 id-shaped token only counts when it carries a digit (`Diffusion_FE_120`,
-`Lot-1`, `3M_Lot_9`, `FE-120_A` count; `tool-hours`, `re-run` are prose
-and are not recorded). Numbers may carry comma grouping: `1,000` is one
-claim for the number 1000.
+`Lot-1` count; `tool-hours`, `re-run` are prose and are not recorded).
 Counting words 0–10 are always allowed by the gate and are recorded as
 passed when they appear as digits. Numbers are taken exactly as the gate
 sees them, including digits inside an id: `Lot-1` also quotes the number 1,
@@ -90,7 +87,7 @@ for a rate without accounting for that.
 - `summary()`: counts only (`total` / `passed` / `failed` / `unchecked`).
   Rates belong to the quality module (`explain.quality`), not the ledger.
 
-## Limits (declared, not hidden)
+## Limits of v0 (declared, not hidden)
 
 - `sources` are reported labels, not row proofs and not a verified
   fact. Multi-source values keep every label. Digits that only occur
@@ -98,8 +95,8 @@ for a rate without accounting for that.
   number source for them. Counting words 0–10 are not dropped: if a
   payload registered one, that label is quoted. A registry with no
   provenance still puts the caller-wide `sources` tuple on every claim,
-  so those ledgers keep the same hash. (That increment left the field
-  set unchanged and stayed within the then-current version.)
+  so those ledgers keep the same hash. The field set is unchanged, so
+  this stays `claim/v0`.
 - The ledger records what was quoted and whether it checked out. It does not
   record which run produced the explanation (no seed / horizon / policy /
   label), which provider or model said it, when the explanation was
@@ -117,34 +114,16 @@ for a rate without accounting for that.
   read it yet.
 - Shared blind spots with the gate (the ledger follows the gate's rules, so
   it shares them): sentence splitting protects only `e.g.` / `i.e.` /
-  `etc.` / `Fig.` / `vs.`. The extraction blind spots recorded here in v0 —
-  a thousands separator splitting a number (`1,200` becoming claims for
-  `1` and `200`, `000` recorded as failed), and ids that start with a
-  digit (`3M_Lot_9`) or mix hyphen and underscore (`Diffusion_FE-120`,
-  `Lot-1_FE_2`) being invisible to both gate and ledger — were closed in
-  claim/v1: for the gate and the ledger, extraction now lives only in
-  `common.textfacts` and both sides read it there (contract tests:
-  `tests/test_explain_factcheck_extraction.py`). "Only" is scoped to the
-  gate and the ledger: `agents/review_panel._numbers` still extracts
-  numbers with its own regex, so a grouped number can pass the gate and
-  fail the review panel, or the reverse; converging it is a follow-up.
-- Post-merge fix to the v1 extraction (2026-11-20, `claim/v1` unchanged):
-  the merged v1 code still misread two shapes, and the fix aligns the code
-  with the v1 contract the PR text and this document already state, so no
-  version bump. A registered mixed-separator id whose tail is a hyphen id
-  (`3M-FE-120`, `FE_120-AB-34`) was failed by the gate while the ledger
-  passed it; a grouped number with one trailing digit (`1,0005`,
-  `1,0000`) was silently accepted as the grouped number plus a counting
-  word. Both are fixed in `common.textfacts` (tail suppression, right
-  anchor on the grouped branch) and pinned by contract tests. Ledgers
-  built from the merged v1 code before this fix may record a
-  `1,0005`-class number as passed; `verify()` checks self-consistency
-  only and does not re-extract, so such a ledger still verifies.
-- Short-group numbers are still read piecewise, not rejected: `1,00`
-  becomes claims for `1` and `00`, and `1,234,56` becomes `1,234` and
-  `56`. Explicitly rejecting malformed short groups is a follow-up
-  decision, not part of the 2026-11-20 fix; the current behaviour is
-  pinned by a contract test so it cannot change silently.
+  `etc.` / `Fig.` / `vs.`; a thousands separator splits a number (`1,200`
+  becomes claims for `1` and `200`, and `000` can be recorded as failed
+  even when `1,000` was correctly quoted); an id that starts with a digit
+  (`3M_Lot_9`) or mixes hyphen and underscore (`Diffusion_FE-120`,
+  `Lot-1_FE_2`) is invisible to both the gate and the ledger — a forged id
+  of those shapes is not recorded at all, which the ledger must not be read
+  as "passed". These are gate-level gaps in `common/textfacts.py` and
+  `explain/factcheck.py`; fixing the extraction patterns is a separate
+  proposal, not part of this increment, because it changes what the gate
+  itself accepts.
 - `content_hash` covers what was claimed and the verdicts, not `checked_at`
   (so the same text and registry always build the same hash). It is a
   self-consistency check, not a signature: anyone who can rewrite the ledger
@@ -152,7 +131,5 @@ for a rate without accounting for that.
 
 ## Version rule
 
-`claim/v1`. Changing a field, a result value or the extraction rule is a new
-version, not an edit. v1 changed only the extraction rule (see Limits);
-`claim/v0` ledgers still load and verify. Contract tests:
-`tests/test_explain_claims.py`, `tests/test_explain_factcheck_extraction.py`.
+`claim/v0`. Changing a field, a result value or the extraction rule is a new
+version, not an edit. Contract tests: `tests/test_explain_claims.py`.

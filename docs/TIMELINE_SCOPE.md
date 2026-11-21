@@ -62,35 +62,10 @@ bar-limit sentence (`timeline.truncated`) is appended when `truncated` is
 true. The lots sentence appears whenever `lots_shown < lots_total`,
 whatever cut the lots — lot cap or bar limit.
 
-Consequence, stated plainly: the Segments card can be larger than the number
+Consequence, stated plainly: the Jobs card can be larger than the number
 of bars drawn. That is the intended semantic — cards = display window,
 canvas = drawn subset — and the status line is what makes the two numbers
 reconcilable on screen.
-
-## Stats semantics
-
-One bar is one lot's one step on one machine. Every `stats` field counts
-bars, lots, machines, steps or wafers over the display-window bar set —
-except `skip_count` (whole book, see below):
-
-| Field | Card label | Counts |
-| --- | --- | --- |
-| `stats.total_jobs` | Segments / 工程段数 / 工序段数 | Bars in the display window. The field name is historical (timeline/v1); the card no longer reads "Jobs", because a bar is an operation segment, not a job in the lot sense. Renaming the field is a contract change proposed for a follow-up, not done here. |
-| `stats.total_equipment` | Tools / 装置数 / 装置数 | Distinct machines with at least one bar in the window. |
-| `stats.total_lots` | Lots / ロット数 / 批次数 | Distinct `bar.lot` values with at least one bar in the window. `also` members sharing a bar are **not** counted here (see Lot-count nuance): 19 lots in the SMT2020 book appear only via `also`. |
-| `stats.total_operations` | Steps / 工程数 / 工序数 | Distinct `bar.step` values — step kinds, not step executions. Two lots running the same step add one to this count. |
-| `stats.total_moves` | Wafer-steps / ウェーハステップ数 / 晶圆步数 | Sum of `bar.qty` over the bars. `qty` is wafers (25 per lot per step in SMT2020; a batched bar carries 25 per lot in the batch), so this is wafer-steps: one lot is counted once per step it runs, and a reworked step counts again on its second execution. It is neither a move count nor a count of distinct wafers in the window. A batched bar's `qty` includes the wafers of its `also` lots, which are not counted in Lots — so the Wafer-steps and Lots cards count different lot sets on shared bars. |
-| `stats.late_lots` | Late / 納期遅れ / 迟到 | Distinct late lots with at least one bar in the window. |
-| `stats.qtime_breach` / `stats.qtime_risk` | Q-time / Qタイム / 排队时限 | Bars flagged breach / risk in the window. |
-| `daily[].jobs` | (no label; day buttons show the count) | Bars overlapping the fetch window, bucketed by start day. A bar counts toward the day its `start_min` falls on, even when that start is outside the fetch window. The field name is the same historical "jobs"; it counts bars, like `total_jobs`. |
-
-Known divergence, out of scope for this increment: when a timeline
-label key is missing, the page shows the raw key (`timeline.js`
-`c[key] || key`), and a missing language falls back to Japanese —
-unlike the cases page rule (a missing key falls back to the English
-label, never the raw key). No key is missing today (all three
-languages carry the same 77 keys); this is recorded here so the
-inconsistency is not mistaken for intent.
 
 Two fields are NOT display-window counts:
 
@@ -104,6 +79,48 @@ Two fields are NOT display-window counts:
 - `daily` counts bars by start day over the **fetch** window, not the
   display window: it is a navigation aid across the loaded range, and its
   day buttons set the display span.
+
+## Data source
+
+Every payload already carried `source`, `seed` and `horizon_h`
+(`window_payload`, top-level fields); the page never showed them, so
+the SMT2020 benchmark and the sample fab were indistinguishable on
+screen. The page now renders a source line (`.tl-source`,
+`timeline.sourceLine`) from those three fields — no API change:
+
+- `smt2020` → "SMT2020 benchmark" (`timeline.sourceSmt2020`),
+  `sample` → "Sample fab" (`timeline.sourceSample`), in all three
+  languages. Any other `source` value is shown verbatim — never
+  dropped, never invented (the renderer fills `{seed}`/`{horizon}`
+  before `{source}`, so a source containing "{seed}" stays literal).
+  Matching is exact and case-sensitive; `"SMT2020"` is not mapped.
+- `sample` always takes the short form (`timeline.sourceLineShort`,
+  source only). The sample book has no random seed (`seed=1` is a
+  hardcoded constant) and its `horizon_h` is the last bar end
+  (6.98 h on the real sample book), not a run horizon — printing
+  "seed 1 · 6.98 h" would read as a seeded simulation run that never
+  happened.
+- Otherwise the full form prints only when the seed is a positive
+  integer and the horizon is a finite number above zero; any other
+  value takes the short form. If `source` itself is missing, not a
+  string, or blank, no line is shown.
+- `{horizon}` is the whole-book horizon (48 h for SMT2020), not the
+  span of the window currently on screen (12 h by default).
+- The line shows the book actually loaded, never the request
+  parameters: in sample mode the API ignores the `book`/`seed`/
+  `horizon_h` query parameters (see M5 below), so a requested seed
+  that was silently dropped is never printed as if it applied.
+- The line is separate from the warn status line (`.tl-status`): it is
+  factual, shown whenever a payload is loaded, re-rendered on
+  language switch, and never takes the warn style. A missing catalog
+  key falls back to English, never to silence.
+- A failed load clears the line, so no source is asserted under the
+  error. Residual: the failed load keeps the previous payload, so a
+  language switch afterwards re-renders the old source line from it
+  (and the old chart) — the same pre-existing stale-payload behaviour
+  as the rest of the page, not something this increment introduces.
+
+Still open: CSV / PNG export carries no source note (see above).
 
 ## Verified numbers: correcting the PR #101 smoke sentence
 
@@ -197,9 +214,3 @@ set). Direct model use with `lots<=0` disables the cap (the API forbids
    `payload.view` names the display range.
 5. Given a lot whose middle bar was dropped by the cap, when gaps are
    computed, then no gap is reported across the dropped bar's interval.
-6. Given a synthetic window of 3 bars across 2 step kinds with wafer
-   quantities 25, 25 and 75, when the payload is built, then
-   `stats.total_jobs == 3`, `stats.total_operations == 2` and
-   `stats.total_moves == 125`; and in all three languages the stats
-   cards read Segments / 工程段数 / 工序段数 for `total_jobs` and
-   Wafer-steps / ウェーハステップ数 / 晶圆步数 for `total_moves`.

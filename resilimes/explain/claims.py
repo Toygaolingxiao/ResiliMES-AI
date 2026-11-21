@@ -1,4 +1,4 @@
-"""Claim ledger: every number and id the fact-check gate recognises, on the record.
+"""Claim ledger v0: every number and id the fact-check gate recognises, on the record.
 
 The fact-check gate (``explain.factcheck.check``) already rejects an
 explanation whose numbers or ids are not in the evidence. What it does not
@@ -39,12 +39,8 @@ Known limits of v0 (not hidden, just not built yet):
   ``Explanation`` after the fact. Nothing in ``explain()`` writes to a ledger
   yet; wiring it into the explainer flow is a separate, later decision.
 
-Version rule: ``claim/v1``. Changing a field, a result value or the
-extraction rule is a new version, not an edit. v1 changed only the
-extraction rule, by moving it into ``common.textfacts`` where the gate
-also reads it: digit-leading ids (``3M_Lot_9``), mixed-separator ids
-(``FE-120_A``) and comma-grouped numbers (``1,000``) are now recognised.
-``claim/v0`` ledgers still load and verify; new ledgers are stamped v1.
+Version rule: ``claim/v0``. Changing a field, a result value or the
+extraction rule is a new version, not an edit.
 """
 
 from __future__ import annotations
@@ -56,14 +52,14 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from resilimes.common.textfacts import _NUMBER, _norm, id_tokens
+from resilimes.common.textfacts import _norm
 from resilimes.explain.factcheck import FactRegistry, check
 from resilimes.explain.schema import canonical_json
 
 if TYPE_CHECKING:  # typing only; the ledger never calls the explainer.
     from resilimes.explain.explainer import Explanation
 
-LEDGER_VERSION: Literal["claim/v1"] = "claim/v1"
+LEDGER_VERSION: Literal["claim/v0"] = "claim/v0"
 
 KINDS: tuple[str, ...] = ("number", "id")
 RESULTS: tuple[str, ...] = ("passed", "failed", "unchecked")
@@ -71,8 +67,9 @@ RESULTS: tuple[str, ...] = ("passed", "failed", "unchecked")
 # The gate only treats an id-shaped token as a claim when it carries a digit:
 # "tool-hours" is prose, "Diffusion_FE_120" and "Lot-1" are ids. The ledger
 # follows the same rule so it never records what the gate would not judge.
-# Both extract through common.textfacts — the shapes live in exactly one
-# place, so the ledger and the gate cannot drift apart.
+_UNDERSCORE_ID = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+\b")
+_HYPHEN_ID = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+\b")
+_HAS_DIGIT = re.compile(r"\d")
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 # Abbreviations whose period must not split a sentence. Protected with a
 # placeholder before splitting, restored afterwards.
@@ -139,7 +136,7 @@ class ClaimLedger(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    ledger_version: Literal["claim/v0", "claim/v1"] = LEDGER_VERSION
+    ledger_version: Literal["claim/v0"] = LEDGER_VERSION
     subject: str | None = None  # e.g. the lot id the explanation is about
     source: str | None = None  # what produced the text, e.g. "explainer"
     claims: tuple[Claim, ...] = ()
@@ -259,7 +256,7 @@ def build_ledger(
     claims: list[Claim] = []
     seen: set[tuple[str, str, str]] = set()
     for sentence in _sentences(text):
-        for raw in _NUMBER.findall(sentence):
+        for raw in re.findall(r"\d+(?:\.\d+)?", sentence):
             value = _norm(raw)
             if ("number", value, sentence) in seen:
                 continue
@@ -277,8 +274,12 @@ def build_ledger(
                 )
             )
         ids: dict[str, str] = {}  # upper id -> first raw token seen
-        for token in id_tokens(sentence):
-            ids.setdefault(token.upper(), token)
+        for token in _UNDERSCORE_ID.findall(sentence):
+            if _HAS_DIGIT.search(token):
+                ids.setdefault(token.upper(), token)
+        for token in _HYPHEN_ID.findall(sentence):
+            if _HAS_DIGIT.search(token):
+                ids.setdefault(token.upper(), token)
         for upper in sorted(ids):
             if ("id", upper, sentence) in seen:
                 continue
