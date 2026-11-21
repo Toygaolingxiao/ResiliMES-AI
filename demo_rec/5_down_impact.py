@@ -1,10 +1,15 @@
 """Shot: DOWN tools, blocked lots, materials those lots need — grouped by material. Prints no secrets."""
+
 from __future__ import annotations
-import sys, time
+
+import sys
+import time
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from resilimes.config import load_settings  # noqa: E402  (loads .env)
+
 load_settings()
 from agent.tools_zetaris import rows_as_dicts, run_sql  # noqa: E402
 
@@ -31,4 +36,7 @@ print("  ".join("-" * w[c] for c in cols))
 for r in rows:
     print("  ".join(str(r.get(c, "")).ljust(w[c]) for c in cols))
 used = payload.get("timeUsed") if isinstance(payload, dict) else None
-print(f"\n{len(rows)} materials from 3 systems in {wall:.1f} s" + (f"  (Zetaris timeUsed: {used})" if used is not None else ""))
+print(
+    f"\n{len(rows)} materials from 3 systems in {wall:.1f} s"
+    + (f"  (Zetaris timeUsed: {used})" if used is not None else "")
+)
