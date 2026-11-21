@@ -980,11 +980,11 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `timeline.all` | All | 全部 | すべて |
 | `timeline.start` | Start | 开始 | 開始 |
 | `timeline.end` | End | 结束 | 終了 |
-| `timeline.jobs` | Jobs | 作业数 | ジョブ数 |
+| `timeline.jobs` | Segments | 工序段数 | 工程段数 |
 | `timeline.machines` | Tools | 装置数 | 装置数 |
 | `timeline.lots` | Lots | 批次数 | ロット数 |
 | `timeline.operations` | Steps | 工序数 | 工程数 |
-| `timeline.moves` | Moves | Move 数 | Move数 |
+| `timeline.moves` | Wafer-steps | 晶圆步数 | ウェーハステップ数 |
 | `timeline.skips` | Skips | 跳过数 | SKIP数 |
 | `timeline.lateLots` | Late | 迟到 | 納期遅れ |
 | `timeline.qtime` | Q-time | 排队时限 | Qタイム |
