@@ -658,18 +658,27 @@
       const menu = $(".tl-menu");
       const lot = state.focus && members(bar).includes(state.focus) ? state.focus : bar.lot;
       menu.replaceChildren();
-      const why = document.createElement("button");
-      why.type = "button";
-      why.textContent = `${copy().why || "なぜ？"} ${lot}`;
-      why.addEventListener("click", () => {
-        menu.hidden = true;
-        const horizon = state.payload.horizon_h || 48;
-        const seed = state.payload.seed || 1;
-        const href = `/report?lot=${encodeURIComponent(lot)}&seed=${encodeURIComponent(seed)}&horizon_h=${encodeURIComponent(horizon)}`;
-        if (opt.onWhy) opt.onWhy({ lot, href, bar });
-        else window.location.assign(href);
-      });
-      menu.appendChild(why);
+      const href = whyHref(state.payload, lot);
+      if (href === null) {
+        // No report covers the run on screen (a scenario/what-if book, or
+        // the sample plant): a link would land on the baseline run's
+        // evidence or on a 404. Say so in the menu instead of offering a
+        // link that cannot resolve to this run.
+        const note = document.createElement("div");
+        note.className = "tl-menu-note";
+        note.textContent = copy().whyUnavailable || WHY_UNAVAILABLE_FALLBACK;
+        menu.appendChild(note);
+      } else {
+        const why = document.createElement("button");
+        why.type = "button";
+        why.textContent = `${copy().why || "なぜ？"} ${lot}`;
+        why.addEventListener("click", () => {
+          menu.hidden = true;
+          if (opt.onWhy) opt.onWhy({ lot, href, bar });
+          else window.location.assign(href);
+        });
+        menu.appendChild(why);
+      }
       menu.hidden = false;
       menu.style.left = `${Math.min(event.clientX, window.innerWidth - 200)}px`;
       menu.style.top = `${Math.min(event.clientY, window.innerHeight - 80)}px`;
@@ -1125,6 +1134,24 @@
     return parts.filter(Boolean).join(" ");
   }
 
+  // The "why?" deep link into the evidence report. The report endpoints
+  // read the baseline run only, so a link exists only for the baseline
+  // family: the base book and its seed/horizon refinements (payload book
+  // "base" or "timeline-<seed>-<h>"). Any other run — a scenario or
+  // what-if book, or the sample plant — would land on another run's
+  // evidence or on a 404, so there is no link. Pure over (payload, lot)
+  // so node can test it; null means "no link exists".
+  const WHY_UNAVAILABLE_FALLBACK =
+    "No evidence report — reports cover the recorded baseline run only.";
+  function whyHref(payload, lot) {
+    if (!payload || payload.source !== "smt2020" || !lot) return null;
+    const book = payload.book;
+    if (book && book !== "base" && !book.startsWith("timeline-")) return null;
+    const horizon = payload.horizon_h || 48;
+    const seed = payload.seed || 1;
+    return `/report?lot=${encodeURIComponent(lot)}&seed=${encodeURIComponent(seed)}&horizon_h=${encodeURIComponent(horizon)}`;
+  }
+
   // Data-source line: the payload already carries source/seed/horizon_h,
   // the page never showed them, so the SMT2020 benchmark and the sample
   // fab were indistinguishable on screen. Pure over (payload, copy) so
@@ -1174,7 +1201,7 @@
     };
   }
 
-  window.ResiliTimeline = { mount, scopeNotice, sourceLine, duration };
+  window.ResiliTimeline = { mount, scopeNotice, whyHref, sourceLine, duration };
   const host = document.getElementById("timeline-app");
   if (host) mount(host);
 })();

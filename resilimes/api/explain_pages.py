@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from resilimes.api import SEED_MAX
 from resilimes.explain.report import build_report
 from resilimes.explain.schema import EvidenceBundle, content_hash
 
@@ -31,7 +32,7 @@ def baseline_record(seed: int, horizon_h: float) -> Any:
 
 @router.get("/report/lots")
 def report_lots(
-    seed: int = Query(default=1, ge=1, le=4),
+    seed: int = Query(default=1, ge=1, le=SEED_MAX),
     horizon_h: float = Query(default=48.0, gt=0.0, le=168.0),
 ) -> dict[str, Any]:
     """Late lots of one run, latest first. The page uses this as its list."""
@@ -50,7 +51,7 @@ def report_lots(
 @router.get("/report")
 def report_lot(
     lot: str = Query(min_length=1, max_length=80),
-    seed: int = Query(default=1, ge=1, le=4),
+    seed: int = Query(default=1, ge=1, le=SEED_MAX),
     horizon_h: float = Query(default=48.0, gt=0.0, le=168.0),
 ) -> dict[str, Any]:
     """Evidence report for one lot. Read-only."""

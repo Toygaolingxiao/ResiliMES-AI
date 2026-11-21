@@ -375,6 +375,60 @@ def _client() -> TestClient:
     return TestClient(create_app(settings))
 
 
+def test_sample_book_rejects_selectors_instead_of_ignoring_them() -> None:
+    client = _client()
+    seeded = client.get("/api/timeline", params={"seed": 3})
+    assert seeded.status_code == 422
+    assert "seed=3" in seeded.json()["detail"]
+    horizoned = client.get("/api/timeline", params={"horizon_h": 48})
+    assert horizoned.status_code == 422
+    assert "horizon_h=48" in horizoned.json()["detail"]
+    booked = client.get("/api/timeline", params={"book": "litho_down"})
+    assert booked.status_code == 422
+    assert "book='litho_down'" in booked.json()["detail"]
+    assert client.get("/api/timeline", params={"book": "bogus"}).status_code == 422
+    # The default request is untouched: no selector, no complaint.
+    assert client.get("/api/timeline", params={"t0": 0, "t1": 60}).status_code == 200
+
+
+def test_payload_names_the_book_it_came_from() -> None:
+    book = _book(_bar("LOT-1", "M1", 0, 60))
+    payload = window_payload(book, TimelineQuery(t0=0, t1=120))
+    assert payload["book"] == "base"
+    book.book = "litho_down"
+    payload = window_payload(book, TimelineQuery(t0=0, t1=120))
+    assert payload["book"] == "litho_down"
+
+
+def test_smt_book_selector_contract() -> None:
+    from resilimes.smt.replay import BookSpec, register
+    from resilimes.timeline.smt_book import BookSelectorError, load_smt_book
+
+    # An unknown book is unknown on every path, seed or not.
+    with pytest.raises(KeyError):
+        load_smt_book(book="bogus", seed=1)
+    with pytest.raises(KeyError):
+        load_smt_book(book="bogus", horizon_h=24)
+    # A known scenario book cannot be refined by seed/horizon.
+    with pytest.raises(BookSelectorError, match="do not apply"):
+        load_smt_book(book="litho_down", seed=1)
+    with pytest.raises(BookSelectorError, match="do not apply"):
+        load_smt_book(book="hot_lot", horizon_h=24)
+    # Neither can a registered what-if book.
+    register(BookSpec(key="whatif-contract-test", kind="whatif"))
+    with pytest.raises(BookSelectorError, match="do not apply"):
+        load_smt_book(book="whatif-contract-test", seed=1)
+
+
+def test_smt_api_maps_selector_errors() -> None:
+    settings = Settings(
+        mode="mock", fab="smt2020", horizon=HORIZON, scout_signing_secret="timeline"
+    )
+    client = TestClient(create_app(settings))
+    assert client.get("/api/timeline", params={"book": "bogus", "seed": 1}).status_code == 404
+    assert client.get("/api/timeline", params={"book": "litho_down", "seed": 1}).status_code == 422
+
+
 def test_api_groups_filters_and_serves_the_page() -> None:
     client = _client()
     body = client.get("/api/timeline", params={"t0": 0, "t1": 5000, "lots": 100}).json()
@@ -500,6 +554,46 @@ def test_timeline_scope_notice_parity(tmp_path: Path) -> None:
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert report["failures"] == []
 
+
+# whyHref is pure over (payload, lot); same vm driver pattern as scopeNotice.
+WHY_DRIVER = r"""
+const fs = require("fs");
+const vm = require("vm");
+const src = fs.readFileSync(process.argv[2], "utf-8");
+const sandbox = {
+  window: {},
+  document: { getElementById: () => null },
+  console,
+};
+vm.createContext(sandbox);
+vm.runInContext(src, sandbox);
+const whyHref = sandbox.window.ResiliTimeline.whyHref;
+const failures = [];
+function check(name, cond, extra) {
+  if (!cond) failures.push(extra === undefined ? name : `${name}: ${JSON.stringify(extra)}`);
+}
+check("smt2020 payload links to the report with its own seed and horizon",
+  whyHref({ source: "smt2020", seed: 7, horizon_h: 48 }, "Init_Lot_1_1") ===
+    "/report?lot=Init_Lot_1_1&seed=7&horizon_h=48",
+  whyHref({ source: "smt2020", seed: 7, horizon_h: 48 }, "Init_Lot_1_1"));
+check("lot id is url-encoded",
+  whyHref({ source: "smt2020", seed: 1, horizon_h: 48 }, "A B&1") ===
+    "/report?lot=A%20B%261&seed=1&horizon_h=48");
+check("missing seed and horizon fall back to 1 and 48",
+  whyHref({ source: "smt2020" }, "L1") === "/report?lot=L1&seed=1&horizon_h=48");
+check("seeded base refinement keeps its link",
+  whyHref({ source: "smt2020", book: "timeline-7-48", seed: 7, horizon_h: 48 }, "L1") ===
+    "/report?lot=L1&seed=7&horizon_h=48");
+check("scenario book has no report link (the report reads the baseline run)",
+  whyHref({ source: "smt2020", book: "litho_down", seed: 1, horizon_h: 48 }, "L1") === null);
+check("what-if book has no report link",
+  whyHref({ source: "smt2020", book: "whatif-0123456789", seed: 1, horizon_h: 48 }, "L1") === null);
+check("sample payload has no report link",
+  whyHref({ source: "sample", seed: 1, horizon_h: 6.98 }, "LOT-1001") === null);
+check("missing payload has no report link", whyHref(null, "L1") === null);
+check("missing lot has no report link", whyHref({ source: "smt2020" }, "") === null);
+console.log(JSON.stringify({ failures }));
+"""
 
 # --- smt_book cache -------------------------------------------------------
 #
@@ -702,6 +796,22 @@ check("null copy falls back to English",
   sourceLine(smt, null));
 console.log(JSON.stringify({ failures }));
 """
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_timeline_why_href_parity(tmp_path: Path) -> None:
+    driver = tmp_path / "timeline_why_driver.cjs"
+    driver.write_text(WHY_DRIVER, encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(driver), str(TIMELINE_JS)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report["failures"] == []
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")

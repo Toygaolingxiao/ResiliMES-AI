@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from resilimes.api import SEED_MAX
 from resilimes.config import ConfigError, Settings
 from resilimes.data.zetaris_source import ZetarisDataError
 from resilimes.domain.plant import PlantDataError
@@ -33,7 +34,7 @@ def timeline(
     lots: int = Query(default=100, ge=1, le=5000),
     now_min: float = Query(default=0.0, ge=0.0, le=200_000.0),
     book: str = Query(default="base", max_length=40, pattern=r"^[a-z0-9_\-]+$"),
-    seed: int | None = Query(default=None, ge=1, le=9),
+    seed: int | None = Query(default=None, ge=1, le=SEED_MAX),
     horizon_h: float | None = Query(default=None, gt=0.0, le=168.0),
 ) -> dict[str, object]:
     """Window of one recorded book. ``timeline/v1`` for the Gantt page and later APS screens."""
@@ -45,7 +46,9 @@ def timeline(
     try:
         loaded = _book(settings, book, seed, horizon_h)
     except KeyError as exc:
-        raise HTTPException(status_code=404, detail="Unknown book.") from exc
+        name = exc.args[0] if exc.args and isinstance(exc.args[0], str) else None
+        detail = f"Unknown book: {name}." if name else "Unknown book."
+        raise HTTPException(status_code=404, detail=detail) from exc
     except (PlantDataError, ZetarisDataError, ConfigError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return window_payload(
@@ -73,7 +76,27 @@ def timeline(
 
 def _book(settings: Settings, book: str, seed: int | None, horizon_h: float | None) -> Book:
     if settings.fab != "smt2020":
+        # The sample book is a single fixed plant: it has no book, seed or
+        # horizon to select. Refuse the parameters instead of ignoring them.
+        if book != "base" or seed is not None or horizon_h is not None:
+            given = []
+            if book != "base":
+                given.append(f"book={book!r}")
+            if seed is not None:
+                given.append(f"seed={seed}")
+            if horizon_h is not None:
+                given.append(f"horizon_h={horizon_h:g}")
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "The sample book takes no book, seed or horizon parameter "
+                    f"(got {', '.join(given)})."
+                ),
+            )
         return load_sample_book(settings)
-    from resilimes.timeline.smt_book import load_smt_book
+    from resilimes.timeline.smt_book import BookSelectorError, load_smt_book
 
-    return load_smt_book(book=book, seed=seed, horizon_h=horizon_h)
+    try:
+        return load_smt_book(book=book, seed=seed, horizon_h=horizon_h)
+    except BookSelectorError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

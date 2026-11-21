@@ -105,6 +105,47 @@ def _hand_record():
     return SimpleNamespace(timeline=timeline, ref=ref)
 
 
+def test_report_routes_accept_the_timeline_seed_domain(monkeypatch):
+    # The Gantt page deep-links here with the timeline seed (1-9); the
+    # report endpoints must accept the same domain or seeds 5-9 422.
+    record = _hand_record()
+    monkeypatch.setattr(
+        "resilimes.api.explain_pages.baseline_record", lambda seed, horizon_h: record
+    )
+    client = TestClient(
+        create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="x"))
+    )
+    for seed in (5, 9):
+        listed = client.get("/api/explain/report/lots", params={"seed": seed, "horizon_h": 1})
+        assert listed.status_code == 200
+        assert listed.json()["seed"] == seed
+        body = client.get(
+            "/api/explain/report", params={"lot": "Lot-1", "seed": seed, "horizon_h": 1}
+        )
+        assert body.status_code == 200
+        assert body.json()["seed"] == seed
+    assert (
+        client.get("/api/explain/report/lots", params={"seed": 10, "horizon_h": 1}).status_code
+        == 422
+    )
+    assert (
+        client.get("/api/explain/report/lots", params={"seed": 0, "horizon_h": 1}).status_code
+        == 422
+    )
+    assert (
+        client.get(
+            "/api/explain/report", params={"lot": "Lot-1", "seed": 10, "horizon_h": 1}
+        ).status_code
+        == 422
+    )
+    assert (
+        client.get(
+            "/api/explain/report", params={"lot": "Lot-1", "seed": 0, "horizon_h": 1}
+        ).status_code
+        == 422
+    )
+
+
 def test_report_routes_read_a_bundle_and_leave_the_console(monkeypatch):
     record = _hand_record()
     monkeypatch.setattr(

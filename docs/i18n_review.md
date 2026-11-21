@@ -1014,6 +1014,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `timeline.pm` | PM | 保养 | PM |
 | `timeline.idle` | Idle | 空闲 | アイドル |
 | `timeline.why` | Why? | 为什么？ | なぜ？ |
+| `timeline.whyUnavailable` | No evidence report — reports cover the recorded baseline run only. | 没有证据报告——报告只覆盖已记录的基线运行。 | 証跡レポートはありません — レポートは記録済みのベースライン実行のみを対象とします。 |
 | `timeline.onTime` | On time | 未迟到 | 納期内 |
 | `timeline.qtimeBreach` | Q-time exceeded | 排队时限已超出 | Qタイム超過 |
 | `timeline.qtimeRiskWord` | Q-time risk | 排队时限有风险 | Qタイム危険 |

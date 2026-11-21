@@ -120,6 +120,38 @@ the honest number for the reader; the focus lot can additionally push
 set). Direct model use with `lots<=0` disables the cap (the API forbids
 0 with `ge=1`).
 
+## Parameters and deep links
+
+The timeline endpoint takes three book selectors — `book`, `seed`,
+`horizon_h` — and they are never silently ignored:
+
+- No `seed`/`horizon_h`: `book` names a recorded book (`base`,
+  `litho_down`, `hot_lot`, `pm_avoid`). An unknown name is a 404.
+- With `seed` and/or `horizon_h`: they refine only the `base` book. An
+  unknown `book` is still a 404; a known scenario book combined with a
+  seed or horizon is a 422, because the combination has no meaning.
+- On a sample-fab deployment the book is a single fixed plant, so any
+  non-default `book`, `seed` or `horizon_h` is a 422 instead of being
+  dropped on the floor.
+
+The seed domain is 1–9 on both sides of the Gantt → report hop: the
+timeline API accepts 1–9, and `/api/explain/report` and
+`/api/explain/report/lots` accept the same range (the report page's seed
+input matches), so a "why?" deep link built from a baseline payload
+resolves. The insight endpoints keep their own 1–4 seed domain; they are
+not part of this hop and are unchanged. Seeds are not pre-recorded
+books: the first request for a new (seed, horizon) pair runs a fresh
+baseline simulation, and the report side caches only the last 4 pairs,
+so cycling through many pairs re-runs simulations.
+
+The "why?" link exists only for the baseline family — the `base` book
+and its seed/horizon refinements (payload `book` is `base` or
+`timeline-<seed>-<h>`). The report endpoints read the baseline run only:
+for a scenario or what-if book a link would land on a different run's
+evidence for the same lot, and for the sample plant the lot is not in
+the recorded fab at all. In both cases the lot menu shows a note
+(`timeline.whyUnavailable`) instead of a link.
+
 ## Book cache
 
 `load_smt_book` keeps built books in a process cache of at most 8 entries
@@ -152,3 +184,18 @@ stat, and no scope field.
    `payload.view` names the display range.
 5. Given a lot whose middle bar was dropped by the cap, when gaps are
    computed, then no gap is reported across the dropped bar's interval.
+6. Given a synthetic window of 3 bars across 2 step kinds with wafer
+   quantities 25, 25 and 75, when the payload is built, then
+   `stats.total_jobs == 3`, `stats.total_operations == 2` and
+   `stats.total_moves == 125`; and in all three languages the stats
+   cards read Segments / 工程段数 / 工序段数 for `total_jobs` and
+   Wafer-steps / ウェーハステップ数 / 晶圆步数 for `total_moves`.
+7. Given `book=bogus` with a seed, when the timeline is requested, then
+   the answer is 404; given a scenario book with a seed, then 422;
+   given a sample deployment with any non-default book selector, then
+   422 — no selector is silently ignored.
+8. Given a baseline payload with seed 5–9, when its "why?" link is
+   followed, then the report endpoints accept the seed (their domain is
+   the same 1–9) and show that run's report; given a scenario, what-if
+   or sample payload, then the lot menu offers no report link, only the
+   unavailable note.
