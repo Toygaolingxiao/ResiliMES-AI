@@ -94,6 +94,7 @@
       if (state.payload) {
         const status = statusFor(state.payload, c);
         setStatus(status.message, status.warn);
+        text($(".tl-source"), sourceLine(state.payload, c));
       }
     }
     function paintLegend(c) {
@@ -248,6 +249,11 @@
       } catch (error) {
         if (seq !== state.token) return;
         setStatus(fill(copy().error || "{msg}", { msg: error.message || error }), true);
+        // A failed load must not keep asserting the previous payload's
+        // source underneath the error. The chart itself still shows the
+        // stale bars (pre-existing); a language switch re-renders the
+        // old line from the retained payload — see TIMELINE_SCOPE.md.
+        text($(".tl-source"), "");
         return;
       }
       if (seq !== state.token) return;
@@ -952,7 +958,6 @@
           <button type="button" class="tl-btn tl-zoom-out"></button>
           <button type="button" class="tl-btn tl-zoom-in"></button>
           <button type="button" class="tl-btn tl-fit"></button>
-          <button type="button" class="tl-btn primary tl-refresh"></button>
           <button type="button" class="tl-btn tl-reset"></button>
           <button type="button" class="tl-btn tl-png"></button>
           <button type="button" class="tl-btn tl-csv"></button>
@@ -971,11 +976,15 @@
           <label class="tl-field"><span class="tl-field-start"></span><input class="tl-start" type="datetime-local"></label>
           <label class="tl-field"><span class="tl-field-end"></span><input class="tl-end" type="datetime-local"></label>
         </div>
+        <div class="tl-filter-actions">
+          <button type="button" class="tl-btn primary tl-refresh"></button>
+        </div>
       </form>
       <div class="tl-stats"></div>
       <div class="tl-daily"></div>
       <div class="tl-legend"></div>
       <p class="tl-selected"></p>
+      <p class="tl-source"></p>
       <p class="tl-status" role="status"></p>
       <div class="tl-chart" role="application">
         <div class="tl-axis"><div class="tl-corner"></div><canvas class="tl-axis-canvas"></canvas></div>
@@ -1140,6 +1149,43 @@
     return `/report?lot=${encodeURIComponent(lot)}&seed=${encodeURIComponent(seed)}&horizon_h=${encodeURIComponent(horizon)}`;
   }
 
+  // Data-source line: the payload already carries source/seed/horizon_h,
+  // the page never showed them, so the SMT2020 benchmark and the sample
+  // fab were indistinguishable on screen. Pure over (payload, copy) so
+  // node can test it. A source the catalog does not name is shown
+  // verbatim rather than dropped or invented; a payload without a
+  // source, or with a blank one, shows nothing. The sample book has no
+  // random seed and its horizon is the last bar end, not a run horizon,
+  // so sample always takes the short form — its "seed 1" and "6.98 h"
+  // must never print as run parameters. Seed/horizon print only when
+  // the seed is a positive integer and the horizon a finite number
+  // above zero; otherwise the short form. Fallback English when the
+  // catalog lacks the key: the source must never fail silent.
+  const SOURCE_LINE_FALLBACK = "Data: {source} · seed {seed} · {horizon} h";
+  const SOURCE_LINE_SHORT_FALLBACK = "Data: {source}";
+  function sourceLine(payload, c) {
+    const copy = c || {};
+    const source = payload && payload.source;
+    if (typeof source !== "string" || !source.trim()) return "";
+    const name =
+      source === "smt2020"
+        ? copy.sourceSmt2020 || "SMT2020 benchmark"
+        : source === "sample"
+          ? copy.sourceSample || "Sample fab"
+          : source;
+    if (source === "sample") {
+      return fill(copy.sourceLineShort || SOURCE_LINE_SHORT_FALLBACK, { source: name });
+    }
+    const seed = payload && payload.seed;
+    const horizon = payload && payload.horizon_h;
+    if (Number.isInteger(seed) && seed >= 1 && Number.isFinite(horizon) && horizon > 0) {
+      // Fill seed/horizon first, then source last: a source value that
+      // itself contains "{seed}" or "{horizon}" must stay verbatim.
+      return fill(fill(copy.sourceLine || SOURCE_LINE_FALLBACK, { seed, horizon }), { source: name });
+    }
+    return fill(copy.sourceLineShort || SOURCE_LINE_SHORT_FALLBACK, { source: name });
+  }
+
   function statusFor(payload, c) {
     const scope = (payload && payload.scope) || {};
     const hidden =
@@ -1152,7 +1198,7 @@
     };
   }
 
-  window.ResiliTimeline = { mount, scopeNotice, whyHref };
+  window.ResiliTimeline = { mount, scopeNotice, whyHref, sourceLine };
   const host = document.getElementById("timeline-app");
   if (host) mount(host);
 })();
