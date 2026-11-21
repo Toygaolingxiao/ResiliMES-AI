@@ -1,8 +1,15 @@
 name: ci
 
+# PRs only need pull_request. push covers main (and avoids a second full
+# suite on every same-repo PR branch push).
 on:
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -11,6 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
+        # One full pytest per cell, in parallel — not two sequential suites
+        # in the same job.
+        sched-mode: [strict_qtime, plan]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,23 +28,25 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install
         run: python -m pip install -r requirements-dev.txt
+      # Lint / typecheck / boundary / smoke do not depend on sched mode;
+      # run them once per Python version.
       - name: Lint
+        if: matrix.sched-mode == 'strict_qtime'
         run: |
           python -m ruff check .
           python -m ruff format --check .
       - name: Typecheck
+        if: matrix.sched-mode == 'strict_qtime'
         run: python -m mypy
       - name: Explain boundary
+        if: matrix.sched-mode == 'strict_qtime'
         run: python -m pytest -q tests/test_explain_boundary.py tests/test_explain_contract.py
-      - name: Test (strict_qtime)
+      - name: Test (${{ matrix.sched-mode }})
         run: python -m pytest
         env:
-          RESILIMES_SCHED_MODE: strict_qtime
-      - name: Test (plan)
-        run: python -m pytest
-        env:
-          RESILIMES_SCHED_MODE: plan
+          RESILIMES_SCHED_MODE: ${{ matrix.sched-mode }}
       - name: Offline smoke
+        if: matrix.sched-mode == 'strict_qtime'
         run: python smoke_test.py --mock
         env:
           RESILIMES_MODE: mock
