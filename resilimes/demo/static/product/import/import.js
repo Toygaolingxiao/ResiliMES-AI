@@ -3,7 +3,7 @@
 (function () {
   const IDLE_REASON = "a tool was idle and the record has no cause (pin, gate or wake latency)";
   const DUE_REASON = "the log has no due time";
-  const state = { lang: localStorage.getItem("resilimes.lang") || "ja", catalog: null, result: null };
+  const state = { lang: localStorage.getItem("resilimes.lang") || "ja", catalog: null, result: null, contents: null };
   const $ = (id) => document.getElementById(id);
 
   function langCopy() {
@@ -47,6 +47,7 @@
       button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
     });
     if (state.result) render(state.result);
+    if (state.contents) renderContents();
   }
 
   function tierName(tier) {
@@ -136,6 +137,132 @@
     for (const row of report.statements || []) host.appendChild(statementNode(row));
   }
 
+  // The dropped file itself, parsed in the browser so the reader can see
+  // what was actually in it — not only the verdict the import returned.
+  const MAX_SHOWN = 100;
+  const MAX_CELL = 120;
+
+  function parseCsv(text) {
+    const rows = [];
+    let row = [];
+    let field = "";
+    let quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (quoted) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else quoted = false;
+        } else field += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ",") {
+        row.push(field);
+        field = "";
+      } else if (ch === "\n") {
+        row.push(field);
+        field = "";
+        rows.push(row);
+        row = [];
+      } else if (ch !== "\r") field += ch;
+    }
+    if (field !== "" || row.length) {
+      row.push(field);
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function cellText(value) {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  }
+
+  function tableFromObjects(items) {
+    const columns = [];
+    for (const item of items.slice(0, 200)) {
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        for (const key of Object.keys(item)) {
+          if (!columns.includes(key)) columns.push(key);
+        }
+      }
+    }
+    if (!columns.length) return null;
+    const rows = items.map((item) =>
+      columns.map((key) => cellText(item && typeof item === "object" ? item[key] : null))
+    );
+    return { columns, rows };
+  }
+
+  function parseContents(text) {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      try {
+        const data = JSON.parse(trimmed);
+        return tableFromObjects(Array.isArray(data) ? data : [data]);
+      } catch (error) {
+        // Not one JSON document; try JSON lines before CSV.
+        try {
+          const items = trimmed
+            .split(/\r?\n/)
+            .filter((line) => line.trim())
+            .map((line) => JSON.parse(line));
+          const table = tableFromObjects(items);
+          if (table) return table;
+        } catch (lineError) {
+          // Not JSON lines either; fall through to CSV.
+        }
+      }
+    }
+    const rows = parseCsv(text).filter(
+      (row) => row.length > 1 || (row.length === 1 && row[0] !== "")
+    );
+    if (rows.length < 2) return null;
+    return { columns: rows[0], rows: rows.slice(1) };
+  }
+
+  function renderContents() {
+    const c = copy();
+    const host = $("contents");
+    host.replaceChildren();
+    if (!state.contents) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    host.appendChild(el("h2", "", c.contentsTitle));
+    const table = state.contents.table;
+    if (!table) {
+      host.appendChild(el("p", "reason", c.contentsUnparsed));
+      return;
+    }
+    const shown = Math.min(table.rows.length, MAX_SHOWN);
+    host.appendChild(
+      el("p", "hash", fill(c.contentsMeta, { name: state.contents.name, total: table.rows.length, shown }))
+    );
+    const tableNode = el("table", "contents-table");
+    const thead = el("thead");
+    const headRow = el("tr");
+    for (const column of table.columns) headRow.append(el("th", "", column));
+    thead.appendChild(headRow);
+    tableNode.appendChild(thead);
+    const tbody = el("tbody");
+    for (const row of table.rows.slice(0, MAX_SHOWN)) {
+      const tr = el("tr");
+      for (const value of row) {
+        tr.append(el("td", "", value.length > MAX_CELL ? value.slice(0, MAX_CELL) + "…" : value));
+      }
+      tbody.appendChild(tr);
+    }
+    tableNode.appendChild(tbody);
+    const wrap = el("div", "contents-wrap");
+    wrap.appendChild(tableNode);
+    host.appendChild(wrap);
+  }
+
   async function submit(event) {
     event.preventDefault();
     const c = copy();
@@ -146,6 +273,8 @@
     }
     text($("status"), c.loading);
     $("result").hidden = true;
+    $("contents").hidden = true;
+    state.contents = null;
     let contents;
     try {
       contents = await file.text();
@@ -154,6 +283,8 @@
       $("status").className = "status warn";
       return;
     }
+    state.contents = { name: file.name, table: parseContents(contents) };
+    renderContents();
     try {
       const response = await fetch("/api/explain/import", {
         method: "POST",
