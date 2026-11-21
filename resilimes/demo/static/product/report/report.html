@@ -8,8 +8,12 @@
   </head>
   <body>
     <header class="bar">
-      <a class="back" href="/">ResiliMES</a>
-      <a id="import-link" href="/import"></a>
+      <nav class="product-nav" aria-label="product">
+        <a class="back" href="/">ResiliMES</a>
+        <a href="/timeline" data-nav="timeline"></a>
+        <a href="/report" data-nav="report" aria-current="page"></a>
+        <a href="/import" data-nav="import"></a>
+      </nav>
       <div class="langs" role="group">
         <button type="button" data-lang="ja">日本語</button>
         <button type="button" data-lang="zh">中文</button>
@@ -34,6 +38,6 @@
       <p id="status" class="status" role="status"></p>
       <div id="report" hidden></div>
     </article>
-    <script src="/assets/product/report/report.js?v=2"></script>
+    <script src="/assets/product/report/report.js?v=3"></script>
   </body>
 </html>

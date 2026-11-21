@@ -22,7 +22,7 @@
       "description": "rgba()/rgb() literals in demo/static *.js."
     },
     "spacing_outside_legacy_ladder": {
-      "budget": 173,
+      "budget": 172,
       "description": "padding/margin/gap/inset px values outside {0,4,8,12,16}. Control/row ladder 24/32/40/48 is the Wave 0 decision; this metric still tracks legacy off-ladder noise until Wave 1 lint set expands."
     },
     "font_size_outside_text_tokens": {

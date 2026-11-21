@@ -42,7 +42,17 @@
     text($("format"), c.format);
     text($("file-label"), c.file);
     text($("submit"), c.submit);
-    text(document.querySelector(".back"), c.back);
+    text(document.querySelector(".back"), c.back || "Back to the console");
+    const table = langCopy();
+    const peers = {
+      timeline: (table.timeline && table.timeline.link) || "Timeline",
+      report: (table.report && table.report.link) || "Report",
+      import: c.link || "Import",
+    };
+    document.querySelectorAll("[data-nav]").forEach((node) => {
+      const key = node.getAttribute("data-nav");
+      text(node, peers[key] || "");
+    });
     document.querySelectorAll("[data-lang]").forEach((button) => {
       button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
     });

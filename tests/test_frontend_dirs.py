@@ -66,6 +66,43 @@ def test_pages_are_split_and_the_console_route_still_works() -> None:
     assert "window.Fab" in overview.text
     assert client.get("/report").status_code == 200
     assert client.get("/import").status_code == 200
+    assert client.get("/timeline").status_code == 200
+
+
+def test_product_pages_share_console_back_and_peer_links() -> None:
+    """Charter workline 5: back means the console everywhere; peers link each other."""
+    i18n = json.loads((STATIC / "i18n.json").read_text(encoding="utf-8"))
+    for lang in ("en", "zh", "ja"):
+        report_back = i18n[lang]["report"]["back"]
+        assert i18n[lang]["import"]["back"] == report_back
+        assert i18n[lang]["timeline"]["back"] == report_back
+        assert report_back  # never blank
+    client = TestClient(
+        create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="x"))
+    )
+    index = client.get("/")
+    assert 'href="/timeline"' in index.text
+    assert 'href="/report"' in index.text
+    assert 'href="/import"' in index.text
+    for path in ("/report", "/import"):
+        page = client.get(path)
+        assert page.status_code == 200
+        assert 'href="/"' in page.text
+        assert 'href="/timeline"' in page.text
+        assert 'href="/report"' in page.text
+        assert 'href="/import"' in page.text
+        assert 'data-nav="timeline"' in page.text
+        assert 'data-nav="report"' in page.text
+        assert 'data-nav="import"' in page.text
+        assert 'class="back"' in page.text
+    # Timeline chrome is built in JS (empty HTML host).
+    timeline_js = client.get("/assets/product/timeline/timeline.js").text
+    assert 'href="/"' in timeline_js
+    assert 'href="/timeline"' in timeline_js
+    assert 'href="/report"' in timeline_js
+    assert 'href="/import"' in timeline_js
+    assert 'class="tl-home"' in timeline_js
+    assert 'data-nav="timeline"' in timeline_js
 
 
 def test_quality_report_page_wiring() -> None:

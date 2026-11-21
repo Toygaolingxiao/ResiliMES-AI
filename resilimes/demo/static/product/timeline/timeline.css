@@ -48,9 +48,13 @@ button { cursor: pointer; }
   justify-content: space-between;
   gap: 12px;
 }
-.tl-brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.tl-brand a { color: var(--ink); font-weight: 650; text-decoration: none; }
-.tl-brand h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.tl-nav { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; min-width: 0; }
+.tl-home { color: var(--ink); font-weight: 650; text-decoration: none; }
+.tl-home:hover { text-decoration: underline; }
+.tl-nav a[data-nav] { color: var(--muted); text-decoration: none; font-size: 13px; }
+.tl-nav a[data-nav]:hover { color: var(--ink); text-decoration: underline; }
+.tl-nav a[aria-current="page"] { color: var(--ink); font-weight: 650; text-decoration: none; }
+.tl-nav h1 { margin: 0 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
 .tl-lead { margin: 0; color: var(--muted); font-size: 13px; }
 .tl-langs { display: flex; gap: 4px; }
 .tl-langs button, .tl-btn {

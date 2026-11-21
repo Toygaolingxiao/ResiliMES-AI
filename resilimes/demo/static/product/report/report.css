@@ -36,8 +36,12 @@ body {
   margin: 0 auto;
   padding: 16px 20px 0;
 }
-.back, #import-link { color: var(--ink); text-decoration: none; font-weight: 600; }
-#import-link { font-weight: 400; font-size: 14px; }
+.product-nav { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; min-width: 0; }
+.back { color: var(--ink); text-decoration: none; font-weight: 600; }
+.back:hover { text-decoration: underline; }
+.product-nav a[data-nav] { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 400; }
+.product-nav a[data-nav]:hover { color: var(--ink); text-decoration: underline; }
+.product-nav a[aria-current="page"] { color: var(--ink); font-weight: 600; text-decoration: none; }
 .langs { display: flex; gap: 4px; }
 .langs button, .pick button {
   font: inherit;
