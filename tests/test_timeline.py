@@ -627,3 +627,51 @@ def test_timeline_source_line_parity(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr or result.stdout
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert report["failures"] == []
+
+
+# duration() rounds once, then splits. The previous form rounded the
+# remainder separately, so a 119.6-minute bar read "1h 60m" — a wrong
+# number on the evidence page (2026-11-21 UI audit, high finding 2).
+DURATION_DRIVER = r"""
+const fs = require("fs");
+const vm = require("vm");
+const src = fs.readFileSync(process.argv[2], "utf-8");
+const sandbox = {
+  window: {},
+  document: { getElementById: () => null },
+  console,
+};
+vm.createContext(sandbox);
+vm.runInContext(src, sandbox);
+const duration = sandbox.window.ResiliTimeline.duration;
+const failures = [];
+function check(name, actual, expected) {
+  if (actual !== expected) failures.push(`${name}: got ${JSON.stringify(actual)}, want ${JSON.stringify(expected)}`);
+}
+check("two hours exactly", duration(120), "2h 0m");
+check("119.6 rounds up and carries", duration(119.6), "2h 0m");
+check("119.4 stays", duration(119.4), "1h 59m");
+check("59.6 becomes an hour", duration(59.6), "1h 0m");
+check("59.4 stays minutes", duration(59.4), "59m");
+check("zero", duration(0), "0m");
+check("61", duration(61), "1h 1m");
+check("90.5 single rounding", duration(90.5), "1h 31m");
+check("negative uses the absolute value, as before", duration(-119.6), "2h 0m");
+console.log(JSON.stringify({ failures }));
+"""
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_timeline_duration_never_shows_60m(tmp_path: Path) -> None:
+    driver = tmp_path / "timeline_duration_driver.cjs"
+    driver.write_text(DURATION_DRIVER, encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(driver), str(TIMELINE_JS)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report["failures"] == []
