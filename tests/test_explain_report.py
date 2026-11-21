@@ -176,7 +176,9 @@ def test_report_range_messages_exist_in_all_languages():
 
 def test_report_page_carries_the_error_elements():
     client = TestClient(
-        create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="<redacted>"))
+        create_app(
+            Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="<redacted>")
+        )
     )
     page = client.get("/report")
     assert page.status_code == 200
@@ -193,7 +195,7 @@ def test_report_js_gates_the_fetch_on_the_range_check():
     src = REPORT_JS.read_text(encoding="utf-8")
     assert "function rangeProblem(" in src
     assert "function horizonProblem(" in src
-    body = src[src.index("async function loadReport"):]
+    body = src[src.index("async function loadReport") :]
     gate = body.index("paintRangeErrors()")
     fetch_at = body.index("/api/explain/report/lots")
     assert gate < fetch_at, "loadReport must validate before it fetches"
