@@ -8,6 +8,7 @@
     catalog: null,
     payload: null,
     lots: [],
+    rangeArmed: false,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -33,6 +34,85 @@
       out = out.replaceAll("{" + name + "}", value == null ? "" : String(value));
     }
     return out;
+  }
+
+  const SEED_RANGE_FALLBACK = "Seed must be a whole number between {min} and {max}.";
+  const HORIZON_RANGE_FALLBACK = "Run length must be greater than 0 and at most {max}.";
+
+  // A number input's value is a string, and native validation never
+  // reaches the screen on this page: the control reads as invalid to
+  // assistive tech but the user sees nothing and the request still
+  // fires. The page therefore checks each value against the domain
+  // the server actually enforces and says so, visibly. The domains
+  // differ per field: the seed is an integer in [min, max]; the
+  // horizon is a float in (0, max] — fractional horizons are legal
+  // (the Gantt deep-links carry them), so the horizon is not held
+  // to the seed's integer rule.
+  function rangeProblem(value, min, max) {
+    if (value === "" || value === null || value === undefined) return true;
+    const n = Number(value);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) return true;
+    return n < min || n > max;
+  }
+
+  function horizonProblem(value, max) {
+    if (value === "" || value === null || value === undefined) return true;
+    const n = Number(value);
+    if (!Number.isFinite(n)) return true;
+    return n <= 0 || n > max;
+  }
+
+  function paintRangeError(inputId, errorId, template, problem, params) {
+    const input = $(inputId);
+    const error = $(errorId);
+    if (!input || !error) return false;
+    const bad = problem(input.value);
+    input.classList.toggle("invalid", bad);
+    if (bad) input.setAttribute("aria-invalid", "true");
+    else input.removeAttribute("aria-invalid");
+    error.hidden = !bad;
+    if (bad) {
+      const message = fill(template, params);
+      // Rewrite only on change: the element is role="alert", and
+      // re-setting identical text re-announces it on every keystroke.
+      if (error.textContent !== message) text(error, message);
+    } else if (error.textContent) {
+      // Clear, don't just hide: aria-describedby still reads a
+      // hidden element, so a stale message would keep describing
+      // the field as wrong after it was fixed.
+      text(error, "");
+    }
+    return bad;
+  }
+
+  // Returns the id of the first invalid input, or null when both
+  // pass. Both errors are always painted: returning early on the
+  // seed would leave a stale horizon message on screen.
+  function paintRangeErrors() {
+    const c = copy();
+    const seed = $("seed");
+    const horizon = $("horizon");
+    const seedBad = paintRangeError(
+      "seed", "seed-error", c.seedRange || SEED_RANGE_FALLBACK,
+      (value) => rangeProblem(value, Number(seed.getAttribute("min")), Number(seed.getAttribute("max"))),
+      { min: seed.getAttribute("min"), max: seed.getAttribute("max") },
+    );
+    const horizonBad = paintRangeError(
+      "horizon", "horizon-error", c.horizonRange || HORIZON_RANGE_FALLBACK,
+      (value) => horizonProblem(value, Number(horizon.getAttribute("max"))),
+      { max: horizon.getAttribute("max") },
+    );
+    if (seedBad || horizonBad) state.rangeArmed = true;
+    if (seedBad) return "seed";
+    if (horizonBad) return "horizon";
+    return null;
+  }
+
+  // Live repaint only once an error has been shown: painting on
+  // every keystroke from the start would flash the alert while the
+  // user is still clearing and retyping a field.
+  function onRangeInput() {
+    if (state.rangeArmed) paintRangeErrors();
   }
 
   function tierName(tier) {
@@ -90,6 +170,7 @@
       render(state.payload);
       checkHash(state.payload);
     }
+    paintRangeErrors();
   }
 
   function setStatus(message, warn) {
@@ -211,9 +292,22 @@
 
   async function loadReport(event) {
     if (event) event.preventDefault();
+    const badField = paintRangeErrors();
+    if (badField) {
+      // Say the standing report was not updated, and move focus to
+      // the field only when the user actually submitted the form —
+      // a lot-change or a deep-link load must not steal focus from
+      // what the user is doing.
+      setStatus(copy().notUpdated || "Not updated.", true);
+      if (event && event.type === "submit") $(badField).focus();
+      return;
+    }
     const c = copy();
-    const seed = $("seed").value;
-    const horizon = $("horizon").value;
+    // Send the validated values in canonical form: "3.0" passes the
+    // numeric check as 3, and the server's integer parser must see
+    // "3", not the raw literal, or it 422s a value the page accepted.
+    const seed = String(Number($("seed").value));
+    const horizon = String(Number($("horizon").value));
     // A later Show or a lot change must use the lot on the form, not the old URL.
     const picked = event && $("lot").options.length ? $("lot").value : "";
     setStatus(c.loading);
@@ -266,6 +360,8 @@
     if (params.get("horizon_h")) $("horizon").value = params.get("horizon_h");
     paintChrome();
     $("pick").addEventListener("submit", loadReport);
+    $("seed").addEventListener("input", onRangeInput);
+    $("horizon").addEventListener("input", onRangeInput);
     $("print").addEventListener("click", () => window.print());
     $("lot").addEventListener("change", (event) => {
       if ($("lot").value) loadReport(event);
@@ -280,6 +376,6 @@
     if (params.get("lot")) loadReport();
   }
 
-  window.ResiliReport = { render, statementNode };
+  window.ResiliReport = { render, statementNode, rangeProblem, horizonProblem };
   init();
 })();
