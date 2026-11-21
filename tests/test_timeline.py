@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -207,6 +209,26 @@ def test_scope_and_stats_follow_the_display_window() -> None:
     assert empty_view["view"] == {"t0": 150, "t1": 200}
 
 
+def test_stats_fields_count_what_they_say() -> None:
+    """M6: total_jobs counts bars (operation segments), total_operations
+    counts distinct step kinds, total_moves sums wafer quantities —
+    a bar carrying qty=75 (as a batched bar does) counts 75, not one move."""
+    book = _book(
+        _bar("LOT-1", "LITHO-01", 0, 20, step="LITHO"),
+        _bar("LOT-1", "ETCH-01", 23, 40, group="Etch", step="ETCH"),
+        replace(_bar("LOT-2", "LITHO-01", 30, 50, step="LITHO"), qty=75),
+    )
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10))
+    stats = payload["stats"]
+    assert isinstance(stats, dict)
+    assert stats["total_jobs"] == 3  # bars, not lots and not jobs
+    assert stats["total_operations"] == 2  # LITHO + ETCH, not 3 executions
+    assert stats["total_moves"] == 125  # 25 + 25 + 75 wafer-steps
+    assert stats["total_lots"] == 2
+    assert stats["total_equipment"] == 2
+    assert payload["daily"][0]["jobs"] == 3  # type: ignore[index]
+
+
 def test_gaps_skip_split_sequences() -> None:
     """An also-split sequence must not fabricate a waiting gap: LOT-1's
     bars B and D survive only because they share a bar with LOT-9, while
@@ -234,6 +256,42 @@ def test_gaps_skip_split_sequences() -> None:
     # Without the cap the real transport/waiting gaps appear.
     full = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10))
     assert {gap["state"] for gap in full["gaps"]} == {"transport", "waiting"}  # type: ignore[union-attr]
+
+
+def test_gaps_skip_also_member_processing() -> None:
+    """H1 (product review): the _split_between guard must see also-member
+    bars — a lot processed as an also member in a bar is not waiting
+    during that bar, even though the bar's primary lot is another lot."""
+    book = _book(
+        _bar("LOT-X", "M1", 0, 10),
+        _bar("LOT-Y", "M2", 12, 20, also=("LOT-X",)),
+        _bar("LOT-X", "M1", 22, 30),
+    )
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10))
+    gaps = payload["gaps"]
+    assert isinstance(gaps, list)
+    # LOT-X is processed inside the 12-20 bar as an also member, so the
+    # 10->22 interval is not a waiting gap — with no cap at all.
+    assert not [gap for gap in gaps if gap["lot"] == "LOT-X"]  # type: ignore[union-attr]
+
+    # Cap variant: LOT-Y's bar is dropped by the cap (neither of its
+    # members ranks), while LOT-X's bars survive via LOT-Z — the guard
+    # still sees the dropped bar through the pre-cap window set.
+    capped_book = _book(
+        _bar("LOT-X", "M1", 0, 10, also=("LOT-Z",)),
+        _bar("LOT-Y", "M2", 12, 20, also=("LOT-X",)),
+        _bar("LOT-X", "M1", 22, 30, also=("LOT-Z",)),
+        _bar("LOT-W", "M3", 40, 50, also=("LOT-Z",)),
+        _bar("LOT-W", "M3", 60, 70, also=("LOT-Z",)),
+        _bar("LOT-W", "M3", 80, 90, also=("LOT-Z",)),
+    )
+    capped = window_payload(capped_book, TimelineQuery(t0=0, t1=200, lots=1))
+    capped_gaps = capped["gaps"]
+    assert isinstance(capped_gaps, list)
+    assert capped["scope"]["lots_capped"] is True  # type: ignore[index]
+    assert not [gap for gap in capped_gaps if gap["lot"] == "LOT-X"]  # type: ignore[union-attr]
+    # Real gaps are still reported: LOT-W's own 10-minute hops.
+    assert any(gap["lot"] == "LOT-W" for gap in capped_gaps)  # type: ignore[union-attr]
 
 
 def test_skip_count_is_book_wide_not_window_wide() -> None:
@@ -264,6 +322,98 @@ def test_focus_lot_is_drawn_but_not_counted_in_scope() -> None:
     rows = payload["product_rows"]
     assert isinstance(rows, list)
     assert "FOCUS-OUT" in {row["id"] for row in rows}  # type: ignore[union-attr]
+
+
+def test_focus_bars_are_marked_when_cut_at_400() -> None:
+    """M7: the focus cut is marked, not silent — a lot with more than
+    400 book bars reports its full count and the cut, and the 400 kept
+    are its earliest bars (defined by sort, not book order). The input
+    is deliberately in reverse time order, so deleting the sort fails
+    this test. One tie pair (same start, different machine) pins the
+    tie-break, and two also-member bars pin the also-counting rule
+    (bars_total counts primary or also members)."""
+    big_bars = [
+        # Deliberately in reverse time order: without the sort in
+        # window_payload the kept 400 would be the latest bars, so
+        # this test fails if the sort is removed.
+        _bar("LOT-BIG", f"M-{index % 3}", (400 - index) * 10.0, (400 - index) * 10.0 + 5.0)
+        for index in range(401)
+    ]
+    # Same start as the generated bar at 100 (M-0, end 105): the machine
+    # tie-break puts M-0 before M-1.
+    tie_bar = _bar("LOT-BIG", "M-1", 100, 105)
+    # also members: one early enough to be shown, one late enough to be cut.
+    also_early = _bar("LOT-OTHER", "M-0", 5, 10, also=("LOT-BIG",))
+    also_late = _bar("LOT-OTHER", "M-1", 4010, 4020, also=("LOT-BIG",))
+    book = _book(
+        *big_bars,
+        tie_bar,
+        also_early,
+        also_late,
+        _bar("LOT-SMALL", "M-0", 0, 10),
+        _bar("LOT-SMALL", "M-1", 20, 30),
+    )
+    payload = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10, focus="LOT-BIG"))
+    focus = payload["focus"]
+    assert isinstance(focus, dict)
+    assert focus == {
+        "lot": "LOT-BIG",
+        "bars_total": 404,
+        "bars_shown": 400,
+        "bars_max": 400,
+        "truncated": True,
+    }
+    shown = payload["focus_bars"]
+    assert isinstance(shown, list)
+    assert len(shown) == 400
+    starts = [bar["start_min"] for bar in shown]  # type: ignore[union-attr]
+    assert starts == sorted(starts)
+    assert starts[0] == 0
+    # 400 bars with start <= 3970: the 401 LOT-BIG bars, the tie bar, and
+    # the early also bar; the late also bar (4010) and the LOT-BIG bars
+    # at 3980/3990/4000 are cut.
+    assert starts[-1] == 3970.0
+    # The shown 400 are exactly the earliest 400 by the sort key,
+    # computed independently of window_payload's sort.
+    all_focus = [*big_bars, tie_bar, also_early, also_late]
+    expected = sorted(all_focus, key=lambda bar: (bar.start_min, bar.end_min, bar.machine, bar.id))[
+        :400
+    ]
+    assert [bar["id"] for bar in shown] == [bar.id for bar in expected]  # type: ignore[union-attr]
+    # The full sort key is pinned, not just start order.
+    keys = [(bar["start_min"], bar["end_min"], bar["machine"], bar["id"]) for bar in shown]  # type: ignore[union-attr]
+    assert keys == sorted(keys)
+    # The tie pair keeps machine order.
+    ties = [bar for bar in shown if bar["start_min"] == 100.0]  # type: ignore[union-attr]
+    assert [bar["machine"] for bar in ties] == ["M-0", "M-1"]  # type: ignore[union-attr]
+    # also membership counts: the early also bar is shown, the late one cut.
+    assert any(bar["lot"] == "LOT-OTHER" and bar["start_min"] == 5.0 for bar in shown)  # type: ignore[union-attr]
+    assert not any(bar["start_min"] == 4010.0 for bar in shown)  # type: ignore[union-attr]
+    assert not any(bar["start_min"] == 4000.0 for bar in shown)  # type: ignore[union-attr]
+    assert all(  # type: ignore[union-attr]
+        bar["lot"] == "LOT-BIG" or "LOT-BIG" in (bar.get("also") or [])  # type: ignore[union-attr]
+        for bar in shown
+    )
+
+    small = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10, focus="LOT-SMALL"))
+    assert small["focus"] == {  # type: ignore[comparison-overlap]
+        "lot": "LOT-SMALL",
+        "bars_total": 2,
+        "bars_shown": 2,
+        "bars_max": 400,
+        "truncated": False,
+    }
+    assert len(small["focus_bars"]) == 2  # type: ignore[arg-type]
+
+    plain = window_payload(book, TimelineQuery(t0=0, t1=200, lots=10))
+    assert plain["focus"] == {  # type: ignore[comparison-overlap]
+        "lot": "",
+        "bars_total": 0,
+        "bars_shown": 0,
+        "bars_max": 400,
+        "truncated": False,
+    }
+    assert plain["focus_bars"] == []
 
 
 def test_lots_zero_disables_the_cap() -> None:
@@ -314,6 +464,18 @@ def test_scope_lots_placeholders_match_in_all_languages() -> None:
         assert "{source}" in line and "{seed}" in line and "{horizon}" in line, lang
         short = catalog[lang]["timeline"]["sourceLineShort"]
         assert "{source}" in short, lang
+
+
+def test_focus_placeholders_match_in_all_languages() -> None:
+    """The focus sentence fills {shown}/{total}/{lot}/{max}; a
+    translation that dropped one would render a broken sentence."""
+    catalog = json.loads(
+        (ROOT / "resilimes" / "demo" / "static" / "i18n.json").read_text(encoding="utf-8")
+    )
+    for lang in ("en", "zh", "ja"):
+        text = catalog[lang]["timeline"]["focusTruncated"]
+        for placeholder in ("{shown}", "{total}", "{lot}", "{max}"):
+            assert placeholder in text, (lang, placeholder)
 
 
 def test_states_gaps_qtime_and_the_lot_cap() -> None:
@@ -444,6 +606,13 @@ def test_api_groups_filters_and_serves_the_page() -> None:
         "machines_total",
         "machines_shown",
     }
+    assert body["focus"] == {
+        "lot": "",
+        "bars_total": 0,
+        "bars_shown": 0,
+        "bars_max": 400,
+        "truncated": False,
+    }
     assert body["view"] == body["window"]  # no view params: view is the fetch window
     assert body["scope"]["lots_total"] == body["stats"]["total_lots"]
     assert body["scope"]["bars_total"] == body["stats"]["total_jobs"]
@@ -489,9 +658,9 @@ def test_api_groups_filters_and_serves_the_page() -> None:
 ROOT = Path(__file__).resolve().parents[1]
 TIMELINE_JS = ROOT / "resilimes" / "demo" / "static" / "product" / "timeline" / "timeline.js"
 
-# scopeNotice is pure over (payload, copy); the driver loads timeline.js in
+# scopeNotice and statusFor are pure over (payload, copy); the driver loads timeline.js in
 # a vm with a stub document (no #timeline-app, so the page never mounts)
-# and calls the function ResiliTimeline exposes for this check.
+# and calls the functions ResiliTimeline exposes for this check.
 SCOPE_DRIVER = r"""
 const fs = require("fs");
 const vm = require("vm");
@@ -504,6 +673,7 @@ const sandbox = {
 vm.createContext(sandbox);
 vm.runInContext(src, sandbox);
 const scopeNotice = sandbox.window.ResiliTimeline.scopeNotice;
+const statusFor = sandbox.window.ResiliTimeline.statusFor;
 const failures = [];
 function check(name, cond, extra) {
   if (!cond) failures.push(extra === undefined ? name : `${name}: ${JSON.stringify(extra)}`);
@@ -535,8 +705,95 @@ check("missing copy key falls back to English, never silent",
   scopeNotice(capped, {}) === "Showing 100 of 1684 lots in this window. Counts cover this window; Skips counts the whole book.",
   scopeNotice(capped, {}));
 check("null copy falls back to English", scopeNotice(capped, null).startsWith("Showing 100 of 1684 lots"), scopeNotice(capped, null));
+const focusCopy = {
+  scopeLots: copy.scopeLots,
+  truncated: copy.truncated,
+  focusTruncated: "Showing the earliest {shown} of {total} bars for lot {lot}. The focus view is cut at {max} bars.",
+};
+const focusCut = { scope: { lots_capped: false, lots_shown: 4, lots_total: 4 }, truncated: false, focus: { lot: "LOT-BIG", bars_total: 401, bars_shown: 400, bars_max: 400, truncated: true } };
+check("focus cut names the lot and the counts",
+  scopeNotice(focusCut, focusCopy) === "Showing the earliest 400 of 401 bars for lot LOT-BIG. The focus view is cut at 400 bars.",
+  scopeNotice(focusCut, focusCopy));
+check("focus cut takes the warn style",
+  statusFor(focusCut, focusCopy).warn === true,
+  statusFor(focusCut, focusCopy));
+const focusWhole = { scope: { lots_capped: false, lots_shown: 4, lots_total: 4 }, truncated: false, focus: { lot: "LOT-1", bars_total: 3, bars_shown: 3, bars_max: 400, truncated: false } };
+check("focus within the cap shows no sentence and no warn",
+  scopeNotice(focusWhole, focusCopy) === "" && statusFor(focusWhole, focusCopy).warn === false,
+  scopeNotice(focusWhole, focusCopy));
+check("missing focus key is silent", scopeNotice(plain, focusCopy) === "", scopeNotice(plain, focusCopy));
+check("missing focus copy key falls back to English, never silent",
+  scopeNotice(focusCut, copy) === "Showing the earliest 400 of 401 bars for lot LOT-BIG. The focus view is cut at 400 bars.",
+  scopeNotice(focusCut, copy));
+const braceLot = { scope: { lots_capped: false, lots_shown: 4, lots_total: 4 }, truncated: false, focus: { lot: "LOT-{shown}", bars_total: 401, bars_shown: 400, bars_max: 400, truncated: true } };
+check("lot id containing a placeholder stays literal",
+  scopeNotice(braceLot, focusCopy) === "Showing the earliest 400 of 401 bars for lot LOT-{shown}. The focus view is cut at 400 bars.",
+  scopeNotice(braceLot, focusCopy));
+const focusPlusCap = { scope: { lots_capped: true, lots_shown: 2, lots_total: 4 }, truncated: false, focus: { lot: "LOT-BIG", bars_total: 401, bars_shown: 400, bars_max: 400, truncated: true } };
+check("focus sentence joins the lots sentence",
+  scopeNotice(focusPlusCap, focusCopy).startsWith("Showing 2 of 4 lots") && scopeNotice(focusPlusCap, focusCopy).includes("Showing the earliest 400 of 401 bars for lot LOT-BIG"),
+  scopeNotice(focusPlusCap, focusCopy));
+const emptyLot = { scope: { lots_capped: false, lots_shown: 4, lots_total: 4 }, truncated: false, focus: { lot: "", bars_total: 401, bars_shown: 400, bars_max: 400, truncated: true } };
+check("truncated focus without a lot id says nothing, not 'for lot .'",
+  scopeNotice(emptyLot, focusCopy) === "",
+  scopeNotice(emptyLot, focusCopy));
+// M1: a truncated focus without counts must not take the warn style
+// either — warn may only fire when a sentence will render.
+const focusBroken = { scope: { lots_capped: false, lots_shown: 4, lots_total: 4 }, truncated: false, focus: { lot: "LOT-BIG", truncated: true } };
+check("truncated focus without counts warns nothing and says nothing",
+  scopeNotice(focusBroken, focusCopy) === "" && statusFor(focusBroken, focusCopy).warn === false,
+  scopeNotice(focusBroken, focusCopy));
+// L3: fill() must not expand "$&" in a lot id (replacer function).
+const dollarLot = { scope: { lots_capped: false, lots_shown: 4, lots_total: 4 }, truncated: false, focus: { lot: "LOT-$&", bars_total: 401, bars_shown: 400, bars_max: 400, truncated: true } };
+check("lot id containing $ stays literal",
+  scopeNotice(dollarLot, focusCopy) === "Showing the earliest 400 of 401 bars for lot LOT-$&. The focus view is cut at 400 bars.",
+  scopeNotice(dollarLot, focusCopy));
 console.log(JSON.stringify({ failures }));
 """
+
+
+def test_stats_card_labels_name_the_measured_unit() -> None:
+    """M6/H2: the stat cards must read what the numbers count — Segments
+    (bars) and Wafer-steps (summed qty over bars), not Jobs and Moves — in
+    all three languages. Keys are unchanged, so this increment adds no new
+    fallback churn; the page's raw-key fallback itself is a known
+    divergence from the cases-page rule, recorded in TIMELINE_SCOPE.md."""
+    i18n = json.loads(
+        (ROOT / "resilimes" / "demo" / "static" / "i18n.json").read_text(encoding="utf-8")
+    )
+    expected = {
+        "en": {"jobs": "Segments", "moves": "Wafer-steps"},
+        "ja": {"jobs": "工程段数", "moves": "ウェーハステップ数"},
+        "zh": {"jobs": "工序段数", "moves": "晶圆步数"},
+    }
+    for lang, labels in expected.items():
+        timeline = i18n[lang]["timeline"]
+        for key, value in labels.items():
+            assert timeline[key] == value, (lang, key, timeline[key])
+    # The neighbouring labels are untouched by this increment.
+    assert i18n["en"]["timeline"]["operations"] == "Steps"
+    assert i18n["en"]["timeline"]["machines"] == "Tools"
+    assert i18n["en"]["timeline"]["lots"] == "Lots"
+    # Wiring guard: every key paintStats() looks up in timeline.js must
+    # exist in all three languages, so a renamed key cannot silently fall
+    # back to the raw key on the page (timeline.js `c[key] || key`).
+    js = (
+        ROOT / "resilimes" / "demo" / "static" / "product" / "timeline" / "timeline.js"
+    ).read_text(encoding="utf-8")
+    card_keys = set(re.findall(r'\["(\w+)",\s*\(?stats\.', js))
+    assert card_keys == {
+        "jobs",
+        "machines",
+        "lots",
+        "operations",
+        "moves",
+        "skips",
+        "lateLots",
+        "qtime",
+    }, card_keys
+    for lang in ("en", "ja", "zh"):
+        missing = card_keys - set(i18n[lang]["timeline"])
+        assert not missing, (lang, missing)
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
