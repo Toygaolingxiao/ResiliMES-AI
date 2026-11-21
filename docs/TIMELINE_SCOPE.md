@@ -62,7 +62,7 @@ bar-limit sentence (`timeline.truncated`) is appended when `truncated` is
 true. The lots sentence appears whenever `lots_shown < lots_total`,
 whatever cut the lots — lot cap or bar limit.
 
-Consequence, stated plainly: the Jobs card can be larger than the number
+Consequence, stated plainly: the Segments card can be larger than the number
 of bars drawn. That is the intended semantic — cards = display window,
 canvas = drawn subset — and the status line is what makes the two numbers
 reconcilable on screen.
@@ -80,6 +80,157 @@ Two fields are NOT display-window counts:
   display window: it is a navigation aid across the loaded range, and its
   day buttons set the display span.
 
+## Stats semantics
+
+One bar is one lot's one step on one machine. Every `stats` field counts
+bars, lots, machines, steps or wafers over the display-window bar set —
+except `skip_count` (whole book, see below):
+
+| Field | Card label | Counts |
+| --- | --- | --- |
+| `stats.total_jobs` | Segments / 工程段数 / 工序段数 | Bars in the display window. The field name is historical (timeline/v1); the card no longer reads "Jobs", because a bar is an operation segment, not a job in the lot sense. Renaming the field is a contract change proposed for a follow-up, not done here. |
+| `stats.total_equipment` | Tools / 装置数 / 装置数 | Distinct machines with at least one bar in the window. |
+| `stats.total_lots` | Lots / ロット数 / 批次数 | Distinct `bar.lot` values with at least one bar in the window. `also` members sharing a bar are **not** counted here (see Lot-count nuance): 19 lots in the SMT2020 book appear only via `also`. |
+| `stats.total_operations` | Steps / 工程数 / 工序数 | Distinct `bar.step` values — step kinds, not step executions. Two lots running the same step add one to this count. |
+| `stats.total_moves` | Wafer-steps / ウェーハステップ数 / 晶圆步数 | Sum of `bar.qty` over the bars. `qty` is wafers (25 per lot per step in SMT2020; a batched bar carries 25 per lot in the batch), so this is wafer-steps: one lot is counted once per step it runs, and a reworked step counts again on its second execution. It is neither a move count nor a count of distinct wafers in the window. A batched bar's `qty` includes the wafers of its `also` lots, which are not counted in Lots — so the Wafer-steps and Lots cards count different lot sets on shared bars. |
+| `stats.late_lots` | Late / 納期遅れ / 迟到 | Distinct late lots with at least one bar in the window. |
+| `stats.qtime_breach` / `stats.qtime_risk` | Q-time / Qタイム / 排队时限 | Bars flagged breach / risk in the window. |
+| `daily[].jobs` | (no label; day buttons show the count) | Bars overlapping the fetch window, bucketed by start day. A bar counts toward the day its `start_min` falls on, even when that start is outside the fetch window. The field name is the same historical "jobs"; it counts bars, like `total_jobs`. |
+
+Known divergence, out of scope for this increment: when a timeline
+label key is missing, the page shows the raw key (`timeline.js`
+`c[key] || key`), and a missing language falls back to Japanese —
+unlike the cases page rule (a missing key falls back to the English
+label, never the raw key). No key is missing today (all three
+languages carry the same 83 keys); this is recorded here so the
+inconsistency is not mistaken for intent.
+
+Two fields are NOT display-window counts:
+
+- `skip_count` is a whole-book replay count (`book.skips`), or `0` when
+  the query is narrowed by any filter. An empty window still shows the
+  book's skips; a narrowed query shows 0, which reads as "no skips"
+  rather than "skips hidden by the filter". The notice's Skips clause
+  exists because of this card. A true window-wide Skips is computable —
+  the replay carries skip timestamps — but needs plumbing through
+  `smt_book.py`; follow-up, not this increment.
+- `daily` counts bars by start day over the **fetch** window, not the
+  display window: it is a navigation aid across the loaded range, and its
+  day buttons set the display span.
+
+## Focus drill-down
+
+Clicking a bar focuses its lot and reloads the payload for the new
+focus (clearing the focus reloads too), so the status line and
+`focus_bars` follow the switch at once; the lot's bars draw across the
+whole book (`focus_bars`), bypassing the window, the lot cap and the
+filters.
+The payload marks the cut with a `focus` object, always present:
+
+| Field | Definition |
+| --- | --- |
+| `focus.lot` | The focused lot id, or `""` when nothing is focused. |
+| `focus.bars_total` | Bars of the lot in the whole book (primary or `also` member), before the cut. |
+| `focus.bars_shown` | Bars actually returned in `focus_bars`. |
+| `focus.bars_max` | The cut, `FOCUS_BAR_MAX` (400). |
+| `focus.truncated` | True when `bars_total > bars_max`. |
+
+The kept 400 are the lot's earliest bars by (`start_min`, `end_min`,
+`machine`, `id`) — book order is not a contract, so the cut is defined
+on the sort, not on arrival order. The sort key differs from `chosen`'s
+(`start_min`, `machine`, `lot`) because all focus bars share one lot:
+`end_min` breaks start ties and `id` is the final tiebreak, so the cut
+is total and deterministic. When `truncated` is true and the counts
+and lot id are present, the status line appends the focus sentence
+(`timeline.focusTruncated`: "Showing the earliest {shown} of {total} bars for lot
+{lot}. The focus view is cut at {max} bars.") and takes the warn
+style; a truncated payload without them shows nothing and takes no
+warn style (defensive, same rule as the lots sentence). Otherwise
+nothing is shown.
+The focus lot's whole-book bars are not counted in `scope` (its bars
+inside the window are counted as usual), and `stats` likewise count
+the window bars only — a focus bar inside the window counts as an
+ordinary bar there. `fit()` (全体) zooms to the focused lot's shown
+bars, so with a truncated focus it covers only the earliest 400 bars'
+span; the status-line warning is the only marker of the missing tail.
+CSV export still excludes `focus_bars` (see below);
+raising the cap or paging the focus view is a follow-up, not this
+increment.
+
+## Verified numbers: correcting the PR #101 smoke sentence
+
+PR #101's description says "1,199 bars across 1,313 tools and 2,156
+lots". Read literally, that sentence is wrong: it mixes a one-hour
+window's bar count with the whole 48-hour book's tool and lot totals.
+The measured figures (SMT2020 book, seed 1; independently re-measured
+2026-11-19 in this run — `load_smt_book()` + `window_payload`, by the
+coordinator and by the product and red-team reviewers separately; the
+2026-11-17 figures agree with them):
+
+| Figure | Value | Basis |
+| --- | --- | --- |
+| Bars, first hour, uncapped | 1,199 | 1-hour display window, `lots=5000` (effectively uncapped for this book) |
+| Tools, first hour, uncapped | 954 | Distinct machines with a bar in that window, `lots=5000` |
+| Lots, first hour, uncapped | 1,005 | Distinct `bar.lot` values with a bar in that window, `lots=5000` (primary lots only; another 277 lots appear only as batch members, `bar.also`, in the same hour — union 1,282) |
+| Bars drawn, first hour, page default (`lots=100`) | 228 | Drawn subset (`scope.bars_shown`); the Segments card still reads 1,199 |
+| Wafer-steps, first hour, uncapped | 36,900 | `sum(bar.qty)`; the old "Moves" card value, `lots=5000` |
+| Tools, whole 48 h book | 1,313 | Distinct machines in the book |
+| Lots, whole 48 h book | 2,113 | Distinct `bar.lot` values with at least one bar in the book (LotInfo rows: 2,156, of which 43 have no bar in 48 h) |
+
+Correct reading: "1,199 bars across 954 tools and 1,005 lots in the
+first hour (uncapped); the full 48 h book spans 1,313 tools and
+2,113 lots that ran at least one bar. At the page default (`lots=100`)
+the canvas draws 228 of those 1,199 bars while the Segments card still
+reads 1,199. This increment does not edit
+PR #101's description; this section is the correction of record, and the card
+labels fixed in this increment (Segments, Wafer-steps) are what stop the
+page itself from repeating the confusion. The 36,900 wafer-steps
+against 1,199 bars is also why "Moves" was misleading: one bar carries
+25 wafers (more when batched), so the old card read ~30x the bar
+count with no unit to explain it.
+## Data source
+
+Every payload already carried `source`, `seed` and `horizon_h`
+(`window_payload`, top-level fields); the page never showed them, so
+the SMT2020 benchmark and the sample fab were indistinguishable on
+screen. The page now renders a source line (`.tl-source`,
+`timeline.sourceLine`) from those three fields — no API change:
+
+- `smt2020` → "SMT2020 benchmark" (`timeline.sourceSmt2020`),
+  `sample` → "Sample fab" (`timeline.sourceSample`), in all three
+  languages. Any other `source` value is shown verbatim — never
+  dropped, never invented (the renderer fills `{seed}`/`{horizon}`
+  before `{source}`, so a source containing "{seed}" stays literal).
+  Matching is exact and case-sensitive; `"SMT2020"` is not mapped.
+- `sample` always takes the short form (`timeline.sourceLineShort`,
+  source only). The sample book has no random seed (`seed=1` is a
+  hardcoded constant) and its `horizon_h` is the last bar end
+  (6.98 h on the real sample book), not a run horizon — printing
+  "seed 1 · 6.98 h" would read as a seeded simulation run that never
+  happened.
+- Otherwise the full form prints only when the seed is a positive
+  integer and the horizon is a finite number above zero; any other
+  value takes the short form. If `source` itself is missing, not a
+  string, or blank, no line is shown.
+- `{horizon}` is the whole-book horizon (48 h for SMT2020), not the
+  span of the window currently on screen (12 h by default).
+- The line shows the book actually loaded, never the request
+  parameters: in sample mode a non-default `book`/`seed`/`horizon_h`
+  is a 422 (see Parameters and deep links), so no payload is
+  returned at all — a requested seed is never printed as if it
+  applied.
+- The line is separate from the warn status line (`.tl-status`): it is
+  factual, shown whenever a payload is loaded, re-rendered on
+  language switch, and never takes the warn style. A missing catalog
+  key falls back to English, never to silence.
+- A failed load clears the line, so no source is asserted under the
+  error. Residual: the failed load keeps the previous payload, so a
+  language switch afterwards re-renders the old source line from it
+  (and the old chart) — the same pre-existing stale-payload behaviour
+  as the rest of the page, not something this increment introduces.
+
+Still open: CSV / PNG export carries no source note (see above).
+
 ## What still describes the drawn subset only
 
 - `machine_rows` / `product_rows` / `blocks`: rows and blocks for the
@@ -96,11 +247,23 @@ Two fields are NOT display-window counts:
   sequence when `also` co-location is involved: a bar is kept if any of
   its members ranked in, so a middle bar can drop while its neighbours
   survive. The guard above is what keeps that honest.)
-- `focus_bars`: still hard-cut at 400 with no marker, and they bypass
-  the window and the filters entirely — a focused lot's bars draw even
-  when the filters exclude them, while stats and scope exclude them.
-  The focus lot is drawn on request and shown in the "Selected" line;
-  it is not counted in `scope`.
+  The bar limit keeps a time-prefix of the sorted bars, so it cannot
+  split a lot's sequence except when two of its bars share the same
+  start_min at the cut — the guard above covers that case too. The
+  guard counts a bar as the lot's when the lot is its primary lot or
+  an also member — a batched bar processing the lot under another
+  lot's name still blocks a fabricated gap (see acceptance item 10).
+- `focus_bars`: the focused lot's whole-book bars, earliest first,
+  hard-cut at 400 (`FOCUS_BAR_MAX` in `model.py`); the cut is marked,
+  not silent — the payload carries `focus` (`lot`, `bars_total`,
+  `bars_shown`, `bars_max`, `truncated`) and the status line names the
+  counts when `truncated` is true. They still bypass the window and
+  the filters entirely — a focused lot's bars draw even when the
+  filters exclude them, while stats and scope count the window bars
+  only, not the focus set as such. The focus
+  lot is drawn on request and shown in the "Selected" line; its
+  whole-book bars are not counted in `scope` (its bars inside the
+  window are counted as usual).
 - CSV / PNG export: exported from the drawn bars, not the display
   window, with no truncation note attached. CSV additionally excludes
   `focus_bars`; PNG renders only the visible viewport, narrower than the
@@ -199,3 +362,14 @@ stat, and no scope field.
    the same 1–9) and show that run's report; given a scenario, what-if
    or sample payload, then the lot menu offers no report link, only the
    unavailable note.
+9. Given a focused lot with more than 400 bars in the book, when the
+   payload is built, then `focus.bars_total` is the full count,
+   `focus.bars_shown == 400`, `focus.truncated` is true, the 400 shown
+   are the lot's earliest bars, and the status line names the counts
+   ("Showing the earliest 400 of {total} bars for lot {lot}. The focus view is cut
+   at {max} bars."); with 400 or fewer bars `truncated` is false and
+   no focus sentence is shown.
+10. Given a lot X processed as an also member in a bar whose primary
+    lot is Y, when gaps are computed across that bar's interval, then
+    no waiting gap is reported for X — with or without the lot cap
+    dropping that bar.
