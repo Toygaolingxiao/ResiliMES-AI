@@ -137,3 +137,120 @@ def test_v0_ledgers_still_load_and_verify():
     loaded = ClaimLedger.model_validate_json(old.model_dump_json())
     assert loaded.ledger_version == "claim/v0"
     assert loaded.verify()
+
+
+# --- tail-suppression regression (merged #108 follow-up) -------------------
+#
+# The merged #108 suppressed a legacy hyphen match only when it was the
+# *head* of a longer mixed-separator token (``match.end() < end``). A
+# legacy match that was the *tail* ("FE-120" inside "3M-FE-120") was not
+# suppressed, so a registered id failed the gate while the ledger — which
+# reads only the full token — passed it. The guard is now ``<=``: any
+# legacy match fully inside a letter-and-digit token is judged once,
+# below, as that token.
+
+
+def test_tail_mixed_id_passes_when_registered():
+    for token in (
+        "3M-FE-120",
+        "FE_120-AB-34",
+        "Lot_3-FE-120",
+        "Init_Lot_3-FE-120",
+        "X-1_Y-2-Z-3",
+    ):
+        registry = _registry_with(f"held at {token}")
+        assert check(f"held at {token}", registry) == []
+
+
+def test_tail_mixed_id_fails_once_when_unknown():
+    registry = FactRegistry()
+    assert check("held at 3M-FE-120", registry) == [
+        "unknown id 3M-FE-120",
+        "unknown number 120",
+    ]
+    assert check("held at FE_120-AB-34", registry) == [
+        "unknown id FE_120-AB-34",
+        "unknown number 120",
+        "unknown number 34",
+    ]
+
+
+def test_mid_token_tail_segment_is_not_a_separate_id():
+    registry = FactRegistry()
+    misses = check("held at FE-120_A-B", registry)
+    assert misses == ["unknown id FE-120_A-B", "unknown number 120"]
+    assert "unknown id A-B" not in misses
+
+
+def test_head_suppression_shape_still_holds():
+    registry = _registry_with("held at FE-120-A_B")
+    assert check("held at FE-120-A_B", registry) == []
+    assert check("held at FE-120-A_B", FactRegistry()) == [
+        "unknown id FE-120-A_B",
+        "unknown number 120",
+    ]
+
+
+def test_legacy_single_id_reported_once():
+    registry = FactRegistry()
+    assert check("held at FE-120", registry) == [
+        "unknown id FE-120",
+        "unknown number 120",
+    ]
+    assert check("held at FE-120", _registry_with("held at FE-120")) == []
+
+
+# --- malformed grouped numbers (merged #108 follow-up) ---------------------
+#
+# The grouped branch of ``_NUMBER`` had no right anchor, so ``1,0005``
+# was read as the valid ``1,000`` plus a trailing ``5`` that the 0-10
+# counting-words allowance then swallowed. The branch now requires the
+# character after a group not to be a digit, so the malformed token
+# falls back to plain matching and its remainder is judged as written.
+
+
+def test_malformed_grouped_number_with_trailing_digit_fails():
+    registry = _registry_with("saving 1,000 minutes")
+    assert check("saving 1,0005 minutes", registry) == ["unknown number 0005"]
+    assert check("saving 1,0000 minutes", registry) == ["unknown number 0000"]
+    registry = _registry_with("saving 2,000 minutes")
+    assert check("saving 2,0005 minutes", registry) == ["unknown number 0005"]
+
+
+def test_trailing_two_digit_group_fails_as_the_whole_fragment():
+    registry = _registry_with("saving 1,000 minutes")
+    # The miss names the malformed fragment as read ("00055"), not just
+    # its tail ("55"): the gate judges the token it was given.
+    assert check("saving 1,00055 minutes", registry) == ["unknown number 00055"]
+
+
+def test_grouped_numbers_still_grouped():
+    registry = _registry_with("cost $1,000 and 10,000 lots rate 12,345.67")
+    assert check("cost $1,000 and 10,000+ lots", registry) == []
+    assert check("rate 12,345.67", registry) == []
+    assert check("saving 1,234,567 minutes", _registry_with("saving 1,234,567 minutes")) == []
+
+
+def test_short_group_split_is_current_behaviour():
+    # A short group ("1,00") is still read piecewise — "1" plus "00" —
+    # because the grouped branch requires exactly three digits per group.
+    # Explicitly rejecting malformed short groups is a follow-up, not
+    # part of this fix; see docs/CLAIM_LEDGER.md Limits.
+    assert check("saving 1,00 minutes", FactRegistry()) == ["unknown number 00"]
+
+
+def test_ledger_and_gate_agree_on_tail_and_malformed_shapes():
+    registry = _registry_with("3M-FE-120 saving 1,000")
+    text = "3M-FE-120 saved 1,0005 but FE_120-AB-34 lost 2,000"
+    ledger = build_ledger(text, registry)
+    failed = {(c.kind, c.value) for c in ledger.failed()}
+    assert failed == {
+        ("id", "FE_120-AB-34"),
+        ("number", "0005"),
+        ("number", "2000"),
+        ("number", "34"),
+    }
+    passed = {(c.kind, c.value) for c in ledger.passed()}
+    assert ("id", "3M-FE-120") in passed
+    assert ("number", "1000") not in passed  # the text quotes 1,0005, not 1,000
+    assert ledger.verify()

@@ -11,12 +11,12 @@ allowed because "two causes" and "step 1" are prose, not data.
 from __future__ import annotations
 
 import json
-import re
 import unicodedata
 from collections.abc import Iterable
 from typing import Any
 
 from resilimes.common.textfacts import (
+    _HAS_DIGIT,
     _HAS_LETTER,
     _ID_TOKEN,
     _NUMBER,
@@ -25,7 +25,6 @@ from resilimes.common.textfacts import (
     narrative_mismatches,
 )
 
-_HAS_DIGIT = re.compile(r"\d")
 ALWAYS_OK_NUMBERS = frozenset(str(n) for n in range(11))
 _MAX_SOURCE_LEN = 200
 

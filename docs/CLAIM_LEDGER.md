@@ -41,8 +41,8 @@ contained at check time (see Limits).
     construction). A naive value, a date-only value, or a non-UTC offset
     is rejected; `Z` and `+00:00` are accepted.
   - `reason`: why unchecked, or the gate's miss text on a failure.
-- `ClaimLedger`: `ledger_version` (`claim/v1`, locked with `Literal`;
-  `claim/v0` ledgers still load and verify),
+- `ClaimLedger`: `ledger_version` (`claim/v1`, `Literal["claim/v0",
+  "claim/v1"]`; `claim/v0` ledgers still load and verify),
   `subject` (e.g. the lot id), `source` (what produced the text, e.g.
   `explainer`), `claims`, `content_hash` (`sha256:<hex>` over the canonical
   JSON without the hash and without `checked_at`, same pattern as Evidence
@@ -122,9 +122,29 @@ for a rate without accounting for that.
   `1` and `200`, `000` recorded as failed), and ids that start with a
   digit (`3M_Lot_9`) or mix hyphen and underscore (`Diffusion_FE-120`,
   `Lot-1_FE_2`) being invisible to both gate and ledger — were closed in
-  claim/v1: extraction now lives only in `common.textfacts` and both
-  sides read it there (contract tests:
-  `tests/test_explain_factcheck_extraction.py`).
+  claim/v1: for the gate and the ledger, extraction now lives only in
+  `common.textfacts` and both sides read it there (contract tests:
+  `tests/test_explain_factcheck_extraction.py`). "Only" is scoped to the
+  gate and the ledger: `agents/review_panel._numbers` still extracts
+  numbers with its own regex, so a grouped number can pass the gate and
+  fail the review panel, or the reverse; converging it is a follow-up.
+- Post-merge fix to the v1 extraction (2026-11-20, `claim/v1` unchanged):
+  the merged v1 code still misread two shapes, and the fix aligns the code
+  with the v1 contract the PR text and this document already state, so no
+  version bump. A registered mixed-separator id whose tail is a hyphen id
+  (`3M-FE-120`, `FE_120-AB-34`) was failed by the gate while the ledger
+  passed it; a grouped number with one trailing digit (`1,0005`,
+  `1,0000`) was silently accepted as the grouped number plus a counting
+  word. Both are fixed in `common.textfacts` (tail suppression, right
+  anchor on the grouped branch) and pinned by contract tests. Ledgers
+  built from the merged v1 code before this fix may record a
+  `1,0005`-class number as passed; `verify()` checks self-consistency
+  only and does not re-extract, so such a ledger still verifies.
+- Short-group numbers are still read piecewise, not rejected: `1,00`
+  becomes claims for `1` and `00`, and `1,234,56` becomes `1,234` and
+  `56`. Explicitly rejecting malformed short groups is a follow-up
+  decision, not part of the 2026-11-20 fix; the current behaviour is
+  pinned by a contract test so it cannot change silently.
 - `content_hash` covers what was claimed and the verdicts, not `checked_at`
   (so the same text and registry always build the same hash). It is a
   self-consistency check, not a signature: anyone who can rewrite the ledger
