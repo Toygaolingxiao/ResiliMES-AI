@@ -1,0 +1,14 @@
+{
+  "name": "resilimes-screenshot-baseline",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Wave 0 screenshot baseline for #121. Isolated from the app — no bundler, no static build step.",
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.mjs",
+    "postinstall": "npx playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

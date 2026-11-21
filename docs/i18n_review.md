@@ -896,7 +896,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `import.noDue` | The log has no due time. | 日志里没有交期。 | ログに納期がありません。 |
 | `import.loading` | Reading… | 读取中… | 読み込み中… |
 | `import.error` | Could not read: {msg} | 无法读取：{msg} | 読み込めませんでした：{msg} |
-| `import.back` | Back to the report | 返回报告 | 報告書に戻る |
+| `import.back` | Back to the console | 返回控制台 | コンソールに戻る |
 | `import.empty` | Choose a file. | 请选择文件。 | ファイルを選んでください。 |
 | `import.contentsTitle` | File contents | 文件内容 | ファイルの中身 |
 | `import.contentsMeta` | {name}: showing {shown} of {total} rows | {name}：共 {total} 行，显示前 {shown} 行 | {name}：全 {total} 行中 {shown} 行を表示 |
@@ -963,7 +963,7 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `timeline.link` | Timeline | 时间线 | 工程表 |
 | `timeline.title` | Operation timeline | 工序甘特图 | 工程ガント |
 | `timeline.lead` | One time axis. Switch between tools and product lots. Right-click a bar and ask why. | 同一条时间轴。在装置视图和产品批次视图之间切换。在条上右键，问为什么。 | 時間軸は一つ。装置別と製品・ロット別を切り替える。バーを右クリックして、なぜかを開く。 |
-| `timeline.back` | ResiliMES | ResiliMES | ResiliMES |
+| `timeline.back` | Back to the console | 返回控制台 | コンソールに戻る |
 | `timeline.view` | View | 视图 | 表示 |
 | `timeline.viewMachine` | By tool | 按装置 | 装置別 |
 | `timeline.viewProduct` | By product / lot | 按产品 / 批次 | 製品・ロット別 |

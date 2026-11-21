@@ -60,9 +60,19 @@
       const c = copy();
       document.documentElement.lang = state.lang === "zh" ? "zh-Hans" : state.lang;
       document.title = c.title || "工程ガント";
-      text($(".tl-home"), c.back || "ResiliMES");
+      text($(".tl-home"), c.back || "Back to the console");
       text($(".tl-title"), c.title || "工程ガント");
       text($(".tl-lead"), c.lead || "");
+      const table = (state.catalog && (state.catalog[state.lang] || state.catalog.ja)) || {};
+      const peers = {
+        timeline: c.link || "Timeline",
+        report: (table.report && table.report.link) || "Report",
+        import: (table.import && table.import.link) || "Import",
+      };
+      host.querySelectorAll("[data-nav]").forEach((node) => {
+        const key = node.getAttribute("data-nav");
+        text(node, peers[key] || "");
+      });
       host.querySelectorAll("[data-lang]").forEach((button) => {
         button.setAttribute("aria-pressed", button.getAttribute("data-lang") === state.lang ? "true" : "false");
       });
@@ -939,7 +949,13 @@
     root.tabIndex = 0;
     root.innerHTML = `
       <header class="tl-top">
-        <div class="tl-brand"><a class="tl-home" href="/">ResiliMES</a><h1 class="tl-title">工程ガント</h1></div>
+        <nav class="tl-nav" aria-label="product">
+          <a class="tl-home" href="/">Back to the console</a>
+          <a href="/timeline" data-nav="timeline" aria-current="page"></a>
+          <a href="/report" data-nav="report"></a>
+          <a href="/import" data-nav="import"></a>
+          <h1 class="tl-title">工程ガント</h1>
+        </nav>
         <div class="tl-langs" role="group">
           <button type="button" data-lang="ja">日本語</button>
           <button type="button" data-lang="zh">中文</button>

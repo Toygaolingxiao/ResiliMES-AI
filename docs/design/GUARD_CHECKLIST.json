@@ -1,0 +1,131 @@
+{
+  "$schema_note": "Wave 0 guard-list ratchet for #121 / #119. CI fails if a listed test node or doc heading disappears without this file also changing in the same PR. Additive only: removing an entry requires an explicit #121 note.",
+  "version": 1,
+  "updated": "2026-11-22",
+  "issue": 121,
+  "wave": 0,
+  "tests": [
+    {
+      "id": "timeline-stats-unit-labels",
+      "file": "tests/test_timeline.py",
+      "node": "test_stats_card_labels_name_the_measured_unit",
+      "why": "#106 / #119 restore — stats card labels name the measured unit"
+    },
+    {
+      "id": "timeline-source-line-parity",
+      "file": "tests/test_timeline.py",
+      "node": "test_timeline_source_line_parity",
+      "why": "#106 / #119 restore — sourceLine i18n parity"
+    },
+    {
+      "id": "timeline-duration-no-60m",
+      "file": "tests/test_timeline.py",
+      "node": "test_timeline_duration_never_shows_60m",
+      "why": "Charter H2 — duration carry bug"
+    },
+    {
+      "id": "timeline-focus-bars-marked",
+      "file": "tests/test_timeline.py",
+      "node": "test_focus_bars_are_marked_when_cut_at_400",
+      "why": "M7 / #119 — focus_bars truncation must be marked"
+    },
+    {
+      "id": "console-run-error-visible",
+      "file": "tests/test_console_status_contract.py",
+      "node": "test_status_line_for_keeps_failure_visible",
+      "why": "Wave H① — silent failure must not clear"
+    },
+    {
+      "id": "console-run-error-wiring",
+      "file": "tests/test_console_status_contract.py",
+      "node": "test_console_wires_run_error_and_retry_control",
+      "why": "Wave H① — runError + Retry wiring"
+    },
+    {
+      "id": "console-retry-i18n",
+      "file": "tests/test_console_status_contract.py",
+      "node": "test_retry_copy_exists_in_all_languages",
+      "why": "Wave H① — retry copy in en/zh/ja"
+    },
+    {
+      "id": "report-inflight",
+      "file": "tests/test_report_inflight_contract.py",
+      "node": "test_report_load_has_seq_and_busy",
+      "why": "Wave H② — /report seq + busy"
+    },
+    {
+      "id": "overview-recent-lots",
+      "file": "tests/test_overview_recent_lots_contract.py",
+      "node": "test_recent_lots_only_after_successful_fetch",
+      "why": "Wave H④ — invalid lot must not enter recentLots"
+    },
+    {
+      "id": "cases-page-parity",
+      "file": "tests/test_cases_page.py",
+      "node": "test_cases_page_parity_with_cases_py",
+      "why": "Cases page / cases.py parity incl. tier fail-safe (Wave H③)"
+    },
+    {
+      "id": "i18n-catalog-parity",
+      "file": "tests/test_i18n.py",
+      "node": "test_catalog_keys_match_and_the_review_lists_them",
+      "why": "i18n tri-lang + generated review table"
+    },
+    {
+      "id": "style-budget-ratchet",
+      "file": "tests/test_style_budget.py",
+      "node": "test_style_violations_within_budget",
+      "why": "Wave 0 — violation budget ratchet"
+    },
+    {
+      "id": "guard-checklist-ratchet",
+      "file": "tests/test_guard_checklist.py",
+      "node": "test_guard_checklist_present",
+      "why": "Wave 0 — this ratchet self-guards"
+    }
+  ],
+  "doc_headings": [
+    {
+      "id": "timeline-stats-semantics",
+      "file": "docs/TIMELINE_SCOPE.md",
+      "heading": "## Stats semantics",
+      "why": "#119 restore"
+    },
+    {
+      "id": "timeline-verified-numbers",
+      "file": "docs/TIMELINE_SCOPE.md",
+      "heading": "## Verified numbers: correcting the PR #101 smoke sentence",
+      "why": "#119 restore"
+    },
+    {
+      "id": "timeline-data-source",
+      "file": "docs/TIMELINE_SCOPE.md",
+      "heading": "## Data source",
+      "why": "#119 restore"
+    },
+    {
+      "id": "layout-plan-decisions",
+      "file": "docs/LAYOUT_UNIFICATION_PLAN.md",
+      "heading": "## 六、决策定版与未决",
+      "why": "Wave 0 — locked owner decisions"
+    },
+    {
+      "id": "layout-plan-challenge",
+      "file": "docs/LAYOUT_UNIFICATION_PLAN.md",
+      "heading": "## 八、高发现挑战性复核",
+      "why": "Wave 0 — challenge review"
+    },
+    {
+      "id": "design-system-v1",
+      "file": "docs/DESIGN_SYSTEM.md",
+      "heading": "## 0. 版本与效力",
+      "why": "Wave 0 — DESIGN_SYSTEM v1"
+    },
+    {
+      "id": "console-charter-worklines",
+      "file": "docs/CONSOLE_DELIVERY_CHARTER.md",
+      "heading": "## Worklines",
+      "why": "Charter worklines must remain findable"
+    }
+  ]
+}

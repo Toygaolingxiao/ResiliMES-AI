@@ -151,10 +151,17 @@
     document.title = c.title || "説明報告書";
     text($("title"), c.title);
     const back = document.querySelector(".back");
-    if (back) text(back, c.back || "ResiliMES");
-    const importLink = document.getElementById("import-link");
-    const imported = (state.catalog[state.lang] || {}).import || {};
-    if (importLink) text(importLink, imported.link || "");
+    if (back) text(back, c.back || "Back to the console");
+    const table = state.catalog[state.lang] || {};
+    const peers = {
+      timeline: (table.timeline && table.timeline.link) || "Timeline",
+      report: c.link || "Report",
+      import: (table.import && table.import.link) || "Import",
+    };
+    document.querySelectorAll("[data-nav]").forEach((node) => {
+      const key = node.getAttribute("data-nav");
+      text(node, peers[key] || "");
+    });
     text($("lead"), c.lead);
     text($("seed-label"), c.seed);
     text($("horizon-label"), c.horizon);

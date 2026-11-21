@@ -1,0 +1,55 @@
+{
+  "$schema_note": "Wave 0 screenshot matrix for #121. Capture with node tools/screenshot-baseline (Playwright). Does NOT add a build step to the served app — the tool talks to a running server.",
+  "version": 1,
+  "updated": "2026-11-22",
+  "issue": 121,
+  "langs": ["en", "zh", "ja"],
+  "themes": ["light", "dark"],
+  "widths_px": [1440, 1023],
+  "height_px": 900,
+  "storage": {
+    "lang": "resilimes.lang",
+    "theme": "resilimes.theme"
+  },
+  "pages": [
+    {
+      "id": "console",
+      "path": "/",
+      "ready": "css",
+      "ready_selector": ".shell",
+      "note": "Console shell; theme toggle lives here today."
+    },
+    {
+      "id": "report",
+      "path": "/report",
+      "ready": "css",
+      "ready_selector": "body",
+      "note": "Product report; theme may be light-only until Wave 3b — still capture dark matrix for drift."
+    },
+    {
+      "id": "import",
+      "path": "/import",
+      "ready": "css",
+      "ready_selector": "body"
+    },
+    {
+      "id": "timeline",
+      "path": "/timeline",
+      "ready": "css",
+      "ready_selector": "body"
+    },
+    {
+      "id": "console-pseudo",
+      "path": "/",
+      "ready": "css",
+      "ready_selector": ".shell",
+      "pseudo_l10n": true,
+      "note": "One page with strings stretched ~35% to expose overflow (Wave 0 §1.4 / review 6.6)."
+    }
+  ],
+  "pseudo_langs": ["en"],
+  "pseudo_themes": ["light"],
+  "pseudo_widths": [1440],
+  "expected_shot_count": 49,
+  "calc": "4 base pages × 3 langs × 2 themes × 2 widths = 48; + 1 pseudo (en×light×1440) = 49"
+}
