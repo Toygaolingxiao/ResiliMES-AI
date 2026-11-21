@@ -276,7 +276,7 @@
     render();
   }
   function openLot(name) {
-    S.recentLots = [name, ...S.recentLots.filter((x) => x !== name)].slice(0, 8);
+    // Wave H④: only remember lots that actually load (see viewLots).
     goto("lots", { lot: name });
   }
   function openFamily(family, group) { goto("tools", { family, group: group || S.group }); }
@@ -602,14 +602,21 @@
   const CLASS_RANK = { normal: 0, hot: 1, VIP: 2 };
 
   // ---------- lots ----------
+  function lotsFilterBar(c, input) {
+    return el("div", { class: "fx-filterbar" }, input, el("button", { type: "button", class: "fx-btn", onclick: () => {
+      const v = input.value.trim();
+      if (v) openLot(v);
+    } }, c.lot.open),
+      S.recentLots.length ? el("span", { class: "fx-recent" }, el("small", { class: "muted", text: c.lot.recent }), S.recentLots.map((n) => lotLink(n, guessKind(n)))) : null);
+  }
+
   async function viewLots() {
     const c = C();
     const input = el("input", { type: "search", class: "fx-search", placeholder: c.lot.search, value: S.lot || "", list: "fx-lot-ids" });
     const go = () => { const v = input.value.trim(); if (v) openLot(v); };
     input.addEventListener("keydown", (event) => { if (event.key === "Enter") go(); });
-    const bar0 = el("div", { class: "fx-filterbar" }, input, el("button", { type: "button", class: "fx-btn", onclick: go }, c.lot.open),
-      S.recentLots.length ? el("span", { class: "fx-recent" }, el("small", { class: "muted", text: c.lot.recent }), S.recentLots.map((n) => lotLink(n, guessKind(n)))) : null);
     if (!S.lot) {
+      const bar0 = lotsFilterBar(c, input);
       const o = await api("overview", { t: S.t });
       return [bar0, el("p", { class: "fx-note block", text: c.lot.pick }), el("div", { class: "fx-grid two" },
         card(C().ov.priority, null, lotTable(o.priority.slice(0, 10))), card(C().ov.atRisk, null, lotTable(o.at_risk.slice(0, 10))))];
@@ -618,8 +625,11 @@
     try {
       lot = await api(`lot/${encodeURIComponent(S.lot)}`, { t: S.t });
     } catch (error) {
-      return [bar0, el("p", { class: "fx-error", text: fill(c.lot.notFound, { id: S.lot }) })];
+      S.recentLots = S.recentLots.filter((x) => x !== S.lot);
+      return [lotsFilterBar(c, input), el("p", { class: "fx-error", text: fill(c.lot.notFound, { id: S.lot }) })];
     }
+    S.recentLots = [lot.lot, ...S.recentLots.filter((x) => x !== lot.lot)].slice(0, 8);
+    const bar0 = lotsFilterBar(c, input);
     const head = el("section", { class: "fx-card fx-lothead" },
       el("div", {}, el("h2", {}, el("i", { class: "fx-dot big", style: `background:${CLASS_COLOR[lot.kind]}` }), lot.lot),
         el("p", { class: "muted", text: fill(c.lot.header, { product: lot.product, step: lot.step + 1, steps: lot.steps }) })),

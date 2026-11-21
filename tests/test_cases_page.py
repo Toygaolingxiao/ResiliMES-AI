@@ -39,7 +39,7 @@ const src = fs.readFileSync(casesJs, "utf-8");
 const data = JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(src + "\nthis.__t = { validateCaseBook, normalizeCaseBook, casesLotRows, casesSummary, casesFilteredBook, casesParseIso };", ctx);
+vm.runInContext(src + "\nthis.__t = { validateCaseBook, normalizeCaseBook, casesLotRows, casesSummary, casesFilteredBook, casesParseIso, casesTierLabelFor, CASES_TIERS };", ctx);
 const F = ctx.__t;
 const failures = [];
 function check(name, cond, extra) {
@@ -91,6 +91,17 @@ const filtered = F.casesFilteredBook(data.valid, "resolved");
 check("filter resolved keeps 1 case", filtered.cases.length === 1 && filtered.cases[0].status === "resolved");
 check("Feb 30 rejected", F.casesParseIso("2026-02-30T09:00:00Z") === null);
 check("Feb 29 leap year accepted", F.casesParseIso("2024-02-29T09:00:00Z") !== null);
+const tierCopy = { tierUnknown: "不明", tier: { recorded: "Recorded", attributed: "Observed attribution", unknown: "不明" } };
+check("missing tier renders 不明", F.casesTierLabelFor(undefined, tierCopy) === "不明");
+check("null tier renders 不明", F.casesTierLabelFor(null, tierCopy) === "不明");
+check("blank tier renders 不明", F.casesTierLabelFor("", tierCopy) === "不明");
+check("recorded tier keeps label", F.casesTierLabelFor("recorded", tierCopy) === "Recorded");
+check("bogus tier falls back to 不明", F.casesTierLabelFor("maybe", tierCopy) === "不明");
+const withTier = JSON.parse(JSON.stringify(data.valid));
+withTier.cases[0].tier = "attributed";
+check("optional tier accepted", F.validateCaseBook(withTier).length === 0, F.validateCaseBook(withTier));
+withTier.cases[0].tier = "nope";
+check("unknown tier rejected", F.validateCaseBook(withTier).some((e) => e.includes("tier")));
 console.log(JSON.stringify({ failures }));
 """
 

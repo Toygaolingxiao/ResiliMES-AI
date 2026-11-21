@@ -245,6 +245,9 @@ class Case(BaseModel):
     status: Status = "open"
     lateness_min: float | None = Field(default=None, ge=0.0)
     evidence_hash: str | None = None
+    # Display hint for the cases page (Wave H fail-safe). Not part of the
+    # content_hash seal; Wave 2 may promote it into the sealed contract.
+    tier: Literal["recorded", "attributed", "unknown"] | None = None
     notes: tuple[str, ...] = ()
     history: tuple[StatusEvent, ...] = ()
     created_at: str = ""

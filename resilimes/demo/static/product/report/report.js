@@ -9,6 +9,8 @@
     payload: null,
     lots: [],
     rangeArmed: false,
+    loadSeq: 0,
+    busy: false,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -290,6 +292,16 @@
     }
   }
 
+  function setBusy(busy) {
+    state.busy = Boolean(busy);
+    for (const id of ["show", "lot", "seed", "horizon", "print"]) {
+      const node = $(id);
+      if (node) node.disabled = state.busy;
+    }
+    const pick = $("pick");
+    if (pick) pick.setAttribute("aria-busy", state.busy ? "true" : "false");
+  }
+
   async function loadReport(event) {
     if (event) event.preventDefault();
     const badField = paintRangeErrors();
@@ -310,46 +322,58 @@
     const horizon = String(Number($("horizon").value));
     // A later Show or a lot change must use the lot on the form, not the old URL.
     const picked = event && $("lot").options.length ? $("lot").value : "";
+    const seq = ++state.loadSeq;
+    setBusy(true);
     setStatus(c.loading);
     $("report").hidden = true;
-    let lots;
     try {
-      const response = await fetch(`/api/explain/report/lots?seed=${encodeURIComponent(seed)}&horizon_h=${encodeURIComponent(horizon)}`);
-      if (!response.ok) throw new Error(String(response.status));
-      lots = await response.json();
-    } catch (error) {
-      setStatus(fill(c.error, { msg: error.message || error }), true);
-      return;
+      let lots;
+      try {
+        const response = await fetch(`/api/explain/report/lots?seed=${encodeURIComponent(seed)}&horizon_h=${encodeURIComponent(horizon)}`);
+        if (!response.ok) throw new Error(String(response.status));
+        lots = await response.json();
+      } catch (error) {
+        if (seq !== state.loadSeq) return;
+        setStatus(fill(c.error, { msg: error.message || error }), true);
+        return;
+      }
+      if (seq !== state.loadSeq) return;
+      state.lots = lots.lots || [];
+      const wanted = picked || new URLSearchParams(location.search).get("lot") || "";
+      // A Gantt "why?" link names the lot even when it is not in the late list.
+      if (wanted && !state.lots.some((item) => item.lot === wanted)) {
+        state.lots = [{ lot: wanted, late_sec: null }, ...state.lots];
+      }
+      fillLots(state.lots, wanted);
+      if (!state.lots.length) {
+        setStatus(c.empty);
+        return;
+      }
+      if (!$("lot").value) $("lot").selectedIndex = 0;
+      const lot = $("lot").value;
+      let payload;
+      try {
+        const response = await fetch(`/api/explain/report?lot=${encodeURIComponent(lot)}&seed=${encodeURIComponent(seed)}&horizon_h=${encodeURIComponent(horizon)}`);
+        if (!response.ok) throw new Error(String(response.status));
+        payload = await response.json();
+      } catch (error) {
+        if (seq !== state.loadSeq) return;
+        setStatus(fill(c.error, { msg: error.message || error }), true);
+        return;
+      }
+      if (seq !== state.loadSeq) return;
+      state.payload = payload;
+      const url = new URL(location.href);
+      url.searchParams.set("seed", seed);
+      url.searchParams.set("horizon_h", horizon);
+      url.searchParams.set("lot", lot);
+      history.replaceState(null, "", url);
+      setStatus("");
+      render(state.payload);
+      checkHash(state.payload);
+    } finally {
+      if (seq === state.loadSeq) setBusy(false);
     }
-    state.lots = lots.lots || [];
-    const wanted = picked || new URLSearchParams(location.search).get("lot") || "";
-    // A Gantt "why?" link names the lot even when it is not in the late list.
-    if (wanted && !state.lots.some((item) => item.lot === wanted)) {
-      state.lots = [{ lot: wanted, late_sec: null }, ...state.lots];
-    }
-    fillLots(state.lots, wanted);
-    if (!state.lots.length) {
-      setStatus(c.empty);
-      return;
-    }
-    if (!$("lot").value) $("lot").selectedIndex = 0;
-    const lot = $("lot").value;
-    try {
-      const response = await fetch(`/api/explain/report?lot=${encodeURIComponent(lot)}&seed=${encodeURIComponent(seed)}&horizon_h=${encodeURIComponent(horizon)}`);
-      if (!response.ok) throw new Error(String(response.status));
-      state.payload = await response.json();
-    } catch (error) {
-      setStatus(fill(c.error, { msg: error.message || error }), true);
-      return;
-    }
-    const url = new URL(location.href);
-    url.searchParams.set("seed", seed);
-    url.searchParams.set("horizon_h", horizon);
-    url.searchParams.set("lot", lot);
-    history.replaceState(null, "", url);
-    setStatus("");
-    render(state.payload);
-    checkHash(state.payload);
   }
 
   async function init() {
@@ -376,6 +400,6 @@
     if (params.get("lot")) loadReport();
   }
 
-  window.ResiliReport = { render, statementNode, rangeProblem, horizonProblem };
+  window.ResiliReport = { render, statementNode, rangeProblem, horizonProblem, setBusy };
   init();
 })();
