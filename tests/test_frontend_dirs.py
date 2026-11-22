@@ -105,6 +105,53 @@ def test_product_pages_share_console_back_and_peer_links() -> None:
     assert 'data-nav="timeline"' in timeline_js
 
 
+def test_report_css_link_is_versioned_on_both_pages() -> None:
+    """report.css is shared by /report and /import; its link must carry a
+    cache-busting version, as the JS links do. #124 changed report.css
+    without versioning the link, so returning users could keep stale
+    styles; the same PR bumped import.js to ?v=3 while its test still
+    pinned ?v=2, which turned main CI red. Pin the version here so a
+    future bump without a test update fails loudly instead of silently.
+    """
+    for page in ("report", "import"):
+        html = (STATIC / "product" / page / f"{page}.html").read_text(encoding="utf-8")
+        # Anchor to the closing quote: a bare "?v=1" substring would also
+        # match "?v=10" / "?v=100" and silently pass a drifted version.
+        assert '/assets/product/report/report.css?v=1"' in html
+        assert '/assets/product/report/report.css"' not in html
+    client = TestClient(
+        create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="x"))
+    )
+    served = client.get("/assets/product/report/report.css?v=1")
+    assert served.status_code == 200
+    assert ".product-nav" in served.text
+
+
+def test_i18n_json_fetch_is_versioned_everywhere() -> None:
+    """i18n.json is fetched bare from four scripts; #124 changed its copy
+    (back copy now reads "Back to the console") without versioning any of
+    them, so a returning user can get new JS with stale strings. Same
+    defect class as report.css in this increment, fixed in the same pass.
+    Version rule (per-asset counter, first versioning is v=1); the
+    pre-existing timeline.css?v=2 anomaly from #124 is left as-is.
+    """
+    for script in (
+        "product/import/import.js",
+        "product/report/report.js",
+        "product/timeline/timeline.js",
+        "workshop/console/console.js",
+    ):
+        text = (STATIC / script).read_text(encoding="utf-8")
+        assert '/assets/i18n.json?v=1"' in text
+        assert '"/assets/i18n.json"' not in text
+    client = TestClient(
+        create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="x"))
+    )
+    served = client.get("/assets/i18n.json?v=1")
+    assert served.status_code == 200
+    assert "Back to the console" in served.text
+
+
 def test_quality_report_page_wiring() -> None:
     index = (STATIC / "index.html").read_text(encoding="utf-8")
     assert "/assets/product/quality/quality-report.js" in index

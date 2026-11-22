@@ -935,7 +935,7 @@
       const product = host.querySelector("[data-view='product']");
       if (product) product.checked = true;
     }
-    fetch("/assets/i18n.json").then((response) => response.json()).then((catalog) => {
+    fetch("/assets/i18n.json?v=1").then((response) => response.json()).then((catalog) => {
       state.catalog = catalog;
       paint();
       load();
