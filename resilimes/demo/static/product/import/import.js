@@ -314,7 +314,7 @@
   }
 
   async function init() {
-    const response = await fetch("/assets/i18n.json");
+    const response = await fetch("/assets/i18n.json?v=1");
     state.catalog = await response.json();
     paintChrome();
     $("form").addEventListener("submit", submit);

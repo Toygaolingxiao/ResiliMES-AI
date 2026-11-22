@@ -94,7 +94,7 @@ const $ = (id) => document.querySelector(id);
 document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
-  COPY = await getJson("/assets/i18n.json");
+  COPY = await getJson("/assets/i18n.json?v=1");
   state.health = await getJson("/api/health");
   state.horizon = state.health.horizon;
   if (state.health.fab === "smt2020" && window.Fab) state.tab = "fab-overview";
