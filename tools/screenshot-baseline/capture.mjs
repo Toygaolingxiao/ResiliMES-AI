@@ -24,7 +24,8 @@ const base = arg("base", "http://127.0.0.1:8000").replace(/\/$/, "");
 const outDir = arg("out", join(__dir, "baselines"));
 mkdirSync(outDir, { recursive: true });
 
-function stretchText(root, factor = 1.35) {
+function stretchText(root = document.body, factor = 1.35) {
+  if (!root) return;
   const walk = (node) => {
     if (node.nodeType === 3) {
       const t = node.nodeValue;
