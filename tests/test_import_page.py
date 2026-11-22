@@ -26,7 +26,7 @@ def test_import_page_has_a_contents_section_under_the_result() -> None:
     html = (IMPORT / "import.html").read_text(encoding="utf-8")
     assert 'id="contents"' in html
     assert html.index('id="result"') < html.index('id="contents"')
-    assert "import.js?v=2" in html
+    assert "import.js?v=3" in html
 
 
 def test_import_script_parses_and_renders_the_file() -> None:
