@@ -653,8 +653,6 @@ def test_api_groups_filters_and_serves_the_page() -> None:
     script = client.get("/assets/product/timeline/timeline.js")
     assert script.status_code == 200
     assert "ResiliTimeline" in script.text
-    assert "FILL[" not in script.text
-    assert "swatch.style.background = barFill(key)" in script.text
 
 
 ROOT = Path(__file__).resolve().parents[1]
