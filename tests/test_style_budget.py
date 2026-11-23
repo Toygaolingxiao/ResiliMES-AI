@@ -85,11 +85,7 @@ def test_text_warning_contrast_clears_aa() -> None:
 
     all_rows = text_contrast_rows()
     assert all_rows, "expected semantic contrast rows from tokens.json"
-    text_fails = [
-        r
-        for r in all_rows
-        if r["min_ratio"] == 4.5 and r["ratio"] < r["min_ratio"]
-    ]
+    text_fails = [r for r in all_rows if r["min_ratio"] == 4.5 and r["ratio"] < r["min_ratio"]]
     graphic_groups: dict[tuple[str, str], list[dict]] = {}
     for r in all_rows:
         if r["min_ratio"] != 3.0:
