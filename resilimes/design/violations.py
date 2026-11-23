@@ -15,6 +15,7 @@ from typing import Any
 from resilimes.config import ROOT
 
 BUDGET_PATH = ROOT / "docs" / "design" / "VIOLATION_BUDGET.json"
+BASELINE_PATH = ROOT / "docs" / "design" / "VIOLATION_BUDGET_BASELINE.json"
 STATIC = ROOT / "resilimes" / "demo" / "static"
 
 _HEX = re.compile(r"#[0-9a-fA-F]{3,8}\b")
@@ -35,6 +36,17 @@ _BASELINE_BP = {1500, 1440, 1320, 1279, 1023}
 
 def load_budget() -> dict[str, Any]:
     return json.loads(BUDGET_PATH.read_text(encoding="utf-8"))
+
+
+def load_baseline() -> dict[str, Any]:
+    """Frozen Wave 0 budget values (see VIOLATION_BUDGET_BASELINE.json).
+
+    The baseline is the ratchet's anchor: budgets may only descend from
+    it. Raising a budget without also editing that file fails CI; editing
+    the baseline file is itself the deliberate, reviewable act, and the
+    test cannot check the reason given for it.
+    """
+    return json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
 
 
 def _iter_css() -> list[Path]:
