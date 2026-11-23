@@ -1,0 +1,31 @@
+{
+  "$schema_note": "Frozen Wave 0 baseline for the style-violation ratchet (#121). The budgets in VIOLATION_BUDGET.json must never exceed these values: CI fails (tests/test_style_budget.py) if any budget is raised above its baseline, or if a metric is added or removed without updating this file in the same PR. Raising a baseline value is a deliberate, reviewable act: change this file in the same PR, record the change in 'history' below, and state the reason in the PR body. This file is not hash-locked or signed; the test only compares values, so a simultaneous edit of budget and baseline still passes CI and relies on human review of the diff. When re-baselining, update frozen_at / frozen_commit / reverified_at together and say which kind of change it is: a measurement correction (the counter was wrong, e.g. candidate 11(c)) or a real regression (code got worse). Lowering a budget does not require touching this file. Baseline values were measured with resilimes.design.violations.count_violations() at the #124 merge commit f53b88c3 and re-verified equal at 9b7585fe.",
+  "frozen_at": "2026-11-22",
+  "frozen_commit": "f53b88c3",
+  "history": [
+    {
+      "commit": "f53b88c3",
+      "date": "2026-11-22",
+      "kind": "baseline",
+      "reason": "Wave 0 freeze; values measured with count_violations() at the #124 merge commit."
+    }
+  ],
+  "issue": 121,
+  "metrics": {
+    "breakpoints_outside_baseline": 2,
+    "css_hex_outside_token_defs": 112,
+    "css_rgba_outside_token_defs": 14,
+    "font_size_outside_text_tokens": 36,
+    "js_hex_literals": 74,
+    "js_rgba_literals": 1,
+    "spacing_outside_legacy_ladder": 172
+  },
+  "notes": [
+    "Known measurement error (candidate 11(c), not fixed here): the spacing counter miscounts in both directions — about 30 border-width '1px' values are counted as spacing violations, and about 49 off-ladder px values in later positions of shorthand declarations are missed. The frozen spacing value 172 is therefore a counter reading, not a true violation count; the corrected count is estimated near 191 and will be re-measured when 11(c) lands, which will require a re-baseline of this metric (kind: measurement correction).",
+    "The counter itself (resilimes.design.violations.count_violations) has no fixture tests; a change that makes it undercount would pass both budget tests. That gap (G2/G4) is not closed by this file and relies on review.",
+    "Update 'reverified_at' whenever the counts are re-verified equal on a newer commit."
+  ],
+  "reverified_at": "2026-11-23 @ 9b7585fe",
+  "version": 1,
+  "wave": 0
+}
