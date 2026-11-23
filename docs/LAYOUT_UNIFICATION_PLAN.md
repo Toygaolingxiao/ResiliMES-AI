@@ -164,7 +164,7 @@
 
 - 本文件修订 + `DESIGN_SYSTEM.md` v1  
 - 截图基线工具 `tools/screenshot-baseline/`（矩阵 49 张定义；不给 app 加构建步骤）  
-- 违规预算棘轮 `docs/design/VIOLATION_BUDGET.json` + `tests/test_style_budget.py`  
+- 违规预算棘轮 `docs/design/VIOLATION_BUDGET.json` + `docs/design/VIOLATION_BUDGET_BASELINE.json` + `tests/test_style_budget.py`  
 - 守卫清单棘轮 `docs/design/GUARD_CHECKLIST.json` + `tests/test_guard_checklist.py`  
 - `tokens.json` 格式定版 + `regen_tokens_review.py`  
 - 决策定版（§六）+ 挑战性复核（§八）  
@@ -279,7 +279,7 @@ timeline（最大件）→ report/import → 控制台内部 → fab；甘特等
 | 设计系统 v1 | `docs/DESIGN_SYSTEM.md` |
 | 令牌源 | `docs/design/tokens.json` |
 | 令牌表（生成） | `docs/design/TOKENS_REVIEW.md` |
-| 违规预算 | `docs/design/VIOLATION_BUDGET.json` |
+| 违规预算 | `docs/design/VIOLATION_BUDGET.json` + `docs/design/VIOLATION_BUDGET_BASELINE.json` |
 | 守卫清单 | `docs/design/GUARD_CHECKLIST.json` |
 | 截图工具 | `tools/screenshot-baseline/` |
 | 棘轮测试 | `tests/test_style_budget.py`、`tests/test_guard_checklist.py` |

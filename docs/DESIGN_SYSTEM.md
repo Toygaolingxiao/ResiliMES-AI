@@ -7,7 +7,7 @@
 
 - 版本 **`design-system/v1`**（本文件由 v0 升版；v0 局限见文末迁移说明）。
 - **文档与代码不一致视为缺陷。** 令牌表以 `tokens.json` 为源，由生成器写入 `TOKENS_REVIEW.md`；Wave 1 起 CSS/JS 亦由同一源生成。
-- 合入本文件 + tokens + 棘轮即约束后续增量：新代码不得抬高 `VIOLATION_BUDGET.json`；守卫清单项不得无声消失。
+- 合入本文件 + tokens + 棘轮即约束后续增量：新代码不得抬高 `VIOLATION_BUDGET.json`；抬高预算须同步更新 `docs/design/VIOLATION_BUDGET_BASELINE.json`（测试 `test_budgets_do_not_exceed_baseline` 仅强制执行预算 ≤ 基线），并在 PR 正文说明理由（人工复核，测试不检查）；守卫清单项不得无声消失。
 - 契约语义仍遵守全仓原则：**additive payloads only**。
 
 ## 1. 原则
@@ -135,7 +135,7 @@ Cases / Evidence / Explanation / Import / Quality / Replay / Report — 既有�
 
 | 机制 | 路径 |
 | --- | --- |
-| 违规预算棘轮 | `docs/design/VIOLATION_BUDGET.json` + `tests/test_style_budget.py` |
+| 违规预算棘轮 | `docs/design/VIOLATION_BUDGET.json` + `docs/design/VIOLATION_BUDGET_BASELINE.json`（冻结基线） + `tests/test_style_budget.py` |
 | 守卫清单棘轮 | `docs/design/GUARD_CHECKLIST.json` + `tests/test_guard_checklist.py` |
 | 令牌生成一致性 | `tests/test_guard_checklist.py::test_tokens_review_matches_generator` |
 | 截图矩阵完整性 | `tools/screenshot-baseline/matrix.json` + 同文件测试 |
