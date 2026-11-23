@@ -8,11 +8,12 @@ from resilimes.design.tokens import (
     review_markdown,
     text_warning_contrast_rows,
 )
-from resilimes.design.violations import count_violations, load_budget
+from resilimes.design.violations import count_violations, load_baseline, load_budget
 
 __all__ = [
     "contrast_ratio",
     "count_violations",
+    "load_baseline",
     "load_budget",
     "load_tokens",
     "review_markdown",
