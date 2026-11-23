@@ -78,6 +78,12 @@
       "why": "Wave 0 — violation budget ratchet"
     },
     {
+      "id": "style-baseline-ratchet",
+      "file": "tests/test_style_budget.py",
+      "node": "test_budgets_do_not_exceed_baseline",
+      "why": "Wave 0 follow-up — budgets must not exceed the frozen baseline"
+    },
+    {
       "id": "guard-checklist-ratchet",
       "file": "tests/test_guard_checklist.py",
       "node": "test_guard_checklist_present",
