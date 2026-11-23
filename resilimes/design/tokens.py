@@ -104,10 +104,10 @@ def text_contrast_rows() -> list[dict[str, Any]]:
             if not name.startswith("graphic-"):
                 continue
             fg = str(node["value"])
-            surfaces: list[tuple[str, str]] = [(f"--card ({theme_name})", card)]
+            graphic_surfaces: list[tuple[str, str]] = [(f"--card ({theme_name})", card)]
             if theme_name == "light":
-                surfaces.append((f"--ink ({theme_name})", ink))
-            for label, bg in surfaces:
+                graphic_surfaces.append((f"--ink ({theme_name})", ink))
+            for label, bg in graphic_surfaces:
                 ratio = contrast_ratio(fg, bg)
                 rows.append(
                     {
@@ -172,12 +172,12 @@ def js_text() -> str:
             "   Run: python scripts/regen_tokens_js.py */",
             '"use strict";',
             "",
-            f"const SEMANTIC = {{",
+            "const SEMANTIC = {",
             f"  light: {sem_light},",
             f"  dark: {sem_dark},",
             "};",
             "",
-            f"const CHART = {{",
+            "const CHART = {",
             f"  light: {chart_light},",
             f"  dark: {chart_dark},",
             "};",
