@@ -14,8 +14,8 @@
       "description": "rgba()/rgb() literals in *.css property values outside custom-property definitions."
     },
     "js_hex_literals": {
-      "budget": 74,
-      "description": "Hex colour literals in demo/static *.js (canvas palettes included until Wave 1c)."
+      "budget": 0,
+      "description": "Hex colour literals in demo/static *.js (Wave 1c: palettes use tokens.css / tokens.js)."
     },
     "js_rgba_literals": {
       "budget": 1,
