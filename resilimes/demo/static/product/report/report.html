@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>説明報告書</title>
     <link rel="stylesheet" href="/assets/design/tokens.css?v=1" />
-    <link rel="stylesheet" href="/assets/product/report/report.css?v=2" />
+    <link rel="stylesheet" href="/assets/product/report/report.css?v=3" />
   </head>
   <body>
     <header class="bar">
@@ -14,6 +14,7 @@
         <a href="/timeline" data-nav="timeline"></a>
         <a href="/report" data-nav="report" aria-current="page"></a>
         <a href="/import" data-nav="import"></a>
+        <h1 id="title">説明報告書</h1>
       </nav>
       <div class="langs" role="group">
         <button type="button" data-lang="ja">日本語</button>
@@ -21,10 +22,8 @@
         <button type="button" data-lang="en">English</button>
       </div>
     </header>
-    <article class="sheet">
-      <h1 id="title">説明報告書</h1>
-      <p id="lead" class="lead"></p>
-      <form id="pick" class="pick" novalidate>
+    <p id="lead" class="lead"></p>
+    <form id="pick" class="pick" novalidate>
         <label><span id="seed-label"></span> <input id="seed" type="number" min="1" max="9" value="1" aria-describedby="seed-error"></label>
         <label><span id="horizon-label"></span> <input id="horizon" type="number" min="0" max="168" value="48" aria-describedby="horizon-error"> <span id="horizon-unit"></span></label>
         <label><span id="lot-label"></span>
@@ -35,6 +34,7 @@
       </form>
       <p id="seed-error" class="field-error" role="alert" hidden></p>
       <p id="horizon-error" class="field-error" role="alert" hidden></p>
+    <article class="sheet">
       <p id="note" class="note"></p>
       <p id="status" class="status" role="status"></p>
       <div id="report" hidden></div>

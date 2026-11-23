@@ -122,12 +122,12 @@ def test_report_css_link_is_versioned_on_both_pages() -> None:
         assert tokens_idx < report_idx
         # Anchor to the closing quote: a bare "?v=2" substring would also
         # match "?v=20" / "?v=200" and silently pass a drifted version.
-        assert '/assets/product/report/report.css?v=2"' in html
+        assert '/assets/product/report/report.css?v=3"' in html
         assert '/assets/product/report/report.css"' not in html
     client = TestClient(
         create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="x"))
     )
-    served = client.get("/assets/product/report/report.css?v=2")
+    served = client.get("/assets/product/report/report.css?v=3")
     assert served.status_code == 200
     assert ".product-nav" in served.text
     assert "var(--accent)" in served.text

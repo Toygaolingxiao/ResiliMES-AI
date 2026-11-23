@@ -5,9 +5,13 @@
 @font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap; src: url("/assets/fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2"); }
 
 :root {
-  /* Report-local aliases → semantic tokens (see design/tokens.css) */
-  --paper: var(--card);
-  --field-line: #8d8d8d;
+  /* Same chrome as the process Gantt (timeline.css), not the 840px paper page. */
+  --ink: #1e293b;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --paper: #ffffff;
+  --ground: #f8fafc;
+  --field-line: #cbd5e1;
   --on-accent: #ffffff;
   --recorded: var(--bg-info-subtle);
   --recorded-ink: var(--text-info);
@@ -20,54 +24,79 @@
 }
 
 * { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
 body {
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 16px;
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.5;
 }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .bar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  max-width: 840px;
-  margin: 0 auto;
-  padding: 16px 20px 0;
+  align-items: baseline;
+  gap: 12px;
 }
 .product-nav { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; min-width: 0; }
-.back { color: var(--ink); text-decoration: none; font-weight: 600; }
+.back { color: var(--ink); text-decoration: none; font-weight: 650; }
 .back:hover { text-decoration: underline; }
-.product-nav a[data-nav] { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 400; }
+.product-nav a[data-nav] { color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 400; }
 .product-nav a[data-nav]:hover { color: var(--ink); text-decoration: underline; }
-.product-nav a[aria-current="page"] { color: var(--ink); font-weight: 600; text-decoration: none; }
-.langs { display: flex; gap: 4px; }
+.product-nav a[aria-current="page"] { color: var(--ink); font-weight: 650; text-decoration: none; }
+.product-nav h1 { margin: 0 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.langs { display: flex; gap: 4px; flex: 0 0 auto; }
 .langs button, .pick button {
   font: inherit;
   background: var(--paper);
   color: var(--ink);
-  border: 1px solid var(--field-line);
-  padding: 4px 10px;
-  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
 }
 .langs button[aria-pressed="true"], .pick button[type="submit"] {
-  background: var(--accent);
+  background: var(--ink);
   color: var(--on-accent);
-  border-color: var(--accent);
+  border-color: var(--ink);
+}
+.lead, .note { margin: 0; color: var(--muted); font-size: 13px; max-width: 72ch; }
+.pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.pick label { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.pick input, .pick select {
+  font: inherit;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: var(--paper);
+  min-width: 8em;
 }
 .sheet {
-  max-width: 840px;
-  margin: 12px auto 32px;
+  flex: 1 1 auto;
+  margin: 0;
   background: var(--paper);
-  padding: 28px 32px 40px;
+  padding: 16px;
   border: 1px solid var(--line);
+  border-radius: 4px;
 }
-h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; }
-.lead, .note, .status { color: var(--muted); margin: 0 0 16px; }
-.pick { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end; margin-bottom: 8px; }
-.pick label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-.pick input, .pick select { font: inherit; color: var(--ink); border: 1px solid var(--field-line); padding: 4px 8px; background: var(--paper); min-width: 8em; }
+.status { color: var(--muted); margin: 0 0 8px; }
 .pick input.invalid { border-color: var(--text-danger); outline: 1px solid var(--text-danger); }
 .field-error { color: var(--text-danger); font-size: 13px; margin: 0 0 8px; }
 .hash {
@@ -108,9 +137,9 @@ details { margin-top: 20px; }
 .warn { color: var(--text-danger); }
 
 @media print {
-  body { background: var(--paper); }
-  .bar, .pick, .note, .status, .field-error { display: none; }
-  .sheet { border: 0; margin: 0; max-width: none; padding: 0; }
+  body { display: block; background: var(--paper); padding: 0; }
+  .bar, .lead, .pick, .note, .status, .field-error { display: none; }
+  .sheet { border: 0; margin: 0; padding: 0; border-radius: 0; }
 }
 
 /* Import page: the dropped file itself, as a table under the result. */
