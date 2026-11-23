@@ -146,7 +146,6 @@
 .fx-pill.rk-late { background: var(--alarm-wash); color: var(--alarm-ink); border-color: transparent; }
 .fx-pill.rk-risk { background: var(--bg-warning-subtle); color: var(--text-warning); border-color: var(--graphic-warning); }
 .fx-pill.rk-ok { background: var(--good-wash); color: var(--text-success); border-color: transparent; }
-html[data-theme="dark"] .fx-pill.st-run { background: var(--accent-active); color: var(--bg-info-subtle); border-color: var(--accent-active); }
 html[data-theme="dark"] .fx-pill.st-setup { background: #5e2900; color: #ffd9be; border-color: #5e2900; }
 html[data-theme="dark"] .fx-pill.st-idle { background: var(--sheet); color: var(--muted); border-color: var(--muted); }
 html[data-theme="dark"] .fx-pill.st-batch_wait, html[data-theme="dark"] .fx-pill.rk-risk { background: var(--bg-warning-subtle); color: var(--graphic-warning); border-color: var(--amber); }

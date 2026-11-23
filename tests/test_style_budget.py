@@ -10,6 +10,7 @@ for it.
 
 from __future__ import annotations
 
+from resilimes.config import ROOT
 from resilimes.design.violations import count_violations, load_baseline, load_budget
 
 # Frozen metric set: adding, removing, or renaming a metric requires
@@ -98,3 +99,12 @@ def test_text_warning_contrast_clears_aa() -> None:
     ]
     assert not text_fails, f"text-* tokens fail AA contrast: {text_fails[:6]}"
     assert not graphic_fails, f"graphic-* tokens fail non-text contrast: {graphic_fails}"
+
+
+def test_dark_status_aliases_keep_their_role() -> None:
+    """Dark overrides must not paint idle as PM, or run pills with the light accent fill."""
+    styles = (ROOT / "resilimes" / "demo" / "static" / "styles.css").read_text(encoding="utf-8")
+    fab = (ROOT / "resilimes" / "demo" / "static" / "fab.css").read_text(encoding="utf-8")
+    assert "--idle-dot: var(--chart-gantt-pm)" not in styles
+    assert "--line-strong: var(--muted)" not in styles
+    assert 'html[data-theme="dark"] .fx-pill.st-run' not in fab

@@ -1050,7 +1050,6 @@ table.checks th, table.checks td { padding: 4px 8px; }
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --line-strong: var(--muted);
   --field-line: var(--chart-gantt-pm);
   --alarm: var(--chart-gantt-down);
   --alarm-ink: var(--text-danger);
@@ -1065,7 +1064,6 @@ html[data-theme="dark"] {
   --unknown: var(--sheet);
   --unknown-ink: var(--muted);
   --pm: var(--chart-gantt-pm);
-  --idle-dot: var(--chart-gantt-pm);
   --hot: #ff7eb6;
   --hot-wash: #3a0a22;
   --accent-hover: #a6c8ff;
