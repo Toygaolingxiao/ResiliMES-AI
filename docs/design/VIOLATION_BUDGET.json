@@ -1,12 +1,12 @@
 {
   "$schema_note": "Wave 0 style-violation budgets for #121. Budgets never exceed the frozen baseline in VIOLATION_BUDGET_BASELINE.json; counts are capped by their budgets. CI fails if a count rises above its budget, and fails if a budget is raised above the frozen Wave 0 baseline (or a metric is added/removed without a baseline update in the same PR). Lowering a budget is always allowed and needs no baseline change. Note: 'each converging PR must lower at least one budget it touches' was the Wave 0 wording; it is not mechanically enforced in-tree and is not claimed here — the enforced rule is budgets never exceed baseline.",
   "version": 1,
-  "updated": "2026-11-22",
+  "updated": "2026-11-23",
   "issue": 121,
-  "wave": 0,
+  "wave": 1,
   "metrics": {
     "css_hex_outside_token_defs": {
-      "budget": 101,
+      "budget": 13,
       "description": "Hex colour literals in *.css property values (lines that are not custom-property definitions)."
     },
     "css_rgba_outside_token_defs": {
@@ -37,6 +37,7 @@
   "notes": [
     "Budgets measured 2026-11-22 at the #124 merge commit (f53b88c3) with resilimes.design.violations.count_violations(); re-verified equal at 9b7585fe.",
     "Allowed spacing set will expand to include control heights 24/32/40/48 when Wave 1 lint lands; until then off-ladder count stays the ratchet signal.",
-    "Chart/data colours remain in scope for counting until registered in tokens.json chart palette (Wave 1)."
+    "Chart/data colours remain in scope for counting until registered in tokens.json chart palette (Wave 1).",
+    "Wave 1b (styles.css + fab.css): css_hex budget lowered; .swatch scoped to .bay-legend vs .legend; removed dead --subtle/--serif."
   ]
 }
