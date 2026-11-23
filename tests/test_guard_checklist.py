@@ -63,6 +63,22 @@ def test_tokens_review_matches_generator() -> None:
     assert text.startswith(expected), "TOKENS_REVIEW.md drifted from tokens.json"
 
 
+def test_tokens_css_matches_generator() -> None:
+    from resilimes.design.tokens import CSS_PATH, css_text
+
+    assert CSS_PATH.is_file(), "run python scripts/regen_tokens_css.py"
+    text = CSS_PATH.read_text(encoding="utf-8")
+    assert text == css_text(), "tokens.css drifted from tokens.json"
+
+
+def test_tokens_js_matches_generator() -> None:
+    from resilimes.design.tokens import JS_PATH, js_text
+
+    assert JS_PATH.is_file(), "run python scripts/regen_tokens_js.py"
+    text = JS_PATH.read_text(encoding="utf-8")
+    assert text == js_text(), "tokens.js drifted from tokens.json"
+
+
 def test_screenshot_matrix_covers_wave0_scope() -> None:
     matrix = json.loads(
         (ROOT / "tools" / "screenshot-baseline" / "matrix.json").read_text(encoding="utf-8")

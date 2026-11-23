@@ -88,6 +88,30 @@
       "file": "tests/test_guard_checklist.py",
       "node": "test_guard_checklist_present",
       "why": "Wave 0 — this ratchet self-guards"
+    },
+    {
+      "id": "tokens-review-generator",
+      "file": "tests/test_guard_checklist.py",
+      "node": "test_tokens_review_matches_generator",
+      "why": "Wave 0 — TOKENS_REVIEW.md matches tokens.json"
+    },
+    {
+      "id": "tokens-css-generator",
+      "file": "tests/test_guard_checklist.py",
+      "node": "test_tokens_css_matches_generator",
+      "why": "Wave 1 — tokens.css matches tokens.json generator"
+    },
+    {
+      "id": "tokens-js-generator",
+      "file": "tests/test_guard_checklist.py",
+      "node": "test_tokens_js_matches_generator",
+      "why": "Wave 1 — tokens.js matches tokens.json generator"
+    },
+    {
+      "id": "tokens-contrast-aa",
+      "file": "tests/test_style_budget.py",
+      "node": "test_text_warning_contrast_clears_aa",
+      "why": "Wave 1 — scripted text-* / graphic-* contrast in CI"
     }
   ],
   "doc_headings": [

@@ -1,4 +1,5 @@
 /* Visual system: IBM Carbon (see DESIGN.md), light theme, tuned for a dense fab ops console.
+   Semantic colours: design/tokens.css (generated from docs/design/tokens.json).
    Fonts are vendored under /assets/fonts (IBM Plex, SIL OFL 1.1); CJK falls back to system Noto. */
 @font-face { font-family: "IBM Plex Sans"; font-weight: 400; font-display: swap; src: url("/assets/fonts/IBMPlexSans-Regular-Latin1.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Sans"; font-weight: 500; font-display: swap; src: url("/assets/fonts/IBMPlexSans-Medium-Latin1.woff2") format("woff2"); }
@@ -7,36 +8,28 @@
 @font-face { font-family: "IBM Plex Mono"; font-weight: 500 700; font-display: swap; src: url("/assets/fonts/IBMPlexMono-Medium-Latin1.woff2") format("woff2"); }
 
 :root {
-  /* Surfaces: page white, layer gray-10, hairlines gray-20 */
-  --ground: #f4f4f4;
-  --card: #ffffff;
-  --sheet: #f4f4f4;
-  --layer-hover: #e8e8e8;
-  --ink: #161616;
-  --muted: #525252;
+  /* Legacy aliases → semantic tokens (see design/tokens.css) */
   --subtle: #6f6f6f;
-  --line: #e0e0e0;
   --line-strong: #c6c6c6;
   --field-line: #8d8d8d;
   /* Status: every text colour clears 4.5:1 on white and on its own wash */
   --alarm: #da1e28;          /* down, hold, violations */
-  --alarm-ink: #a2191f;
-  --alarm-wash: #fff1f1;
+  --alarm-ink: var(--text-danger);
+  --alarm-wash: var(--bg-danger-subtle);
   --amber: #8e6a00;          /* Q-time risk, pile-up, warnings */
-  --amber-fill: #f1c21b;
+  --amber-fill: var(--graphic-warning);
   --amber-mark: #b28600;
-  --amber-wash: #fcf4d6;
-  --good: #198038;           /* up, on time, pass */
-  --good-wash: #defbe6;
-  --recorded: #edf5ff;       /* evidence tier: recorded (same pair as report.css) */
-  --recorded-ink: #0043ce;
+  --amber-wash: var(--bg-warning-subtle);
+  --good: var(--text-success);           /* up, on time, pass */
+  --good-wash: var(--bg-success-subtle);
+  --recorded: var(--bg-info-subtle);       /* evidence tier: recorded (same pair as report.css) */
+  --recorded-ink: var(--text-info);
   --unknown: #f4f4f4;        /* evidence tier: unknown */
   --unknown-ink: #525252;
   --pm: #6f6f6f;             /* planned maintenance */
   --hot: #9f1853;            /* hot lot (magenta-70) */
   --hot-fill: #d02670;
   --hot-wash: #fff0f7;
-  --accent: #0f62fe;         /* the one interactive blue */
   --accent-hover: #0050e6;
   --accent-active: #002d9c;
   --accent-ink: #ffffff;
@@ -1058,32 +1051,24 @@ table.checks th, table.checks td { padding: 4px 8px; }
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --ground: #161616;
-  --card: #1e1e1e;
-  --sheet: #262626;
-  --layer-hover: #333333;
-  --ink: #f4f4f4;
-  --muted: #c6c6c6;
   --subtle: #a8a8a8;
-  --line: #393939;
   --line-strong: #525252;
   --field-line: #6f6f6f;
   --alarm: #fa4d56;
-  --alarm-ink: #ff8389;
-  --alarm-wash: #3a1517;
+  --alarm-ink: var(--text-danger);
+  --alarm-wash: var(--bg-danger-subtle);
   --amber: #f1c21b;
   --amber-mark: #f1c21b;
-  --amber-wash: #302400;
-  --good: #42be65;
-  --good-wash: #071908;
-  --recorded: #001d6c;
-  --recorded-ink: #a6c8ff;
+  --amber-wash: var(--bg-warning-subtle);
+  --good: var(--text-success);
+  --good-wash: var(--bg-success-subtle);
+  --recorded: var(--bg-info-subtle);
+  --recorded-ink: var(--text-info);
   --unknown: #262626;
   --unknown-ink: #c6c6c6;
   --pm: #a8a8a8;
   --hot: #ff7eb6;
   --hot-wash: #3a0a22;
-  --accent: #78a9ff;
   --accent-hover: #a6c8ff;
   --accent-active: #d0e2ff;
   --accent-ink: #161616;

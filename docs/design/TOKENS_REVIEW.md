@@ -2,7 +2,7 @@
 
 Generated from `docs/design/tokens.json`. Do not edit the table by hand —
 run `python scripts/regen_tokens_review.py`. Format: `resilimes.design.tokens/v1`.
-Wave 1 will emit CSS variables and JS constants from the same file.
+CSS/JS: scripts/regen_tokens_css.py / regen_tokens_js.py → demo/static/design/.
 
 | Token | Layer | Light | Dark | Role |
 | --- | --- | --- | --- | --- |
@@ -54,5 +54,5 @@ Wave 1 will emit CSS variables and JS constants from the same file.
 | --- | --- | --- | --- |
 | `--text-warning` `#684e00` | --card / white `#ffffff` | 7.84:1 | pass |
 | `--text-warning` `#684e00` | --ground `#f4f4f4` | 7.13:1 | pass |
-| `--text-warning` `#684e00` | --amber-wash `#fcf4d6` | 7.11:1 | pass |
+| `--text-warning` `#684e00` | --bg-warning-subtle `#fcf4d6` | 7.11:1 | pass |
 | `--text-warning` `#684e00` | --layer-hover `#e8e8e8` | 6.40:1 | pass |
