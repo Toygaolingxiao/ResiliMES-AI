@@ -6,7 +6,7 @@
   "wave": 0,
   "metrics": {
     "css_hex_outside_token_defs": {
-      "budget": 112,
+      "budget": 101,
       "description": "Hex colour literals in *.css property values (lines that are not custom-property definitions)."
     },
     "css_rgba_outside_token_defs": {
