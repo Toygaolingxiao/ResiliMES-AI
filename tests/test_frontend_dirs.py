@@ -112,19 +112,25 @@ def test_report_css_link_is_versioned_on_both_pages() -> None:
     styles; the same PR bumped import.js to ?v=3 while its test still
     pinned ?v=2, which turned main CI red. Pin the version here so a
     future bump without a test update fails loudly instead of silently.
+    Wave 1a: semantic tokens load from design/tokens.css before report.css.
     """
     for page in ("report", "import"):
         html = (STATIC / "product" / page / f"{page}.html").read_text(encoding="utf-8")
-        # Anchor to the closing quote: a bare "?v=1" substring would also
-        # match "?v=10" / "?v=100" and silently pass a drifted version.
-        assert '/assets/product/report/report.css?v=1"' in html
+        assert '/assets/design/tokens.css?v=1"' in html
+        tokens_idx = html.index("/assets/design/tokens.css")
+        report_idx = html.index("/assets/product/report/report.css")
+        assert tokens_idx < report_idx
+        # Anchor to the closing quote: a bare "?v=2" substring would also
+        # match "?v=20" / "?v=200" and silently pass a drifted version.
+        assert '/assets/product/report/report.css?v=2"' in html
         assert '/assets/product/report/report.css"' not in html
     client = TestClient(
         create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="x"))
     )
-    served = client.get("/assets/product/report/report.css?v=1")
+    served = client.get("/assets/product/report/report.css?v=2")
     assert served.status_code == 200
     assert ".product-nav" in served.text
+    assert "var(--accent)" in served.text
 
 
 def test_i18n_json_fetch_is_versioned_everywhere() -> None:

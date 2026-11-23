@@ -1,20 +1,20 @@
-/* Light, printable report. Same IBM Plex files as the console. */
+/* Light, printable report. Same IBM Plex files as the console.
+   Semantic colours: design/tokens.css (linked from report.html / import.html). */
 @font-face { font-family: "IBM Plex Sans"; font-weight: 400; font-display: swap; src: url("/assets/fonts/IBMPlexSans-Regular-Latin1.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Sans"; font-weight: 600; font-display: swap; src: url("/assets/fonts/IBMPlexSans-SemiBold-Latin1.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap; src: url("/assets/fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2"); }
 
 :root {
-  --ink: #161616;
-  --muted: #525252;
-  --line: #e0e0e0;
-  --paper: #ffffff;
-  --ground: #f4f4f4;
-  --recorded: #edf5ff;
-  --recorded-ink: #0043ce;
-  --attributed: #fcf4d6;
-  --attributed-ink: #8e6a00;
-  --unknown: #f4f4f4;
-  --unknown-ink: #525252;
+  /* Report-local aliases → semantic tokens (see design/tokens.css) */
+  --paper: var(--card);
+  --field-line: #8d8d8d;
+  --on-accent: #ffffff;
+  --recorded: var(--bg-info-subtle);
+  --recorded-ink: var(--text-info);
+  --attributed: var(--bg-warning-subtle);
+  --attributed-ink: var(--text-warning);
+  --unknown: var(--ground);
+  --unknown-ink: var(--muted);
   --font: "IBM Plex Sans", "Noto Sans CJK JP", "Noto Sans CJK SC", "Noto Sans", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
@@ -47,14 +47,14 @@ body {
   font: inherit;
   background: var(--paper);
   color: var(--ink);
-  border: 1px solid #8d8d8d;
+  border: 1px solid var(--field-line);
   padding: 4px 10px;
   cursor: pointer;
 }
 .langs button[aria-pressed="true"], .pick button[type="submit"] {
-  background: #0f62fe;
-  color: #fff;
-  border-color: #0f62fe;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
 .sheet {
   max-width: 840px;
@@ -67,9 +67,9 @@ h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; }
 .lead, .note, .status { color: var(--muted); margin: 0 0 16px; }
 .pick { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end; margin-bottom: 8px; }
 .pick label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-.pick input, .pick select { font: inherit; color: var(--ink); border: 1px solid #8d8d8d; padding: 4px 8px; background: #fff; min-width: 8em; }
-.pick input.invalid { border-color: #a2191f; outline: 1px solid #a2191f; }
-.field-error { color: #a2191f; font-size: 13px; margin: 0 0 8px; }
+.pick input, .pick select { font: inherit; color: var(--ink); border: 1px solid var(--field-line); padding: 4px 8px; background: var(--paper); min-width: 8em; }
+.pick input.invalid { border-color: var(--text-danger); outline: 1px solid var(--text-danger); }
+.field-error { color: var(--text-danger); font-size: 13px; margin: 0 0 8px; }
 .hash {
   font-family: var(--mono);
   font-size: 12px;
@@ -105,10 +105,10 @@ h2 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; }
   color: var(--muted);
 }
 details { margin-top: 20px; }
-.warn { color: #a2191f; }
+.warn { color: var(--text-danger); }
 
 @media print {
-  body { background: #fff; }
+  body { background: var(--paper); }
   .bar, .pick, .note, .status, .field-error { display: none; }
   .sheet { border: 0; margin: 0; max-width: none; padding: 0; }
 }
