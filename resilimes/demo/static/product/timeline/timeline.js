@@ -135,7 +135,7 @@
         const node = document.createElement("span");
         const swatch = document.createElement("i");
         swatch.className = "tl-swatch";
-        swatch.style.background = FILL[key];
+        swatch.style.background = barFill(key);
         node.append(swatch, document.createTextNode(extra ? `${label} · ${extra}` : label || key));
         box.appendChild(node);
       }

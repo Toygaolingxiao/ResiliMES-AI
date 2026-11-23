@@ -26,13 +26,13 @@
       wait: T.semantic("graphic-warning"),
     });
     Object.assign(CLASS_COLOR, {
-      VIP: T.css("accent"),
-      hot: T.semantic("text-danger"),
+      VIP: T.css("violet"),
+      hot: T.css("hot-fill"),
       normal: T.semantic("muted"),
     });
     Object.assign(RISK_COLOR, {
       late: T.semantic("text-danger"),
-      risk: T.semantic("graphic-warning"),
+      risk: T.css("amber-mark"),
       ok: "transparent",
     });
     DONE_COLOR = T.semantic("graphic-success");
@@ -265,6 +265,7 @@
   async function render(quiet) {
     const root = host();
     if (!root) return;
+    refreshPalette();
     const token = ++S.token;
     S.busy = true;
     try {
