@@ -16,6 +16,8 @@ from resilimes.config import ROOT
 
 TOKENS_PATH = ROOT / "docs" / "design" / "tokens.json"
 REVIEW_PATH = ROOT / "docs" / "design" / "TOKENS_REVIEW.md"
+CSS_PATH = ROOT / "resilimes" / "demo" / "static" / "design" / "tokens.css"
+JS_PATH = ROOT / "resilimes" / "demo" / "static" / "design" / "tokens.js"
 
 
 @cache
@@ -54,12 +56,134 @@ def text_warning_contrast_rows() -> list[tuple[str, str, float]]:
     semantic = data["semantic"]["light"]
     fg = semantic["text-warning"]["value"]
     surfaces = [
-        ("--card / white", "#ffffff"),
+        ("--card / white", semantic["card"]["value"]),
         ("--ground", semantic["ground"]["value"]),
-        ("--amber-wash", semantic.get("bg-warning-subtle", {}).get("value", "#fcf4d6")),
+        ("--bg-warning-subtle", semantic.get("bg-warning-subtle", {}).get("value", "#fcf4d6")),
         ("--layer-hover", semantic.get("layer-hover", {}).get("value", "#e8e8e8")),
     ]
     return [(label, bg, contrast_ratio(fg, bg)) for label, bg in surfaces]
+
+
+def text_contrast_rows() -> list[dict[str, Any]]:
+    """AA contrast for every ``text-*`` token; graphic-* on card (non-text 3:1)."""
+    data = load_tokens()
+    rows: list[dict[str, Any]] = []
+    for theme_name in ("light", "dark"):
+        semantic = data["semantic"][theme_name]
+        card = semantic["card"]["value"]
+        ground = semantic["ground"]["value"]
+        for name, node in semantic.items():
+            if not name.startswith("text-"):
+                continue
+            fg = str(node["value"])
+            surfaces: list[tuple[str, str]] = [
+                (f"--card ({theme_name})", card),
+                (f"--ground ({theme_name})", ground),
+            ]
+            role = name.removeprefix("text-")
+            subtle_key = f"bg-{role}-subtle"
+            if subtle_key in semantic:
+                surfaces.append(
+                    (f"--{subtle_key} ({theme_name})", str(semantic[subtle_key]["value"]))
+                )
+            for label, bg in surfaces:
+                ratio = contrast_ratio(fg, bg)
+                rows.append(
+                    {
+                        "theme": theme_name,
+                        "token": f"--{name}",
+                        "foreground": fg,
+                        "background_label": label,
+                        "background": bg,
+                        "ratio": ratio,
+                        "min_ratio": 4.5,
+                    }
+                )
+        ink = semantic["ink"]["value"]
+        for name, node in semantic.items():
+            if not name.startswith("graphic-"):
+                continue
+            fg = str(node["value"])
+            surfaces: list[tuple[str, str]] = [(f"--card ({theme_name})", card)]
+            if theme_name == "light":
+                surfaces.append((f"--ink ({theme_name})", ink))
+            for label, bg in surfaces:
+                ratio = contrast_ratio(fg, bg)
+                rows.append(
+                    {
+                        "theme": theme_name,
+                        "token": f"--{name}",
+                        "foreground": fg,
+                        "background_label": label,
+                        "background": bg,
+                        "ratio": ratio,
+                        "min_ratio": 3.0,
+                    }
+                )
+    return rows
+
+
+def _css_var_block(theme: dict[str, Any], chart: dict[str, Any] | None) -> list[str]:
+    lines: list[str] = []
+    for name, node in theme.items():
+        lines.append(f"  --{name}: {node['value']};")
+    if chart:
+        for name, node in chart.items():
+            lines.append(f"  --chart-{name}: {node['value']};")
+    return lines
+
+
+def css_text() -> str:
+    data = load_tokens()
+    lines = [
+        "/* Generated from docs/design/tokens.json. Do not edit by hand.",
+        "   Run: python scripts/regen_tokens_css.py */",
+        "",
+        ":root {",
+    ]
+    lines.extend(_css_var_block(data["semantic"]["light"], data.get("chart", {}).get("light")))
+    lines.append("}")
+    lines.append("")
+    lines.append('html[data-theme="dark"] {')
+    lines.extend(_css_var_block(data["semantic"]["dark"], data.get("chart", {}).get("dark")))
+    lines.append("}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _js_object(d: dict[str, Any]) -> str:
+    return json.dumps(
+        {k: v["value"] for k, v in d.items()},
+        indent=2,
+        ensure_ascii=False,
+    )
+
+
+def js_text() -> str:
+    data = load_tokens()
+    sem_light = _js_object(data["semantic"]["light"])
+    sem_dark = _js_object(data["semantic"]["dark"])
+    chart = data.get("chart", {})
+    chart_light = _js_object(chart.get("light", {}))
+    chart_dark = _js_object(chart.get("dark", {}))
+    return "\n".join(
+        [
+            "/* Generated from docs/design/tokens.json. Do not edit by hand.",
+            "   Run: python scripts/regen_tokens_js.py */",
+            '"use strict";',
+            "",
+            f"const SEMANTIC = {{",
+            f"  light: {sem_light},",
+            f"  dark: {sem_dark},",
+            "};",
+            "",
+            f"const CHART = {{",
+            f"  light: {chart_light},",
+            f"  dark: {chart_dark},",
+            "};",
+            "",
+        ]
+    )
 
 
 def review_markdown() -> str:
@@ -69,7 +193,7 @@ def review_markdown() -> str:
         "",
         "Generated from `docs/design/tokens.json`. Do not edit the table by hand —",
         "run `python scripts/regen_tokens_review.py`. Format: `resilimes.design.tokens/v1`.",
-        "Wave 1 will emit CSS variables and JS constants from the same file.",
+        "CSS/JS: scripts/regen_tokens_css.py / regen_tokens_js.py → demo/static/design/.",
         "",
         "| Token | Layer | Light | Dark | Role |",
         "| --- | --- | --- | --- | --- |",

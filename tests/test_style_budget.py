@@ -76,9 +76,29 @@ def test_budgets_do_not_exceed_baseline() -> None:
 
 
 def test_text_warning_contrast_clears_aa() -> None:
-    from resilimes.design.tokens import text_warning_contrast_rows
+    from resilimes.design.tokens import text_contrast_rows, text_warning_contrast_rows
 
     rows = text_warning_contrast_rows()
     assert rows, "expected scripted --text-warning contrast rows"
     fails = [(label, bg, ratio) for label, bg, ratio in rows if ratio < 4.5]
     assert not fails, f"--text-warning fails AA text contrast: {fails}"
+
+    all_rows = text_contrast_rows()
+    assert all_rows, "expected semantic contrast rows from tokens.json"
+    text_fails = [
+        r
+        for r in all_rows
+        if r["min_ratio"] == 4.5 and r["ratio"] < r["min_ratio"]
+    ]
+    graphic_groups: dict[tuple[str, str], list[dict]] = {}
+    for r in all_rows:
+        if r["min_ratio"] != 3.0:
+            continue
+        graphic_groups.setdefault((r["theme"], r["token"]), []).append(r)
+    graphic_fails = [
+        (theme, token, rows)
+        for (theme, token), rows in graphic_groups.items()
+        if not any(row["ratio"] >= row["min_ratio"] for row in rows)
+    ]
+    assert not text_fails, f"text-* tokens fail AA contrast: {text_fails[:6]}"
+    assert not graphic_fails, f"graphic-* tokens fail non-text contrast: {graphic_fails}"

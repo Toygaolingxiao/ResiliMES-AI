@@ -17,6 +17,7 @@ from resilimes.config import ROOT
 BUDGET_PATH = ROOT / "docs" / "design" / "VIOLATION_BUDGET.json"
 BASELINE_PATH = ROOT / "docs" / "design" / "VIOLATION_BUDGET_BASELINE.json"
 STATIC = ROOT / "resilimes" / "demo" / "static"
+_TOKEN_EMIT = STATIC / "design"
 
 _HEX = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 _RGBA = re.compile(r"rgba?\([^)]+\)")
@@ -49,12 +50,21 @@ def load_baseline() -> dict[str, Any]:
     return json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
 
 
+def _skip_token_emit(path: Path) -> bool:
+    """Exclude generated design/tokens.* from hex-literal budgets."""
+    try:
+        path.relative_to(_TOKEN_EMIT)
+    except ValueError:
+        return False
+    return True
+
+
 def _iter_css() -> list[Path]:
-    return sorted(STATIC.rglob("*.css"))
+    return sorted(p for p in STATIC.rglob("*.css") if not _skip_token_emit(p))
 
 
 def _iter_js() -> list[Path]:
-    return sorted(STATIC.rglob("*.js"))
+    return sorted(p for p in STATIC.rglob("*.js") if not _skip_token_emit(p))
 
 
 def count_violations() -> dict[str, int]:

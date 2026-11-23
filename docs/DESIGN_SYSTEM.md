@@ -1,12 +1,12 @@
 # ResiliTrace 设计系统（design-system/v1）
 
 对应规划：`docs/LAYOUT_UNIFICATION_PLAN.md` §三（Wave 0 / #121）。
-令牌唯一源：`docs/design/tokens.json`。生成表：`docs/design/TOKENS_REVIEW.md`（`python scripts/regen_tokens_review.py`）。
+令牌唯一源：`docs/design/tokens.json`。生成物：`docs/design/TOKENS_REVIEW.md`（`python scripts/regen_tokens_review.py`）、`resilimes/demo/static/design/tokens.css`（`python scripts/regen_tokens_css.py`）、`resilimes/demo/static/design/tokens.js`（`python scripts/regen_tokens_js.py`）。控制台在 `styles.css` 之前链接 `tokens.css`。
 
 ## 0. 版本与效力
 
 - 版本 **`design-system/v1`**（本文件由 v0 升版；v0 局限见文末迁移说明）。
-- **文档与代码不一致视为缺陷。** 令牌表以 `tokens.json` 为源，由生成器写入 `TOKENS_REVIEW.md`；Wave 1 起 CSS/JS 亦由同一源生成。
+- **文档与代码不一致视为缺陷。** 令牌表以 `tokens.json` 为源；Wave 1 起 review / CSS / JS 均由同一套生成器产出（棘轮测试见 §10）。
 - 合入本文件 + tokens + 棘轮即约束后续增量：新代码不得抬高 `VIOLATION_BUDGET.json`；抬高预算须同步更新 `docs/design/VIOLATION_BUDGET_BASELINE.json`（测试 `test_budgets_do_not_exceed_baseline` 仅强制执行预算 ≤ 基线），并在 PR 正文说明理由（人工复核，测试不检查）；守卫清单项不得无声消失。
 - 契约语义仍遵守全仓原则：**additive payloads only**。
 
@@ -39,7 +39,7 @@ primitive  →  semantic（按角色，含 light/dark 映射）  →  component�
 | `--text-info` / `--bg-info-subtle` | `#0043ce` / `#edf5ff` | `#a6c8ff` / `#001d6c` | 记录档 / 信息 |
 | `--accent` | `#0f62fe` | `#78a9ff` | 主交互 |
 
-`--text-warning` 对比度（脚本，Wave 0）：白底 **7.84:1**，`--ground` **7.13:1**，amber-wash **7.11:1**，均 ≥ AA 4.5。测试：`test_text_warning_contrast_clears_aa`。
+`--text-warning` 及全部 `text-*` / `graphic-*` 对比度由 `text_contrast_rows()` 脚本入 CI（字 4.5:1，图形对 card 3:1）。测试：`test_text_warning_contrast_clears_aa`（含 `#684e00` 回归）。
 
 ### 2.2 证据档位
 
@@ -112,7 +112,7 @@ primitive  →  semantic（按角色，含 light/dark 映射）  →  component�
 
 ## 7. 无障碍（WCAG 2.2 AA 清单）
 
-- 1.4.3 / 1.4.11：字 4.5:1；非文字 3:1（对比度脚本 Wave 1 入 CI）。
+- 1.4.3 / 1.4.11：字 4.5:1；非文字 3:1（`tests/test_style_budget.py::test_text_warning_contrast_clears_aa` + `text_contrast_rows()`）。
 - 1.4.13：悬停/聚焦内容可关闭、可停留、不消失 → 决策 4 钉住模型。
 - 2.4.7 / 2.4.11：焦点可见且不被粘性顶栏遮挡。
 - 2.5.8：目标 ≥ 24×24 CSS px。
@@ -137,7 +137,7 @@ Cases / Evidence / Explanation / Import / Quality / Replay / Report — 既有�
 | --- | --- |
 | 违规预算棘轮 | `docs/design/VIOLATION_BUDGET.json` + `docs/design/VIOLATION_BUDGET_BASELINE.json`（冻结基线） + `tests/test_style_budget.py` |
 | 守卫清单棘轮 | `docs/design/GUARD_CHECKLIST.json` + `tests/test_guard_checklist.py` |
-| 令牌生成一致性 | `tests/test_guard_checklist.py::test_tokens_review_matches_generator` |
+| 令牌生成一致性 | `tests/test_guard_checklist.py::test_tokens_review_matches_generator`、`test_tokens_css_matches_generator`、`test_tokens_js_matches_generator` |
 | 截图矩阵完整性 | `tools/screenshot-baseline/matrix.json` + 同文件测试 |
 | 截图捕获 | `tools/screenshot-baseline/`（不给 app 加构建步骤） |
 
