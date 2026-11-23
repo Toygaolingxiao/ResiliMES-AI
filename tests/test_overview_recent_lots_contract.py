@@ -22,3 +22,13 @@ def test_recent_lots_only_after_successful_fetch() -> None:
     assert (
         "S.recentLots = [lot.lot, ...S.recentLots.filter((x) => x !== lot.lot)].slice(0, 8)" in text
     )
+
+
+def test_fab_palette_refreshes_before_paint() -> None:
+    """Theme toggles must not keep the colours captured at first load."""
+    text = OVERVIEW_JS.read_text(encoding="utf-8")
+    render = text.split("async function render(quiet)", 1)[1].split("function goto(", 1)[0]
+    assert render.index("refreshPalette()") < render.index("await ")
+    assert 'VIP: T.css("violet")' in text
+    assert 'hot: T.css("hot-fill")' in text
+    assert 'risk: T.css("amber-mark")' in text

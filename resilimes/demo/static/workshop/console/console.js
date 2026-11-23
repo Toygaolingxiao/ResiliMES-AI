@@ -1,26 +1,22 @@
-const AREA_TONE = {
-  light: {
-    Lithography: { fill: "#d0e2ff", ink: "#002d9c" },
-    Etch: { fill: "#9ef0f0", ink: "#004144" },
-    CMP: { fill: "#e8daff", ink: "#491d8b" },
-    Deposition: { fill: "#a7f0ba", ink: "#044317" },
-    Metrology: { fill: "#fddc69", ink: "#483700" },
-    Clean: { fill: "#e0e0e0", ink: "#393939" },
-  },
-  dark: {
-    Lithography: { fill: "#312e81", ink: "#e0e7ff" },
-    Etch: { fill: "#155e75", ink: "#cffafe" },
-    CMP: { fill: "#5b21b6", ink: "#f3e8ff" },
-    Deposition: { fill: "#115e59", ink: "#ccfbf1" },
-    Metrology: { fill: "#92400e", ink: "#ffedd5" },
-    Clean: { fill: "#1e3a5f", ink: "#e0f2fe" },
-  },
+const AREA_TONE_KEYS = {
+  Lithography: { fill: "bg-info-subtle", ink: "text-info" },
+  Etch: { fill: "bg-success-subtle", ink: "text-success" },
+  CMP: { fill: "bg-info-subtle", ink: "text-info" },
+  Deposition: { fill: "bg-success-subtle", ink: "text-success" },
+  Metrology: { fill: "bg-warning-subtle", ink: "text-warning" },
+  Clean: { fill: "sheet", ink: "muted" },
 };
 
 function areaTone(area) {
-  const theme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
-  const table = AREA_TONE[theme];
-  return table[area] || table.Deposition;
+  const keys = AREA_TONE_KEYS[area] || AREA_TONE_KEYS.Deposition;
+  const sem =
+    typeof SEMANTIC !== "undefined"
+      ? SEMANTIC[document.documentElement.dataset.theme === "dark" ? "dark" : "light"]
+      : null;
+  if (sem) return { fill: sem[keys.fill], ink: sem[keys.ink] };
+  const T = window.ResiliTheme;
+  if (!T) return { fill: "", ink: "" };
+  return { fill: T.semantic(keys.fill), ink: T.semantic(keys.ink) };
 }
 
 const STEPS = [
@@ -160,6 +156,7 @@ function applyTheme() {
   if (state.theme === "dark") document.documentElement.dataset.theme = "dark";
   else delete document.documentElement.dataset.theme;
   localStorage.setItem("resilimes.theme", state.theme);
+  if (window.ResiliTheme) window.ResiliTheme.invalidate();
 }
 
 function t() {

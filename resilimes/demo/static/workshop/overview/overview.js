@@ -9,18 +9,34 @@
   const HORIZON = 172800;
   const TABS = ["overview", "tools", "flow", "lots", "batches", "events", "kpis"];
   const BOOKS = ["base", "litho_down", "hot_lot", "pm_avoid"];
-  const STATE_COLOR = {
-    run: "#4589ff",
-    setup: "#eb6200",
-    idle: "#e0e0e0",
-    pm: "#6f6f6f",
-    down: "#da1e28",
-    batch_wait: "#f1c21b",
-    wait: "#f1c21b",
-  };
-  const CLASS_COLOR = { VIP: "#8a3ffc", hot: "#d02670", normal: "#8d8d8d" };
-  const RISK_COLOR = { late: "#da1e28", risk: "#b28600", ok: "transparent" };
-  const DONE_COLOR = "#24a148";
+  const STATE_COLOR = {};
+  const CLASS_COLOR = {};
+  const RISK_COLOR = { ok: "transparent" };
+  let DONE_COLOR = "";
+  function refreshPalette() {
+    const T = window.ResiliTheme;
+    if (!T) return;
+    Object.assign(STATE_COLOR, {
+      run: T.chart("gantt-run"),
+      setup: T.chart("gantt-setup"),
+      idle: T.chart("gantt-idle"),
+      pm: T.chart("gantt-pm"),
+      down: T.chart("gantt-down"),
+      batch_wait: T.semantic("graphic-warning"),
+      wait: T.semantic("graphic-warning"),
+    });
+    Object.assign(CLASS_COLOR, {
+      VIP: T.css("violet"),
+      hot: T.css("hot-fill"),
+      normal: T.semantic("muted"),
+    });
+    Object.assign(RISK_COLOR, {
+      late: T.semantic("text-danger"),
+      risk: T.css("amber-mark"),
+      ok: "transparent",
+    });
+    DONE_COLOR = T.semantic("graphic-success");
+  }
   const STATUS = ["wait", "run", "hold", "done"];
 
   const S = {
@@ -249,6 +265,7 @@
   async function render(quiet) {
     const root = host();
     if (!root) return;
+    refreshPalette();
     const token = ++S.token;
     S.busy = true;
     try {
@@ -505,7 +522,7 @@
       svg("rect", { x: 0, y: 4, width: W, height: H - 8, rx: 3, fill: "var(--track)" }));
     for (const [kind, s, e, label, cls] of items) {
       const busy = kind === "run" || kind === "batch";
-      const color = busy ? (cls === "VIP" ? CLASS_COLOR.VIP : cls === "hot" ? CLASS_COLOR.hot : STATE_COLOR.run) : STATE_COLOR[kind] || "#999";
+      const color = busy ? (cls === "VIP" ? CLASS_COLOR.VIP : cls === "hot" ? CLASS_COLOR.hot : STATE_COLOR.run) : STATE_COLOR[kind] || (window.ResiliTheme && ResiliTheme.semantic("muted")) || "";
       const rect = svg("rect", { x: x(s), y: 4, width: Math.max(1, x(e) - x(s)), height: H - 8, fill: color, rx: 1, stroke: "var(--card)", "stroke-width": 0.8 });
       rect.appendChild(svg("title", { text: `${C().states[busy ? "run" : kind] || kind} ${hm(s)}–${hm(e)} ${label || ""}` }));
       node.appendChild(rect);
@@ -773,6 +790,12 @@
   }
 
   const VIEWS = { overview: viewOverview, tools: viewTools, flow: viewFlow, lots: viewLots, batches: viewBatches, events: viewEvents, kpis: viewKpis };
+
+  refreshPalette();
+  if (window.ResiliTheme) {
+    ResiliTheme.onChange(() => render(true));
+    ResiliTheme.watch();
+  }
 
   // ---------- public ----------
   window.Fab = {
