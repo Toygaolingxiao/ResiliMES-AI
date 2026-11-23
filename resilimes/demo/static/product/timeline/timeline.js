@@ -7,34 +7,24 @@
   const ROW_H = 32;
   const GROUP_H = 28;
   const BAR_H = 20;
-  const BAR_FILL_SPEC = {
-    processing: ["chart", "gantt-run"],
-    scheduled: ["chart", "gantt-run"],
-    reserved: ["semantic", "text-danger"],
-    waiting: ["semantic", "graphic-warning"],
-    transport: ["semantic", "text-info"],
-    setup: ["chart", "gantt-setup"],
-    down: ["chart", "gantt-down"],
-    pm: ["chart", "gantt-pm"],
-    idle: ["chart", "gantt-idle"],
+  const FILL = {
+    processing: "#FFD700",
+    scheduled: "#5B8DEF",
+    reserved: "#FF69B4",
+    waiting: "#82C213",
+    transport: "#8080C0",
+    setup: "#FFA400",
+    down: "#6b6258",
+    pm: "#808080",
+    idle: "#e7e2d8",
   };
-  const BAR_INK_ON_CARD = new Set(["scheduled", "transport"]);
-  function themeColor(spec) {
-    const T = window.ResiliTheme;
-    if (!T) return "";
-    return spec[0] === "chart" ? T.chart(spec[1]) : T.semantic(spec[1]);
-  }
-  function barFill(state) {
-    return themeColor(BAR_FILL_SPEC[state] || ["chart", "gantt-run"]);
-  }
-  function barInk(state) {
-    const T = window.ResiliTheme;
-    if (!T) return "";
-    return BAR_INK_ON_CARD.has(state) ? T.css("card") : T.css("ink");
-  }
-  function chrome(token) {
-    return (window.ResiliTheme && ResiliTheme.css(token)) || "";
-  }
+  const INK = {
+    processing: "#1e293b",
+    scheduled: "#ffffff",
+    reserved: "#1e293b",
+    waiting: "#1e293b",
+    transport: "#ffffff",
+  };
   const STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 240, 480, 720, 1440, 2880];
 
   function mount(host, options) {
@@ -135,13 +125,13 @@
         const node = document.createElement("span");
         const swatch = document.createElement("i");
         swatch.className = "tl-swatch";
-        swatch.style.background = barFill(key);
+        swatch.style.background = FILL[key];
         node.append(swatch, document.createTextNode(extra ? `${label} · ${extra}` : label || key));
         box.appendChild(node);
       }
       const late = document.createElement("span");
       late.textContent = c.lateLots || "";
-      late.style.color = chrome("text-danger");
+      late.style.color = "#9c2b1a";
       box.appendChild(late);
     }
     function paintStats() {
@@ -400,7 +390,7 @@
       canvas.style.height = `${height}px`;
       const ctx = canvas.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = chrome("ground");
+      ctx.fillStyle = "#fafafa";
       ctx.fillRect(0, 0, width, height);
       drawGrid(ctx, width, height);
       for (const box of laid.boxes) {
@@ -409,10 +399,10 @@
         if (box.row.kind === "machine") drawMachine(ctx, box.row.id, y, box.h, width);
         else if (box.row.kind === "lot") drawLot(ctx, box.row.id, y, box.h, width);
         else {
-          ctx.fillStyle = chrome("sheet");
+          ctx.fillStyle = "#f1f5f9";
           ctx.fillRect(0, y, width, box.h);
         }
-        ctx.strokeStyle = chrome("line");
+        ctx.strokeStyle = "#e2e8f0";
         ctx.beginPath();
         ctx.moveTo(0, y + box.h - 0.5);
         ctx.lineTo(width, y + box.h - 0.5);
@@ -431,7 +421,7 @@
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
       }
-      ctx.strokeStyle = chrome("line");
+      ctx.strokeStyle = "#e2e8f0";
       ctx.stroke();
       ctx.beginPath();
       for (let minute = Math.ceil(state.t0 / 1440) * 1440; minute < state.t1; minute += 1440) {
@@ -439,14 +429,14 @@
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
       }
-      ctx.strokeStyle = chrome("muted");
+      ctx.strokeStyle = "#cbd5e1";
       ctx.stroke();
       ctx.restore();
       void step;
     }
     function drawMachine(ctx, id, y, h, width) {
       for (const block of overlaps(state.byBlock.get(id) || [], state.t0, state.t1)) {
-        band(ctx, block.start_min, block.end_min, y + 2, h - 4, width, barFill(block.kind), block.kind === "down");
+        band(ctx, block.start_min, block.end_min, y + 2, h - 4, width, FILL[block.kind] || FILL.down, block.kind === "down");
       }
       const bars = overlaps(state.byMachine.get(id) || [], state.t0, state.t1).filter((bar) => !bar.gap);
       drawIdle(ctx, bars, state.byBlock.get(id) || [], y, h, width);
@@ -469,10 +459,10 @@
         else merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], b);
       }
       for (const [start, end] of merged) {
-        if (start - cursor >= 15) band(ctx, cursor, start, y + 4, h - 8, width, barFill("idle"), false);
+        if (start - cursor >= 15) band(ctx, cursor, start, y + 4, h - 8, width, FILL.idle, false);
         cursor = end;
       }
-      if (state.t1 - cursor >= 15) band(ctx, cursor, state.t1, y + 4, h - 8, width, barFill("idle"), false);
+      if (state.t1 - cursor >= 15) band(ctx, cursor, state.t1, y + 4, h - 8, width, FILL.idle, false);
     }
     function drawBar(ctx, bar, y, width, machine) {
       const x = xOf(bar.start_min, width);
@@ -480,27 +470,27 @@
       const member = isMember(bar, state.focus);
       ctx.save();
       ctx.globalAlpha = state.focus && !member ? 0.28 : 1;
-      ctx.fillStyle = barFill(bar.state);
+      ctx.fillStyle = FILL[bar.state] || FILL.scheduled;
       roundRect(ctx, x, y + 6, w, BAR_H, 3);
       ctx.fill();
       if (bar.setup_min > 0 && !bar.gap) {
         const setupW = Math.min(w, (bar.setup_min / span()) * width);
-        ctx.fillStyle = barFill("setup");
+        ctx.fillStyle = FILL.setup;
         ctx.fillRect(x, y + 6, setupW, BAR_H);
         hatchRect(ctx, x, y + 6, setupW, BAR_H);
       }
       if (bar.late) {
-        ctx.strokeStyle = chrome("text-danger");
+        ctx.strokeStyle = "#9c2b1a";
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 1, y + 7, Math.max(0, w - 2), BAR_H - 2);
       }
       if (member) {
-        ctx.strokeStyle = chrome("ink");
+        ctx.strokeStyle = "#0f172a";
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 0.5, y + 5, w, BAR_H + 2);
       }
       if (bar.qtime) {
-        ctx.fillStyle = bar.qtime === "breach" ? chrome("text-danger") : chrome("graphic-warning");
+        ctx.fillStyle = bar.qtime === "breach" ? "#b42318" : "#e6a100";
         ctx.beginPath();
         ctx.moveTo(x + w - 8, y + 6);
         ctx.lineTo(x + w, y + 6);
@@ -518,7 +508,7 @@
         ctx.beginPath();
         ctx.rect(x + 2, y + 6, w - 4, BAR_H);
         ctx.clip();
-        ctx.fillStyle = barInk(bar.state);
+        ctx.fillStyle = INK[bar.state] || "#1e293b";
         ctx.fillText(label, x + 4, y + 6 + BAR_H / 2);
       }
       ctx.restore();
@@ -527,7 +517,7 @@
       const lots = state.focus ? [state.focus] : visibleLots(laid, top, height).slice(0, 30);
       if (!state.links && !state.focus) return;
       ctx.save();
-      ctx.strokeStyle = chrome("ink");
+      ctx.strokeStyle = "#0f172a";
       ctx.globalAlpha = 0.45;
       ctx.lineWidth = 1.25;
       for (const lot of lots) {
@@ -559,7 +549,7 @@
       if (now < state.t0 || now > state.t1) return;
       const x = xOf(now, width);
       ctx.save();
-      ctx.strokeStyle = chrome("accent");
+      ctx.strokeStyle = "#c2410c";
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
@@ -573,7 +563,7 @@
       if (due < state.t0 || due > state.t1) return;
       ctx.save();
       ctx.setLineDash([3, 3]);
-      ctx.strokeStyle = chrome("graphic-warning");
+      ctx.strokeStyle = "#b45309";
       const x = xOf(due, width);
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -590,10 +580,10 @@
       canvas.style.height = `${AXIS_H}px`;
       const ctx = canvas.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = chrome("card");
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, AXIS_H);
       const step = chooseStep(span(), width);
-      ctx.fillStyle = chrome("muted");
+      ctx.fillStyle = "#64748b";
       ctx.font = "11px sans-serif";
       ctx.textBaseline = "top";
       const c = copy();
@@ -601,13 +591,13 @@
       for (let minute = Math.floor(state.t0 / 480) * 480; minute < state.t1; minute += 480) {
         if (minute < state.t0) continue;
         const slot = Math.floor((minute % 1440) / 480);
-        ctx.fillStyle = chrome("muted");
+        ctx.fillStyle = "#94a3b8";
         ctx.fillText(shifts[((slot % 3) + 3) % 3], xOf(minute, width) + 4, 4);
       }
-      ctx.fillStyle = chrome("ink");
+      ctx.fillStyle = "#1e293b";
       for (let minute = Math.ceil(state.t0 / step) * step; minute <= state.t1; minute += step) {
         const x = xOf(minute, width);
-        ctx.strokeStyle = chrome("line");
+        ctx.strokeStyle = "#cbd5e1";
         ctx.beginPath();
         ctx.moveTo(x, 28);
         ctx.lineTo(x, AXIS_H);
@@ -777,17 +767,17 @@
       out.height = (AXIS_H + height) * dpr;
       const ctx = out.getContext("2d");
       ctx.scale(dpr, dpr);
-      ctx.fillStyle = chrome("card");
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, LABEL_W + width, AXIS_H + height);
       ctx.save();
       ctx.translate(LABEL_W, AXIS_H);
-      ctx.fillStyle = chrome("ground");
+      ctx.fillStyle = "#fafafa";
       ctx.fillRect(0, 0, width, height);
       drawGrid(ctx, width, height);
       for (const box of laid.boxes) {
         if (box.y + box.h < state.scroll || box.y > state.scroll + height) continue;
         const y = box.y - state.scroll;
-        ctx.fillStyle = chrome("ink");
+        ctx.fillStyle = "#1e293b";
         ctx.font = "12px sans-serif";
         ctx.textBaseline = "middle";
         ctx.fillText(String(box.row.label || box.row.id), -LABEL_W + 8, y + box.h / 2);
@@ -941,12 +931,6 @@
     }
     state.filtersOpen = true;
     bind();
-    if (window.ResiliTheme) {
-      ResiliTheme.onChange(() => {
-        if (state.payload) draw();
-      });
-      ResiliTheme.watch();
-    }
     if (state.view === "product") {
       const product = host.querySelector("[data-view='product']");
       if (product) product.checked = true;
