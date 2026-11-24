@@ -1,7 +1,7 @@
 {
   "$schema_note": "Wave 0 guard-list ratchet for #121 / #119. CI fails if a listed test node or doc heading disappears without this file also changing in the same PR. Additive only: removing an entry requires an explicit #121 note.",
   "version": 1,
-  "updated": "2026-11-22",
+  "updated": "2026-11-24",
   "issue": 121,
   "wave": 0,
   "tests": [
@@ -112,6 +112,18 @@
       "file": "tests/test_style_budget.py",
       "node": "test_text_warning_contrast_clears_aa",
       "why": "Wave 1 — scripted text-* / graphic-* contrast in CI"
+    },
+    {
+      "id": "style-spacing-counter-fixtures",
+      "file": "tests/test_style_budget.py",
+      "node": "test_spacing_counter_counts_shorthand_and_ignores_border",
+      "why": "11(c) — spacing counter fixtures; the counter's own ruler must be guarded (G2/G4)"
+    },
+    {
+      "id": "style-counted-css-file-set",
+      "file": "tests/test_style_budget.py",
+      "node": "test_counted_css_file_set_is_exact",
+      "why": "11(c) — counted CSS file set; dropping a file would silently undercount while line-level fixtures still pass (G2/G4 wiring)"
     }
   ],
   "doc_headings": [
