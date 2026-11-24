@@ -1,9 +1,17 @@
 """Default plan-mode KPI lock (F0 of epic #137).
 
-Locks the published HARD_QTIME.md numbers for planning + hard Q-time on the
-published book, seeds 1-3, 7 days. This is the regression rope for later
-``priority/`` and ``decide()`` extractions: those moves must not change these
-figures without an explicit doc + PR note.
+Re-runs planning + hard Q-time on the published book (seeds 1-3, 7 days) and
+locks the figures published in ``docs/HARD_QTIME.md``. Epic #138 notes that
+the "71 avoidable" triad is a historical citation until re-measured on the
+current tree: this test is that re-measurement, not a copy of the doc.
+
+If the live run disagrees with the constants below, do not weaken the
+assertions silently. Either fix the regression, or update HARD_QTIME.md (and
+these constants) in the same PR with the new measured values, seeds, config,
+and code version — same discipline as #105 for the separate benchmark book.
+
+This is also the regression rope for later ``priority/`` and ``decide()``
+extractions (#137 F1/F2) and for P2 experiments that claim improvement (#138).
 
 Marked ``kpi_baseline`` so the default suite stays fast; CI runs this marker
 in a dedicated job.
