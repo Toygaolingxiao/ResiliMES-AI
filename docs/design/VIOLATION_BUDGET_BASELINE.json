@@ -1,13 +1,19 @@
 {
-  "$schema_note": "Frozen Wave 0 baseline for the style-violation ratchet (#121). The budgets in VIOLATION_BUDGET.json must never exceed these values: CI fails (tests/test_style_budget.py) if any budget is raised above its baseline, or if a metric is added or removed without updating this file in the same PR. Raising a baseline value is a deliberate, reviewable act: change this file in the same PR, record the change in 'history' below, and state the reason in the PR body. This file is not hash-locked or signed; the test only compares values, so a simultaneous edit of budget and baseline still passes CI and relies on human review of the diff. When re-baselining, update frozen_at / frozen_commit / reverified_at together and say which kind of change it is: a measurement correction (the counter was wrong, e.g. candidate 11(c)) or a real regression (code got worse). Lowering a budget does not require touching this file. Baseline values were measured with resilimes.design.violations.count_violations() at the #124 merge commit f53b88c3 and re-verified equal at 9b7585fe.",
-  "frozen_at": "2026-11-22",
-  "frozen_commit": "f53b88c3",
+  "$schema_note": "Frozen Wave 0 baseline for the style-violation ratchet (#121). The budgets in VIOLATION_BUDGET.json must never exceed these values: CI fails (tests/test_style_budget.py) if any budget is raised above its baseline, or if a metric is added or removed without updating this file in the same PR. Raising a baseline value is a deliberate, reviewable act: change this file in the same PR, record the change in 'history' below, and state the reason in the PR body. This file is not hash-locked or signed; the test only compares values, so a simultaneous edit of budget and baseline still passes CI and relies on human review of the diff. When re-baselining, update frozen_at / frozen_commit / reverified_at together and say which kind of change it is: a measurement correction (the counter was wrong, e.g. candidate 11(c)) or a real regression (code got worse). Lowering a budget does not require touching this file. Baseline values were measured with resilimes.design.violations.count_violations() at the #124 merge commit f53b88c3 and re-verified equal at 9b7585fe; spacing was re-measured with the corrected counter (11(c)) at main 0b821991.",
+  "frozen_at": "2026-11-24",
+  "frozen_commit": "0b821991",
   "history": [
     {
       "commit": "f53b88c3",
       "date": "2026-11-22",
       "kind": "baseline",
       "reason": "Wave 0 freeze; values measured with count_violations() at the #124 merge commit."
+    },
+    {
+      "commit": "0b821991",
+      "date": "2026-11-24",
+      "kind": "measurement correction",
+      "reason": "11(c): spacing counter fixed — border widths no longer counted as spacing, and every px value in a shorthand declaration is now counted. Corrected count 185 on main 0b821991 (repo counter run, 2026-11-24; per-file: fab 69, report 5, styles 92, timeline 19; cross-checked by three independent recounts). The corrected count at the freeze/re-verify commits f53b88c3 and 9b7585fe is 191, not 185: the 191→185 drop is all in report.css, removed by the Wave 1 report rewrite between 8de7c613 and 38fbac15 (PRs #132/#133) — same rewrite removed one old-counted spacing value (report.css:63 'padding: 28px 32px 40px;', old counter 172→171) and one font-size (report.css:28 'font-size: 15px;', font 36→35). Not a regression: no CSS changed in this PR, only the ruler; the other six metrics were not re-measured at 0b821991, only spacing was (see notes)."
     }
   ],
   "issue": 121,
@@ -18,14 +24,14 @@
     "font_size_outside_text_tokens": 36,
     "js_hex_literals": 74,
     "js_rgba_literals": 1,
-    "spacing_outside_legacy_ladder": 172
+    "spacing_outside_legacy_ladder": 185
   },
   "notes": [
-    "Known measurement error (candidate 11(c), not fixed here): the spacing counter miscounts in both directions — about 30 border-width '1px' values are counted as spacing violations, and about 49 off-ladder px values in later positions of shorthand declarations are missed. The frozen spacing value 172 is therefore a counter reading, not a true violation count; the corrected count is estimated near 191 and will be re-measured when 11(c) lands, which will require a re-baseline of this metric (kind: measurement correction).",
-    "The counter itself (resilimes.design.violations.count_violations) has no fixture tests; a change that makes it undercount would pass both budget tests. That gap (G2/G4) is not closed by this file and relies on review.",
-    "Update 'reverified_at' whenever the counts are re-verified equal on a newer commit."
+    "Corrected by 11(c) (2026-11-24, main 0b821991): the spacing counter no longer counts border widths as spacing and now counts every px value in shorthand declarations. Corrected count 185 (was 172 at the freeze commits f53b88c3/9b7585fe, where the corrected count is 191); re-baselined as a measurement correction, not a regression. The old counter reads 171 on the current tree, 1 below the frozen 172 — explained, not unexplained: the Wave 1 report rewrite between 8de7c613 and 38fbac15 removed report.css:63 'padding: 28px 32px 40px;' (old-counted 1). The same rewrite removed report.css:28 'font-size: 15px;', so font-size re-measures 35 vs frozen 36; font budget/baseline stay 36 (count <= budget, ratchet still green) and are not re-baselined here. Only spacing was re-measured at 0b821991; the other six values carry their 9b7585fe verification (css_hex has since fallen 112→13 via Wave 1b tokenization, its budget already lowered to 13).",
+    "Pinned by 11(c) at line level and file-set level: the counter now has fixture tests (tests/test_style_budget.py::test_spacing_counter_counts_shorthand_and_ignores_border, 27 cases incl. verbatim live lines, with a case-count floor) and a counted-file-set test (test_counted_css_file_set_is_exact), both registered in GUARD_CHECKLIST.json. Not pinned: a count==budget equality assertion (budgets legitimately sit above counts after real improvements) and the simultaneous budget+baseline edit, which still relies on human review of the diff (see $schema_note).",
+    "Update 'reverified_at' whenever the counts are re-verified equal on a newer commit; record per-metric which values were actually re-measured, since a blanket re-stamp overstates the verification scope."
   ],
-  "reverified_at": "2026-11-23 @ 9b7585fe",
+  "reverified_at": "2026-11-24 @ 0b821991",
   "version": 1,
   "wave": 0
 }
