@@ -1,22 +1,24 @@
 """Test-wide settings.
 
-The suite's expected numbers and golden digests were recorded on the qtime-r2
-path, so it pins ``RESILIMES_SCHED_MODE=strict_qtime`` unless the caller set
-it. ``tests/test_sched_mode.py`` covers the default (``plan``) mode explicitly.
+The product default scheduling mode is ``plan`` (see
+``resilimes.smt.simulate.DEFAULT_SCHED_MODE``). This file does **not** rewrite
+that default.
 
-A test whose numbers were recorded on that qtime-r2 path, and which would
-otherwise follow the suite mode, requests ``strict_qtime``. That pin does not
-change the scheduler. It only selects the recorded path inside the test, so
-the same suite passes when CI starts it in ``plan`` and in ``strict_qtime``.
+Golden digests and expected numbers for the older qtime-r2 path were recorded
+under ``RESILIMES_SCHED_MODE=strict_qtime``. Tests that need that path must
+declare it:
+
+* request the ``strict_qtime`` fixture, or
+* set ``RESILIMES_SCHED_MODE`` themselves, or
+* rely on the caller (``make test``, CI ``test`` job) having set the env.
+
+``tests/test_sched_mode.py`` and ``tests/test_plan_kpi_baseline.py`` cover the
+product default explicitly with the env unset.
 """
 
 from __future__ import annotations
 
-import os
-
 import pytest
-
-os.environ.setdefault("RESILIMES_SCHED_MODE", "strict_qtime")
 
 
 @pytest.fixture

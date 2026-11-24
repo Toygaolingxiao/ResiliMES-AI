@@ -41,22 +41,20 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install
         run: python -m pip install -r requirements-dev.txt
-      # Full suite once per Python version. tests/conftest.py pins
-      # RESILIMES_SCHED_MODE=strict_qtime unless the caller set it, so
-      # this leg is the recorded (qtime-r2) path, as before; tests that
-      # cover the plan default explicitly (test_sched_mode.py) set the
-      # mode themselves and run here too.
+      # Recorded (qtime-r2) path. Mode is set here — not in conftest — so the
+      # product default stays plan when the env is unset. Plan coverage on
+      # PRs: test_sched_mode.py + test_plan_kpi_baseline (kpi-baseline job).
       - name: Test
-        run: python -m pytest
+        run: python -m pytest -m 'not kpi_baseline'
+        env:
+          RESILIMES_SCHED_MODE: strict_qtime
       - name: Offline smoke
         run: python smoke_test.py --mock
         env:
           RESILIMES_MODE: mock
 
-  # The ambient plan-mode full pass moves post-merge: it runs on every
-  # push to main (i.e. every merge), not on every PR push. PRs keep the
-  # explicit plan coverage in test_sched_mode.py plus the conftest pin
-  # discipline described in tests/conftest.py.
+  # Ambient plan-mode full pass: every push to main (post-merge), not every
+  # PR push. PRs cover plan via test_sched_mode.py and the kpi-baseline job.
   plan:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -68,9 +66,25 @@ jobs:
       - name: Install
         run: python -m pip install -r requirements-dev.txt
       - name: Test (plan)
-        run: python -m pytest
+        run: python -m pytest -m 'not kpi_baseline'
         env:
           RESILIMES_SCHED_MODE: plan
+
+  # F0 of epic #137: lock HARD_QTIME.md plan+hard KPIs (seeds 1–3, 7 d).
+  # ~4 min wall with 3 workers; excluded from the default suite via -m.
+  kpi-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -r requirements-dev.txt
+      - name: Plan-mode KPI baseline
+        run: python -m pytest -m kpi_baseline
+        # Product default: leave RESILIMES_SCHED_MODE unset so the test
+        # asserts ambient plan.
 
   explain-alone:
     # The explain layer installed on its own, without the rest of the repository.

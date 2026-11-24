@@ -14,8 +14,14 @@ demo-bay:
 demo-live:
 	RESILIMES_MODE=auto RESILIMES_FAB=smt2020 $(PY) -m resilimes serve --host 0.0.0.0 --port 8000
 
+# Recorded-path suite (qtime-r2 goldens). Product default is plan; pin the
+# mode here so local `make test` matches CI's `test` job. KPI baseline is a
+# separate marker — see `make test-kpi-baseline` / CI job `kpi-baseline`.
 test:
-	$(PY) -m pytest
+	RESILIMES_SCHED_MODE=strict_qtime $(PY) -m pytest -m 'not kpi_baseline'
+
+test-kpi-baseline:
+	$(PY) -m pytest -m kpi_baseline
 
 lint:
 	$(PY) -m ruff check .
