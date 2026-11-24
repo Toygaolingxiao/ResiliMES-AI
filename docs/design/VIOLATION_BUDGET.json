@@ -1,7 +1,7 @@
 {
   "$schema_note": "Wave 0 style-violation budgets for #121. Budgets never exceed the frozen baseline in VIOLATION_BUDGET_BASELINE.json; counts are capped by their budgets. CI fails if a count rises above its budget, and fails if a budget is raised above the frozen Wave 0 baseline (or a metric is added/removed without a baseline update in the same PR). Lowering a budget is always allowed and needs no baseline change. Note: 'each converging PR must lower at least one budget it touches' was the Wave 0 wording; it is not mechanically enforced in-tree and is not claimed here — the enforced rule is budgets never exceed baseline.",
   "version": 1,
-  "updated": "2026-11-23",
+  "updated": "2026-11-24",
   "issue": 121,
   "wave": 1,
   "metrics": {
@@ -22,8 +22,8 @@
       "description": "rgba()/rgb() literals in demo/static *.js."
     },
     "spacing_outside_legacy_ladder": {
-      "budget": 172,
-      "description": "padding/margin/gap/inset px values outside {0,4,8,12,16}. Control/row ladder 24/32/40/48 is the Wave 0 decision; this metric still tracks legacy off-ladder noise until Wave 1 lint set expands."
+      "budget": 185,
+      "description": "padding/margin/gap/inset px values outside {0,4,8,12,16}. Counted with the corrected counter (11(c)): border widths are not spacing, and every px value in a shorthand declaration is counted. Control/row ladder 24/32/40/48 is the Wave 0 decision; this metric still tracks legacy off-ladder noise until Wave 1 lint set expands."
     },
     "font_size_outside_text_tokens": {
       "budget": 36,
@@ -35,7 +35,7 @@
     }
   },
   "notes": [
-    "Budgets measured 2026-11-22 at the #124 merge commit (f53b88c3) with resilimes.design.violations.count_violations(); re-verified equal at 9b7585fe.",
+    "Budgets measured 2026-11-22 at the #124 merge commit (f53b88c3) with resilimes.design.violations.count_violations(); re-verified equal at 9b7585fe. Spacing re-measured 2026-11-24 at main 0b821991 with the corrected counter (11(c)): 185 (repo counter run confirmed; per-file fab 69, report 5, styles 92, timeline 19; corrected count was 191 at f53b88c3/9b7585fe — the 191→185 drop is the Wave 1 report rewrite, not a regression). The old counter reads 171 on the current tree (was 172 at the freeze commits): the same rewrite removed one old-counted spacing value (report.css 'padding: 28px 32px 40px;') and one font-size ('font-size: 15px;'), so font-size re-measures 35 vs frozen 36; its budget stays 36.",
     "Allowed spacing set will expand to include control heights 24/32/40/48 when Wave 1 lint lands; until then off-ladder count stays the ratchet signal.",
     "Chart/data colours remain in scope for counting until registered in tokens.json chart palette (Wave 1).",
     "Wave 1b (styles.css + fab.css): css_hex budget lowered; .swatch scoped to .bay-legend vs .legend; removed dead --subtle/--serif."
