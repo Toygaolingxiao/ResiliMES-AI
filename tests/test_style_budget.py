@@ -11,7 +11,13 @@ for it.
 from __future__ import annotations
 
 from resilimes.config import ROOT
-from resilimes.design.violations import count_violations, load_baseline, load_budget
+from resilimes.design.violations import (
+    _iter_css,
+    count_spacing_line,
+    count_violations,
+    load_baseline,
+    load_budget,
+)
 
 # Frozen metric set: adding, removing, or renaming a metric requires
 # updating this set in the same PR. Without it, a metric could be
@@ -73,6 +79,74 @@ def test_budgets_do_not_exceed_baseline() -> None:
         "budgets raised above the frozen Wave 0 baseline "
         "(update VIOLATION_BUDGET_BASELINE.json in the same PR and state "
         f"the reason in the PR body): {raised}"
+    )
+
+
+def test_spacing_counter_counts_shorthand_and_ignores_border() -> None:
+    """11(c): the spacing counter's ruler has its own fixtures (G2/G4).
+
+    Border widths are not spacing, and shorthand counts every position.
+    Each case is one line as count_violations() sees it; expected values
+    are direct counts on the literal strings below. Cases marked
+    [live] are verbatim lines from the counted CSS files; the rest are
+    synthetic shapes chosen to pin the ruler's edge behaviour
+    (calc, negative, !important, decimal, comments).
+    """
+    cases = [
+        # (line, expected off-ladder px count)
+        ("border-top: 1px solid var(--line);", 0),
+        ("border-bottom: 1px solid var(--line); padding: 5px 8px;", 1),
+        ("border: 1px solid var(--line);", 0),
+        ("padding: 6px 14px;", 2),
+        ("gap: 10px 18px;", 2),
+        ("padding: 10px 16px 10px;", 2),
+        ("margin: 8px 16px;", 0),
+        ("top: 3px;", 1),
+        ("padding-top: 5px;", 1),
+        ("margin: 0 auto;", 0),
+        ("padding: 8px 10px 10px;", 2),
+        ("inset: 2px 4px;", 1),
+        ("padding: 6px 14px; margin: 2px;", 3),
+        ("padding: 0 16px 6px;", 1),  # [live] styles.css:340
+        ("margin: 2px 0 0 102px;", 2),  # [live] styles.css:864
+        (".tl-filters { padding: 8px 10px 10px; }", 2),  # [live] timeline.css:85
+        ("padding: 6px 4px 6px 18px; border-bottom: 1px solid var(--line);", 3),
+        (
+            "th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }",
+            1,
+        ),  # [live] styles.css:983
+        ("padding: calc(4px + 6px);", 1),
+        ("margin: 0 -16px;", 0),
+        ("margin: 0 -2px;", 1),
+        ("padding: 6px 14px !important;", 2),
+        ("padding: 6.4px;", 1),
+        ("margin: 4.0px;", 0),
+        ("/* padding: 6px 14px; */", 0),
+        ("padding: 6px; /* top: 3px; */", 1),
+        # [live] fab.css:17, whole line: margin 0/-16 -> 0, padding 10/16/10 -> 2
+        (
+            "  margin: 0 -16px; padding: 10px 16px 10px; background: var(--card); border-bottom: 1px solid var(--line);",
+            2,
+        ),
+    ]
+    # Pin the case list itself: emptying the cases would otherwise pass.
+    assert len(cases) >= 27, f"fixture cases were cut down to {len(cases)}"
+    for line, expected in cases:
+        assert count_spacing_line(line) == expected, (
+            f"{line!r}: expected {expected}, got {count_spacing_line(line)}"
+        )
+
+
+def test_counted_css_file_set_is_exact() -> None:
+    """11(c): the counter's wiring is pinned, not just its ruler (G2/G4).
+
+    Dropping a file from _iter_css() would silently undercount while
+    every line-level fixture still passed; this test fails if the
+    counted file set changes without this test changing too.
+    """
+    names = sorted(p.name for p in _iter_css())
+    assert names == ["fab.css", "report.css", "styles.css", "timeline.css"], (
+        f"counted CSS file set drifted: {names}"
     )
 
 
