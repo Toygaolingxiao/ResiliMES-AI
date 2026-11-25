@@ -148,12 +148,12 @@ def test_i18n_json_fetch_is_versioned_everywhere() -> None:
         "workshop/console/console.js",
     ):
         text = (STATIC / script).read_text(encoding="utf-8")
-        assert '/assets/i18n.json?v=1"' in text
+        assert '/assets/i18n.json?v=2"' in text
         assert '"/assets/i18n.json"' not in text
     client = TestClient(
         create_app(Settings(mode="mock", fab="sample", horizon=HORIZON, scout_signing_secret="x"))
     )
-    served = client.get("/assets/i18n.json?v=1")
+    served = client.get("/assets/i18n.json?v=2")
     assert served.status_code == 200
     assert "Back to the console" in served.text
 
