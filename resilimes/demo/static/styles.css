@@ -9,10 +9,10 @@
 
 :root {
   /* Legacy aliases → semantic tokens (see design/tokens.css) */
-  --line-strong: var(--chart-gantt-idle);
+  --line-strong: var(--chart-fab-idle);
   --field-line: #8d8d8d;
   /* Status: every text colour clears 4.5:1 on white and on its own wash */
-  --alarm: var(--chart-gantt-down);      /* down, hold, violations */
+  --alarm: var(--chart-fab-down);      /* down, hold, violations */
   --alarm-ink: var(--text-danger);
   --alarm-wash: var(--bg-danger-subtle);
   --amber: #8e6a00;          /* Q-time risk, pile-up, warnings (≠ --text-warning) */
@@ -25,8 +25,8 @@
   --recorded-ink: var(--text-info);
   --unknown: var(--sheet);         /* evidence tier: unknown */
   --unknown-ink: var(--muted);
-  --pm: var(--chart-gantt-pm);             /* planned maintenance */
-  --idle-dot: var(--chart-gantt-idle);     /* lamp / legend idle */
+  --pm: var(--chart-fab-pm);             /* planned maintenance */
+  --idle-dot: var(--chart-fab-idle);     /* lamp / legend idle */
   --hot: #9f1853;            /* hot lot (magenta-70) */
   --hot-fill: #d02670;
   --hot-wash: #fff0f7;
@@ -35,7 +35,7 @@
   --accent-ink: #ffffff;
   --accent-wash: var(--bg-info-subtle);
   --violet: #8a3ffc;
-  --cyan: var(--chart-gantt-setup);
+  --cyan: var(--chart-fab-setup);
   --track: var(--layer-hover);
   --rework-ink: rgba(22, 22, 22, 0.5);
   --radius: 0px;
@@ -80,9 +80,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 ::selection { background: var(--bg-info-subtle); color: var(--ink); }
-* { scrollbar-width: thin; scrollbar-color: var(--chart-gantt-pm) transparent; }
+* { scrollbar-width: thin; scrollbar-color: var(--chart-fab-pm) transparent; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--chart-gantt-idle); border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb { background: var(--chart-fab-idle); border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--field-line); }
 input, textarea { caret-color: var(--accent); }
 .shell {
@@ -254,7 +254,7 @@ a.report-link:hover { text-decoration: underline; }
 .run:hover:not(:disabled) { background: var(--accent-hover); }
 .run:active:not(:disabled) { background: var(--accent-active); }
 .run:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; box-shadow: inset 0 0 0 1px var(--card); }
-.run:disabled { background: var(--chart-gantt-idle); color: var(--chart-gantt-pm); cursor: not-allowed; }
+.run:disabled { background: var(--chart-fab-idle); color: var(--chart-fab-pm); cursor: not-allowed; }
 .run.quiet {
   background: transparent;
   color: var(--accent);
@@ -1050,8 +1050,8 @@ table.checks th, table.checks td { padding: 4px 8px; }
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --field-line: var(--chart-gantt-pm);
-  --alarm: var(--chart-gantt-down);
+  --field-line: var(--chart-fab-pm);
+  --alarm: var(--chart-fab-down);
   --alarm-ink: var(--text-danger);
   --alarm-wash: var(--bg-danger-subtle);
   --amber: var(--graphic-warning);
@@ -1063,7 +1063,7 @@ html[data-theme="dark"] {
   --recorded-ink: var(--text-info);
   --unknown: var(--sheet);
   --unknown-ink: var(--muted);
-  --pm: var(--chart-gantt-pm);
+  --pm: var(--chart-fab-pm);
   --hot: #ff7eb6;
   --hot-wash: #3a0a22;
   --accent-hover: #a6c8ff;
@@ -1071,7 +1071,7 @@ html[data-theme="dark"] {
   --accent-ink: #161616;
   --accent-wash: var(--bg-info-subtle);
   --violet: #be95ff;
-  --cyan: var(--chart-gantt-setup);
+  --cyan: var(--chart-fab-setup);
   --track: var(--layer-hover);
   --rework-ink: rgba(255, 255, 255, 0.55);
 }

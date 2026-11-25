@@ -108,3 +108,34 @@ def test_dark_status_aliases_keep_their_role() -> None:
     assert "--idle-dot: var(--chart-gantt-pm)" not in styles
     assert "--line-strong: var(--muted)" not in styles
     assert 'html[data-theme="dark"] .fx-pill.st-run' not in fab
+
+
+def test_chart_gantt_keeps_nine_distinct_fills() -> None:
+    """Wave 1c: Schedule Viewer states stay nine hues — do not collapse into five."""
+    import json
+
+    tokens = json.loads((ROOT / "docs" / "design" / "tokens.json").read_text(encoding="utf-8"))
+    states = (
+        "gantt-processing",
+        "gantt-scheduled",
+        "gantt-reserved",
+        "gantt-waiting",
+        "gantt-transport",
+        "gantt-setup",
+        "gantt-down",
+        "gantt-pm",
+        "gantt-idle",
+    )
+    for theme in ("light", "dark"):
+        chart = tokens["chart"][theme]
+        fills = [chart[name]["value"].lower() for name in states]
+        assert len(fills) == 9
+        assert len(set(fills)) == 9, f"{theme} gantt fills collapsed: {fills}"
+    css = (ROOT / "resilimes" / "demo" / "static" / "design" / "tokens.css").read_text(
+        encoding="utf-8"
+    )
+    for name in states:
+        assert f"--chart-{name}:" in css
+    # Workshop tool states use fab-*, not timeline gantt-*
+    styles = (ROOT / "resilimes" / "demo" / "static" / "styles.css").read_text(encoding="utf-8")
+    assert "var(--chart-fab-down)" in styles or "var(--chart-fab-run)" in styles

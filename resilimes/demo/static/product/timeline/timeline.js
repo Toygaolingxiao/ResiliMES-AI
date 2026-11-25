@@ -7,7 +7,8 @@
   const ROW_H = 32;
   const GROUP_H = 28;
   const BAR_H = 20;
-  const FILL = {
+  // Nine Schedule Viewer fills — one chart token each. Never collapse these.
+  const FILL_FALLBACK = {
     processing: "#FFD700",
     scheduled: "#5B8DEF",
     reserved: "#FF69B4",
@@ -18,13 +19,29 @@
     pm: "#808080",
     idle: "#e7e2d8",
   };
-  const INK = {
+  const INK_FALLBACK = {
     processing: "#1e293b",
     scheduled: "#ffffff",
     reserved: "#1e293b",
     waiting: "#1e293b",
     transport: "#ffffff",
   };
+  const BAR_INK_LIGHT = new Set(["scheduled", "transport"]);
+  function barFill(state) {
+    const T = window.ResiliTheme;
+    const fromTheme = T && T.chart(`gantt-${state}`);
+    return fromTheme || FILL_FALLBACK[state] || FILL_FALLBACK.scheduled;
+  }
+  function barInk(state) {
+    const T = window.ResiliTheme;
+    if (T) {
+      return BAR_INK_LIGHT.has(state) ? T.chart("gantt-ink-light") : T.chart("gantt-ink-dark");
+    }
+    return INK_FALLBACK[state] || INK_FALLBACK.processing;
+  }
+  function chrome(token, fallback) {
+    return (window.ResiliTheme && ResiliTheme.css(token)) || fallback || "";
+  }
   const STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 240, 480, 720, 1440, 2880];
 
   function mount(host, options) {
@@ -125,13 +142,13 @@
         const node = document.createElement("span");
         const swatch = document.createElement("i");
         swatch.className = "tl-swatch";
-        swatch.style.background = FILL[key];
+        swatch.style.background = barFill(key);
         node.append(swatch, document.createTextNode(extra ? `${label} · ${extra}` : label || key));
         box.appendChild(node);
       }
       const late = document.createElement("span");
       late.textContent = c.lateLots || "";
-      late.style.color = "#9c2b1a";
+      late.style.color = chrome("text-danger", "#9c2b1a");
       box.appendChild(late);
     }
     function paintStats() {
@@ -390,7 +407,7 @@
       canvas.style.height = `${height}px`;
       const ctx = canvas.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = "#fafafa";
+      ctx.fillStyle = chrome("ground", "#fafafa");
       ctx.fillRect(0, 0, width, height);
       drawGrid(ctx, width, height);
       for (const box of laid.boxes) {
@@ -399,10 +416,10 @@
         if (box.row.kind === "machine") drawMachine(ctx, box.row.id, y, box.h, width);
         else if (box.row.kind === "lot") drawLot(ctx, box.row.id, y, box.h, width);
         else {
-          ctx.fillStyle = "#f1f5f9";
+          ctx.fillStyle = chrome("sheet", "#f1f5f9");
           ctx.fillRect(0, y, width, box.h);
         }
-        ctx.strokeStyle = "#e2e8f0";
+        ctx.strokeStyle = chrome("line", "#e2e8f0");
         ctx.beginPath();
         ctx.moveTo(0, y + box.h - 0.5);
         ctx.lineTo(width, y + box.h - 0.5);
@@ -421,7 +438,7 @@
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
       }
-      ctx.strokeStyle = "#e2e8f0";
+      ctx.strokeStyle = chrome("line", "#e2e8f0");
       ctx.stroke();
       ctx.beginPath();
       for (let minute = Math.ceil(state.t0 / 1440) * 1440; minute < state.t1; minute += 1440) {
@@ -429,14 +446,23 @@
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
       }
-      ctx.strokeStyle = "#cbd5e1";
+      ctx.strokeStyle = chrome("muted", "#cbd5e1");
       ctx.stroke();
       ctx.restore();
       void step;
     }
     function drawMachine(ctx, id, y, h, width) {
       for (const block of overlaps(state.byBlock.get(id) || [], state.t0, state.t1)) {
-        band(ctx, block.start_min, block.end_min, y + 2, h - 4, width, FILL[block.kind] || FILL.down, block.kind === "down");
+        band(
+          ctx,
+          block.start_min,
+          block.end_min,
+          y + 2,
+          h - 4,
+          width,
+          barFill(block.kind) || barFill("down"),
+          block.kind === "down",
+        );
       }
       const bars = overlaps(state.byMachine.get(id) || [], state.t0, state.t1).filter((bar) => !bar.gap);
       drawIdle(ctx, bars, state.byBlock.get(id) || [], y, h, width);
@@ -459,10 +485,10 @@
         else merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], b);
       }
       for (const [start, end] of merged) {
-        if (start - cursor >= 15) band(ctx, cursor, start, y + 4, h - 8, width, FILL.idle, false);
+        if (start - cursor >= 15) band(ctx, cursor, start, y + 4, h - 8, width, barFill("idle"), false);
         cursor = end;
       }
-      if (state.t1 - cursor >= 15) band(ctx, cursor, state.t1, y + 4, h - 8, width, FILL.idle, false);
+      if (state.t1 - cursor >= 15) band(ctx, cursor, state.t1, y + 4, h - 8, width, barFill("idle"), false);
     }
     function drawBar(ctx, bar, y, width, machine) {
       const x = xOf(bar.start_min, width);
@@ -470,27 +496,29 @@
       const member = isMember(bar, state.focus);
       ctx.save();
       ctx.globalAlpha = state.focus && !member ? 0.28 : 1;
-      ctx.fillStyle = FILL[bar.state] || FILL.scheduled;
+      ctx.fillStyle = barFill(bar.state);
       roundRect(ctx, x, y + 6, w, BAR_H, 3);
       ctx.fill();
       if (bar.setup_min > 0 && !bar.gap) {
         const setupW = Math.min(w, (bar.setup_min / span()) * width);
-        ctx.fillStyle = FILL.setup;
+        ctx.fillStyle = barFill("setup");
         ctx.fillRect(x, y + 6, setupW, BAR_H);
         hatchRect(ctx, x, y + 6, setupW, BAR_H);
       }
       if (bar.late) {
-        ctx.strokeStyle = "#9c2b1a";
+        ctx.strokeStyle = chrome("text-danger", "#9c2b1a");
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 1, y + 7, Math.max(0, w - 2), BAR_H - 2);
       }
       if (member) {
-        ctx.strokeStyle = "#0f172a";
+        ctx.strokeStyle = chrome("ink", "#0f172a");
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 0.5, y + 5, w, BAR_H + 2);
       }
       if (bar.qtime) {
-        ctx.fillStyle = bar.qtime === "breach" ? "#b42318" : "#e6a100";
+        ctx.fillStyle = bar.qtime === "breach"
+          ? chrome("text-danger", "#b42318")
+          : chrome("text-warning", "#e6a100");
         ctx.beginPath();
         ctx.moveTo(x + w - 8, y + 6);
         ctx.lineTo(x + w, y + 6);
@@ -508,7 +536,7 @@
         ctx.beginPath();
         ctx.rect(x + 2, y + 6, w - 4, BAR_H);
         ctx.clip();
-        ctx.fillStyle = INK[bar.state] || "#1e293b";
+        ctx.fillStyle = barInk(bar.state);
         ctx.fillText(label, x + 4, y + 6 + BAR_H / 2);
       }
       ctx.restore();
@@ -517,7 +545,7 @@
       const lots = state.focus ? [state.focus] : visibleLots(laid, top, height).slice(0, 30);
       if (!state.links && !state.focus) return;
       ctx.save();
-      ctx.strokeStyle = "#0f172a";
+      ctx.strokeStyle = chrome("ink", "#0f172a");
       ctx.globalAlpha = 0.45;
       ctx.lineWidth = 1.25;
       for (const lot of lots) {
@@ -940,6 +968,13 @@
       paint();
       load();
     }).catch(() => load());
+    if (window.ResiliTheme) {
+      ResiliTheme.onChange(() => {
+        paint();
+        draw();
+      });
+      ResiliTheme.watch();
+    }
     return { reload: load };
   }
 
