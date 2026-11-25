@@ -28,9 +28,12 @@ def test_import_page_has_a_contents_section_under_the_result() -> None:
     assert html.index('id="result"') < html.index('id="contents"')
     # Anchor to the closing quote: a bare "?v=3" substring would also
     # match "?v=30" / "?v=300" and silently pass a drifted version.
-    # The count pins the reference to exactly one <script> tag: a second
-    # copy (e.g. a pasted duplicate with another version) must fail.
-    assert '/assets/product/import/import.js?v=3"' in html
+    # Anchor to `src="` as well: without it a rewritten URL whose path
+    # merely contains the target (e.g. `//assets/...` or a foreign
+    # origin) would pass. The count pins the reference string to
+    # exactly one occurrence — it does not prove the string sits
+    # inside an executed <script> tag (see known limitation).
+    assert 'src="/assets/product/import/import.js?v=3"' in html
     assert '/assets/product/import/import.js"' not in html
     assert html.count("/assets/product/import/import.js") == 1
 
@@ -73,4 +76,4 @@ def test_import_route_still_serves_the_page() -> None:
     assert 'id="contents"' in response.text
     # Served page must carry the same versioned script as the file on
     # disk; the disk-only pin above cannot catch a serving-layer drift.
-    assert '/assets/product/import/import.js?v=3"' in response.text
+    assert 'src="/assets/product/import/import.js?v=3"' in response.text
