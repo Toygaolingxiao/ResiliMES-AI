@@ -900,6 +900,8 @@ Times in critic messages are the shift clock (the scenario horizon plus the minu
 | `import.empty` | Choose a file. | 请选择文件。 | ファイルを選んでください。 |
 | `import.contentsTitle` | File contents | 文件内容 | ファイルの中身 |
 | `import.contentsMeta` | {name}: showing {shown} of {total} rows | {name}：共 {total} 行，显示前 {shown} 行 | {name}：全 {total} 行中 {shown} 行を表示 |
+| `import.contentsColumnsNote` | Showing the first {shown} of {total} columns. | 只显示前 {shown} 列，共 {total} 列。 | 全 {total} 列中、先頭 {shown} 列を表示。 |
+| `import.contentsSkippedNote` | {skipped} lines skipped: not readable as table rows. | 已跳过 {skipped} 行：无法读作表格行。 | {skipped} 行をスキップ：表の行として読めません。 |
 | `import.contentsUnparsed` | Could not read this file as a table, so its contents are not shown. | 没能把这个文件解析成表格，内容就不显示了。 | 表として読み取れなかったため、中身は表示できません。 |
 | `cases.title` | Cases | 案件 | 案件 |
 | `cases.lead` | One row per lot that has cases. Worst open severity first; a lot with no open case sorts last. | 每个有案件的 lot 一行。未关闭的最重严重度在前；没有未关闭案件的 lot 排最后。 | 案件のあるロットごと1行。未完了で最も重い深刻度が先、未完了案件のないロットは最後。 |
