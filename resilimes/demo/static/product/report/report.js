@@ -384,7 +384,7 @@
   }
 
   async function init() {
-    const response = await fetch("/assets/i18n.json?v=1");
+    const response = await fetch("/assets/i18n.json?v=2");
     state.catalog = await response.json();
     const params = new URLSearchParams(location.search);
     if (params.get("seed")) $("seed").value = params.get("seed");

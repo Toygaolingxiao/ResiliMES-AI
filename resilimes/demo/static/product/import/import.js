@@ -151,12 +151,26 @@
   // what was actually in it — not only the verdict the import returned.
   const MAX_SHOWN = 100;
   const MAX_CELL = 120;
+  const MAX_COLUMNS = 20;
 
+  // A quote only opens a quoted field at the start of a field (row start
+  // or just after a comma). A stray quote mid-field — `5" long` in a real
+  // log — is literal text, so it can no longer swallow the rest of the
+  // file. An unclosed quoted field is a parse failure (null), not a
+  // silently truncated row. A lone CR ends a row (old-Mac line endings).
   function parseCsv(text) {
     const rows = [];
     let row = [];
     let field = "";
     let quoted = false;
+    let fieldStart = true;
+    const endRow = () => {
+      row.push(field);
+      field = "";
+      rows.push(row);
+      row = [];
+      fieldStart = true;
+    };
     for (let i = 0; i < text.length; i++) {
       const ch = text[i];
       if (quoted) {
@@ -166,17 +180,24 @@
             i++;
           } else quoted = false;
         } else field += ch;
-      } else if (ch === '"') quoted = true;
-      else if (ch === ",") {
+      } else if (ch === '"' && fieldStart) {
+        quoted = true;
+        fieldStart = false;
+      } else if (ch === ",") {
         row.push(field);
         field = "";
+        fieldStart = true;
       } else if (ch === "\n") {
-        row.push(field);
-        field = "";
-        rows.push(row);
-        row = [];
-      } else if (ch !== "\r") field += ch;
+        endRow();
+      } else if (ch === "\r") {
+        if (text[i + 1] !== "\n") endRow();
+        // A CR before LF is part of the CRLF pair; the LF ends the row.
+      } else {
+        field += ch;
+        fieldStart = false;
+      }
     }
+    if (quoted) return null;
     if (field !== "" || row.length) {
       row.push(field);
       rows.push(row);
@@ -190,48 +211,119 @@
     return String(value);
   }
 
+  function isTableRow(item) {
+    return item && typeof item === "object" && !Array.isArray(item);
+  }
+
+  // Columns are discovered over every item (a key that first appears
+  // after item 200 is no longer silently dropped), but only the first
+  // MAX_COLUMNS are shown and only the first MAX_SHOWN rows are
+  // materialised, so a wide file can no longer build millions of cells.
+  // `total` is the full row count; `columnsTotal` the full distinct-key
+  // count; the shown prefix is what the meta line reports against.
   function tableFromObjects(items) {
+    const seen = new Set();
     const columns = [];
-    for (const item of items.slice(0, 200)) {
-      if (item && typeof item === "object" && !Array.isArray(item)) {
-        for (const key of Object.keys(item)) {
-          if (!columns.includes(key)) columns.push(key);
+    for (const item of items) {
+      if (!isTableRow(item)) continue;
+      for (const key of Object.keys(item)) {
+        if (!seen.has(key)) {
+          seen.add(key);
+          columns.push(key);
         }
       }
     }
     if (!columns.length) return null;
-    const rows = items.map((item) =>
-      columns.map((key) => cellText(item && typeof item === "object" ? item[key] : null))
+    const shownColumns = columns.slice(0, MAX_COLUMNS);
+    const rows = items.slice(0, MAX_SHOWN).map((item) =>
+      shownColumns.map((key) => cellText(isTableRow(item) ? item[key] : null))
     );
-    return { columns, rows };
+    return { columns: shownColumns, rows, total: items.length, columnsTotal: columns.length };
+  }
+
+  // One JSON object per line. `minObjects` is the evidence bar for
+  // treating the input as JSONL: a JSON-smelling file (first character
+  // `{`/`[`) needs one object line, anything else needs two, so a real
+  // CSV that happens to contain a single JSON-looking line is not
+  // hijacked. Lines that fail to parse, or parse to a non-object, are
+  // skipped and counted — never folded into a CSV table.
+  function jsonLinesTable(trimmed, minObjects) {
+    const items = [];
+    let skipped = 0;
+    for (const line of trimmed.split(/\r\n|\r|\n/)) {
+      if (!line.trim()) continue;
+      try {
+        const value = JSON.parse(line);
+        if (isTableRow(value)) items.push(value);
+        else skipped++;
+      } catch (lineError) {
+        skipped++;
+      }
+    }
+    if (items.length < minObjects) return null;
+    const table = tableFromObjects(items);
+    if (table && skipped) table.skipped = skipped;
+    return table;
   }
 
   function parseContents(text) {
-    const trimmed = text.trim();
+    const body = text.replace(/^\uFEFF+/, "");
+    const trimmed = body.trim();
     if (!trimmed) return null;
-    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    const jsonSmell = trimmed.startsWith("[") || trimmed.startsWith("{");
+    if (jsonSmell) {
       try {
         const data = JSON.parse(trimmed);
         return tableFromObjects(Array.isArray(data) ? data : [data]);
       } catch (error) {
-        // Not one JSON document; try JSON lines before CSV.
-        try {
-          const items = trimmed
-            .split(/\r?\n/)
-            .filter((line) => line.trim())
-            .map((line) => JSON.parse(line));
-          const table = tableFromObjects(items);
-          if (table) return table;
-        } catch (lineError) {
-          // Not JSON lines either; fall through to CSV.
-        }
+        // Not one JSON document; try JSON lines below.
       }
+      const linesTable = jsonLinesTable(trimmed, 1);
+      if (linesTable) return linesTable;
+      return null;
     }
-    const rows = parseCsv(text).filter(
+    const linesTable = jsonLinesTable(trimmed, 2);
+    if (linesTable) return linesTable;
+    const rows = parseCsv(body);
+    if (!rows) return null;
+    const dataRows = rows.filter(
       (row) => row.length > 1 || (row.length === 1 && row[0] !== "")
     );
-    if (rows.length < 2) return null;
-    return { columns: rows[0], rows: rows.slice(1) };
+    if (dataRows.length < 2) return null;
+    const header = dataRows[0];
+    const rest = dataRows.slice(1);
+    return {
+      columns: header.slice(0, MAX_COLUMNS),
+      rows: rest.slice(0, MAX_SHOWN).map((row) => row.slice(0, MAX_COLUMNS)),
+      total: rest.length,
+      columnsTotal: header.length,
+    };
+  }
+
+  // One short line per fact the numbers hide: truncated columns, skipped
+  // lines. Rendered next to the meta line, never as disclaimer prose.
+  // Empty templates (a stale catalogue without the new keys) produce no
+  // note at all, never an empty paragraph.
+  function contentsNotes(table, c) {
+    const notes = [];
+    if (table.columnsTotal > table.columns.length) {
+      const note = fill(c.contentsColumnsNote, { shown: table.columns.length, total: table.columnsTotal });
+      if (note) notes.push(note);
+    }
+    if (table.skipped) {
+      const note = fill(c.contentsSkippedNote, { skipped: table.skipped });
+      if (note) notes.push(note);
+    }
+    return notes;
+  }
+
+  // Cell preview truncation, by code point so a surrogate pair is never
+  // split (a 120-emoji cell stays 120 characters, not 121 with a lone
+  // surrogate). Length is likewise counted in code points.
+  function truncateCell(value) {
+    const points = Array.from(value);
+    if (points.length <= MAX_CELL) return value;
+    return points.slice(0, MAX_CELL).join("") + "…";
   }
 
   function renderContents() {
@@ -249,10 +341,13 @@
       host.appendChild(el("p", "reason", c.contentsUnparsed));
       return;
     }
-    const shown = Math.min(table.rows.length, MAX_SHOWN);
+    const shown = table.rows.length;
     host.appendChild(
-      el("p", "hash", fill(c.contentsMeta, { name: state.contents.name, total: table.rows.length, shown }))
+      el("p", "hash", fill(c.contentsMeta, { name: state.contents.name, total: table.total, shown }))
     );
+    for (const note of contentsNotes(table, c)) {
+      host.appendChild(el("p", "hash", note));
+    }
     const tableNode = el("table", "contents-table");
     const thead = el("thead");
     const headRow = el("tr");
@@ -260,10 +355,10 @@
     thead.appendChild(headRow);
     tableNode.appendChild(thead);
     const tbody = el("tbody");
-    for (const row of table.rows.slice(0, MAX_SHOWN)) {
+    for (const row of table.rows) {
       const tr = el("tr");
       for (const value of row) {
-        tr.append(el("td", "", value.length > MAX_CELL ? value.slice(0, MAX_CELL) + "…" : value));
+        tr.append(el("td", "", truncateCell(value)));
       }
       tbody.appendChild(tr);
     }
@@ -278,6 +373,14 @@
     const c = copy();
     const file = $("file").files && $("file").files[0];
     if (!file) {
+      // An empty submit clears the previous submission's view — the file
+      // table and the verdict alike — so no stale conclusion sits under
+      // a "choose a file" status. The status style is reset too: a
+      // previous failed submit leaves `status warn` behind.
+      state.contents = null;
+      $("contents").hidden = true;
+      $("result").hidden = true;
+      $("status").className = "status";
       text($("status"), c.empty);
       return;
     }
@@ -314,7 +417,7 @@
   }
 
   async function init() {
-    const response = await fetch("/assets/i18n.json?v=1");
+    const response = await fetch("/assets/i18n.json?v=2");
     state.catalog = await response.json();
     paintChrome();
     $("form").addEventListener("submit", submit);
@@ -326,5 +429,9 @@
       });
     });
   }
+  // Pure parser functions, exposed for the node parity tests (same
+  // pattern as window.ResiliTimeline); the page itself only uses them
+  // through submit/renderContents.
+  window.ResiliImport = { parseCsv, parseContents, tableFromObjects, contentsNotes, truncateCell };
   init();
 })();
