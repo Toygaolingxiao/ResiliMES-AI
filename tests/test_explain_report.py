@@ -181,7 +181,12 @@ def test_report_routes_read_a_bundle_and_leave_the_console(monkeypatch):
 
     page = client.get("/report")
     assert page.status_code == 200
-    assert "/assets/product/report/report.js" in page.text
+    # Anchor to the closing quote: a bare "?v=3" substring would also
+    # match "?v=30" / "?v=300" and silently pass a drifted version
+    # (same pin pattern as the import page, #128). Anchor to `src="`
+    # as well: without it a rewritten URL whose path merely contains
+    # the target (e.g. `//assets/...` or a foreign origin) would pass.
+    assert 'src="/assets/product/report/report.js?v=3"' in page.text
     index = client.get("/")
     assert index.status_code == 200
     assert 'id="report-link"' in index.text
@@ -201,7 +206,22 @@ def test_report_routes_read_a_bundle_and_leave_the_console(monkeypatch):
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_JS = ROOT / "resilimes" / "demo" / "static" / "product" / "report" / "report.js"
+REPORT_HTML = ROOT / "resilimes" / "demo" / "static" / "product" / "report" / "report.html"
 I18N = ROOT / "resilimes" / "demo" / "static" / "i18n.json"
+
+
+def test_report_script_reference_is_version_pinned() -> None:
+    html = REPORT_HTML.read_text(encoding="utf-8")
+    # Same pin pattern as the import page (#128): anchor to the closing
+    # quote so "?v=30" / "?v=300" cannot pass, reject a bare link, and
+    # pin the reference string to exactly one occurrence. Anchor to
+    # `src="` as well: without it a rewritten URL whose path merely
+    # contains the target (e.g. `//assets/...` or a foreign origin)
+    # would pass. The count does not prove the string sits inside an
+    # executed <script> tag (see known limitation).
+    assert 'src="/assets/product/report/report.js?v=3"' in html
+    assert '/assets/product/report/report.js"' not in html
+    assert html.count("/assets/product/report/report.js") == 1
 
 
 def test_report_range_messages_exist_in_all_languages():
