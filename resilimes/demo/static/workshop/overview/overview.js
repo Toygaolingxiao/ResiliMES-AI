@@ -9,18 +9,35 @@
   const HORIZON = 172800;
   const TABS = ["overview", "tools", "flow", "lots", "batches", "events", "kpis"];
   const BOOKS = ["base", "litho_down", "hot_lot", "pm_avoid"];
-  const STATE_COLOR = {
-    run: "#4589ff",
-    setup: "#eb6200",
-    idle: "#e0e0e0",
-    pm: "#6f6f6f",
-    down: "#da1e28",
-    batch_wait: "#f1c21b",
-    wait: "#f1c21b",
-  };
-  const CLASS_COLOR = { VIP: "#8a3ffc", hot: "#d02670", normal: "#8d8d8d" };
-  const RISK_COLOR = { late: "#da1e28", risk: "#b28600", ok: "transparent" };
-  const DONE_COLOR = "#24a148";
+  // Filled from chart tokens (fab-*/class-*/risk-*/done). Original hues preserved 1:1.
+  const STATE_COLOR = {};
+  const CLASS_COLOR = {};
+  const RISK_COLOR = { ok: "transparent" };
+  let DONE_COLOR = "";
+  function refreshPalette() {
+    const T = window.ResiliTheme;
+    const chart = (name, fallback) => (T && T.chart(name)) || fallback;
+    Object.assign(STATE_COLOR, {
+      run: chart("fab-run", "#4589ff"),
+      setup: chart("fab-setup", "#eb6200"),
+      idle: chart("fab-idle", "#e0e0e0"),
+      pm: chart("fab-pm", "#6f6f6f"),
+      down: chart("fab-down", "#da1e28"),
+      batch_wait: chart("fab-wait", "#f1c21b"),
+      wait: chart("fab-wait", "#f1c21b"),
+    });
+    Object.assign(CLASS_COLOR, {
+      VIP: chart("class-vip", "#8a3ffc"),
+      hot: chart("class-hot", "#d02670"),
+      normal: chart("class-normal", "#8d8d8d"),
+    });
+    Object.assign(RISK_COLOR, {
+      late: chart("risk-late", "#da1e28"),
+      risk: chart("risk-risk", "#b28600"),
+      ok: "transparent",
+    });
+    DONE_COLOR = chart("done", "#24a148");
+  }
   const STATUS = ["wait", "run", "hold", "done"];
 
   const S = {
@@ -773,6 +790,15 @@
   }
 
   const VIEWS = { overview: viewOverview, tools: viewTools, flow: viewFlow, lots: viewLots, batches: viewBatches, events: viewEvents, kpis: viewKpis };
+
+  refreshPalette();
+  if (window.ResiliTheme) {
+    ResiliTheme.onChange(() => {
+      refreshPalette();
+      render(true);
+    });
+    ResiliTheme.watch();
+  }
 
   // ---------- public ----------
   window.Fab = {

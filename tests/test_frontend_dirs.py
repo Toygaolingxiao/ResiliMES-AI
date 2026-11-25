@@ -116,7 +116,7 @@ def test_report_css_link_is_versioned_on_both_pages() -> None:
     """
     for page in ("report", "import"):
         html = (STATIC / "product" / page / f"{page}.html").read_text(encoding="utf-8")
-        assert '/assets/design/tokens.css?v=1"' in html
+        assert '/assets/design/tokens.css?v=2"' in html
         tokens_idx = html.index("/assets/design/tokens.css")
         report_idx = html.index("/assets/product/report/report.css")
         assert tokens_idx < report_idx

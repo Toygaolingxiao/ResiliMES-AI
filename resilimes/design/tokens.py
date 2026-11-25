@@ -236,21 +236,25 @@ def review_markdown() -> str:
                 + " |"
             )
     chart = data.get("chart", {})
-    for theme_name, palette in chart.items():
-        for name, node in palette.items():
-            lines.append(
-                "| "
-                + " | ".join(
-                    [
-                        f"`chart.{theme_name}.{name}`",
-                        "chart",
-                        _cell(str(node.get("value", ""))) if theme_name == "light" else "—",
-                        _cell(str(node.get("value", ""))) if theme_name == "dark" else "—",
-                        _cell(str(node.get("role", "chart data"))),
-                    ]
-                )
-                + " |"
+    chart_light = chart.get("light") or {}
+    chart_dark = chart.get("dark") or {}
+    for name, node in chart_light.items():
+        if not isinstance(node, dict):
+            continue
+        dark_node = chart_dark.get(name) if isinstance(chart_dark.get(name), dict) else {}
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    f"`chart.{name}`",
+                    "chart",
+                    _cell(str(node.get("value", ""))),
+                    _cell(str(dark_node.get("value", "—"))),
+                    _cell(str(node.get("role", "chart data"))),
+                ]
             )
+            + " |"
+        )
     lines.append("")
     lines.append("## `--text-warning` contrast (scripted)")
     lines.append("")

@@ -1,7 +1,7 @@
 {
   "$schema_note": "Wave 0 style-violation budgets for #121. Budgets never exceed the frozen baseline in VIOLATION_BUDGET_BASELINE.json; counts are capped by their budgets. CI fails if a count rises above its budget, and fails if a budget is raised above the frozen Wave 0 baseline (or a metric is added/removed without a baseline update in the same PR). Lowering a budget is always allowed and needs no baseline change. Note: 'each converging PR must lower at least one budget it touches' was the Wave 0 wording; it is not mechanically enforced in-tree and is not claimed here — the enforced rule is budgets never exceed baseline.",
   "version": 1,
-  "updated": "2026-11-23",
+  "updated": "2026-11-25",
   "issue": 121,
   "wave": 1,
   "metrics": {
@@ -14,19 +14,19 @@
       "description": "rgba()/rgb() literals in *.css property values outside custom-property definitions."
     },
     "js_hex_literals": {
-      "budget": 74,
-      "description": "Hex colour literals in demo/static *.js (canvas palettes included until Wave 1c)."
+      "budget": 73,
+      "description": "Hex colour literals in demo/static *.js (canvas fallbacks remain; runtime reads chart tokens)."
     },
     "js_rgba_literals": {
       "budget": 1,
       "description": "rgba()/rgb() literals in demo/static *.js."
     },
     "spacing_outside_legacy_ladder": {
-      "budget": 172,
+      "budget": 171,
       "description": "padding/margin/gap/inset px values outside {0,4,8,12,16}. Control/row ladder 24/32/40/48 is the Wave 0 decision; this metric still tracks legacy off-ladder noise until Wave 1 lint set expands."
     },
     "font_size_outside_text_tokens": {
-      "budget": 36,
+      "budget": 35,
       "description": "font-size px values outside {12,13,14,16,28,32} (text-* ladder)."
     },
     "breakpoints_outside_baseline": {
@@ -38,6 +38,7 @@
     "Budgets measured 2026-11-22 at the #124 merge commit (f53b88c3) with resilimes.design.violations.count_violations(); re-verified equal at 9b7585fe.",
     "Allowed spacing set will expand to include control heights 24/32/40/48 when Wave 1 lint lands; until then off-ladder count stays the ratchet signal.",
     "Chart/data colours remain in scope for counting until registered in tokens.json chart palette (Wave 1).",
-    "Wave 1b (styles.css + fab.css): css_hex budget lowered; .swatch scoped to .bay-legend vs .legend; removed dead --subtle/--serif."
+    "Wave 1b (styles.css + fab.css): css_hex budget lowered; .swatch scoped to .bay-legend vs .legend; removed dead --subtle/--serif.",
+    "Wave 1c: nine gantt-* fills stay distinct; fab-*/area-*/class-*/risk-*/done registered; js_hex ratchet 74→73."
   ]
 }

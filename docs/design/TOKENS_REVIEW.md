@@ -37,16 +37,41 @@ CSS/JS: scripts/regen_tokens_css.py / regen_tokens_js.py → demo/static/design/
 | `--graphic-warning` | semantic | #f1c21b | #f1c21b | warning graphic / fill |
 | `--text-info` | semantic | #0043ce | #a6c8ff | recorded / info text |
 | `--bg-info-subtle` | semantic | #edf5ff | #001d6c | recorded wash |
-| `chart.light.gantt-run` | chart | #0f62fe | — | running bar |
-| `chart.light.gantt-setup` | chart | #0072c3 | — | setup bar |
-| `chart.light.gantt-down` | chart | #da1e28 | — | down bar |
-| `chart.light.gantt-pm` | chart | #6f6f6f | — | PM bar |
-| `chart.light.gantt-idle` | chart | #c6c6c6 | — | idle bar |
-| `chart.dark.gantt-run` | chart | — | #78a9ff | running bar |
-| `chart.dark.gantt-setup` | chart | — | #33b1ff | setup bar |
-| `chart.dark.gantt-down` | chart | — | #fa4d56 | down bar |
-| `chart.dark.gantt-pm` | chart | — | #a8a8a8 | PM bar |
-| `chart.dark.gantt-idle` | chart | — | #525252 | idle bar |
+| `chart.gantt-processing` | chart | #FFD700 | #F5D000 | timeline bar: processing (gold) |
+| `chart.gantt-scheduled` | chart | #5B8DEF | #7BA8F5 | timeline bar: scheduled (blue) |
+| `chart.gantt-reserved` | chart | #FF69B4 | #FF85C2 | timeline bar: reserved (pink) |
+| `chart.gantt-waiting` | chart | #82C213 | #9AD42E | timeline bar: waiting (green) |
+| `chart.gantt-transport` | chart | #8080C0 | #9A9AD4 | timeline bar: transport (periwinkle) |
+| `chart.gantt-setup` | chart | #FFA400 | #FFB833 | timeline bar: setup (orange) |
+| `chart.gantt-down` | chart | #6b6258 | #A09890 | timeline bar: down (brown-gray) |
+| `chart.gantt-pm` | chart | #808080 | #B0B0B0 | timeline bar: PM (gray) |
+| `chart.gantt-idle` | chart | #e7e2d8 | #4a4640 | timeline bar: idle (beige) |
+| `chart.gantt-ink-dark` | chart | #1e293b | #0f172a | label ink on light bars |
+| `chart.gantt-ink-light` | chart | #ffffff | #f8fafc | label ink on dark/mid bars |
+| `chart.fab-run` | chart | #4589ff | #78a9ff | fab tool: running |
+| `chart.fab-setup` | chart | #eb6200 | #ff832b | fab tool: setup |
+| `chart.fab-idle` | chart | #e0e0e0 | #525252 | fab tool: idle |
+| `chart.fab-pm` | chart | #6f6f6f | #a8a8a8 | fab tool: PM |
+| `chart.fab-down` | chart | #da1e28 | #fa4d56 | fab tool: down |
+| `chart.fab-wait` | chart | #f1c21b | #f1c21b | fab tool: wait / batch_wait |
+| `chart.class-vip` | chart | #8a3ffc | #be95ff | lot class VIP |
+| `chart.class-hot` | chart | #d02670 | #ff7eb6 | lot class hot |
+| `chart.class-normal` | chart | #8d8d8d | #a8a8a8 | lot class normal |
+| `chart.risk-late` | chart | #da1e28 | #fa4d56 | risk late |
+| `chart.risk-risk` | chart | #b28600 | #f1c21b | risk at-risk |
+| `chart.done` | chart | #24a148 | #42be65 | done / pass graphic |
+| `chart.area-lithography-fill` | chart | #d0e2ff | #312e81 | bay Lithography fill |
+| `chart.area-lithography-ink` | chart | #002d9c | #e0e7ff | bay Lithography ink |
+| `chart.area-etch-fill` | chart | #9ef0f0 | #155e75 | bay Etch fill |
+| `chart.area-etch-ink` | chart | #004144 | #cffafe | bay Etch ink |
+| `chart.area-cmp-fill` | chart | #e8daff | #5b21b6 | bay CMP fill |
+| `chart.area-cmp-ink` | chart | #491d8b | #f3e8ff | bay CMP ink |
+| `chart.area-deposition-fill` | chart | #a7f0ba | #115e59 | bay Deposition fill |
+| `chart.area-deposition-ink` | chart | #044317 | #ccfbf1 | bay Deposition ink |
+| `chart.area-metrology-fill` | chart | #fddc69 | #92400e | bay Metrology fill |
+| `chart.area-metrology-ink` | chart | #483700 | #ffedd5 | bay Metrology ink |
+| `chart.area-clean-fill` | chart | #e0e0e0 | #1e3a5f | bay Clean fill |
+| `chart.area-clean-ink` | chart | #393939 | #e0f2fe | bay Clean ink |
 
 ## `--text-warning` contrast (scripted)
 

@@ -1,3 +1,4 @@
+// Bay bands: one chart token pair per area (do not fold into semantic washes).
 const AREA_TONE = {
   light: {
     Lithography: { fill: "#d0e2ff", ink: "#002d9c" },
@@ -16,8 +17,23 @@ const AREA_TONE = {
     Clean: { fill: "#1e3a5f", ink: "#e0f2fe" },
   },
 };
+const AREA_SLUG = {
+  Lithography: "lithography",
+  Etch: "etch",
+  CMP: "cmp",
+  Deposition: "deposition",
+  Metrology: "metrology",
+  Clean: "clean",
+};
 
 function areaTone(area) {
+  const slug = AREA_SLUG[area] || "deposition";
+  const T = window.ResiliTheme;
+  if (T) {
+    const fill = T.chart(`area-${slug}-fill`);
+    const ink = T.chart(`area-${slug}-ink`);
+    if (fill && ink) return { fill, ink };
+  }
   const theme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
   const table = AREA_TONE[theme];
   return table[area] || table.Deposition;
@@ -160,6 +176,7 @@ function applyTheme() {
   if (state.theme === "dark") document.documentElement.dataset.theme = "dark";
   else delete document.documentElement.dataset.theme;
   localStorage.setItem("resilimes.theme", state.theme);
+  if (window.ResiliTheme) window.ResiliTheme.invalidate();
 }
 
 function t() {
