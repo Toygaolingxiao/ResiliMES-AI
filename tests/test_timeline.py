@@ -649,7 +649,12 @@ def test_api_groups_filters_and_serves_the_page() -> None:
     assert client.get("/api/timeline", params={"t0": 20, "t1": 10}).status_code == 422
     page = client.get("/timeline")
     assert page.status_code == 200
-    assert "/assets/product/timeline/timeline.js" in page.text
+    # Anchor to the closing quote: a bare "?v=3" substring would also
+    # match "?v=30" / "?v=300" and silently pass a drifted version
+    # (same pin pattern as the import page, #128). Anchor to `src="`
+    # as well: without it a rewritten URL whose path merely contains
+    # the target (e.g. `//assets/...` or a foreign origin) would pass.
+    assert 'src="/assets/product/timeline/timeline.js?v=3"' in page.text
     script = client.get("/assets/product/timeline/timeline.js")
     assert script.status_code == 200
     assert "ResiliTimeline" in script.text
@@ -657,6 +662,22 @@ def test_api_groups_filters_and_serves_the_page() -> None:
 
 ROOT = Path(__file__).resolve().parents[1]
 TIMELINE_JS = ROOT / "resilimes" / "demo" / "static" / "product" / "timeline" / "timeline.js"
+TIMELINE_HTML = ROOT / "resilimes" / "demo" / "static" / "product" / "timeline" / "timeline.html"
+
+
+def test_timeline_script_reference_is_version_pinned() -> None:
+    html = TIMELINE_HTML.read_text(encoding="utf-8")
+    # Same pin pattern as the import page (#128): anchor to the closing
+    # quote so "?v=30" / "?v=300" cannot pass, reject a bare link, and
+    # pin the reference string to exactly one occurrence. Anchor to
+    # `src="` as well: without it a rewritten URL whose path merely
+    # contains the target (e.g. `//assets/...` or a foreign origin)
+    # would pass. The count does not prove the string sits inside an
+    # executed <script> tag (see known limitation).
+    assert 'src="/assets/product/timeline/timeline.js?v=3"' in html
+    assert '/assets/product/timeline/timeline.js"' not in html
+    assert html.count("/assets/product/timeline/timeline.js") == 1
+
 
 # scopeNotice and statusFor are pure over (payload, copy); the driver loads timeline.js in
 # a vm with a stub document (no #timeline-app, so the page never mounts)
