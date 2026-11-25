@@ -1018,6 +1018,8 @@
       "empty": "Choose a file.",
       "contentsTitle": "File contents",
       "contentsMeta": "{name}: showing {shown} of {total} rows",
+      "contentsColumnsNote": "Showing the first {shown} of {total} columns.",
+      "contentsSkippedNote": "{skipped} lines skipped: not readable as table rows.",
       "contentsUnparsed": "Could not read this file as a table, so its contents are not shown."
     },
     "cases": {
@@ -2192,6 +2194,8 @@
       "empty": "请选择文件。",
       "contentsTitle": "文件内容",
       "contentsMeta": "{name}：共 {total} 行，显示前 {shown} 行",
+      "contentsColumnsNote": "只显示前 {shown} 列，共 {total} 列。",
+      "contentsSkippedNote": "已跳过 {skipped} 行：无法读作表格行。",
       "contentsUnparsed": "没能把这个文件解析成表格，内容就不显示了。"
     },
     "cases": {
@@ -3366,6 +3370,8 @@
       "empty": "ファイルを選んでください。",
       "contentsTitle": "ファイルの中身",
       "contentsMeta": "{name}：全 {total} 行中 {shown} 行を表示",
+      "contentsColumnsNote": "全 {total} 列中、先頭 {shown} 列を表示。",
+      "contentsSkippedNote": "{skipped} 行をスキップ：表の行として読めません。",
       "contentsUnparsed": "表として読み取れなかったため、中身は表示できません。"
     },
     "cases": {
