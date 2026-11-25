@@ -241,7 +241,8 @@ def review_markdown() -> str:
     for name, node in chart_light.items():
         if not isinstance(node, dict):
             continue
-        dark_node = chart_dark.get(name) if isinstance(chart_dark.get(name), dict) else {}
+        raw_dark = chart_dark.get(name)
+        dark_node = raw_dark if isinstance(raw_dark, dict) else {}
         lines.append(
             "| "
             + " | ".join(
